@@ -76,7 +76,7 @@ def test_query_non_core_attributes(temp_storage: CoreStorage) -> None:
     assert "still researching" in response.message
     assert "age" in response.message
     assert "x_handle" in response.message
-    assert "deferred_attributes='age, x_handle'" in response.debug
+    assert "non_core_requested='age, x_handle'" in response.debug
 
 
 def test_ingest_new_person(temp_storage: CoreStorage) -> None:

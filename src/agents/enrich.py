@@ -22,7 +22,7 @@ def enrich_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     if raw_person is None:
         return {
             "validation_passed": False,
-            "validation_errors": ["EnrichAgent: no person payload to ingest."],
+            "validation_errors": ["EnrichAgent: no person payload to prepare."],
             "audit_log": ["EnrichAgent: aborted — missing person payload."],
         }
 

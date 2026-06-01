@@ -32,7 +32,7 @@ The code was written before several key decisions were finalized. The following 
 - [ ] Add stronger validation for ingested records (beyond current minimum-viable checks).
 - [ ] Consider whether ingestion should trigger enrichment or specialist work.
 - [ ] Re-evaluate whether a machine-readable `status` or error category is needed for ingestion failures.
-- [ ] Clean up dead code from pre-1912 response model (task `2026-06-02-1010-cleanup-dead-code-post-response-redesign`).
+- [x] Clean up dead code from pre-1912 response model (`2026-06-02-1010-cleanup-dead-code-post-response-redesign`).
 
 ## Data
 

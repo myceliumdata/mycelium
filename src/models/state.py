@@ -63,7 +63,7 @@ class MyceliumGraphState(BaseModel):
     """LangGraph state for supervisor + specialist agents."""
 
     query: PersonQuery
-    route: Literal["enrich", "validator", "finish"] | None = None
+    route: Literal["enrich"] | None = None
     response: PersonResponse | None = None
     person: Person | None = None
     validation_passed: bool | None = None

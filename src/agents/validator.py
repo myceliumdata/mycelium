@@ -34,10 +34,10 @@ def validator_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any
             errors.append("ValidatorAgent: name format is invalid.")
 
     passed = len(errors) == 0
-    status = "passed" if passed else "failed"
+    outcome = "passed" if passed else "failed"
 
     return {
         "validation_passed": passed,
         "validation_errors": errors,
-        "audit_log": [f"ValidatorAgent: validation {status}."],
+        "audit_log": [f"ValidatorAgent: validation {outcome}."],
     }

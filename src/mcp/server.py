@@ -39,7 +39,7 @@ def query_person(query_json: str) -> str:
     Query a person by id, email, or name.
 
     Input JSON example:
-    {"person_key": "ada.lovelace@analytical.engine", "requested_attributes": ["age"]}
+    {"person_key": "Nichanan Kesonpat", "requested_attributes": ["email"]}
     """
     _bootstrap()
     query = PersonQuery.model_validate_json(query_json)

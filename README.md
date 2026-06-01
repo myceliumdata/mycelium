@@ -9,10 +9,10 @@ uv sync --all-extras
 cp .env.example .env
 
 # Query existing CRM seed record
-uv run mycelium query --person-key "ada.lovelace@analytical.engine"
+uv run mycelium query --person-key "Nichanan Kesonpat"
 
-# Request non-core attributes (supervisor returns specialist_required)
-uv run mycelium query --person-key "ada.lovelace@analytical.engine" --attributes age x_handle
+# Request non-core attributes (core record in results; message describes ongoing research)
+uv run mycelium query --person-key "Nichanan Kesonpat" --attributes age x_handle
 
 # Ingest a missing person (core fields only)
 uv run mycelium ingest --person-key "new@example.com" --data '{"name":"New User","employer":"Example Corp"}'
@@ -31,15 +31,15 @@ flowchart TD
     CLI[main.py CLI] -->|JSON| Graph
     MCPServer --> Graph[graphs/core.py]
     Graph --> S[Supervisor]
-    S -->|missing + no data| DR[data_request JSON]
-    S -->|found| RES[found JSON]
-    S -->|non-core attrs| SR[specialist_required]
+    S -->|missing lookup| MISS[empty results + message]
+    S -->|found| RES[results + message]
+    S -->|non-core attrs| NC[results + researching message]
     S -->|provided_data| E[EnrichAgent]
     E --> V[ValidatorAgent]
     V --> S
+    S -->|after validation| DB[(mycelium.db)]
     Graph --> CP[(checkpoints.sqlite)]
-    S --> DB[(mycelium.db)]
-    E --> DB
+    S --> DB
 ```
 
 | Layer | Path | Role |
@@ -55,7 +55,7 @@ flowchart TD
 
 Core CRM fields are **id**, **name**, and **employer** only. When a query asks for anything else (e.g. `age`, `x_handle`):
 
-1. The supervisor returns status `specialist_required` with `deferred_attributes` listing what was requested.
+1. The supervisor returns the core person in `results` and explains in `message` that those attributes are still being researched.
 2. No shared derivative-dataset tables or registry exist in Phase 1 — specialist agents are coordinated by the supervisor, not stored as formal datasets in core storage.
 3. Future phases will spawn real specialist agents per attribute domain; enrich/validator today only handle minimum viable core ingest.
 

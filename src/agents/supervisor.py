@@ -63,7 +63,7 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
             debug=_debug_for_query(query, outcome="ingest_failed", errors=error_summary),
         )
         logs.append("Supervisor: validation failed — finishing.")
-        return {"response": response, "route": "finish", "audit_log": logs}
+        return {"response": response, "route": None, "audit_log": logs}
 
     if current.validation_passed is True and current.person is not None:
         person = current.person
@@ -74,7 +74,7 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
             debug=_debug_for_query(query, outcome="ingested"),
         )
         logs.append("Supervisor: post-validation ingest complete.")
-        return {"response": response, "route": "finish", "audit_log": logs}
+        return {"response": response, "route": None, "audit_log": logs}
 
     if query.provided_data is not None:
         logs.append("Supervisor: provided_data present — routing to enrich.")
@@ -99,7 +99,7 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
         logs.append("Supervisor: person missing — returning ingest guidance.")
         return {
             "response": response,
-            "route": "finish",
+            "route": None,
             "audit_log": logs,
         }
 
@@ -118,13 +118,13 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
             debug=_debug_for_query(
                 query,
                 outcome="non_core_requested",
-                deferred_attributes=attr_list,
+                non_core_requested=attr_list,
             ),
         )
         return {
             "person": person,
             "response": response,
-            "route": "finish",
+            "route": None,
             "audit_log": logs,
         }
 
@@ -137,7 +137,7 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
     return {
         "person": person,
         "response": response,
-        "route": "finish",
+        "route": None,
         "audit_log": logs,
     }
 
