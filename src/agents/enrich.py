@@ -1,4 +1,4 @@
-"""Enrich agent: ingests minimum viable core person data."""
+"""Enrich agent: prepares core person records for validation and persistence."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ def _coerce(state: MyceliumGraphState | dict[str, Any]) -> MyceliumGraphState:
 
 
 def enrich_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
-    """Persist provided core person data."""
+    """Prepare provided core person data (assign id if needed) for the validator."""
     current = _coerce(state)
 
     raw_person = current.person or current.query.provided_data

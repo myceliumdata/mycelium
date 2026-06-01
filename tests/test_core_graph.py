@@ -58,8 +58,8 @@ def test_query_missing_person(temp_storage: CoreStorage) -> None:
     response = run_query(PersonQuery(person_key="Missing Person"))
     assert response.results == []
     assert "No core record found" in response.message
+    assert "lookup" in response.message.lower()
     assert "provided_data" in response.message
-    assert "name, employer" in response.message
     assert "outcome='ingest_required'" in response.debug
 
 

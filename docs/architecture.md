@@ -100,17 +100,27 @@ See `src/storage/core.py` for the current minimal implementation.
 
 ## Core Ingestion Handshake (Phase 1)
 
-External callers add people through **`PersonQuery.provided_data`** (MCP `submit_person_data` or CLI `ingest`). The flow is single-step: supply `name` and `employer` upfront (optional `id`; assigned if empty).
+Core storage holds only `id`, `name`, and `employer`. Lookups and ingests share the same **`PersonQuery`** shape; ingestion is triggered by including **`provided_data`** (MCP `submit_person_data` or CLI `ingest`). The flow is single-step: callers supply `name` and `employer` upfront (`id` optional — assigned after validation if empty).
 
-| Step | Caller action | Response |
-|------|---------------|----------|
-| Lookup | `query_person` with `person_key` only | `results` with core dict if found |
-| Missing | Same, person not in storage | Empty `results`; `message` explains how to submit `provided_data` |
-| Ingest | Query with `provided_data` | Supervisor → enrich → validator → success or failure `PersonResponse` |
+### Flow summary
 
-Success returns the new record in `results` and a narrative `message` (e.g. "Added core record for …"). Failures use empty `results` and an explanatory `message`. Query context stays in `debug`.
+| Intent | What the caller sends | Graph path | What comes back |
+|--------|----------------------|------------|-----------------|
+| **Lookup** | `person_key` only | Supervisor reads storage | `results`: one core dict if found; neutral `message` |
+| **Not found** | `person_key` only, no match | Supervisor only | `results`: `[]`; `message` states the miss and briefly notes how to ingest if desired |
+| **Ingest** | `person_key` + `provided_data` | Supervisor → enrich (prepare) → validator → supervisor (persist) | `results`: core dict on success; `[]` on validation failure |
 
-No separate `DataRequest` model — guidance lives in natural-language `message` per the minimalist response contract.
+Enrich **prepares** the record (including id assignment). The supervisor **writes to SQLite only after** validation succeeds.
+
+### Response fields (ingestion outcomes)
+
+All external responses use the minimalist **`PersonResponse`** (`results`, `message`, `debug`):
+
+- **`results`** — Factual core data only. Populated when a record exists or was just added; empty when lookup misses or ingest fails.
+- **`message`** — Primary channel for humans and agents: found/not-found narrative, ingest guidance, success ("Added core record for …"), or failure ("Could not add core record: …").
+- **`debug`** — Internal context (original `person_key`, `requested_attributes`, outcome tags). Callers should not depend on it.
+
+There is no separate `DataRequest` model or `status` enum — outcome is conveyed through `results` plus natural-language `message`.
 
 ---
 

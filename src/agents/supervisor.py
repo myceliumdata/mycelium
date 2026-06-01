@@ -35,8 +35,9 @@ def _ingest_guidance_message(person_key: str) -> str:
     required = ", ".join(MINIMUM_VIABLE_FIELDS)
     return (
         f"No core record found for {person_key!r}. "
-        f"To add this person, submit minimum viable core fields ({required}) "
-        f"via submit_person_data or the CLI ingest command (provided_data on the query)."
+        f"This lookup did not match anyone in core storage. "
+        f"If you need to add a new person, include {required} in provided_data "
+        f"(MCP submit_person_data or CLI ingest)."
     )
 
 
