@@ -106,7 +106,7 @@ def run_query(
         return final.response
 
     return PersonResponse(
-        status="validation_failed",
+        results=[],
         message="Graph finished without a response payload.",
-        errors=["No response set by supervisor."],
+        debug="No response set by supervisor.",
     )

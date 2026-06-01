@@ -46,18 +46,21 @@ def temp_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> CoreStorage
 def test_query_existing_person(temp_storage: CoreStorage) -> None:
     _ = temp_storage
     response = run_query(PersonQuery(person_key="person-test"))
-    assert response.status == "found"
-    assert response.person is not None
-    assert response.person.name == "Test User"
+    assert len(response.results) == 1
+    assert response.results[0]["name"] == "Test User"
+    assert response.results[0]["employer"] == "Test Co"
+    assert "Found core record" in response.message
+    assert "person_key='person-test'" in response.debug
 
 
 def test_query_missing_person(temp_storage: CoreStorage) -> None:
     _ = temp_storage
     response = run_query(PersonQuery(person_key="Missing Person"))
-    assert response.status == "data_request"
-    assert response.data_request is not None
-    assert "name" in response.data_request.required_fields
-    assert "employer" in response.data_request.required_fields
+    assert response.results == []
+    assert "No core record found" in response.message
+    assert "name" in response.message
+    assert "employer" in response.message
+    assert response.debug
 
 
 def test_query_non_core_attributes(temp_storage: CoreStorage) -> None:
@@ -68,9 +71,12 @@ def test_query_non_core_attributes(temp_storage: CoreStorage) -> None:
             requested_attributes=["age", "x_handle"],
         ),
     )
-    assert response.status == "specialist_required"
-    assert "age" in response.deferred_attributes
-    assert response.person is not None
+    assert len(response.results) == 1
+    assert response.results[0]["name"] == "Test User"
+    assert "still researching" in response.message
+    assert "age" in response.message
+    assert "x_handle" in response.message
+    assert "deferred_attributes='age, x_handle'" in response.debug
 
 
 def test_ingest_new_person(temp_storage: CoreStorage) -> None:
@@ -85,7 +91,16 @@ def test_ingest_new_person(temp_storage: CoreStorage) -> None:
             ),
         ),
     )
-    assert response.status == "ingested"
-    assert response.person is not None
+    assert len(response.results) == 1
+    assert response.results[0]["name"] == "New User"
+    assert "ingested and validated" in response.message
     stored = temp_storage.find_person("New User")
     assert stored is not None
+
+
+def test_results_are_plain_dicts(temp_storage: CoreStorage) -> None:
+    _ = temp_storage
+    response = run_query(PersonQuery(person_key="person-test"))
+    for item in response.results:
+        assert isinstance(item, dict)
+        assert set(item.keys()) <= {"id", "name", "employer"}

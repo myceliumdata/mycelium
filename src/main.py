@@ -28,7 +28,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--attributes",
         nargs="*",
         default=[],
-        help="Non-core attributes (may return specialist_required)",
+        help="Non-core attributes (core record returned; message describes ongoing research)",
     )
     query_cmd.add_argument("--thread-id", default=None)
 
@@ -79,14 +79,14 @@ def main(argv: list[str] | None = None) -> int:
         )
         response = run_query(query, thread_id=thread_id)
         console.print(JSON(response.model_dump_json(indent=2)))
-        return 0 if response.status in {"found", "specialist_required"} else 1
+        return 0 if response.results else 1
 
     if args.command == "ingest":
         person = _load_person_data(args.data)
         query = PersonQuery(person_key=args.person_key, provided_data=person)
         response = run_query(query, thread_id=thread_id)
         console.print(JSON(response.model_dump_json(indent=2)))
-        return 0 if response.status == "ingested" else 1
+        return 0 if response.results else 1
 
     return 1
 

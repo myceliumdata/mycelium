@@ -9,6 +9,7 @@ from models.state import (
     MINIMUM_VIABLE_FIELDS,
     MyceliumGraphState,
     Person,
+    PersonQuery,
     PersonResponse,
     non_core_attributes,
 )
@@ -21,13 +22,22 @@ def _coerce(state: MyceliumGraphState | dict[str, Any]) -> MyceliumGraphState:
     return MyceliumGraphState.model_validate(state)
 
 
+def _debug_for_query(query: PersonQuery, **extra: str) -> str:
+    parts = [
+        f"person_key={query.person_key!r}",
+        f"requested_attributes={query.requested_attributes!r}",
+    ]
+    parts.extend(f"{key}={value!r}" for key, value in extra.items())
+    return "; ".join(parts)
+
+
 def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     """
     Main supervisor logic:
-    - Found person + core attrs → return data
-    - Missing person + no provided_data → structured data_request
+    - Found person + core attrs → results + narrative message
+    - Missing person + no provided_data → empty results, ingest guidance in message
     - Missing person + provided_data → route to enrich
-    - Non-core attributes → specialist_required (deferred_attributes; no core registry)
+    - Non-core attributes → core record in results, researching narrative in message
     """
     current = _coerce(state)
     storage = get_storage()
@@ -35,21 +45,21 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
     logs: list[str] = ["Supervisor: evaluating query."]
 
     if current.validation_passed is False:
+        error_summary = "; ".join(current.validation_errors) or "unknown validation errors"
         response = PersonResponse(
-            status="validation_failed",
-            person=current.person,
-            errors=list(current.validation_errors),
-            message="Validation failed for person record.",
+            results=[],
+            message=f"Validation failed for the person record: {error_summary}",
+            debug=_debug_for_query(query, validation_errors=error_summary),
         )
         logs.append("Supervisor: validation failed — finishing.")
         return {"response": response, "route": "finish", "audit_log": logs}
 
     if current.validation_passed is True and current.person is not None:
+        person = current.person
         response = PersonResponse(
-            status="ingested",
-            person=current.person,
-            data=current.person.core_dict(),
-            message="Person ingested and validated successfully.",
+            results=[person.core_dict()],
+            message=f"Successfully ingested and validated {person.name}.",
+            debug=_debug_for_query(query, outcome="ingested"),
         )
         logs.append("Supervisor: post-validation ingest complete.")
         return {"response": response, "route": "finish", "audit_log": logs}
@@ -64,17 +74,20 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
 
     person = storage.find_person(query.person_key)
     if person is None:
-        from models.state import DataRequest
-
+        required = ", ".join(MINIMUM_VIABLE_FIELDS)
         response = PersonResponse(
-            status="data_request",
-            data_request=DataRequest(
-                person_key=query.person_key,
-                required_fields=list(MINIMUM_VIABLE_FIELDS),
+            results=[],
+            message=(
+                f"No core record found for {query.person_key!r}. "
+                f"Supply minimum viable fields ({required}) via submit_person_data to ingest."
             ),
-            message="Person not found in core CRM storage.",
+            debug=_debug_for_query(
+                query,
+                outcome="not_found",
+                required_fields=required,
+            ),
         )
-        logs.append("Supervisor: person missing — returning data_request.")
+        logs.append("Supervisor: person missing — returning ingest guidance.")
         return {
             "response": response,
             "route": "finish",
@@ -83,17 +96,20 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
 
     deferred = non_core_attributes(query.requested_attributes)
     if deferred:
+        attr_list = ", ".join(deferred)
         logs.append(
-            f"Supervisor: non-core attributes require specialist routing: {', '.join(deferred)}.",
+            f"Supervisor: non-core attributes require specialist routing: {attr_list}.",
         )
         response = PersonResponse(
-            status="specialist_required",
-            person=person,
-            data=person.core_dict(),
-            deferred_attributes=deferred,
+            results=[person.core_dict()],
             message=(
-                "Core person found. Requested attributes are not in core storage; "
-                "specialist agent routing is not yet implemented."
+                f"We have a core record for {person.name}, but we're still researching "
+                f"{attr_list}."
+            ),
+            debug=_debug_for_query(
+                query,
+                outcome="non_core_requested",
+                deferred_attributes=attr_list,
             ),
         )
         return {
@@ -104,10 +120,9 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
         }
 
     response = PersonResponse(
-        status="found",
-        person=person,
-        data=person.core_dict(),
-        message="Person found in core storage.",
+        results=[person.core_dict()],
+        message=f"Found core record for {person.name}.",
+        debug=_debug_for_query(query, outcome="found"),
     )
     logs.append(f"Supervisor: returning core data for {person.id}.")
     return {

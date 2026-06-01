@@ -40,34 +40,23 @@ class PersonQuery(BaseModel):
     )
 
 
-class DataRequest(BaseModel):
-    """Structured request when a person is missing from core storage."""
-
-    person_key: str
-    required_fields: list[str] = Field(default_factory=lambda: list(MINIMUM_VIABLE_FIELDS))
-    optional_fields: list[str] = Field(default_factory=list)
-    message: str = "Person not found. Supply minimum viable fields to ingest."
-
-
 class PersonResponse(BaseModel):
-    """Outbound JSON response for MCP and CLI consumers."""
+    """Lightweight response for external consumers (CLI + MCP agents)."""
 
-    status: Literal[
-        "found",
-        "data_request",
-        "specialist_required",
-        "ingested",
-        "validation_failed",
-    ]
-    person: Person | None = None
-    data: dict[str, Any] = Field(default_factory=dict)
-    data_request: DataRequest | None = None
-    deferred_attributes: list[str] = Field(
+    results: list[dict[str, Any]] = Field(
         default_factory=list,
-        description="Non-core attributes not served by core storage; specialist routing TBD",
+        description="Core person records as plain dicts (id, name, employer only). Always a list.",
     )
-    message: str = ""
-    errors: list[str] = Field(default_factory=list)
+    message: str = Field(
+        default="",
+        description=(
+            "Human- and agent-readable narrative. Primary channel for state, progress, and reasoning."
+        ),
+    )
+    debug: str = Field(
+        default="",
+        description="Internal diagnostic information only. Not intended for external consumption.",
+    )
 
 
 class MyceliumGraphState(BaseModel):
