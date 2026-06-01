@@ -1,4 +1,8 @@
-"""SQLite data layer for minimal core people records."""
+"""SQLite data layer for minimal core people records.
+
+Schema: people(id, name, employer) only. If you have an older data/mycelium.db
+with extra columns or derivative_* tables, see docs/database-notes.md.
+"""
 
 from __future__ import annotations
 
