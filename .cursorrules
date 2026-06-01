@@ -1,0 +1,27 @@
+# Mycelium — Cursor rules
+
+## Project context
+
+Read the canonical brief before coding or planning:
+
+- **Primary:** `prompts/system/CORE_PROMPT.md`
+- **Alternate:** `prompts/system/PROJECT_BRIEF.md` (same substance, plain format)
+
+Additional prompts live under `prompts/`:
+
+- `prompts/cursor/` — Cursor-specific task prompts
+- `prompts/grok-build/` — Grok / build-agent prompts
+- `docs/` — architecture and human documentation
+
+## Enforce from the brief
+
+- LangGraph (Python): explicit graphs, nodes, edges; Postgres checkpointer for state
+- Python 3.12+, Pydantic, full type hints; no god-agents
+- Layout: `src/agents/`, `src/graphs/`, `src/tools/`, `src/models/`, `src/persistence/`, `tests/`
+- LangSmith tracing; small reviewable diffs; clean architecture over hacks
+
+## Workflow
+
+1. Align with `prompts/system/CORE_PROMPT.md`
+2. Propose a short plan for non-trivial work
+3. Implement incrementally with types, tests where appropriate, and tracing hooks

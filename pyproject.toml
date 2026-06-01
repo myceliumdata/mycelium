@@ -1,0 +1,67 @@
+[project]
+name = "mycelium"
+version = "0.1.0"
+description = "AI-managed data sources prototype using LangGraph"
+authors = [{ name = "Paul Murphy", email = "your-email@example.com" }]
+requires-python = ">=3.12"
+readme = "README.md"
+license = { text = "MIT" }
+
+dependencies = [
+    "langgraph>=0.2.0",
+    "langgraph-checkpoint-sqlite>=3.0.1",
+    "langchain>=0.3.0",
+    "langchain-openai",
+    "langchain-anthropic",
+    "langsmith",
+    "pydantic>=2.8.0",
+    "python-dotenv",
+    "rich",
+    "fastmcp>=2.0.0",
+    "email-validator>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio",
+    "ruff>=0.6.0",
+    "mypy>=1.11.0",
+    "black>=24.0.0",
+]
+
+[project.scripts]
+mycelium = "main:main"
+mycelium-mcp = "mcp.server:run_server"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio",
+    "ruff>=0.6.0",
+    "mypy>=1.11.0",
+    "black>=24.0.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_config = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

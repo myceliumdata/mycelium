@@ -1,0 +1,17 @@
+.venv/
+.env
+__pycache__/
+*.py[cod]
+*.egg-info/
+src/mycelium.egg-info/
+dist/
+build/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+data/*.db
+data/*.sqlite
+data/checkpoints.sqlite

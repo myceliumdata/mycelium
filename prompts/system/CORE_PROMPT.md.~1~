@@ -1,0 +1,32 @@
+# Mycelium — Core Project Prompt
+
+You are helping me build Mycelium — a maintainable LangGraph-based prototype for AI-managed data sources.
+
+## Project Vision
+
+Mycelium is a system where AI agents autonomously handle data ingestion, schema evolution, validation, indexing, and continuous self-improvement. Data sources will be 100% managed by AI instead of humans.
+
+## Core Requirements
+
+- Use LangGraph (Python) with explicit graphs, nodes, edges, and persistent state (Postgres checkpointer).
+- Strong emphasis on maintainability, type safety, observability, and avoiding agent drift.
+- Python 3.12+, Pydantic, strict typing.
+- No god-agents or free-form PM agents.
+
+## Project Rules (enforce strictly)
+
+- Modular folder structure: `src/agents/`, `src/graphs/`, `src/tools/`, `src/models/`, `src/persistence/`, `tests/`
+- All code must be type-hinted, well-documented, with pytest where appropriate.
+- Use LangSmith for tracing from day one.
+- Small, reviewable changes only.
+- Clean architecture over rapid hacking.
+
+## First Tasks
+
+1. Initialize a proper Python project (`pyproject.toml` with uv or poetry, `.gitignore`, `README.md`).
+2. Create comprehensive `.cursorrules` (or `.cursor/rules/`) with these guidelines and project philosophy.
+3. Set up core dependencies: langgraph, langchain, langsmith, pydantic, psycopg, etc.
+4. Build a minimal working LangGraph with Supervisor + 2–3 specialist agents (e.g., Ingest, Validator) and persistent memory.
+5. Include a basic README with architecture (Mermaid diagram) and run instructions.
+
+Work step-by-step. Show me the plan first, then implement incrementally. Prioritize long-term maintainability.

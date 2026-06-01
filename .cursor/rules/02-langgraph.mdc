@@ -1,0 +1,24 @@
+---
+description: LangGraph-specific rules for Mycelium
+alwaysApply: true
+---
+
+# LangGraph Rules for Mycelium
+
+**Required Patterns:**
+- Use explicit StateGraph or StateGraph with supervisor + specialist agents.
+- Clearly defined nodes, edges, and conditional routing.
+- Persistent state using a checkpointer (Postgres preferred).
+- Supervisor agent for orchestration with well-defined handoffs.
+- Each specialist agent must have narrow, clear responsibilities.
+
+**Prohibited:**
+- God agents or agents that try to do everything.
+- Unstructured conversational loops without clear state management.
+- Implicit behavior — everything important must be explicit.
+
+**Best Practices:**
+- Use Pydantic models for all state.
+- Add retry logic and error handling on critical nodes.
+- Design for observability (LangSmith).
+- Keep graphs modular and composable.

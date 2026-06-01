@@ -1,0 +1,26 @@
+---
+description: Python coding standards for Mycelium
+alwaysApply: true
+---
+
+# Python Standards for Mycelium
+
+**General:**
+- Python 3.12+
+- Use modern tooling (uv or poetry)
+- Strict typing everywhere (Pydantic v2 preferred)
+- Comprehensive docstrings (Google or NumPy style)
+
+**Code Quality:**
+- Clear variable and function names
+- Small functions and classes with single responsibilities
+- Avoid deep nesting
+- Prefer composition over inheritance unless clearly beneficial
+
+**Testing:**
+- Write pytest tests for new functionality
+- At minimum, test critical agent nodes and state transitions
+
+**Dependencies:**
+- Only add dependencies after careful consideration
+- Keep pyproject.toml clean and well-organized
