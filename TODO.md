@@ -3,7 +3,7 @@
 This file tracks open tasks, decisions, and technical debt.
 
 **Note for Paul:**  
-`docs/phase-1-direction.md` is the current source of truth for Phase 1 direction.  
+`docs/architecture.md` is the current source of truth for Phase 1 direction.  
 We now direct Cursor (as a senior developer) using structured prompts located in `prompts/cursor/next/`. See `prompts/WORKFLOW.md` for the full protocol.
 
 The tasks in this document represent the long-term shared TODO between Grok and Paul. When we agree on work, we create a prompt in `prompts/cursor/next/` for Cursor to execute.
@@ -12,7 +12,7 @@ The tasks in this document represent the long-term shared TODO between Grok and 
 
 ### Codebase Catch-up to Current Direction
 
-The code was written before several key decisions were finalized. The following work is needed to bring the implementation in line with `docs/phase-1-direction.md`.
+The code was written before several key decisions were finalized. The following work is needed to bring the implementation in line with `docs/architecture.md`.
 
 - [x] **Review and simplify `DerivativeDatasetRef`** in `src/models/state.py` — removed; use `deferred_attributes` + `specialist_required` (prompt `2025-06-01-1700-clean-derivative-references`).
 - [x] Remove derivative dataset tables/methods from `src/storage/core.py` — core `people` table is id/name/employer only (same prompt).
@@ -56,7 +56,7 @@ Decision owner: Paul
 
 ## Documentation
 
-- [ ] Keep `docs/phase-1-direction.md` up to date as the active implementation guide
+- [ ] Keep `docs/architecture.md` up to date as the active implementation guide
 - [x] Remove outdated derivative-dataset language from README, docs, and user-facing comments (`2025-06-01-1735-documentation-cleanup-old-derivative-language`).
 - [x] Document legacy `data/mycelium.db` options for users upgrading from the old schema (`2025-06-01-1740-local-database-legacy-schema-note`).
 - [ ] Expand README with clearer run instructions and architecture overview (partially addressed by 1735/1740)

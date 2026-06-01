@@ -59,7 +59,7 @@ Core CRM fields are **id**, **name**, and **employer** only. When a query asks f
 2. No shared derivative-dataset tables or registry exist in Phase 1 — specialist agents are coordinated by the supervisor, not stored as formal datasets in core storage.
 3. Future phases will spawn real specialist agents per attribute domain; enrich/validator today only handle minimum viable core ingest.
 
-See [docs/phase-1-direction.md](docs/phase-1-direction.md) for the full Phase 1 model.
+See [docs/architecture.md](docs/architecture.md) for current architecture and direction.
 
 ## Repository layout
 
@@ -74,7 +74,7 @@ mycelium/
 │   ├── mcp/server.py
 │   └── main.py
 ├── prompts/system/CORE_PROMPT.md
-└── docs/vision.md
+└── docs/architecture.md
 ```
 
 ## Development

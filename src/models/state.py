@@ -7,7 +7,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field
 
-# Strictly minimal core person fields (see docs/phase-1-direction.md)
+# Strictly minimal core person fields (see docs/architecture.md)
 CORE_PERSON_FIELDS: frozenset[str] = frozenset({"id", "name", "employer"})
 
 MINIMUM_VIABLE_FIELDS: list[str] = ["name", "employer"]
