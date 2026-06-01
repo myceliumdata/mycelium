@@ -1,8 +1,8 @@
-"""Core identity access facade (Phase 1).
+"""Core Identity agent (Phase 1).
 
-The supervisor routes lookup and ingest persistence through this module instead of
-calling ``get_storage()`` directly. A dedicated Core Identity specialist agent may
-replace this facade in a later phase.
+The supervisor routes lookup and ingest persistence through Core Identity rather than
+calling ``get_storage()`` directly. A dedicated specialist implementation may replace
+this module in a later phase.
 """
 
 from __future__ import annotations
@@ -11,8 +11,8 @@ from models.state import Person
 from storage.core import CoreStorage, get_storage
 
 
-class CoreIdentityAccessor:
-    """Thin adapter over core ``people`` storage for identity resolution and writes."""
+class CoreIdentity:
+    """Agent responsible for the system's core person identity data (id, name, employer)."""
 
     def __init__(self, storage: CoreStorage | None = None) -> None:
         self._storage = storage
@@ -29,18 +29,18 @@ class CoreIdentityAccessor:
         self._resolve_storage().upsert_person(person)
 
 
-_accessor: CoreIdentityAccessor | None = None
+_core_identity: CoreIdentity | None = None
 
 
-def get_core_identity() -> CoreIdentityAccessor:
-    """Return the process-wide core identity accessor."""
-    global _accessor
-    if _accessor is None:
-        _accessor = CoreIdentityAccessor()
-    return _accessor
+def get_core_identity() -> CoreIdentity:
+    """Return the process-wide Core Identity agent."""
+    global _core_identity
+    if _core_identity is None:
+        _core_identity = CoreIdentity()
+    return _core_identity
 
 
 def reset_core_identity() -> None:
-    """Clear accessor singleton (for tests)."""
-    global _accessor
-    _accessor = None
+    """Clear Core Identity singleton (for tests)."""
+    global _core_identity
+    _core_identity = None

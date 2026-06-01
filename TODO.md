@@ -29,7 +29,7 @@ The code was written before several key decisions were finalized. The following 
 
 ### Supervisor / specialist follow-ups
 
-- [ ] Continue reducing direct data access as specialist agents are introduced (replace `CoreIdentityAccessor` with a Core Identity specialist).
+- [ ] Continue reducing direct data access as specialist agents are introduced (evolve `CoreIdentity` into a full specialist agent).
 - [ ] Evaluate whether core identity resolution should move entirely off the shared storage facade.
 - [ ] Further narrow response construction or move it behind specialist-specific builders.
 

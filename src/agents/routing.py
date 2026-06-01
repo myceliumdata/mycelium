@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from agents.core_identity import CoreIdentityAccessor, get_core_identity
+from agents.core_identity import CoreIdentity, get_core_identity
 from agents.responses import (
     response_found,
     response_ingest_failure,
@@ -28,15 +28,15 @@ class SupervisorDecision:
 def evaluate_supervisor_turn(
     state: MyceliumGraphState,
     *,
-    identity: CoreIdentityAccessor | None = None,
+    identity: CoreIdentity | None = None,
 ) -> SupervisorDecision:
     """
     Classify the current graph state and decide how the supervisor should proceed.
 
-    Data access (find/persist) is delegated to ``CoreIdentityAccessor``; this function
-    only coordinates routing and selects response shapes.
+    Data access (find/persist) is delegated to ``CoreIdentity``; this function only
+    coordinates routing and selects response shapes.
     """
-    accessor = identity or get_core_identity()
+    core_identity = identity or get_core_identity()
     query = state.query
 
     if state.validation_passed is False:
@@ -47,7 +47,7 @@ def evaluate_supervisor_turn(
         )
 
     if state.validation_passed is True and state.person is not None:
-        accessor.persist(state.person)
+        core_identity.persist(state.person)
         return SupervisorDecision(
             action="respond",
             response=response_ingest_success(query, state.person),
@@ -60,7 +60,7 @@ def evaluate_supervisor_turn(
             person=query.provided_data,
         )
 
-    person = accessor.find_by_key(query.person_key)
+    person = core_identity.find_by_key(query.person_key)
     if person is None:
         return SupervisorDecision(
             action="respond",
