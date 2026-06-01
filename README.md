@@ -49,7 +49,7 @@ flowchart TD
 | Agents | `src/agents/supervisor.py`, `enrich.py`, `validator.py` | Explicit responsibilities |
 | Graph | `src/graphs/core.py` | LangGraph + `SqliteSaver` checkpointer |
 | MCP | `src/mcp/server.py` | `query_person`, `submit_person_data`, `list_specialist_routing` |
-| Seed | `data/seed_crm.json` | 12 sample CRM people loaded on startup |
+| Seed | `data/seed_crm.json` | 457 contacts from `raw_data.json` (dedup: Andrea Kalmans → Lontra Ventures, Pete Townsend → Techstars) loaded on startup |
 
 ## Specialist routing (Phase 1)
 

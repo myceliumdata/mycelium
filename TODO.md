@@ -25,6 +25,10 @@ The code was written before several key decisions were finalized. The following 
 
 **Goal:** After this work, the codebase should clearly reflect that the supervisor coordinates specialist agents, and the only thing the shared storage layer owns is the tiny core `people` table.
 
+## Data
+
+- [x] **Initial real seed** — `data/seed_crm.json` built from `data/raw_data.json` (457 people after dedup rules; backup at `data/seed_crm.json.bak`). Task: `2026-06-01-1730-process-raw-data-to-seed-crm`. To load the new seed locally, delete `data/mycelium.db` and restart.
+
 ## Other Near-Term Items
 
 - [ ] Add a proper LICENSE file (currently deferred — see note below)
