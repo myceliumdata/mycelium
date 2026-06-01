@@ -56,7 +56,6 @@ def submit_person_data(query_json: str) -> str:
       "provided_data": {
         "id": "",
         "name": "New Person",
-        "email": "new.person@example.com",
         "employer": "Example Corp"
       }
     }
@@ -74,12 +73,19 @@ def submit_person_data(query_json: str) -> str:
 
 
 @mcp.tool
-def list_derivative_datasets() -> str:
-    """List derivative dataset stubs managed by specialist agents (Phase 1)."""
+def list_specialist_routing() -> str:
+    """Phase 1 stub: specialist agents are not persisted as derivative datasets."""
     _bootstrap()
-    storage = get_storage()
-    datasets = storage.list_derivative_datasets()
-    return json.dumps([d.model_dump() for d in datasets], indent=2)
+    return json.dumps(
+        {
+            "message": (
+                "Specialist agent routing is coordinated by the supervisor. "
+                "No derivative dataset registry exists in Phase 1."
+            ),
+            "datasets": [],
+        },
+        indent=2,
+    )
 
 
 @mcp.resource("mycelium://schema/person")

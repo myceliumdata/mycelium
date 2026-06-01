@@ -1,100 +1,16 @@
 {
   "people": [
-    {
-      "id": "person-001",
-      "name": "Ada Lovelace",
-      "email": "ada.lovelace@analytical.engine",
-      "employer": "Analytical Engines Ltd",
-      "phone": "+44-20-7946-0958",
-      "title": "Chief Mathematician"
-    },
-    {
-      "id": "person-002",
-      "name": "Grace Hopper",
-      "email": "grace.hopper@navy.mil",
-      "employer": "US Navy",
-      "phone": "+1-703-555-0102",
-      "title": "Rear Admiral"
-    },
-    {
-      "id": "person-003",
-      "name": "Alan Turing",
-      "email": "alan.turing@bletchley.gov.uk",
-      "employer": "Bletchley Park",
-      "phone": "+44-1908-640404",
-      "title": "Cryptanalyst"
-    },
-    {
-      "id": "person-004",
-      "name": "Katherine Johnson",
-      "email": "katherine.johnson@nasa.gov",
-      "employer": "NASA",
-      "phone": "+1-301-555-0144",
-      "title": "Research Mathematician"
-    },
-    {
-      "id": "person-005",
-      "name": "Tim Berners-Lee",
-      "email": "tim.berners-lee@cern.ch",
-      "employer": "CERN",
-      "phone": "+41-22-767-6111",
-      "title": "Fellow"
-    },
-    {
-      "id": "person-006",
-      "name": "Margaret Hamilton",
-      "email": "margaret.hamilton@mit.edu",
-      "employer": "MIT Instrumentation Lab",
-      "phone": "+1-617-555-0199",
-      "title": "Director of Software Engineering"
-    },
-    {
-      "id": "person-007",
-      "name": "Dennis Ritchie",
-      "email": "dennis.ritchie@bell-labs.com",
-      "employer": "Bell Labs",
-      "phone": "+1-908-555-0123",
-      "title": "Distinguished Member of Technical Staff"
-    },
-    {
-      "id": "person-008",
-      "name": "Barbara Liskov",
-      "email": "barbara.liskov@mit.edu",
-      "employer": "MIT",
-      "phone": "+1-617-555-0188",
-      "title": "Institute Professor"
-    },
-    {
-      "id": "person-009",
-      "name": "Linus Torvalds",
-      "email": "linus.torvalds@linux.foundation",
-      "employer": "Linux Foundation",
-      "phone": "+1-503-555-0166",
-      "title": "Creator, Linux"
-    },
-    {
-      "id": "person-010",
-      "name": "Shafi Goldwasser",
-      "email": "shafi.goldwasser@mit.edu",
-      "employer": "MIT",
-      "phone": "+1-617-555-0177",
-      "title": "Professor of Computer Science"
-    },
-    {
-      "id": "person-011",
-      "name": "Yann LeCun",
-      "email": "yann.lecun@meta.com",
-      "employer": "Meta AI",
-      "phone": "+1-212-555-0133",
-      "title": "Chief AI Scientist"
-    },
-    {
-      "id": "person-012",
-      "name": "Fei-Fei Li",
-      "email": "fei.fei.li@stanford.edu",
-      "employer": "Stanford University",
-      "phone": "+1-650-555-0155",
-      "title": "Professor"
-    }
+    {"id": "person-001", "name": "Ada Lovelace", "employer": "Analytical Engines Ltd"},
+    {"id": "person-002", "name": "Grace Hopper", "employer": "US Navy"},
+    {"id": "person-003", "name": "Alan Turing", "employer": "Bletchley Park"},
+    {"id": "person-004", "name": "Katherine Johnson", "employer": "NASA"},
+    {"id": "person-005", "name": "Tim Berners-Lee", "employer": "CERN"},
+    {"id": "person-006", "name": "Margaret Hamilton", "employer": "MIT Instrumentation Lab"},
+    {"id": "person-007", "name": "Dennis Ritchie", "employer": "Bell Labs"},
+    {"id": "person-008", "name": "Barbara Liskov", "employer": "MIT"},
+    {"id": "person-009", "name": "Linus Torvalds", "employer": "Linux Foundation"},
+    {"id": "person-010", "name": "Shafi Goldwasser", "employer": "MIT"},
+    {"id": "person-011", "name": "Yann LeCun", "employer": "Meta AI"},
+    {"id": "person-012", "name": "Fei-Fei Li", "employer": "Stanford University"}
   ]
 }

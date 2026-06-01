@@ -1,4 +1,4 @@
-"""Validator agent: basic structural validation for person records."""
+"""Validator agent: basic structural validation for core person records."""
 
 from __future__ import annotations
 
@@ -6,9 +6,7 @@ import re
 from typing import Any
 
 from models.state import MINIMUM_VIABLE_FIELDS, MyceliumGraphState
-from pydantic import EmailStr, TypeAdapter, ValidationError
 
-_EMAIL_ADAPTER: TypeAdapter[EmailStr] = TypeAdapter(EmailStr)
 _NAME_PATTERN = re.compile(r"^[\w\s\.\-'’,]{2,}$", re.UNICODE)
 
 
@@ -19,7 +17,7 @@ def _coerce(state: MyceliumGraphState | dict[str, Any]) -> MyceliumGraphState:
 
 
 def validator_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
-    """Validate minimum viable CRM fields before orchestrator finalizes response."""
+    """Validate minimum viable core CRM fields before orchestrator finalizes response."""
     current = _coerce(state)
     person = current.person
     errors: list[str] = []
@@ -32,14 +30,8 @@ def validator_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any
             if not value or not str(value).strip():
                 errors.append(f"ValidatorAgent: required field '{field}' is empty.")
 
-        if person and person.name and not _NAME_PATTERN.match(person.name.strip()):
+        if person.name and not _NAME_PATTERN.match(person.name.strip()):
             errors.append("ValidatorAgent: name format is invalid.")
-
-        if person and person.email:
-            try:
-                _EMAIL_ADAPTER.validate_python(person.email)
-            except ValidationError:
-                errors.append("ValidatorAgent: email format is invalid.")
 
     passed = len(errors) == 0
     status = "passed" if passed else "failed"

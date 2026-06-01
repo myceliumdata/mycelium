@@ -25,7 +25,6 @@ def temp_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> CoreStorage
                     {
                         "id": "person-test",
                         "name": "Test User",
-                        "email": "test@example.com",
                         "employer": "Test Co",
                     },
                 ],
@@ -46,47 +45,47 @@ def temp_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> CoreStorage
 
 def test_query_existing_person(temp_storage: CoreStorage) -> None:
     _ = temp_storage
-    response = run_query(PersonQuery(person_key="test@example.com"))
+    response = run_query(PersonQuery(person_key="person-test"))
     assert response.status == "found"
     assert response.person is not None
-    assert response.person.email == "test@example.com"
+    assert response.person.name == "Test User"
 
 
 def test_query_missing_person(temp_storage: CoreStorage) -> None:
     _ = temp_storage
-    response = run_query(PersonQuery(person_key="missing@example.com"))
+    response = run_query(PersonQuery(person_key="Missing Person"))
     assert response.status == "data_request"
     assert response.data_request is not None
-    assert "email" in response.data_request.required_fields
+    assert "name" in response.data_request.required_fields
+    assert "employer" in response.data_request.required_fields
 
 
-def test_query_derivative_attributes(temp_storage: CoreStorage) -> None:
+def test_query_non_core_attributes(temp_storage: CoreStorage) -> None:
     _ = temp_storage
     response = run_query(
         PersonQuery(
-            person_key="test@example.com",
+            person_key="person-test",
             requested_attributes=["age", "x_handle"],
         ),
     )
-    assert response.status == "derivative_pending"
-    assert response.derivative is not None
-    assert "age" in response.derivative.attributes
+    assert response.status == "specialist_required"
+    assert "age" in response.deferred_attributes
+    assert response.person is not None
 
 
 def test_ingest_new_person(temp_storage: CoreStorage) -> None:
     _ = temp_storage
     response = run_query(
         PersonQuery(
-            person_key="new@example.com",
+            person_key="New User",
             provided_data=Person(
                 id="",
                 name="New User",
-                email="new@example.com",
                 employer="New Co",
             ),
         ),
     )
     assert response.status == "ingested"
     assert response.person is not None
-    stored = temp_storage.find_person("new@example.com")
+    stored = temp_storage.find_person("New User")
     assert stored is not None

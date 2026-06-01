@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 import uuid
 from pathlib import Path
@@ -29,7 +28,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--attributes",
         nargs="*",
         default=[],
-        help="Extra attributes (may trigger derivative dataset stub)",
+        help="Non-core attributes (may return specialist_required)",
     )
     query_cmd.add_argument("--thread-id", default=None)
 
@@ -80,7 +79,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         response = run_query(query, thread_id=thread_id)
         console.print(JSON(response.model_dump_json(indent=2)))
-        return 0 if response.status in {"found", "derivative_pending"} else 1
+        return 0 if response.status in {"found", "specialist_required"} else 1
 
     if args.command == "ingest":
         person = _load_person_data(args.data)

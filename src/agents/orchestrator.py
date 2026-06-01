@@ -1,4 +1,4 @@
-"""Orchestrator agent: routes lookups, ingest requests, and derivative datasets."""
+"""Orchestrator agent: coordinates core lookup, ingest routing, and specialist handoff."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from models.state import (
     MyceliumGraphState,
     Person,
     PersonResponse,
-    attributes_requiring_derivative,
+    non_core_attributes,
 )
 from storage.core import get_storage
 
@@ -27,7 +27,7 @@ def orchestrator_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, 
     - Found person + core attrs → return data
     - Missing person + no provided_data → structured data_request
     - Missing person + provided_data → route to enrich
-    - Extra attributes → create derivative dataset stub
+    - Non-core attributes → specialist_required (no derivative dataset records)
     """
     current = _coerce(state)
     storage = get_storage()
@@ -81,40 +81,32 @@ def orchestrator_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, 
             "audit_log": logs,
         }
 
-    derivative_attrs = attributes_requiring_derivative(query.requested_attributes)
-    if derivative_attrs:
-        dataset_name = f"derivative-{person.id}-{'-'.join(derivative_attrs[:3])}"
-        derivative = storage.create_derivative_dataset(
-            name=dataset_name,
-            attributes=derivative_attrs,
-        )
-        storage.stub_activate_derivative(derivative.dataset_id)
+    deferred = non_core_attributes(query.requested_attributes)
+    if deferred:
         logs.append(
-            f"Orchestrator: derivative dataset stub created ({derivative.dataset_id}).",
+            f"Orchestrator: non-core attributes require specialist routing: {', '.join(deferred)}.",
         )
         response = PersonResponse(
-            status="derivative_pending",
+            status="specialist_required",
             person=person,
             data=person.core_dict(),
-            derivative=derivative,
+            deferred_attributes=deferred,
             message=(
-                "Core person found. Derivative dataset stub created for "
-                f"attributes: {', '.join(derivative_attrs)}."
+                "Core person found. Requested attributes are not in core storage; "
+                "specialist agent routing is not yet implemented."
             ),
         )
         return {
             "person": person,
-            "derivative": derivative,
             "response": response,
             "route": "finish",
             "audit_log": logs,
         }
 
-    extra = {attr: person.extra.get(attr) for attr in query.requested_attributes if attr in person.extra}
     response = PersonResponse(
         status="found",
         person=person,
-        data={**person.core_dict(), **extra},
+        data=person.core_dict(),
         message="Person found in core storage.",
     )
     logs.append(f"Orchestrator: returning core data for {person.id}.")
@@ -130,5 +122,5 @@ def ensure_person_id(person: Person) -> Person:
     """Assign a stable id when ingesting new records."""
     if person.id:
         return person
-    slug = (person.email or person.name).lower().replace(" ", "-").replace("@", "-at-")
+    slug = person.name.lower().replace(" ", "-")
     return person.model_copy(update={"id": f"person-{slug}-{uuid4().hex[:6]}"})

@@ -7,54 +7,36 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field
 
-# Core CRM fields available without a derivative dataset
-CORE_PERSON_FIELDS: frozenset[str] = frozenset(
-    {"id", "name", "email", "employer", "phone", "title", "extra"},
-)
+# Strictly minimal core person fields (see docs/phase-1-direction.md)
+CORE_PERSON_FIELDS: frozenset[str] = frozenset({"id", "name", "employer"})
 
-# Attributes that always require a derivative dataset in Phase 1
-DERIVATIVE_ONLY_ATTRIBUTES: frozenset[str] = frozenset(
-    {
-        "age",
-        "x_handle",
-        "twitter_handle",
-        "demographics",
-        "linkedin_url",
-        "location",
-    },
-)
-
-MINIMUM_VIABLE_FIELDS: list[str] = ["name", "email", "employer"]
+MINIMUM_VIABLE_FIELDS: list[str] = ["name", "employer"]
 
 
 class Person(BaseModel):
-    """Core CRM person record."""
+    """Core CRM person record — id, name, employer only."""
 
     id: str
     name: str
-    email: str | None = None
     employer: str | None = None
-    phone: str | None = None
-    title: str | None = None
-    extra: dict[str, Any] = Field(default_factory=dict)
 
     def core_dict(self) -> dict[str, Any]:
-        return self.model_dump(exclude={"extra"}, exclude_none=True)
+        return self.model_dump(exclude_none=True)
 
 
 class PersonQuery(BaseModel):
     """Inbound JSON query about a person."""
 
     person_key: str = Field(
-        description="Person id, email, or exact name used for lookup",
+        description="Person id or name used for core lookup (Phase 1)",
     )
     requested_attributes: list[str] = Field(
         default_factory=list,
-        description="Optional attributes beyond core CRM fields",
+        description="Non-core attributes requested; routed to specialist agents later",
     )
     provided_data: Person | None = Field(
         default=None,
-        description="Minimum viable data supplied to ingest a missing person",
+        description="Minimum viable core data supplied to ingest a missing person",
     )
 
 
@@ -63,20 +45,8 @@ class DataRequest(BaseModel):
 
     person_key: str
     required_fields: list[str] = Field(default_factory=lambda: list(MINIMUM_VIABLE_FIELDS))
-    optional_fields: list[str] = Field(
-        default_factory=lambda: ["phone", "title"],
-    )
+    optional_fields: list[str] = Field(default_factory=list)
     message: str = "Person not found. Supply minimum viable fields to ingest."
-
-
-class DerivativeDatasetRef(BaseModel):
-    """Reference to a derivative dataset managed by a specialist agent (stub)."""
-
-    dataset_id: str
-    name: str
-    attributes: list[str]
-    status: Literal["pending", "stub_active"] = "pending"
-    agent_stub: str = "derivative-agent-stub"
 
 
 class PersonResponse(BaseModel):
@@ -85,14 +55,17 @@ class PersonResponse(BaseModel):
     status: Literal[
         "found",
         "data_request",
-        "derivative_pending",
+        "specialist_required",
         "ingested",
         "validation_failed",
     ]
     person: Person | None = None
     data: dict[str, Any] = Field(default_factory=dict)
     data_request: DataRequest | None = None
-    derivative: DerivativeDatasetRef | None = None
+    deferred_attributes: list[str] = Field(
+        default_factory=list,
+        description="Non-core attributes not served by core storage; specialist routing TBD",
+    )
     message: str = ""
     errors: list[str] = Field(default_factory=list)
 
@@ -104,18 +77,13 @@ class MyceliumGraphState(BaseModel):
     route: Literal["enrich", "validator", "finish"] | None = None
     response: PersonResponse | None = None
     person: Person | None = None
-    derivative: DerivativeDatasetRef | None = None
     validation_passed: bool | None = None
     validation_errors: Annotated[list[str], operator.add] = Field(default_factory=list)
     audit_log: Annotated[list[str], operator.add] = Field(default_factory=list)
 
 
-def attributes_requiring_derivative(requested: list[str]) -> list[str]:
-    """Return requested attribute names that need a derivative dataset."""
+def non_core_attributes(requested: list[str]) -> list[str]:
+    """Return requested attribute names that are outside the minimal core model."""
     normalized = [a.strip().lower() for a in requested if a.strip()]
-    return [
-        attr
-        for attr in normalized
-        if attr in DERIVATIVE_ONLY_ATTRIBUTES
-        or attr not in {f.lower() for f in CORE_PERSON_FIELDS}
-    ]
+    core_lower = {f.lower() for f in CORE_PERSON_FIELDS}
+    return [attr for attr in normalized if attr not in core_lower]

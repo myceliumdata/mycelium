@@ -1,4 +1,4 @@
-"""SQLite storage for core CRM and derivative datasets."""
+"""SQLite storage for minimal core CRM people."""
 
 from storage.core import CoreStorage, get_storage
 
