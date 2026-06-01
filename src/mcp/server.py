@@ -16,9 +16,9 @@ from storage.core import get_storage
 mcp = FastMCP(
     "Mycelium",
     instructions=(
-        "Mycelium manages AI-native CRM person data. "
-        "Use query_person for lookups. Use submit_person_data to ingest missing records. "
-        "All payloads are JSON."
+        "Mycelium manages AI-native CRM person data (core fields: id, name, employer). "
+        "Use query_person for lookups; non-core attributes return specialist_required. "
+        "Use submit_person_data to ingest missing records. All payloads are JSON."
     ),
 )
 
@@ -74,13 +74,13 @@ def submit_person_data(query_json: str) -> str:
 
 @mcp.tool
 def list_specialist_routing() -> str:
-    """Phase 1 stub: specialist agents are not persisted as derivative datasets."""
+    """Phase 1 stub: lists specialist routing status (no persisted specialist registry)."""
     _bootstrap()
     return json.dumps(
         {
             "message": (
                 "Specialist agent routing is coordinated by the supervisor. "
-                "No derivative dataset registry exists in Phase 1."
+                "Phase 1 does not persist a specialist registry in core storage."
             ),
             "datasets": [],
         },

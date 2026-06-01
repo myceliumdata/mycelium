@@ -17,8 +17,8 @@ The code was written before several key decisions were finalized. The following 
 - [x] **Review and simplify `DerivativeDatasetRef`** in `src/models/state.py` — removed; use `deferred_attributes` + `specialist_required` (prompt `2025-06-01-1700-clean-derivative-references`).
 - [x] Remove derivative dataset tables/methods from `src/storage/core.py` — core `people` table is id/name/employer only (same prompt).
 - [x] Update `PersonResponse` statuses — `derivative_pending` replaced with `specialist_required`.
-- [ ] Refactor the supervisor (currently in `src/agents/orchestrator.py`) so it acts strictly as a coordinator/router rather than owning data decisions or creating derivative records.
-- [ ] Rename `orchestrator_agent` / related files to `supervisor` for consistency with the direction document.
+- [ ] Refactor the supervisor (in `src/agents/supervisor.py`) so it acts strictly as a coordinator/router rather than owning data decisions or creating derivative records.
+- [x] Rename `orchestrator_agent` / related files to `supervisor` for consistency with the direction document (`2025-06-01-1730-rename-orchestrator-to-supervisor`).
 - [x] Audit `src/models/state.py` — removed `DERIVATIVE_ONLY_ATTRIBUTES`; added `non_core_attributes()`.
 - [x] Ensure the `Person` model and all code that constructs it only ever uses `id`, `name`, and `employer`.
 - [x] Update tests and CLI/MCP response handling for `specialist_required` (same prompt).
@@ -57,7 +57,9 @@ Decision owner: Paul
 ## Documentation
 
 - [ ] Keep `docs/phase-1-direction.md` up to date as the active implementation guide
-- [ ] Expand README with clearer run instructions and architecture overview
+- [x] Remove outdated derivative-dataset language from README, docs, and user-facing comments (`2025-06-01-1735-documentation-cleanup-old-derivative-language`).
+- [x] Document legacy `data/mycelium.db` options for users upgrading from the old schema (`2025-06-01-1740-local-database-legacy-schema-note`).
+- [ ] Expand README with clearer run instructions and architecture overview (partially addressed by 1735/1740)
 
 ## Process & Tooling (Grok + Paul)
 
