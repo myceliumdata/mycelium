@@ -98,6 +98,22 @@ See `src/storage/core.py` for the current minimal implementation.
 
 ---
 
+## Core Ingestion Handshake (Phase 1)
+
+External callers add people through **`PersonQuery.provided_data`** (MCP `submit_person_data` or CLI `ingest`). The flow is single-step: supply `name` and `employer` upfront (optional `id`; assigned if empty).
+
+| Step | Caller action | Response |
+|------|---------------|----------|
+| Lookup | `query_person` with `person_key` only | `results` with core dict if found |
+| Missing | Same, person not in storage | Empty `results`; `message` explains how to submit `provided_data` |
+| Ingest | Query with `provided_data` | Supervisor → enrich → validator → success or failure `PersonResponse` |
+
+Success returns the new record in `results` and a narrative `message` (e.g. "Added core record for …"). Failures use empty `results` and an explanatory `message`. Query context stays in `debug`.
+
+No separate `DataRequest` model — guidance lives in natural-language `message` per the minimalist response contract.
+
+---
+
 ## Technical Foundation
 
 - **Primary Framework**: LangGraph (Python) with explicit stateful graphs

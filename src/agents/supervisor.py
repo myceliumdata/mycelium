@@ -15,8 +15,6 @@ from models.state import (
 )
 from storage.core import get_storage
 
-INGEST_STUB_MESSAGE = "Ingestion flow is not yet implemented."
-
 
 def _coerce(state: MyceliumGraphState | dict[str, Any]) -> MyceliumGraphState:
     if isinstance(state, MyceliumGraphState):
@@ -33,12 +31,22 @@ def _debug_for_query(query: PersonQuery, **extra: str) -> str:
     return "; ".join(parts)
 
 
+def _ingest_guidance_message(person_key: str) -> str:
+    required = ", ".join(MINIMUM_VIABLE_FIELDS)
+    return (
+        f"No core record found for {person_key!r}. "
+        f"To add this person, submit minimum viable core fields ({required}) "
+        f"via submit_person_data or the CLI ingest command (provided_data on the query)."
+    )
+
+
 def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     """
     Main supervisor logic:
+    - Post-validation → ingest success or failure response
+    - provided_data (first pass) → route to enrich
     - Found person + core attrs → results + narrative message
-    - Missing person → empty results, not-found narrative in message
-    - provided_data / post-validation paths → ingestion stub (no enrich routing)
+    - Missing person → empty results + ingest guidance in message
     - Non-core attributes → core record in results, researching narrative in message
     """
     current = _coerce(state)
@@ -46,27 +54,44 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
     query = current.query
     logs: list[str] = ["Supervisor: evaluating query."]
 
-    if current.validation_passed is not None or query.provided_data is not None:
+    if current.validation_passed is False:
+        error_summary = "; ".join(current.validation_errors) or "unknown validation errors"
         response = PersonResponse(
             results=[],
-            message=INGEST_STUB_MESSAGE,
-            debug=_debug_for_query(query, outcome="ingestion_stub"),
+            message=f"Could not add core record: {error_summary}",
+            debug=_debug_for_query(query, outcome="ingest_failed", errors=error_summary),
         )
-        logs.append("Supervisor: ingestion path stubbed — finishing.")
+        logs.append("Supervisor: validation failed — finishing.")
         return {"response": response, "route": "finish", "audit_log": logs}
+
+    if current.validation_passed is True and current.person is not None:
+        person = current.person
+        storage.upsert_person(person)
+        response = PersonResponse(
+            results=[person.core_dict()],
+            message=f"Added core record for {person.name}.",
+            debug=_debug_for_query(query, outcome="ingested"),
+        )
+        logs.append("Supervisor: post-validation ingest complete.")
+        return {"response": response, "route": "finish", "audit_log": logs}
+
+    if query.provided_data is not None:
+        logs.append("Supervisor: provided_data present — routing to enrich.")
+        return {
+            "person": query.provided_data,
+            "route": "enrich",
+            "audit_log": logs,
+        }
 
     person = storage.find_person(query.person_key)
     if person is None:
         required = ", ".join(MINIMUM_VIABLE_FIELDS)
         response = PersonResponse(
             results=[],
-            message=(
-                f"No core record found for {query.person_key!r}. "
-                f"{INGEST_STUB_MESSAGE}"
-            ),
+            message=_ingest_guidance_message(query.person_key),
             debug=_debug_for_query(
                 query,
-                outcome="not_found",
+                outcome="ingest_required",
                 required_fields=required,
             ),
         )

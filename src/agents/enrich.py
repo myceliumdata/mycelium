@@ -6,7 +6,6 @@ from typing import Any
 
 from agents.supervisor import ensure_person_id
 from models.state import MyceliumGraphState
-from storage.core import get_storage
 
 
 def _coerce(state: MyceliumGraphState | dict[str, Any]) -> MyceliumGraphState:
@@ -18,7 +17,6 @@ def _coerce(state: MyceliumGraphState | dict[str, Any]) -> MyceliumGraphState:
 def enrich_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     """Persist provided core person data."""
     current = _coerce(state)
-    storage = get_storage()
 
     raw_person = current.person or current.query.provided_data
     if raw_person is None:
@@ -29,9 +27,8 @@ def enrich_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
         }
 
     person = ensure_person_id(raw_person)
-    storage.upsert_person(person)
 
     return {
         "person": person,
-        "audit_log": [f"EnrichAgent: upserted core person {person.id}."],
+        "audit_log": [f"EnrichAgent: prepared core person {person.id} for validation."],
     }
