@@ -11,7 +11,7 @@ This was the first non-test ("real") task: aligning the models with the current 
 
 ## What Went Well
 
-- Core model changes are well-aligned with `docs/phase-1-direction.md`:
+- Core model changes are well-aligned with `docs/architecture.md`:
   - `Person` reduced to only `id`, `name`, `employer`.
   - `DerivativeDatasetRef` removed.
   - `derivative_pending` status replaced with `specialist_required`.

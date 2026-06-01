@@ -40,17 +40,18 @@ A simple test task currently exists in `prompts/cursor/next/` (`2025-06-01-1650-
 
 ```
 prompts/
-├── WORKFLOW.md                 # This file
-├── next/                       # Ready-to-pickup work for Cursor
-│   └── <timestamp>-<slug>.md
-├── in-progress/                # Work currently being executed by a Cursor agent
-│   └── <timestamp>-<slug>.md
-└── done/                       # Completed work + review artifacts
-    └── <timestamp>-<slug>/
-        ├── prompt.md           # The original prompt
-        ├── output.md           # Cursor's summary of what was done
-        ├── review.md           # (Optional) Grok + Paul review notes
-        └── ...                 # Any other artifacts Cursor produces
+├── cursor/
+│   ├── WORKFLOW.md             # This file
+│   ├── next/                   # Ready-to-pickup work for Cursor
+│   ├── in-progress/            # Work currently being executed by a Cursor agent
+│   └── done/                   # Completed work + review artifacts
+│       └── <timestamp>-<slug>/
+│           ├── prompt.md
+│           ├── output.md
+│           ├── review.md
+│           └── ...
+├── grok-build/
+└── system/
 ```
 
 ## Workflow
@@ -63,7 +64,7 @@ prompts/
 - The file is a **self-contained prompt** for Cursor.
 - The prompt must include:
   - Clear objective
-  - Constraints and principles (especially from `docs/phase-1-direction.md`)
+  - Constraints and principles (especially from `docs/architecture.md`)
   - Required output format and location (`prompts/cursor/done/<name>/`)
   - Instructions telling Cursor to follow the discovery + claiming process defined in this `WORKFLOW.md` (i.e. do not assume the filename will be provided directly)
 
@@ -135,7 +136,7 @@ You should no longer need to specify filenames when starting work.
 Every prompt in `prompts/cursor/next/` **must** contain:
 
 - A clear title and objective
-- References to `docs/phase-1-direction.md` and `TODO.md` where relevant
+- References to `docs/architecture.md` and `TODO.md` where relevant
 - Explicit instructions on **output location** and **required artifacts**
 - Clear instructions telling Cursor to **move the prompt file to `in-progress/`** before starting work
 - Guidance on commit hygiene and updating `TODO.md`
@@ -208,4 +209,4 @@ This rule is mandatory. Violating scope boundaries will be treated as a failure 
 This workflow is being established in late May 2026 to improve collaboration between Grok, Paul, and Cursor agents.
 
 See `TODO.md` for the long-term task list between Grok and Paul.
-See `docs/phase-1-direction.md` for the current architectural direction.
+See `docs/architecture.md` for the current architectural direction.
