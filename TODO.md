@@ -4,9 +4,9 @@ This file tracks open tasks, decisions, and technical debt.
 
 **Note for Paul:**  
 `docs/phase-1-direction.md` is the current source of truth for Phase 1 direction.  
-We now direct Cursor (as a senior developer) using structured prompts located in `prompts/next/`. See `prompts/WORKFLOW.md` for the full protocol.
+We now direct Cursor (as a senior developer) using structured prompts located in `prompts/cursor/next/`. See `prompts/WORKFLOW.md` for the full protocol.
 
-The tasks in this document represent the long-term shared TODO between Grok and Paul. When we agree on work, we create a prompt in `prompts/next/` for Cursor to execute.
+The tasks in this document represent the long-term shared TODO between Grok and Paul. When we agree on work, we create a prompt in `prompts/cursor/next/` for Cursor to execute.
 
 ## High Priority / Near Term
 
@@ -64,7 +64,7 @@ Decision owner: Paul
 ## Process & Tooling (Grok + Paul)
 
 - [ ] Refine the Cursor prompting workflow in `prompts/WORKFLOW.md` as we gain experience
-- [ ] Decide on long-term location and retention policy for `prompts/done/` artifacts
+- [ ] Decide on long-term location and retention policy for `prompts/cursor/done/` artifacts
 - [ ] Consider adding lightweight tooling later (e.g. a script to list open prompts, generate status, etc.)
 
 ---

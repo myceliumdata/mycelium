@@ -34,14 +34,14 @@ When the user says any of these:
 - "Start the next prompt"
 
 **You must:**
-1. Scan `prompts/next/`
+1. Scan `prompts/cursor/next/`
 2. Pick the oldest file (sort alphabetically)
-3. **Move it immediately** to `prompts/in-progress/` (this claims the task)
+3. **Move it immediately** to `prompts/cursor/in-progress/` (this claims the task)
 4. Read and execute the prompt
-5. Create output in `prompts/done/<task-name>/` with at least:
+5. Create output in `prompts/cursor/done/<task-name>/` with at least:
    - `prompt.md` (copy of the original)
    - `output.md` (clear summary of what was done + decisions)
-6. **Remove only the specific file you claimed** from `prompts/in-progress/`.
+6. **Remove only the specific file you claimed** from `prompts/cursor/in-progress/`.
    - Do **not** delete, move, or touch any other files present in `in-progress/`.
    - "Helpful" cleanup of other files will break parallel execution.
    - Note unexpected files in your output but leave them alone.
@@ -51,4 +51,4 @@ If a prompt defines explicit scope boundaries, stay inside them. If you believe 
 
 Full details: `prompts/WORKFLOW.md`
 
-Never work on a file while it's still in `prompts/next/`. The move to `in-progress/` is mandatory.
+Never work on a file while it's still in `prompts/cursor/next/`. The move to `in-progress/` is mandatory.

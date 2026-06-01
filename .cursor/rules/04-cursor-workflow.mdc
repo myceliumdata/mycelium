@@ -9,9 +9,9 @@ This project uses a structured prompt-based handoff system for directing AI agen
 
 ## Core Directories
 
-- `prompts/next/` — Queue of ready tasks (timestamped files like `2025-06-01-1700-task-name.md`)
-- `prompts/in-progress/` — Tasks currently being worked on (claimed by moving from `next/`)
-- `prompts/done/` — Completed work with outputs and review artifacts
+- `prompts/cursor/next/` — Queue of ready tasks (timestamped files like `2025-06-01-1700-task-name.md`)
+- `prompts/cursor/in-progress/` — Tasks currently being worked on (claimed by moving from `next/`)
+- `prompts/cursor/done/` — Completed work with outputs and review artifacts
 
 ## When the User Says...
 
@@ -24,23 +24,23 @@ If the user says any of the following (or similar):
 
 **You must do this automatically:**
 
-1. Scan the directory `prompts/next/`
+1. Scan the directory `prompts/cursor/next/`
 2. List all `.md` files and sort them alphabetically (oldest first due to `YYYY-MM-DD-HHMM` naming)
 3. Select the **first** file — this is the next task
-4. **Immediately move** that file from `prompts/next/` into `prompts/in-progress/`
+4. **Immediately move** that file from `prompts/cursor/next/` into `prompts/cursor/in-progress/`
 5. Read the prompt file and execute the task according to its instructions
 6. When finished:
-   - Create output in `prompts/done/<original-filename>/` (including at minimum `prompt.md` and `output.md`)
-   - **Remove only the specific file you claimed** from `prompts/in-progress/`.
+   - Create output in `prompts/cursor/done/<original-filename>/` (including at minimum `prompt.md` and `output.md`)
+   - **Remove only the specific file you claimed** from `prompts/cursor/in-progress/`.
    - **Never delete, move, or touch any other files** that may still be in `in-progress/`.
    - This is a hard requirement for parallel safety. "Helpfully" cleaning up files you did not claim can destroy or corrupt work being done by other agents.
    - If you see unexpected files in `in-progress/`, note them in your output but leave them alone.
 
 ## Important Rules
 
-- Never start working on a file while it is still in `prompts/next/`. Always claim it first by moving it to `in-progress/`.
+- Never start working on a file while it is still in `prompts/cursor/next/`. Always claim it first by moving it to `in-progress/`.
 - The move to `in-progress/` is the "lock" that prevents duplicate work (especially important for parallel Cursor sessions).
-- If `prompts/next/` is empty, clearly tell the user there are no pending tasks.
+- If `prompts/cursor/next/` is empty, clearly tell the user there are no pending tasks.
 - **Scope discipline is mandatory.** When a prompt defines explicit scope boundaries, you must stay inside them. If you believe changes outside the stated scope are necessary, stop and escalate rather than making the changes yourself (see "Preventing Scope Creep" section in `prompts/WORKFLOW.md`).
 - Always follow the specific instructions inside each prompt file (especially output requirements).
 - The full workflow is documented in `prompts/WORKFLOW.md`. Treat this as the source of truth when in doubt.
