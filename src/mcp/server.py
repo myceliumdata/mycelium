@@ -17,8 +17,9 @@ mcp = FastMCP(
     "Mycelium",
     instructions=(
         "Mycelium manages AI-native CRM person data (core fields: id, name, employer). "
-        "Use query_person for lookups; non-core attributes return specialist_required. "
-        "Use submit_person_data to ingest missing records. All payloads are JSON."
+        "Use query_person for lookups. Responses use results (core dicts), message, and debug. "
+        "Non-core attribute requests return core results plus a researching narrative in message. "
+        "submit_person_data is not yet functional (ingestion stub). All payloads are JSON."
     ),
 )
 
@@ -48,7 +49,7 @@ def query_person(query_json: str) -> str:
 @mcp.tool
 def submit_person_data(query_json: str) -> str:
     """
-    Ingest or update a person using minimum viable CRM fields.
+    Ingest stub — not yet implemented. Returns the standard PersonResponse shape.
 
     Input JSON example:
     {

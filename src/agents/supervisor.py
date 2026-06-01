@@ -15,6 +15,8 @@ from models.state import (
 )
 from storage.core import get_storage
 
+INGEST_STUB_MESSAGE = "Ingestion flow is not yet implemented."
+
 
 def _coerce(state: MyceliumGraphState | dict[str, Any]) -> MyceliumGraphState:
     if isinstance(state, MyceliumGraphState):
@@ -35,8 +37,8 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
     """
     Main supervisor logic:
     - Found person + core attrs → results + narrative message
-    - Missing person + no provided_data → empty results, ingest guidance in message
-    - Missing person + provided_data → route to enrich
+    - Missing person → empty results, not-found narrative in message
+    - provided_data / post-validation paths → ingestion stub (no enrich routing)
     - Non-core attributes → core record in results, researching narrative in message
     """
     current = _coerce(state)
@@ -44,33 +46,14 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
     query = current.query
     logs: list[str] = ["Supervisor: evaluating query."]
 
-    if current.validation_passed is False:
-        error_summary = "; ".join(current.validation_errors) or "unknown validation errors"
+    if current.validation_passed is not None or query.provided_data is not None:
         response = PersonResponse(
             results=[],
-            message=f"Validation failed for the person record: {error_summary}",
-            debug=_debug_for_query(query, validation_errors=error_summary),
+            message=INGEST_STUB_MESSAGE,
+            debug=_debug_for_query(query, outcome="ingestion_stub"),
         )
-        logs.append("Supervisor: validation failed — finishing.")
+        logs.append("Supervisor: ingestion path stubbed — finishing.")
         return {"response": response, "route": "finish", "audit_log": logs}
-
-    if current.validation_passed is True and current.person is not None:
-        person = current.person
-        response = PersonResponse(
-            results=[person.core_dict()],
-            message=f"Successfully ingested and validated {person.name}.",
-            debug=_debug_for_query(query, outcome="ingested"),
-        )
-        logs.append("Supervisor: post-validation ingest complete.")
-        return {"response": response, "route": "finish", "audit_log": logs}
-
-    if query.provided_data is not None:
-        logs.append("Supervisor: provided_data present — routing to enrich.")
-        return {
-            "person": query.provided_data,
-            "route": "enrich",
-            "audit_log": logs,
-        }
 
     person = storage.find_person(query.person_key)
     if person is None:
@@ -79,7 +62,7 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
             results=[],
             message=(
                 f"No core record found for {query.person_key!r}. "
-                f"Supply minimum viable fields ({required}) via submit_person_data to ingest."
+                f"{INGEST_STUB_MESSAGE}"
             ),
             debug=_debug_for_query(
                 query,

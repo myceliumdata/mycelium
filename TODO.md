@@ -22,8 +22,15 @@ The code was written before several key decisions were finalized. The following 
 - [x] Audit `src/models/state.py` — removed `DERIVATIVE_ONLY_ATTRIBUTES`; added `non_core_attributes()`.
 - [x] Ensure the `Person` model and all code that constructs it only ever uses `id`, `name`, and `employer`.
 - [x] Update tests and CLI/MCP response handling for `specialist_required` (same prompt).
+- [x] **Minimal `PersonResponse`** — `results`, `message`, `debug` only (`2026-06-01-1912-redesign-response-model-light-minimalist`). Ingestion paths stubbed pending redesign.
 
 **Goal:** After this work, the codebase should clearly reflect that the supervisor coordinates specialist agents, and the only thing the shared storage layer owns is the tiny core `people` table.
+
+### PersonResponse / ingestion follow-ups (from 1912)
+
+- [ ] Revisit and properly design the ingestion handshake / `data_request` flow.
+- [ ] Clean up now-unused code (`DataRequest` if reintroduced, old status literals, redundant graph ingest nodes).
+- [ ] Re-evaluate whether a lightweight machine-readable `status` field is needed after real usage.
 
 ## Data
 

@@ -58,9 +58,8 @@ def test_query_missing_person(temp_storage: CoreStorage) -> None:
     response = run_query(PersonQuery(person_key="Missing Person"))
     assert response.results == []
     assert "No core record found" in response.message
-    assert "name" in response.message
-    assert "employer" in response.message
-    assert response.debug
+    assert "Ingestion flow is not yet implemented" in response.message
+    assert "required_fields='name, employer'" in response.debug
 
 
 def test_query_non_core_attributes(temp_storage: CoreStorage) -> None:
@@ -79,7 +78,7 @@ def test_query_non_core_attributes(temp_storage: CoreStorage) -> None:
     assert "deferred_attributes='age, x_handle'" in response.debug
 
 
-def test_ingest_new_person(temp_storage: CoreStorage) -> None:
+def test_ingest_stubbed(temp_storage: CoreStorage) -> None:
     _ = temp_storage
     response = run_query(
         PersonQuery(
@@ -91,11 +90,9 @@ def test_ingest_new_person(temp_storage: CoreStorage) -> None:
             ),
         ),
     )
-    assert len(response.results) == 1
-    assert response.results[0]["name"] == "New User"
-    assert "ingested and validated" in response.message
-    stored = temp_storage.find_person("New User")
-    assert stored is not None
+    assert response.results == []
+    assert "Ingestion flow is not yet implemented" in response.message
+    assert temp_storage.find_person("New User") is None
 
 
 def test_results_are_plain_dicts(temp_storage: CoreStorage) -> None:
