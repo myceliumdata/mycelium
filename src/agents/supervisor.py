@@ -1,4 +1,4 @@
-"""Orchestrator agent: coordinates core lookup, ingest routing, and specialist handoff."""
+"""Supervisor agent: coordinates core lookup, ingest routing, and specialist handoff."""
 
 from __future__ import annotations
 
@@ -21,18 +21,18 @@ def _coerce(state: MyceliumGraphState | dict[str, Any]) -> MyceliumGraphState:
     return MyceliumGraphState.model_validate(state)
 
 
-def orchestrator_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
+def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     """
     Main supervisor logic:
     - Found person + core attrs → return data
     - Missing person + no provided_data → structured data_request
     - Missing person + provided_data → route to enrich
-    - Non-core attributes → specialist_required (no derivative dataset records)
+    - Non-core attributes → specialist_required (deferred_attributes; no core registry)
     """
     current = _coerce(state)
     storage = get_storage()
     query = current.query
-    logs: list[str] = ["Orchestrator: evaluating query."]
+    logs: list[str] = ["Supervisor: evaluating query."]
 
     if current.validation_passed is False:
         response = PersonResponse(
@@ -41,7 +41,7 @@ def orchestrator_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, 
             errors=list(current.validation_errors),
             message="Validation failed for person record.",
         )
-        logs.append("Orchestrator: validation failed — finishing.")
+        logs.append("Supervisor: validation failed — finishing.")
         return {"response": response, "route": "finish", "audit_log": logs}
 
     if current.validation_passed is True and current.person is not None:
@@ -51,11 +51,11 @@ def orchestrator_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, 
             data=current.person.core_dict(),
             message="Person ingested and validated successfully.",
         )
-        logs.append("Orchestrator: post-validation ingest complete.")
+        logs.append("Supervisor: post-validation ingest complete.")
         return {"response": response, "route": "finish", "audit_log": logs}
 
     if query.provided_data is not None:
-        logs.append("Orchestrator: provided_data present — routing to enrich.")
+        logs.append("Supervisor: provided_data present — routing to enrich.")
         return {
             "person": query.provided_data,
             "route": "enrich",
@@ -74,7 +74,7 @@ def orchestrator_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, 
             ),
             message="Person not found in core CRM storage.",
         )
-        logs.append("Orchestrator: person missing — returning data_request.")
+        logs.append("Supervisor: person missing — returning data_request.")
         return {
             "response": response,
             "route": "finish",
@@ -84,7 +84,7 @@ def orchestrator_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, 
     deferred = non_core_attributes(query.requested_attributes)
     if deferred:
         logs.append(
-            f"Orchestrator: non-core attributes require specialist routing: {', '.join(deferred)}.",
+            f"Supervisor: non-core attributes require specialist routing: {', '.join(deferred)}.",
         )
         response = PersonResponse(
             status="specialist_required",
@@ -109,7 +109,7 @@ def orchestrator_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, 
         data=person.core_dict(),
         message="Person found in core storage.",
     )
-    logs.append(f"Orchestrator: returning core data for {person.id}.")
+    logs.append(f"Supervisor: returning core data for {person.id}.")
     return {
         "person": person,
         "response": response,

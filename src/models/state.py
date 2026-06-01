@@ -71,7 +71,7 @@ class PersonResponse(BaseModel):
 
 
 class MyceliumGraphState(BaseModel):
-    """LangGraph state for orchestrator + specialist agents."""
+    """LangGraph state for supervisor + specialist agents."""
 
     query: PersonQuery
     route: Literal["enrich", "validator", "finish"] | None = None

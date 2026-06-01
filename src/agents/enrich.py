@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from agents.orchestrator import ensure_person_id
+from agents.supervisor import ensure_person_id
 from models.state import MyceliumGraphState
 from storage.core import get_storage
 

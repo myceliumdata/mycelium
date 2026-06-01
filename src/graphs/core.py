@@ -1,4 +1,4 @@
-"""Core Mycelium LangGraph: Orchestrator + Enrich + Validator with SQLite checkpointer."""
+"""Core Mycelium LangGraph: Supervisor + Enrich + Validator with SQLite checkpointer."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
 from agents.enrich import enrich_agent
-from agents.orchestrator import orchestrator_agent
+from agents.supervisor import supervisor_agent
 from agents.validator import validator_agent
 from models.state import MyceliumGraphState, PersonQuery, PersonResponse
 
@@ -30,7 +30,7 @@ def reset_core_graph() -> None:
     _checkpointer_ctx = None
 
 
-def _route_after_orchestrator(state: MyceliumGraphState | dict[str, Any]) -> Route:
+def _route_after_supervisor(state: MyceliumGraphState | dict[str, Any]) -> Route:
     current = (
         state
         if isinstance(state, MyceliumGraphState)
@@ -49,18 +49,18 @@ def build_core_graph(
     """Compile the core graph with a SQLite checkpointer."""
     graph: StateGraph = StateGraph(MyceliumGraphState)
 
-    graph.add_node("orchestrator", orchestrator_agent)
+    graph.add_node("supervisor", supervisor_agent)
     graph.add_node("enrich", enrich_agent)
     graph.add_node("validator", validator_agent)
 
-    graph.add_edge(START, "orchestrator")
+    graph.add_edge(START, "supervisor")
     graph.add_conditional_edges(
-        "orchestrator",
-        _route_after_orchestrator,
+        "supervisor",
+        _route_after_supervisor,
         {"enrich": "enrich", "__end__": END},
     )
     graph.add_edge("enrich", "validator")
-    graph.add_edge("validator", "orchestrator")
+    graph.add_edge("validator", "supervisor")
 
     checkpointer: SqliteSaver | None = None
     if setup_checkpointer:
@@ -108,5 +108,5 @@ def run_query(
     return PersonResponse(
         status="validation_failed",
         message="Graph finished without a response payload.",
-        errors=["No response set by orchestrator."],
+        errors=["No response set by supervisor."],
     )
