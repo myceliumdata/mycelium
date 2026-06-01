@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from agents.core_identity import reset_core_identity
 from graphs.core import reset_core_graph, run_query
 from models.state import Person, PersonQuery
 from storage.core import CoreStorage, reset_storage
@@ -15,6 +16,7 @@ from storage.core import CoreStorage, reset_storage
 @pytest.fixture
 def temp_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> CoreStorage:
     reset_storage()
+    reset_core_identity()
     reset_core_graph()
     db = tmp_path / "test.db"
     seed = tmp_path / "seed.json"
@@ -40,6 +42,7 @@ def temp_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> CoreStorage
     storage = get_storage()
     yield storage
     reset_storage()
+    reset_core_identity()
     reset_core_graph()
 
 

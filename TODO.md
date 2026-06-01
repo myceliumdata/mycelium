@@ -17,7 +17,7 @@ The code was written before several key decisions were finalized. The following 
 - [x] **Review and simplify `DerivativeDatasetRef`** in `src/models/state.py` — removed; use `deferred_attributes` + `specialist_required` (prompt `2025-06-01-1700-clean-derivative-references`).
 - [x] Remove derivative dataset tables/methods from `src/storage/core.py` — core `people` table is id/name/employer only (same prompt).
 - [x] Update `PersonResponse` statuses — `derivative_pending` replaced with `specialist_required`.
-- [ ] Refactor the supervisor (in `src/agents/supervisor.py`) so it acts strictly as a coordinator/router rather than owning data decisions or creating derivative records.
+- [x] Refactor the supervisor to act as coordinator/router with delegated identity access (`2026-06-02-1100-supervisor-as-coordinator-router`).
 - [x] Rename `orchestrator_agent` / related files to `supervisor` for consistency with the direction document (`2025-06-01-1730-rename-orchestrator-to-supervisor`).
 - [x] Audit `src/models/state.py` — removed `DERIVATIVE_ONLY_ATTRIBUTES`; added `non_core_attributes()`.
 - [x] Ensure the `Person` model and all code that constructs it only ever uses `id`, `name`, and `employer`.
@@ -26,6 +26,12 @@ The code was written before several key decisions were finalized. The following 
 - [x] **Ingestion handshake** — single-step `provided_data` flow via enrich/validator (`2026-06-02-1000-redesign-ingestion-handshake`).
 
 **Goal:** After this work, the codebase should clearly reflect that the supervisor coordinates specialist agents, and the only thing the shared storage layer owns is the tiny core `people` table.
+
+### Supervisor / specialist follow-ups
+
+- [ ] Continue reducing direct data access as specialist agents are introduced (replace `CoreIdentityAccessor` with a Core Identity specialist).
+- [ ] Evaluate whether core identity resolution should move entirely off the shared storage facade.
+- [ ] Further narrow response construction or move it behind specialist-specific builders.
 
 ### Ingestion / response follow-ups
 

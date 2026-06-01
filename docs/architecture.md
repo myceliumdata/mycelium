@@ -49,6 +49,16 @@ Key implications:
 
 This is a deliberate departure from earlier thinking that treated the core CRM table as a privileged, directly-queryable store.
 
+### Supervisor as coordinator (Phase 1 progress)
+
+As of task `2026-06-02-1100`, the **supervisor node** (`src/agents/supervisor.py`) is a thin coordinator:
+
+- **Routing** — `src/agents/routing.py` classifies the request (lookup, missing, non-core, ingest, post-validation) and chooses the next graph step or response.
+- **Responses** — `src/agents/responses.py` builds `PersonResponse` payloads; the supervisor does not construct messages inline.
+- **Core identity** — `src/agents/core_identity.py` is the Phase 1 facade for `find_by_key` / `persist` instead of the supervisor calling `get_storage()` directly.
+
+Enrich and validator remain separate graph nodes for ingest preparation and validation. Full specialist-agent routing for non-core attributes is still future work; the supervisor only detects non-core requests and returns an appropriate narrative response.
+
 ---
 
 ## Current Data Model (Phase 1 — Strictly Minimal Core)
