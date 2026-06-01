@@ -114,6 +114,12 @@ The goal for this phase is to build a working, minimal system that demonstrates:
 
 This document should be treated as the active implementation guide for Phase 1 work.
 
+## 10. Implementation Note for Cursor
+
+See `TODO.md` (especially the section **"Codebase Catch-up to Current Direction"**) for the concrete list of cleanup and alignment tasks.
+
+The existing code has some drift from the decisions documented here. The TODO contains explicit, prioritized work items that should be executed while working in Cursor.
+
 ---
 
 **Last major update:** Late May 2026

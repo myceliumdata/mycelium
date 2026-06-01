@@ -25,3 +25,30 @@ Additional prompts live under `prompts/`:
 1. Align with `prompts/system/CORE_PROMPT.md`
 2. Propose a short plan for non-trivial work
 3. Implement incrementally with types, tests where appropriate, and tracing hooks
+
+## Cursor Agent Handoffs (Cheat Sheet)
+
+When the user says any of these:
+- "Work on the next task"
+- "Pick up the next task"
+- "Start the next prompt"
+
+**You must:**
+1. Scan `prompts/next/`
+2. Pick the oldest file (sort alphabetically)
+3. **Move it immediately** to `prompts/in-progress/` (this claims the task)
+4. Read and execute the prompt
+5. Create output in `prompts/done/<task-name>/` with at least:
+   - `prompt.md` (copy of the original)
+   - `output.md` (clear summary of what was done + decisions)
+6. **Remove only the specific file you claimed** from `prompts/in-progress/`.
+   - Do **not** delete, move, or touch any other files present in `in-progress/`.
+   - "Helpful" cleanup of other files will break parallel execution.
+   - Note unexpected files in your output but leave them alone.
+
+**Scope Discipline (Critical):**
+If a prompt defines explicit scope boundaries, stay inside them. If you believe out-of-scope changes are necessary, stop and document the issue instead of making the changes.
+
+Full details: `prompts/WORKFLOW.md`
+
+Never work on a file while it's still in `prompts/next/`. The move to `in-progress/` is mandatory.
