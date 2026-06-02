@@ -55,18 +55,18 @@ The **CLI** (`query`, `seed`) and **MCP** (`query_person`, `list_specialist_rout
 
 Data addition via the public API was removed in the June 2026 refactor (tasks 1000–1050). It will return later as **internal agent coordination**, not as a direct caller-supplied payload.
 
-### Supervisor as coordinator (Phase 1 progress)
+### Supervisor as coordinator (Phase 1 complete)
 
-The **supervisor node** (`src/agents/supervisor.py`) is a thin coordinator:
+The **supervisor node** (`src/agents/supervisor.py`) is a thin coordinator and router:
 
-- **Routing** — `src/agents/routing.py` classifies query-only requests (lookup, missing, non-core) and selects the `PersonResponse` shape.
-- **Responses** — `src/agents/responses.py` builds query response payloads; the supervisor does not construct messages inline.
-- **Core data specialist** — `src/agents/core_data.py` defines `core_data_agent`, the LangGraph node that owns core CRM lookups (`find_by_key` via `CoreIdentity`). Wiring supervisor → `core_data_agent` in the graph is in progress (tasks 1070/1100); today routing still performs lookups inline inside the supervisor path.
-- **CoreIdentity** — `src/agents/core_identity.py` remains the storage facade used by `core_data_agent` (and routing until fully wired).
+- It evaluates the inbound `PersonQuery` (`person_key` + optional `requested_attributes`) and emits a `route` decision plus audit log. For the current public query-only surface it always routes to the core specialist (`route="core_data"`).
+- Classification, core lookup via `CoreIdentity`, and construction of the minimal `PersonResponse` (`results`, `message`, `debug`, `trace_id`, `thread_id`) are performed by the specialist.
+- **Core data specialist** — `src/agents/core_data.py` defines `core_data_agent`, the LangGraph node that owns core CRM lookups (`find_by_key` via `CoreIdentity`). Wiring supervisor → `core_data_agent` (with the conditional edge in `graphs/core.py`) was completed in tasks 1070/1100 and the final alignment pass was 1110.
+- **CoreIdentity** — `src/agents/core_identity.py` is the storage facade used by `core_data_agent` (and available for future specialists).
 
-Legacy **enrich** / **validator** nodes may still appear in the compiled graph until task 1070 removes them; the supervisor no longer routes to them for public requests.
+Legacy **enrich**, **validator**, and **person_prep** modules remain on disk as *unwired legacy* (see the module docstrings in those files). They are not imported by `src/agents/__init__.py` and are not present in the compiled public graph. They are reserved exclusively for future internal agent-coordinated data addition (see TODO.md "Re-adding data addition").
 
-Full specialist-agent routing for non-core attributes is still future work; the supervisor detects non-core requests and returns an appropriate narrative response.
+Full specialist-agent routing for non-core attributes is still future work. When a query requests non-core attributes, the core record (if present) is returned and the `message` field contains a narrative (e.g. "we're still researching X").
 
 ---
 
@@ -125,7 +125,7 @@ Core storage holds only `id`, `name`, and `employer`. Callers send a query-only 
 
 | Intent | What the caller sends | Graph path (current / target) | What comes back |
 |--------|----------------------|-------------------------------|-----------------|
-| **Lookup (found)** | `person_key` (+ optional non-core attrs) | Supervisor (+ routing / future `core_data_agent`) → `CoreIdentity.find_by_key` | `results`: one core dict; `message` confirms found |
+| **Lookup (found)** | `person_key` (+ optional non-core attrs) | `supervisor` → `core_data_agent` → `CoreIdentity.find_by_key` | `results`: one core dict; `message` confirms found |
 | **Lookup (miss)** | `person_key`, no match | Same | `results`: `[]`; plain not-found `message` (no public ingest guidance) |
 | **Non-core attrs** | `person_key` + e.g. `age`, `x_handle` | Same lookup; narrative only | `results`: core dict if person exists; `message` notes ongoing research |
 
@@ -199,4 +199,4 @@ See `TODO.md` for the current prioritized list of work.
 
 ---
 
-**Last major update:** June 2026 (following model alignment and workflow hardening work)
+**Last major update:** June 2026 (query-only migration 1000–1110 + niggle cleanup 1120)

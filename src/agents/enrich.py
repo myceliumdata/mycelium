@@ -1,4 +1,8 @@
-"""Enrich agent: prepares core person records for validation and persistence."""
+"""Enrich agent (unwired legacy).
+
+Reserved for future internal data-addition coordination. Not imported by
+``agents.__init__`` or ``graphs.core``. Do not use from public CLI/MCP paths.
+"""
 
 from __future__ import annotations
 

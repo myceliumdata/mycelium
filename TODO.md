@@ -31,8 +31,8 @@ The code was written before several key decisions were finalized. The following 
 
 - [x] Query-only public surface (`PersonQuery`, CLI, MCP) — tasks `2026-06-05-1000`–`1050`.
 - [x] `core_data_agent` specialist module (`2026-06-05-1060`).
-- [ ] Wire `core_data_agent` into graph; supervisor routes to it (`1070`, `1100`).
-- [ ] Continue reducing inline routing lookups once core data node is wired.
+- [x] Wire `core_data_agent` into graph; supervisor routes to it (`1070`, `1100`).
+- [ ] Continue reducing inline routing lookups in `routing.py` now that core data node owns lookups.
 - [ ] Further narrow response construction or move it behind specialist-specific builders.
 
 ### Re-adding data addition (internal / future — not public yet)
@@ -98,4 +98,4 @@ Decision owner: Paul
 
 ---
 
-Last updated: 2026-06-03 (added post-09xx tracing follow-up note)
+Last updated: 2026-06-05 (docs/reset niggle cleanup; task 1120)

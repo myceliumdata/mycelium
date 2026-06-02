@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import aiosqlite
+from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
@@ -24,6 +25,15 @@ from agents.supervisor import supervisor_agent
 from models.state import MyceliumGraphState, PersonQuery, PersonResponse
 
 DEFAULT_CHECKPOINT_PATH = Path("data/checkpoints.sqlite")
+
+# Pydantic types stored in LangGraph checkpoints (avoids "Deserializing unregistered
+# type models.state.*" warnings when resuming threads).
+_CHECKPOINT_MSGPACK_ALLOWLIST: tuple[tuple[str, str], ...] = (
+    ("models.state", "MyceliumGraphState"),
+    ("models.state", "Person"),
+    ("models.state", "PersonQuery"),
+    ("models.state", "PersonResponse"),
+)
 
 Route = Literal["core_data", "__end__"]
 _compiled_graph: CompiledStateGraph | None = None
@@ -35,7 +45,8 @@ async def _setup_async_checkpointer(checkpoint_path: Path) -> AsyncSqliteSaver:
     """Create and initialize the async SQLite checkpointer (non-blocking for ASGI)."""
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
     conn = await aiosqlite.connect(str(checkpoint_path))
-    saver = AsyncSqliteSaver(conn)
+    serde = JsonPlusSerializer(allowed_msgpack_modules=_CHECKPOINT_MSGPACK_ALLOWLIST)
+    saver = AsyncSqliteSaver(conn, serde=serde)
     await saver.setup()
     return saver
 

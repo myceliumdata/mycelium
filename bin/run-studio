@@ -31,6 +31,11 @@ echo "6. If it asks about allowed domain, add the new domain (and https:// versi
 echo "   in Advanced Settings on the connection panel."
 echo "   (The browser may auto-open a localhost link — ignore it; use the manual flow above.)"
 echo ""
+echo "NOTE: After editing Python models (e.g. src/models/state.py), you MUST"
+echo "      Ctrl-C this server and restart it (./bin/run-studio again) so that"
+echo "      Studio re-fetches the updated input schemas. Browser reload alone"
+echo "      is not enough — the running server process holds the old schemas."
+echo ""
 echo "Starting now..."
 
 LANGCHAIN_TRACING_V2=false \

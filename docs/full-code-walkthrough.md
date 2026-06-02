@@ -1,12 +1,12 @@
 # Mycelium — Full Top-Down Code Walkthrough (June 2026)
 
-**Purpose:** Orientation for how the pieces fit together after the **query-only public interface** refactor and introduction of **`core_data_agent`**.
+**Purpose:** Orientation for how the pieces fit together after the **query-only public interface** refactor and **`core_data_agent`** wiring (tasks 1070/1100/1110, polish 1120).
 
 **Current reality (June 2026):**
 
 - **Public API** = queries only (`PersonQuery`: `person_key`, `requested_attributes`). No CLI `ingest`, no MCP `submit_person_data`, no `provided_data`.
-- **`core_data_agent`** (`src/agents/core_data.py`) is the specialist that owns core lookups; graph wiring from supervisor → core_data is pending (1070/1100). Routing still performs lookups inline today.
-- **enrich/validator** may still be compiled into the graph but are **not** used for public requests; removal is task 1070.
+- **`core_data_agent`** (`src/agents/core_data.py`) owns core lookups in the compiled graph: `supervisor` → `core_data` → END.
+- **enrich/validator/person_prep** remain on disk as unwired legacy; not in `agents.__init__` or the public graph.
 - See `docs/architecture.md` for the authoritative architecture; this doc is a walkthrough.
 
 ---
@@ -24,7 +24,7 @@ From `docs/architecture.md` and `prompts/system/CORE_PROMPT.md`:
 ## 2. Project structure & workflow
 
 - Handoffs: `prompts/cursor/next/` → `in-progress/` → `done/<slug>/` (see `prompts/cursor/WORKFLOW.md`).
-- `src/agents/`: `supervisor`, `routing`, `responses`, `core_data`, `core_identity`, legacy `enrich`/`validator`.
+- `src/agents/`: `supervisor`, `routing`, `responses`, `core_data`, `core_identity`, legacy `enrich`/`validator`/`person_prep` (unwired).
 - `src/graphs/core.py`, `src/models/state.py`, `src/storage/core.py`, `src/mycelium_mcp/server.py`, `src/main.py`.
 
 ---
@@ -56,22 +56,23 @@ Package: `mycelium_mcp` (renamed from `mcp` to avoid SDK collision).
 
 ## 5. Graph runtime (`src/graphs/core.py`)
 
-**Compiled today (transitional):** `supervisor` → conditional → `enrich` → `validator` → `supervisor` loop *or* END.
+**Achieved (1070/1100, finalized 1110):** `START → supervisor → core_data_agent → END`.
 
-**Public query path today:** `START → supervisor → END` (lookup logic inside supervisor/routing; enrich/validator not visited).
-
-**Target (1070/1100):** `START → supervisor → core_data_agent → END` (drop enrich/validator from graph).
-
+- **Supervisor** sets `route="core_data"` and audit entries; no storage access or `PersonResponse` construction.
+- **core_data** runs `evaluate_supervisor_turn` (via `routing.py`) + `CoreIdentity.find_by_key` and sets `response`.
 - **Async:** `AsyncSqliteSaver` + async nodes for LangGraph dev / ASGI.
 - **`run_query`:** seeds `invocation_thread_id`, `ainvoke`, captures `trace_id`, `_finalize_response`.
+- Checkpoint serde: `JsonPlusSerializer(allowed_msgpack_modules=...)` for `models.state` types in `_setup_async_checkpointer`.
+
+*Historical (pre-1110):* enrich/validator loop was compiled for public ingest; removed from the graph in 1070.
 
 ---
 
 ## 6. Supervisor & routing
 
-- **`supervisor_agent`**: async; `asyncio.to_thread(evaluate_supervisor_turn, ...)`.
-- **`evaluate_supervisor_turn`**: query-only — `find_by_key` → found / not-found / non-core responses via `responses.py`.
-- No `route_enrich`, no `provided_data`, no ingest response builders.
+- **`supervisor_agent`**: thin async coordinator; returns `route="core_data"` and audit log only.
+- **`evaluate_supervisor_turn`** (`routing.py`): shared lookup/classification helpers — used inside `core_data_agent` and by unit tests (not called directly from the supervisor node).
+- **`responses.py`**: query-only builders (`response_found`, `response_not_found`, `response_non_core`).
 
 ---
 
@@ -79,17 +80,17 @@ Package: `mycelium_mcp` (renamed from `mcp` to avoid SDK collision).
 
 ```python
 async def core_data_agent(state) -> dict[str, Any]:
-    # find_by_key via CoreIdentity in to_thread
+    # evaluate_supervisor_turn + CoreIdentity.find_by_key in to_thread
     # sets person, response, audit_log
 ```
 
-This is the **proper graph node** for core CRM lookups. Not yet the default path in the compiled graph (supervisor/routing still inline). Tests: `tests/test_core_data_agent.py`.
+Default LangGraph node for core CRM lookups. Tests: `tests/test_core_data_agent.py`, `tests/test_core_graph.py::test_graph_invokes_supervisor_then_core_data`.
 
 ---
 
 ## 8. CoreIdentity facade (`src/agents/core_identity.py`)
 
-Thin wrapper over `storage.core.get_storage()`: `find_by_key`, `persist`. Used by `core_data_agent` and routing until wiring is complete.
+Thin wrapper over `storage.core.get_storage()`: `find_by_key`, `persist`. Used by `core_data_agent`.
 
 ---
 
@@ -116,14 +117,9 @@ Query-only: `response_found`, `response_not_found`, `response_non_core`. Not-fou
 
 ```
 CLI/MCP → PersonQuery → run_query → graph.ainvoke
-  → supervisor (routing: CoreIdentity.find_by_key)
+  → supervisor (route="core_data")
+  → core_data_agent (routing + CoreIdentity.find_by_key)
   → PersonResponse (+ thread_id, trace_id)
-```
-
-Future:
-
-```
-supervisor → core_data_agent → PersonResponse
 ```
 
 ---
@@ -132,18 +128,21 @@ supervisor → core_data_agent → PersonResponse
 
 Previously: `provided_data` on `PersonQuery`, CLI `ingest`, MCP `submit_person_data`, supervisor → enrich → validator → persist.
 
-Removed in tasks `2026-06-05-1000`–`1050`. Will return via **internal** specialist coordination — see architecture.md "Future work: re-adding core data addition".
+Removed in tasks `2026-06-05-1000`–`1050`. Graph loop removed in 1070. Will return via **internal** specialist coordination — see architecture.md "Future work: re-adding core data addition".
 
 ---
 
 ## 14. Gaps / next tasks
 
-- Wire `core_data_agent` in graph (1070, 1100).
-- Remove enrich/validator nodes (1070).
-- Docs/tests final pass (1080, 1110).
-- Real non-core specialists, LangSmith E2E in `.env`, license, CI.
+From `TODO.md` (near term):
 
-See `TODO.md`.
+- Continue reducing inline routing lookups in `routing.py` now that `core_data_agent` owns lookups.
+- Further narrow response construction or move behind specialist-specific builders.
+- **Re-adding data addition** (internal / future): design internal coordination, persist on `core_data_agent`, stronger validation.
+- LangSmith E2E verification in operator `.env`.
+- License, CI workflows, real non-core specialists.
+
+See `TODO.md` for the full prioritized list.
 
 ---
 
@@ -151,10 +150,8 @@ See `TODO.md`.
 
 ```
 External (CLI/MCP) → PersonQuery → run_query → LangGraph
-  → supervisor (coordinator)
-       → [today] routing + CoreIdentity inline
-       → [target] route to core_data_agent
-  → PersonResponse
+  → supervisor (coordinator, route="core_data")
+  → core_data_agent (lookup + PersonResponse)
 CoreIdentity → CoreStorage → SQLite
 ```
 
@@ -162,25 +159,17 @@ CoreIdentity → CoreStorage → SQLite
 
 ## Local Debugging Tool: LangSmith Studio (LangGraph Studio)
 
-As mentioned when discussing LangSmith setup, for visual debugging of the exact graph:
+**Key distinction:**
 
-**Key distinction (this addresses the "why does it need the internet?" question):**
+- `langgraph dev` runs the graph **locally**.
+- **Studio** UI at `smith.langchain.com/studio`; ngrok bridges local server ↔ hosted UI.
 
-- `langgraph dev` runs the **backend** — Mycelium graph code (supervisor, core data path, storage, state machine) — **locally**.
-- **Studio** is the visual UI at `smith.langchain.com/studio`.
-- A tunnel (ngrok) bridges local server ↔ hosted UI.
+**For offline debugging:** direct `graph.ainvoke` or `langgraph dev --host 127.0.0.1` without tunnel.
 
-**For offline debugging:**
+**Studio input forms:** Driven by Pydantic schemas from the running dev server. After editing `src/models/state.py`, **restart** `langgraph dev` — see `tmp/restart-server-for-schema.md`.
 
-1. **Direct Python** — `graph.ainvoke` + `asyncio.run` (see README / earlier examples).
-2. **Local server only** — `langgraph dev --host 127.0.0.1` without tunnel.
-
-**Studio input forms:** Driven by Pydantic schemas from the running dev server. After editing `src/models/state.py`, **restart** `langgraph dev` (and ngrok) — reload alone is not enough.
-
-Use query-only `MyceliumGraphState` inputs: `{ "query": { "person_key": "...", "requested_attributes": [] } }`. Set `thread_id` in Studio Thread/Config, not inside `PersonQuery`.
-
-Tunnel troubleshooting: see README "Local Debugging with LangSmith Studio".
+Use query-only `MyceliumGraphState`: `{ "query": { "person_key": "...", "requested_attributes": [] } }`. Set `thread_id` in Studio Thread/Config, not inside `PersonQuery`. Examples: `tmp/studio-inputs.md`.
 
 ---
 
-*Last major refresh: June 2026 (query-only public API, core_data_agent, doc task 1090).*
+*Last major refresh: June 2026 (query-only public API, core_data_agent wired, niggle cleanup 1120).*
