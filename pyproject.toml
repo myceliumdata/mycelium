@@ -32,7 +32,7 @@ dev = [
 
 [project.scripts]
 mycelium = "main:main"
-mycelium-mcp = "mcp.server:run_server"
+mycelium-mcp = "mycelium_mcp.server:run_server"
 
 [build-system]
 requires = ["setuptools>=61"]

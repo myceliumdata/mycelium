@@ -1,4 +1,4 @@
-"""MCP server for external AI agents to query and ingest person data."""
+"""Mycelium MCP server for external AI agents (package: ``mycelium_mcp``)."""
 
 from __future__ import annotations
 

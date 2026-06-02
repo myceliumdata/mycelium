@@ -47,7 +47,7 @@ CLI and MCP return **`PersonResponse`** JSON: `results`, `message`, `debug`, plu
 
 ```mermaid
 flowchart TD
-    MCP[MCP Client] -->|JSON| MCPServer[mcp/server.py]
+    MCP[MCP Client] -->|JSON| MCPServer[mycelium_mcp/server.py]
     CLI[main.py CLI] -->|JSON| Graph
     MCPServer --> Graph[graphs/core.py]
     Graph --> S[Supervisor]
@@ -68,7 +68,7 @@ flowchart TD
 | Storage | `src/storage/core.py` | SQLite core `people` table (id, name, employer) |
 | Agents | `src/agents/supervisor.py`, `enrich.py`, `validator.py` | Explicit responsibilities |
 | Graph | `src/graphs/core.py` | LangGraph + `SqliteSaver` checkpointer |
-| MCP | `src/mcp/server.py` | `query_person`, `submit_person_data`, `list_specialist_routing` |
+| MCP | `src/mycelium_mcp/server.py` | `query_person`, `submit_person_data`, `list_specialist_routing` |
 | Seed | `data/seed_crm.json` | 457 contacts from `raw_data.json` (dedup: Andrea Kalmans → Lontra Ventures, Pete Townsend → Techstars) loaded on startup |
 
 ## Specialist routing (Phase 1)
@@ -91,7 +91,7 @@ mycelium/
 │   ├── graphs/core.py
 │   ├── models/state.py
 │   ├── storage/core.py
-│   ├── mcp/server.py
+│   ├── mycelium_mcp/server.py
 │   └── main.py
 ├── prompts/system/CORE_PROMPT.md
 └── docs/architecture.md
