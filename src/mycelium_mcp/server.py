@@ -24,7 +24,9 @@ mcp = FastMCP(
         "Optional thread_id in the request JSON is echoed in the response. "
         "Non-core attribute requests return core results plus a researching narrative in message. "
         "Use submit_person_data to add a missing person (provided_data with name and employer). "
-        "All payloads are JSON."
+        "All payloads are JSON. "
+        "To get a direct link to the trace in LangSmith, use the get_langsmith_trace_url helper "
+        "from the mycelium package (or implement equivalent from utils.langsmith) with the trace_id."
     ),
 )
 
@@ -88,6 +90,12 @@ def query_person(query_json: str) -> str:
 def submit_person_data(query_json: str) -> str:
     """
     Add a new core person using minimum viable fields in provided_data.
+
+    Note: even though this is an "add", the wire format is still a full
+    PersonQuery (with person_key + provided_data). This is why the
+    graph trace Input always contains a "query" object, even for
+    pure ingestion runs. The provided_data presence triggers the
+    enrich/validator path inside the supervisor.
 
     Request JSON example:
     {

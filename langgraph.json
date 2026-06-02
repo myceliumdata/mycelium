@@ -1,0 +1,21 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "mycelium": "./src/graphs/core.py:get_core_graph"
+  },
+  "env": ".env",
+  "http": {
+    "cors": {
+      "allow_origins": [
+        "*",
+        "https://smith.langchain.com",
+        "https://eu.smith.langchain.com",
+        "https://smith.langchain.com/studio"
+      ],
+      "allow_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+      "allow_headers": ["*"],
+      "allow_credentials": true
+    }
+  }
+}
+

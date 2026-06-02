@@ -14,7 +14,7 @@ def _coerce(state: MyceliumGraphState | dict[str, Any]) -> MyceliumGraphState:
     return MyceliumGraphState.model_validate(state)
 
 
-def enrich_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
+async def enrich_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     """Prepare provided core person data (assign id if needed) for the validator."""
     current = _coerce(state)
 

@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# ./bin/run-studio — Stable version for Mycelium
+
+set -e
+
+echo "=== Starting Mycelium for LangGraph Studio ==="
+echo "Tracing forced OFF."
+echo ""
+
+# Start the server (use --allow-blocking for now)
+LANGCHAIN_TRACING_V2=false \
+uv run --with 'langgraph-cli[inmem]' \
+  langgraph dev --no-reload --allow-blocking "$@"

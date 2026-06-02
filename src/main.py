@@ -14,6 +14,7 @@ from rich.json import JSON
 from graphs.core import reset_core_graph, run_query
 from models.state import Person, PersonQuery, PersonResponse
 from storage.core import get_storage, reset_storage
+from utils.langsmith import get_langsmith_trace_url
 
 console = Console()
 
@@ -42,7 +43,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=_THREAD_ID_HELP,
     )
 
-    ingest_cmd = sub.add_parser("ingest", help="Ingest person with provided JSON file or inline")
+    ingest_cmd = sub.add_parser("ingest", help="Ingest person with provided JSON file or inline. (Internally still uses a PersonQuery with provided_data set; this is why traces always show a 'query' even for adds.)")
     ingest_cmd.add_argument("--person-key", required=True)
     ingest_cmd.add_argument(
         "--data",
@@ -72,8 +73,16 @@ def _resolve_thread_id(cli_thread_id: str | None) -> str:
 
 
 def _print_response(response: PersonResponse) -> None:
-    """Print full PersonResponse JSON including trace_id and thread_id."""
+    """Print full PersonResponse JSON including trace_id and thread_id.
+    If trace_id is present, also print a direct LangSmith trace URL using the helper.
+    """
     console.print(JSON(response.model_dump_json(indent=2)))
+    if response.trace_id:
+        try:
+            url = get_langsmith_trace_url(response.trace_id)
+            console.print(f"[dim]LangSmith trace: {url}[/dim]")
+        except Exception:
+            pass  # helper raises on empty, but we already checked
 
 
 def _load_person_data(data_arg: str) -> Person:

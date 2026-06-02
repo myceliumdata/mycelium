@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from agents.routing import SupervisorDecision, evaluate_supervisor_turn
@@ -41,15 +42,18 @@ def _apply_decision(decision: SupervisorDecision) -> dict[str, Any]:
     return payload
 
 
-def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
+async def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     """
     Coordinator entry point: classify the request, delegate data work, route or respond.
 
     Does not call storage directly; see ``agents.routing`` and ``agents.core_identity``.
     Propagates ``invocation_thread_id`` / ``invocation_trace_id`` from state into responses.
+
+    SQLite lookups/persistence run in a worker thread so ASGI servers stay non-blocking.
     """
     current = _coerce(state)
-    decision = evaluate_supervisor_turn(
+    decision = await asyncio.to_thread(
+        evaluate_supervisor_turn,
         current,
         thread_id=current.invocation_thread_id,
         trace_id=current.invocation_trace_id,

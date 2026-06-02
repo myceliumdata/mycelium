@@ -1,13 +1,20 @@
-"""Core Mycelium LangGraph: Supervisor + Enrich + Validator with SQLite checkpointer."""
+"""Core Mycelium LangGraph: Supervisor + Enrich + Validator.
+
+Uses AsyncSqliteSaver (aiosqlite) + async nodes so langgraph dev / Studio (ASGI)
+can ainvoke without blocking warnings. CLI and MCP use the sync run_query()
+bridge which does asyncio.run(ainvoke) internally. Direct low-level access
+should prefer ainvoke + asyncio.run (or the run_query helper).
+"""
 
 from __future__ import annotations
 
+import asyncio
 import os
-import sqlite3
 from pathlib import Path
 from typing import Any, Literal
 
-from langgraph.checkpoint.sqlite import SqliteSaver
+import aiosqlite
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
@@ -20,8 +27,37 @@ DEFAULT_CHECKPOINT_PATH = Path("data/checkpoints.sqlite")
 
 Route = Literal["enrich", "__end__"]
 _compiled_graph: CompiledStateGraph | None = None
-_checkpointer_ctx: SqliteSaver | None = None
+_checkpointer_ctx: AsyncSqliteSaver | None = None
 _last_invocation_trace_id: str | None = None
+
+
+async def _setup_async_checkpointer(checkpoint_path: Path) -> AsyncSqliteSaver:
+    """Create and initialize the async SQLite checkpointer (non-blocking for ASGI)."""
+    checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+    conn = await aiosqlite.connect(str(checkpoint_path))
+    saver = AsyncSqliteSaver(conn)
+    await saver.setup()
+    return saver
+
+
+def _close_async_checkpointer() -> None:
+    """Close the process-wide async checkpointer connection if present."""
+    global _checkpointer_ctx
+    if _checkpointer_ctx is None:
+        return
+    conn = _checkpointer_ctx.conn
+
+    async def _close() -> None:
+        await conn.close()
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        asyncio.run(_close())
+    else:
+        # Called from an active loop (unusual for this codebase); schedule close.
+        asyncio.create_task(_close())
+    _checkpointer_ctx = None
 
 
 def _langsmith_tracing_enabled() -> bool:
@@ -61,9 +97,9 @@ def reset_last_invocation_trace_id() -> None:
 
 def reset_core_graph() -> None:
     """Clear compiled graph singleton (for tests)."""
-    global _compiled_graph, _checkpointer_ctx
+    global _compiled_graph
+    _close_async_checkpointer()
     _compiled_graph = None
-    _checkpointer_ctx = None
     reset_last_invocation_trace_id()
 
 
@@ -99,16 +135,13 @@ def build_core_graph(
     graph.add_edge("enrich", "validator")
     graph.add_edge("validator", "supervisor")
 
-    checkpointer: SqliteSaver | None = None
+    checkpointer: AsyncSqliteSaver | None = None
     if setup_checkpointer:
         global _checkpointer_ctx
         resolved = Path(
             os.getenv("MYCELIUM_CHECKPOINT_PATH", str(checkpoint_path or DEFAULT_CHECKPOINT_PATH)),
         )
-        resolved.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(str(resolved), check_same_thread=False)
-        _checkpointer_ctx = SqliteSaver(conn)
-        _checkpointer_ctx.setup()
+        _checkpointer_ctx = asyncio.run(_setup_async_checkpointer(resolved))
         checkpointer = _checkpointer_ctx
 
     return graph.compile(checkpointer=checkpointer)
@@ -122,15 +155,19 @@ def get_core_graph() -> CompiledStateGraph:
     return _compiled_graph
 
 
-def _invoke_core_graph(
+async def _ainvoke_core_graph(
     graph: CompiledStateGraph,
     initial: MyceliumGraphState,
     config: dict[str, Any],
 ) -> Any:
     """
-    Invoke the compiled graph and capture the LangSmith trace id when tracing is enabled.
+    Invoke the compiled graph asynchronously and capture the LangSmith trace id.
 
-    The trace id is stored via ``get_last_invocation_trace_id()`` for downstream response wiring.
+    Uses ``ainvoke`` so LangGraph dev / ASGI servers do not block the event loop.
+    The trace id is stored via ``get_last_invocation_trace_id()`` for downstream wiring.
+
+    When tracing is enabled we wrap ``ainvoke`` in @traceable so the top-level run
+    appears in LangSmith with the initial state as input (not a zero-arg closure).
     """
     global _last_invocation_trace_id
     _last_invocation_trace_id = None
@@ -139,15 +176,24 @@ def _invoke_core_graph(
         from langsmith.run_helpers import traceable
 
         @traceable(name="mycelium_core_graph", run_type="chain")
-        def _traced_invoke() -> Any:
+        async def _traced_ainvoke(initial_state: MyceliumGraphState, cfg: dict[str, Any]) -> Any:
             global _last_invocation_trace_id
-            result = graph.invoke(initial, config=config)
+            result = await graph.ainvoke(initial_state, config=cfg)
             _last_invocation_trace_id = capture_langsmith_trace_id()
             return result
 
-        return _traced_invoke()
+        return await _traced_ainvoke(initial, config)
 
-    return graph.invoke(initial, config=config)
+    return await graph.ainvoke(initial, config=config)
+
+
+def _invoke_core_graph(
+    graph: CompiledStateGraph,
+    initial: MyceliumGraphState,
+    config: dict[str, Any],
+) -> Any:
+    """Sync entry for CLI/MCP; runs the async graph invoke in a fresh event loop."""
+    return asyncio.run(_ainvoke_core_graph(graph, initial, config))
 
 
 def _finalize_response(
@@ -172,7 +218,14 @@ def run_query(
     *,
     thread_id: str = "default",
 ) -> PersonResponse:
-    """Invoke the core graph and return a JSON-serializable response."""
+    """Invoke the core graph and return a JSON-serializable response.
+
+    Note for traces: even "ingest" operations are represented as a PersonQuery
+    (with provided_data filled in). This is why the LangSmith trace Input for
+    an add-new-record always contains a "query" section. The distinction
+    between lookup and ingest is made inside evaluate_supervisor_turn based on
+    whether query.provided_data is present.
+    """
     graph = get_core_graph()
     initial = MyceliumGraphState(
         query=query,

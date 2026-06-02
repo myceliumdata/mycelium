@@ -14,4 +14,7 @@ build/
 htmlcov/
 data/*.db
 data/*.sqlite
+data/*.sqlite-shm
+data/*.sqlite-wal
 data/checkpoints.sqlite
+.langgraph_api/

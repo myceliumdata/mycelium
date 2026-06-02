@@ -100,7 +100,7 @@ The `Person` model represents only records in the primary core `people` table.
 - **SQLite only**.
 - Two separate database files:
   - `data/mycelium.db` — application data (currently only the minimal core `people` table)
-  - `data/checkpoints.sqlite` — LangGraph checkpointer
+  - `data/checkpoints.sqlite` — LangGraph checkpointer (AsyncSqliteSaver + aiosqlite for langgraph dev / Studio ASGI compatibility; sync callers go through run_query bridge)
 - The shared storage layer must remain **dead simple**.
 - Direct storage access by the supervisor is a **Phase 1 concession**, not the long-term target architecture.
 
@@ -111,6 +111,8 @@ See `src/storage/core.py` for the current minimal implementation.
 ## Core Ingestion Handshake (Phase 1)
 
 Core storage holds only `id`, `name`, and `employer`. Lookups and ingests share the same **`PersonQuery`** shape; ingestion is triggered by including **`provided_data`** (MCP `submit_person_data` or CLI `ingest`). The flow is single-step: callers supply `name` and `employer` upfront (`id` optional — assigned after validation if empty).
+
+This is why even an "add new record" trace input always contains a "query" section: the top-level entry point (`run_query`) and the graph state (`MyceliumGraphState.query`) are always a `PersonQuery`. The `provided_data` field inside it is what tells the supervisor to treat it as an ingest (see `evaluate_supervisor_turn` in `routing.py`). There is no separate top-level "ingest input" type.
 
 ### Flow summary
 
@@ -129,7 +131,7 @@ All external responses use the minimalist **`PersonResponse`** (`results`, `mess
 - **`results`** — Factual core data only. Populated when a record exists or was just added; empty when lookup misses or ingest fails.
 - **`message`** — Primary channel for humans and agents: found/not-found narrative, ingest guidance, success ("Added core record for …"), or failure ("Could not add core record: …").
 - **`debug`** — Internal context (original `person_key`, `requested_attributes`, outcome tags). Callers should not depend on it.
-- **`trace_id`** — LangSmith trace identifier for this graph invocation when `LANGCHAIN_TRACING_V2` is enabled; otherwise `null`. Lets operators and developers jump from a JSON response to the matching trace in LangSmith for debugging.
+- **`trace_id`** — LangSmith trace identifier for this graph invocation when `LANGCHAIN_TRACING_V2` is enabled; otherwise `null`. Lets operators and developers jump from a JSON response to the matching trace in LangSmith for debugging. When creating your LangSmith API key, select **Personal Access Token (PAT)** (prefix `lsv2_pt_`). `LANGCHAIN_PROJECT` (default "mycelium") names the tracing project in the LangSmith UI — it will be created automatically on first use; no manual pre-creation required. See README.md for full setup steps.
 - **`thread_id`** — Conversation/session identifier for this request. CLI and MCP callers may pass a stable `thread_id` to tie follow-up queries to the same LangGraph checkpoint thread; when omitted, the runtime generates one per invocation.
 
 These correlation fields support **observability** (trace ↔ response) and **external agent sessions** (same `thread_id` across related MCP or CLI calls). They are set in `run_query` (`src/graphs/core.py`) after the graph finishes, not by individual response builders in the supervisor.
@@ -144,7 +146,7 @@ There is no separate `DataRequest` model or `status` enum — outcome is conveye
 - **Checkpointer**: SQLite (`langgraph-checkpoint-sqlite`)
 - **Integration**: MCP server for external AI agents (JSON-only)
 - **Language & Standards**: Python 3.12+, strict typing with Pydantic, high code quality
-- **Observability**: LangSmith tracing from day one; successful responses echo `trace_id` when tracing is on
+- **Observability**: LangSmith tracing from day one; successful responses echo `trace_id` when tracing is on. See README.md for setup (create account + key, copy .env.example, set vars). The optional `get_langsmith_trace_url()` helper (in `src/utils/langsmith.py`) turns a `trace_id` into a clickable URL; it is exercised in the CLI output.
 
 ---
 

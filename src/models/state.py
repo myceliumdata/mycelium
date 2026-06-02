@@ -25,7 +25,15 @@ class Person(BaseModel):
 
 
 class PersonQuery(BaseModel):
-    """Inbound JSON query about a person."""
+    """Inbound JSON query about a person.
+
+    This same shape is used for both lookups and ingests.
+    For ingestion (e.g. CLI "ingest" or MCP "submit_person_data"),
+    the caller populates "provided_data". The supervisor sees this
+    and routes through enrich/validator instead of a plain lookup.
+    This is why a trace Input for "adding a new record" still has
+    a "query" section containing the PersonQuery.
+    """
 
     person_key: str = Field(
         description="Person id or name used for core lookup (Phase 1)",

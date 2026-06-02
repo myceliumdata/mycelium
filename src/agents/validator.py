@@ -16,7 +16,7 @@ def _coerce(state: MyceliumGraphState | dict[str, Any]) -> MyceliumGraphState:
     return MyceliumGraphState.model_validate(state)
 
 
-def validator_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
+async def validator_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     """Validate minimum viable core CRM fields before supervisor finalizes response."""
     current = _coerce(state)
     person = current.person
