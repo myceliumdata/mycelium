@@ -1,8 +1,8 @@
-"""Core Identity agent (Phase 1).
+"""Core Identity facade (Phase 1 storage adapter).
 
-The supervisor routes lookup and ingest persistence through Core Identity rather than
-calling ``get_storage()`` directly. A dedicated specialist implementation may replace
-this module in a later phase.
+``CoreDataAgent`` (``agents.core_data``) performs lookups via ``get_core_identity()``.
+This module remains the thin persistence facade over ``storage.core`` until core data
+logic fully lives in the specialist node.
 """
 
 from __future__ import annotations
