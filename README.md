@@ -11,6 +11,9 @@ cp .env.example .env
 # Query existing CRM seed record
 uv run mycelium query --person-key "Nichanan Kesonpat"
 
+# Same query with a stable conversation thread (echoed in JSON as thread_id)
+uv run mycelium query --person-key "Nichanan Kesonpat" --thread-id "session-abc"
+
 # Request non-core attributes (core record in results; message describes ongoing research)
 uv run mycelium query --person-key "Nichanan Kesonpat" --attributes age x_handle
 
@@ -22,6 +25,23 @@ uv run mycelium-mcp
 ```
 
 See [docs/database-notes.md](docs/database-notes.md) if you have an older `data/mycelium.db` from before the schema simplification.
+
+### Response shape
+
+CLI and MCP return **`PersonResponse`** JSON: `results`, `message`, `debug`, plus optional correlation fields:
+
+```json
+{
+  "results": [{ "id": "…", "name": "…", "employer": "…" }],
+  "message": "Found core record for …",
+  "debug": "…",
+  "trace_id": null,
+  "thread_id": "session-abc"
+}
+```
+
+- **`thread_id`** — Passed via `--thread-id` (CLI) or top-level `thread_id` in MCP request JSON; used for session continuity and LangGraph checkpointing.
+- **`trace_id`** — Populated when LangSmith tracing is enabled (`LANGCHAIN_TRACING_V2`); links the response to the run in LangSmith.
 
 ## Architecture
 

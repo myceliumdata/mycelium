@@ -55,7 +55,7 @@ As of task `2026-06-02-1100`, the **supervisor node** (`src/agents/supervisor.py
 
 - **Routing** — `src/agents/routing.py` classifies the request (lookup, missing, non-core, ingest, post-validation) and chooses the next graph step or response.
 - **Responses** — `src/agents/responses.py` builds `PersonResponse` payloads; the supervisor does not construct messages inline.
-- **Core identity** — `src/agents/core_identity.py` is the Phase 1 facade for `find_by_key` / `persist` instead of the supervisor calling `get_storage()` directly.
+- **CoreIdentity** — `src/agents/core_identity.py` is the Phase 1 implementation of the Core Identity agent (responsible for the core `people` table). The supervisor delegates to it via `CoreIdentity` rather than calling `get_storage()` directly. A more autonomous specialist implementation can replace it later.
 
 Enrich and validator remain separate graph nodes for ingest preparation and validation. Full specialist-agent routing for non-core attributes is still future work; the supervisor only detects non-core requests and returns an appropriate narrative response.
 
@@ -124,11 +124,15 @@ Enrich **prepares** the record (including id assignment). The supervisor **write
 
 ### Response fields (ingestion outcomes)
 
-All external responses use the minimalist **`PersonResponse`** (`results`, `message`, `debug`):
+All external responses use the minimalist **`PersonResponse`** (`results`, `message`, `debug`, `trace_id`, `thread_id`):
 
 - **`results`** — Factual core data only. Populated when a record exists or was just added; empty when lookup misses or ingest fails.
 - **`message`** — Primary channel for humans and agents: found/not-found narrative, ingest guidance, success ("Added core record for …"), or failure ("Could not add core record: …").
 - **`debug`** — Internal context (original `person_key`, `requested_attributes`, outcome tags). Callers should not depend on it.
+- **`trace_id`** — LangSmith trace identifier for this graph invocation when `LANGCHAIN_TRACING_V2` is enabled; otherwise `null`. Lets operators and developers jump from a JSON response to the matching trace in LangSmith for debugging.
+- **`thread_id`** — Conversation/session identifier for this request. CLI and MCP callers may pass a stable `thread_id` to tie follow-up queries to the same LangGraph checkpoint thread; when omitted, the runtime generates one per invocation.
+
+These correlation fields support **observability** (trace ↔ response) and **external agent sessions** (same `thread_id` across related MCP or CLI calls). They are set in `run_query` (`src/graphs/core.py`) after the graph finishes, not by individual response builders in the supervisor.
 
 There is no separate `DataRequest` model or `status` enum — outcome is conveyed through `results` plus natural-language `message`.
 
@@ -140,7 +144,7 @@ There is no separate `DataRequest` model or `status` enum — outcome is conveye
 - **Checkpointer**: SQLite (`langgraph-checkpoint-sqlite`)
 - **Integration**: MCP server for external AI agents (JSON-only)
 - **Language & Standards**: Python 3.12+, strict typing with Pydantic, high code quality
-- **Observability**: LangSmith tracing from day one
+- **Observability**: LangSmith tracing from day one; successful responses echo `trace_id` when tracing is on
 
 ---
 
