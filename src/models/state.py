@@ -16,12 +16,11 @@ MINIMUM_VIABLE_FIELDS: list[str] = ["name", "employer"]
 class Person(BaseModel):
     """Core CRM person record — id, name, employer only.
 
-    When supplying via `PersonQuery.provided_data` for an ingest/add:
-    - You only need to provide `name` and `employer` (the minimum viable fields).
-    - `id` can be "" (empty string) or omitted — it will be auto-generated
-      by the enrich step as `person-{name-slug}-{6hex}`.
-    - This is why `id` is NOT in MINIMUM_VIABLE_FIELDS and why the Studio
-      input form no longer marks it as required (after the recent model fix).
+    `id` defaults to "" (empty string). When a new record is supplied to the
+    core data agent, an empty `id` will be auto-generated as
+    `person-{name-slug}-{6hex}`.
+
+    This is why `id` is NOT part of MINIMUM_VIABLE_FIELDS.
     """
 
     id: str = ""
@@ -78,7 +77,8 @@ class PersonResponse(BaseModel):
     message: str = Field(
         default="",
         description=(
-            "Human- and agent-readable narrative. Primary channel for state, progress, and reasoning."
+            "Human- and agent-readable narrative. Primary channel for state, "
+            "progress, and reasoning."
         ),
     )
     debug: str = Field(
