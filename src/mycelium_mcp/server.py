@@ -23,7 +23,6 @@ mcp = FastMCP(
         "message, debug, trace_id (LangSmith when tracing is on), and thread_id. "
         "Optional thread_id in the request JSON is echoed in the response. "
         "Non-core attribute requests return core results plus a researching narrative in message. "
-        "Use submit_person_data to add a missing person (provided_data with name and employer). "
         "All payloads are JSON. "
         "To get a direct link to the trace in LangSmith, use the get_langsmith_trace_url helper "
         "from the mycelium package (or implement equivalent from utils.langsmith) with the trace_id."
@@ -84,43 +83,6 @@ def query_person(query_json: str) -> str:
     Response JSON includes results, message, debug, trace_id, and thread_id.
     """
     return _run_mcp_query(query_json)
-
-
-@mcp.tool
-def submit_person_data(query_json: str) -> str:
-    """
-    Add a new core person using minimum viable fields in provided_data.
-
-    Note: even though this is an "add", the wire format is still a full
-    PersonQuery (with person_key + provided_data). This is why the
-    graph trace Input always contains a "query" object, even for
-    pure ingestion runs. The provided_data presence triggers the
-    enrich/validator path inside the supervisor.
-
-    Request JSON example:
-    {
-      "person_key": "new.person@example.com",
-      "thread_id": "optional-conversation-id",
-      "provided_data": {
-        "id": "",
-        "name": "New Person",
-        "employer": "Example Corp"
-      }
-    }
-
-    Response JSON includes results, message, debug, trace_id, and thread_id.
-    """
-    _bootstrap()
-    query, thread_id = _parse_query_payload(query_json)
-    if query.provided_data is None:
-        return json.dumps(
-            {
-                "error": "provided_data is required for submit_person_data",
-            },
-            indent=2,
-        )
-    response = run_query(query, thread_id=thread_id)
-    return _serialize_response(response)
 
 
 @mcp.tool

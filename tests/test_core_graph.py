@@ -9,7 +9,7 @@ import pytest
 
 from agents.core_identity import reset_core_identity
 from graphs.core import reset_core_graph, run_query
-from models.state import Person, PersonQuery
+from models.state import PersonQuery
 from storage.core import CoreStorage, reset_storage
 
 
@@ -61,9 +61,8 @@ def test_query_missing_person(temp_storage: CoreStorage) -> None:
     response = run_query(PersonQuery(person_key="Missing Person"))
     assert response.results == []
     assert "No core record found" in response.message
-    assert "lookup" in response.message.lower()
-    assert "provided_data" in response.message
-    assert "outcome='ingest_required'" in response.debug
+    assert "did not match" in response.message.lower()
+    assert "outcome='not_found'" in response.debug
 
 
 def test_query_non_core_attributes(temp_storage: CoreStorage) -> None:
@@ -82,46 +81,6 @@ def test_query_non_core_attributes(temp_storage: CoreStorage) -> None:
     assert "non_core_requested='age, x_handle'" in response.debug
 
 
-def test_ingest_new_person(temp_storage: CoreStorage) -> None:
-    _ = temp_storage
-    response = run_query(
-        PersonQuery(
-            person_key="New User",
-            provided_data=Person(
-                id="",
-                name="New User",
-                employer="New Co",
-            ),
-        ),
-    )
-    assert len(response.results) == 1
-    assert response.results[0]["name"] == "New User"
-    assert response.results[0]["employer"] == "New Co"
-    assert "Added core record" in response.message
-    assert "outcome='ingested'" in response.debug
-    stored = temp_storage.find_person("New User")
-    assert stored is not None
-    assert stored.employer == "New Co"
-
-
-def test_ingest_validation_failure(temp_storage: CoreStorage) -> None:
-    _ = temp_storage
-    response = run_query(
-        PersonQuery(
-            person_key="Bad Record",
-            provided_data=Person(
-                id="",
-                name="Bad Record",
-                employer="",
-            ),
-        ),
-    )
-    assert response.results == []
-    assert "Could not add core record" in response.message
-    assert "employer" in response.message
-    assert temp_storage.find_person("Bad Record") is None
-
-
 def test_results_are_plain_dicts(temp_storage: CoreStorage) -> None:
     _ = temp_storage
     response = run_query(PersonQuery(person_key="person-test"))
@@ -138,24 +97,6 @@ def test_run_query_echoes_thread_id_on_lookup(temp_storage: CoreStorage) -> None
     )
     assert response.thread_id == "thread-lookup-1"
     assert response.trace_id is None
-
-
-def test_run_query_echoes_thread_id_on_ingest(temp_storage: CoreStorage) -> None:
-    _ = temp_storage
-    response = run_query(
-        PersonQuery(
-            person_key="Another User",
-            provided_data=Person(
-                id="",
-                name="Another User",
-                employer="Another Co",
-            ),
-        ),
-        thread_id="thread-ingest-1",
-    )
-    assert response.thread_id == "thread-ingest-1"
-    assert response.trace_id is None
-    assert "Added core record" in response.message
 
 
 def test_run_query_default_thread_id(temp_storage: CoreStorage) -> None:

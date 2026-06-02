@@ -142,7 +142,7 @@ def build_core_graph(
             os.getenv("MYCELIUM_CHECKPOINT_PATH", str(checkpoint_path or DEFAULT_CHECKPOINT_PATH)),
         )
         try:
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
             in_loop = True
         except RuntimeError:
             in_loop = False
@@ -238,11 +238,8 @@ def run_query(
 ) -> PersonResponse:
     """Invoke the core graph and return a JSON-serializable response.
 
-    Note for traces: even "ingest" operations are represented as a PersonQuery
-    (with provided_data filled in). This is why the LangSmith trace Input for
-    an add-new-record always contains a "query" section. The distinction
-    between lookup and ingest is made inside evaluate_supervisor_turn based on
-    whether query.provided_data is present.
+    The LangSmith trace Input always contains a ``query`` section (a query-only
+    ``PersonQuery``). Routing classifies lookups inside ``evaluate_supervisor_turn``.
     """
     graph = get_core_graph()
     initial = MyceliumGraphState(

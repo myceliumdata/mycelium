@@ -14,9 +14,17 @@ MINIMUM_VIABLE_FIELDS: list[str] = ["name", "employer"]
 
 
 class Person(BaseModel):
-    """Core CRM person record — id, name, employer only."""
+    """Core CRM person record — id, name, employer only.
 
-    id: str
+    When supplying via `PersonQuery.provided_data` for an ingest/add:
+    - You only need to provide `name` and `employer` (the minimum viable fields).
+    - `id` can be "" (empty string) or omitted — it will be auto-generated
+      by the enrich step as `person-{name-slug}-{6hex}`.
+    - This is why `id` is NOT in MINIMUM_VIABLE_FIELDS and why the Studio
+      input form no longer marks it as required (after the recent model fix).
+    """
+
+    id: str = ""
     name: str
     employer: str | None = None
 
@@ -25,26 +33,38 @@ class Person(BaseModel):
 
 
 class PersonQuery(BaseModel):
-    """Inbound JSON query about a person.
+    """Inbound JSON query for looking up a person (public interface).
 
-    This same shape is used for both lookups and ingests.
-    For ingestion (e.g. CLI "ingest" or MCP "submit_person_data"),
-    the caller populates "provided_data". The supervisor sees this
-    and routes through enrich/validator instead of a plain lookup.
-    This is why a trace Input for "adding a new record" still has
-    a "query" section containing the PersonQuery.
+    This model is query-only for the public interface (CLI, MCP, Studio).
+    Data addition support will be re-introduced later via internal agent coordination.
+
+    When using LangGraph Studio's visual input editor:
+    - Provide a full ``MyceliumGraphState`` dict with a ``query`` key.
+    - Set ``person_key`` (id or name) and optional ``requested_attributes``.
+    - Set ``thread_id`` in Studio's Thread/Config panel, not in ``PersonQuery``.
     """
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "person_key": "Nichanan Kesonpat",
+                    "requested_attributes": [],
+                },
+                {
+                    "person_key": "Nichanan Kesonpat",
+                    "requested_attributes": ["email", "x_handle"],
+                },
+            ]
+        }
+    }
+
     person_key: str = Field(
-        description="Person id or name used for core lookup (Phase 1)",
+        description="Person id or name used for core lookup.",
     )
     requested_attributes: list[str] = Field(
         default_factory=list,
-        description="Non-core attributes requested; routed to specialist agents later",
-    )
-    provided_data: Person | None = Field(
-        default=None,
-        description="Minimum viable core data supplied to ingest a missing person",
+        description="Non-core attributes requested; routed to specialist agents later.",
     )
 
 
@@ -82,7 +102,16 @@ class PersonResponse(BaseModel):
 
 
 class MyceliumGraphState(BaseModel):
-    """LangGraph state for supervisor + specialist agents."""
+    """LangGraph state for supervisor + specialist agents.
+
+    In LangGraph Studio (visual editor or JSON input):
+    - You must provide at least the top-level "query" key (a PersonQuery).
+    - Everything else (route, person, response, etc.) is internal state
+      produced by the graph — do not set them in the initial input.
+    - Use the examples in PersonQuery (they will appear in Studio).
+    - For thread persistence in Studio, set the thread ID in the
+      Studio UI's Thread/Config panel (it flows into invocation_thread_id).
+    """
 
     query: PersonQuery
     route: Literal["enrich"] | None = None

@@ -27,23 +27,17 @@ def test_routing_delegates_lookup_to_core_identity() -> None:
 
     decision = evaluate_supervisor_turn(state, core_identity=core_identity)
 
-    assert decision.action == "respond"
-    assert decision.response is not None
     assert len(decision.response.results) == 1
     assert decision.response.results[0]["name"] == "Ada"
+    assert "Found core record" in decision.response.message
 
 
-def test_routing_persist_after_validation() -> None:
-    person = Person(id="p2", name="New", employer="Co")
+def test_routing_not_found_when_missing() -> None:
     core_identity = _StubCoreIdentity(None)
-    state = MyceliumGraphState(
-        query=PersonQuery(person_key="New"),
-        person=person,
-        validation_passed=True,
-    )
+    state = MyceliumGraphState(query=PersonQuery(person_key="Missing"))
 
     decision = evaluate_supervisor_turn(state, core_identity=core_identity)
 
-    assert decision.action == "respond"
-    assert core_identity.persisted == [person]
-    assert "Added core record" in (decision.response.message if decision.response else "")
+    assert decision.response.results == []
+    assert "No core record found" in decision.response.message
+    assert core_identity.persisted == []

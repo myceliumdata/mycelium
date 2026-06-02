@@ -1,4 +1,4 @@
-"""Supervisor agent: coordinator and router for core lookup, ingest, and specialist handoff."""
+"""Supervisor agent: coordinator and router for core lookups and specialist handoff."""
 
 from __future__ import annotations
 
@@ -16,40 +16,28 @@ def _coerce(state: MyceliumGraphState | dict[str, Any]) -> MyceliumGraphState:
 
 
 def _apply_decision(decision: SupervisorDecision) -> dict[str, Any]:
-    logs: list[str] = []
-
-    if decision.action == "route_enrich":
-        logs.append("Supervisor: provided_data present — routing to enrich.")
-        payload: dict[str, Any] = {
-            "person": decision.person,
-            "route": "enrich",
-            "audit_log": logs,
-        }
-        if decision.thread_id is not None:
-            payload["invocation_thread_id"] = decision.thread_id
-        if decision.trace_id is not None:
-            payload["invocation_trace_id"] = decision.trace_id
-        return payload
-
-    logs.append("Supervisor: responding — finishing.")
-    payload = {
+    payload: dict[str, Any] = {
         "response": decision.response,
         "route": None,
-        "audit_log": logs,
+        "audit_log": ["Supervisor: responding — query complete."],
     }
     if decision.person is not None:
         payload["person"] = decision.person
+    if decision.thread_id is not None:
+        payload["invocation_thread_id"] = decision.thread_id
+    if decision.trace_id is not None:
+        payload["invocation_trace_id"] = decision.trace_id
     return payload
 
 
 async def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     """
-    Coordinator entry point: classify the request, delegate data work, route or respond.
+    Coordinator entry point: classify the query, delegate lookup, and respond.
 
     Does not call storage directly; see ``agents.routing`` and ``agents.core_identity``.
-    Propagates ``invocation_thread_id`` / ``invocation_trace_id`` from state into responses.
+    Propagates ``invocation_thread_id`` / ``invocation_trace_id`` into responses.
 
-    SQLite lookups/persistence run in a worker thread so ASGI servers stay non-blocking.
+    SQLite lookups run in a worker thread so ASGI servers stay non-blocking.
     """
     current = _coerce(state)
     decision = await asyncio.to_thread(

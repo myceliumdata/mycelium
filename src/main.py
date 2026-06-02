@@ -12,7 +12,7 @@ from rich.console import Console
 from rich.json import JSON
 
 from graphs.core import reset_core_graph, run_query
-from models.state import Person, PersonQuery, PersonResponse
+from models.state import PersonQuery, PersonResponse
 from storage.core import get_storage, reset_storage
 from utils.langsmith import get_langsmith_trace_url
 
@@ -37,20 +37,6 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Non-core attributes (core record returned; message describes ongoing research)",
     )
     query_cmd.add_argument(
-        "--thread-id",
-        default=None,
-        metavar="ID",
-        help=_THREAD_ID_HELP,
-    )
-
-    ingest_cmd = sub.add_parser("ingest", help="Ingest person with provided JSON file or inline. (Internally still uses a PersonQuery with provided_data set; this is why traces always show a 'query' even for adds.)")
-    ingest_cmd.add_argument("--person-key", required=True)
-    ingest_cmd.add_argument(
-        "--data",
-        required=True,
-        help="Path to JSON file or inline JSON with Person fields",
-    )
-    ingest_cmd.add_argument(
         "--thread-id",
         default=None,
         metavar="ID",
@@ -85,12 +71,6 @@ def _print_response(response: PersonResponse) -> None:
             pass  # helper raises on empty, but we already checked
 
 
-def _load_person_data(data_arg: str) -> Person:
-    path = Path(data_arg)
-    raw = path.read_text(encoding="utf-8") if path.exists() else data_arg
-    return Person.model_validate_json(raw)
-
-
 def main(argv: list[str] | None = None) -> int:
     load_dotenv()
     args = _parse_args(argv)
@@ -106,23 +86,13 @@ def main(argv: list[str] | None = None) -> int:
 
     thread_id = _resolve_thread_id(args.thread_id)
 
-    if args.command == "query":
-        query = PersonQuery(
-            person_key=args.person_key,
-            requested_attributes=list(args.attributes),
-        )
-        response = run_query(query, thread_id=thread_id)
-        _print_response(response)
-        return 0 if response.results else 1
-
-    if args.command == "ingest":
-        person = _load_person_data(args.data)
-        query = PersonQuery(person_key=args.person_key, provided_data=person)
-        response = run_query(query, thread_id=thread_id)
-        _print_response(response)
-        return 0 if response.results else 1
-
-    return 1
+    query = PersonQuery(
+        person_key=args.person_key,
+        requested_attributes=list(args.attributes),
+    )
+    response = run_query(query, thread_id=thread_id)
+    _print_response(response)
+    return 0 if response.results else 1
 
 
 if __name__ == "__main__":
