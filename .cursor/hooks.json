@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "python3 .cursor/hooks/allow-file-delete.py",
+        "matcher": "Delete"
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "python3 .cursor/hooks/gate-directory-deletion.py",
+        "matcher": "rmdir|\\brm\\b.*(-r|-R|-rf|-fr)|find .*(-delete|-exec rm)",
+        "failClosed": true
+      }
+    ]
+  }
+}
