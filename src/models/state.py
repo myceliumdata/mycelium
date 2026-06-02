@@ -83,6 +83,14 @@ class MyceliumGraphState(BaseModel):
     validation_passed: bool | None = None
     validation_errors: Annotated[list[str], operator.add] = Field(default_factory=list)
     audit_log: Annotated[list[str], operator.add] = Field(default_factory=list)
+    invocation_thread_id: str | None = Field(
+        default=None,
+        description="Conversation thread id propagated into PersonResponse (set by run_query).",
+    )
+    invocation_trace_id: str | None = Field(
+        default=None,
+        description="LangSmith trace id propagated into PersonResponse (set by run_query).",
+    )
 
 
 def non_core_attributes(requested: list[str]) -> list[str]:

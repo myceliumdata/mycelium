@@ -19,14 +19,19 @@ def _apply_decision(decision: SupervisorDecision) -> dict[str, Any]:
 
     if decision.action == "route_enrich":
         logs.append("Supervisor: provided_data present — routing to enrich.")
-        return {
+        payload: dict[str, Any] = {
             "person": decision.person,
             "route": "enrich",
             "audit_log": logs,
         }
+        if decision.thread_id is not None:
+            payload["invocation_thread_id"] = decision.thread_id
+        if decision.trace_id is not None:
+            payload["invocation_trace_id"] = decision.trace_id
+        return payload
 
     logs.append("Supervisor: responding — finishing.")
-    payload: dict[str, Any] = {
+    payload = {
         "response": decision.response,
         "route": None,
         "audit_log": logs,
@@ -41,9 +46,14 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
     Coordinator entry point: classify the request, delegate data work, route or respond.
 
     Does not call storage directly; see ``agents.routing`` and ``agents.core_identity``.
+    Propagates ``invocation_thread_id`` / ``invocation_trace_id`` from state into responses.
     """
     current = _coerce(state)
-    decision = evaluate_supervisor_turn(current)
+    decision = evaluate_supervisor_turn(
+        current,
+        thread_id=current.invocation_thread_id,
+        trace_id=current.invocation_trace_id,
+    )
     result = _apply_decision(decision)
     result["audit_log"] = ["Supervisor: evaluating query.", *result.get("audit_log", [])]
     return result
