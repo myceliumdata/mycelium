@@ -12,10 +12,15 @@ from rich.console import Console
 from rich.json import JSON
 
 from graphs.core import reset_core_graph, run_query
-from models.state import Person, PersonQuery
+from models.state import Person, PersonQuery, PersonResponse
 from storage.core import get_storage, reset_storage
 
 console = Console()
+
+_THREAD_ID_HELP = (
+    "LangGraph conversation thread id (echoed in response.thread_id). "
+    "Defaults to a new UUID per invocation."
+)
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -30,7 +35,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=[],
         help="Non-core attributes (core record returned; message describes ongoing research)",
     )
-    query_cmd.add_argument("--thread-id", default=None)
+    query_cmd.add_argument(
+        "--thread-id",
+        default=None,
+        metavar="ID",
+        help=_THREAD_ID_HELP,
+    )
 
     ingest_cmd = sub.add_parser("ingest", help="Ingest person with provided JSON file or inline")
     ingest_cmd.add_argument("--person-key", required=True)
@@ -39,7 +49,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         required=True,
         help="Path to JSON file or inline JSON with Person fields",
     )
-    ingest_cmd.add_argument("--thread-id", default=None)
+    ingest_cmd.add_argument(
+        "--thread-id",
+        default=None,
+        metavar="ID",
+        help=_THREAD_ID_HELP,
+    )
 
     seed_cmd = sub.add_parser("seed", help="Reload seed CRM data into SQLite")
     seed_cmd.add_argument(
@@ -49,6 +64,16 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
 
     return parser.parse_args(argv)
+
+
+def _resolve_thread_id(cli_thread_id: str | None) -> str:
+    """Use caller-supplied thread id or generate one for this invocation."""
+    return cli_thread_id if cli_thread_id else str(uuid.uuid4())
+
+
+def _print_response(response: PersonResponse) -> None:
+    """Print full PersonResponse JSON including trace_id and thread_id."""
+    console.print(JSON(response.model_dump_json(indent=2)))
 
 
 def _load_person_data(data_arg: str) -> Person:
@@ -70,7 +95,7 @@ def main(argv: list[str] | None = None) -> int:
         console.print(f"Seeded {count} new records from {args.seed_path}")
         return 0
 
-    thread_id = getattr(args, "thread_id", None) or str(uuid.uuid4())
+    thread_id = _resolve_thread_id(args.thread_id)
 
     if args.command == "query":
         query = PersonQuery(
@@ -78,14 +103,14 @@ def main(argv: list[str] | None = None) -> int:
             requested_attributes=list(args.attributes),
         )
         response = run_query(query, thread_id=thread_id)
-        console.print(JSON(response.model_dump_json(indent=2)))
+        _print_response(response)
         return 0 if response.results else 1
 
     if args.command == "ingest":
         person = _load_person_data(args.data)
         query = PersonQuery(person_key=args.person_key, provided_data=person)
         response = run_query(query, thread_id=thread_id)
-        console.print(JSON(response.model_dump_json(indent=2)))
+        _print_response(response)
         return 0 if response.results else 1
 
     return 1
