@@ -25,7 +25,7 @@ def test_routing_delegates_lookup_to_core_identity() -> None:
     core_identity = _StubCoreIdentity(person)
     state = MyceliumGraphState(query=PersonQuery(person_key="Ada"))
 
-    decision = evaluate_supervisor_turn(state, identity=core_identity)
+    decision = evaluate_supervisor_turn(state, core_identity=core_identity)
 
     assert decision.action == "respond"
     assert decision.response is not None
@@ -42,7 +42,7 @@ def test_routing_persist_after_validation() -> None:
         validation_passed=True,
     )
 
-    decision = evaluate_supervisor_turn(state, identity=core_identity)
+    decision = evaluate_supervisor_turn(state, core_identity=core_identity)
 
     assert decision.action == "respond"
     assert core_identity.persisted == [person]

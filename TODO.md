@@ -44,6 +44,15 @@ The code was written before several key decisions were finalized. The following 
 
 - [x] **Initial real seed** — `data/seed_crm.json` built from `data/raw_data.json` (457 people after dedup rules; backup at `data/seed_crm.json.bak`). Task: `2026-06-01-1730-process-raw-data-to-seed-crm`. To load the new seed locally, delete `data/mycelium.db` and restart.
 
+## Observability (LangSmith / tracing)
+
+- [ ] After finishing the current 09xx series (trace_id + thread_id in `PersonResponse`, prompts 0920–0980), configure and test LangSmith tracing:
+  - Set `LANGCHAIN_TRACING_V2=true`, `LANGCHAIN_API_KEY`, `LANGCHAIN_PROJECT` (use `.env.example` template).
+  - Verify that `trace_id` is captured and populated in responses when tracing is enabled (and remains `null` when disabled).
+  - Test the full path through CLI and MCP.
+  - Exercise the optional trace URL helper (0980) once added.
+  - Update relevant docs (README, architecture.md) with enablement instructions and when to turn tracing on.
+
 ## Other Near-Term Items
 
 - [ ] Add a proper LICENSE file (currently deferred — see note below)
@@ -88,7 +97,4 @@ Decision owner: Paul
 
 ---
 
-Last updated: May 31, 2026 (instructions prepared for Cursor / Paul)
-```
-
-Now I need to create the GitHub repository using the tool.
+Last updated: 2026-06-03 (added post-09xx tracing follow-up note)
