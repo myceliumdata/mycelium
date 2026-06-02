@@ -114,7 +114,7 @@ class MyceliumGraphState(BaseModel):
     """
 
     query: PersonQuery
-    route: Literal["enrich"] | None = None
+    route: Literal["core_data"] | None = None
     response: PersonResponse | None = None
     person: Person | None = None
     validation_passed: bool | None = None

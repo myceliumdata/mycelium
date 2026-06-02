@@ -1,9 +1,10 @@
-"""Core Mycelium LangGraph: Supervisor + Enrich + Validator.
+"""Core Mycelium LangGraph: Supervisor + Core Data specialist (query-only).
+
+Flow: START → supervisor (classify & route) → core_data (lookup & response) → END.
 
 Uses AsyncSqliteSaver (aiosqlite) + async nodes so langgraph dev / Studio (ASGI)
 can ainvoke without blocking warnings. CLI and MCP use the sync run_query()
-bridge which does asyncio.run(ainvoke) internally. Direct low-level access
-should prefer ainvoke + asyncio.run (or the run_query helper).
+bridge which does asyncio.run(ainvoke) internally.
 """
 
 from __future__ import annotations
@@ -18,14 +19,13 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from agents.enrich import enrich_agent
+from agents.core_data import core_data_agent
 from agents.supervisor import supervisor_agent
-from agents.validator import validator_agent
 from models.state import MyceliumGraphState, PersonQuery, PersonResponse
 
 DEFAULT_CHECKPOINT_PATH = Path("data/checkpoints.sqlite")
 
-Route = Literal["enrich", "__end__"]
+Route = Literal["core_data", "__end__"]
 _compiled_graph: CompiledStateGraph | None = None
 _checkpointer_ctx: AsyncSqliteSaver | None = None
 _last_invocation_trace_id: str | None = None
@@ -109,8 +109,8 @@ def _route_after_supervisor(state: MyceliumGraphState | dict[str, Any]) -> Route
         if isinstance(state, MyceliumGraphState)
         else MyceliumGraphState.model_validate(state)
     )
-    if current.route == "enrich":
-        return "enrich"
+    if current.route == "core_data":
+        return "core_data"
     return "__end__"
 
 
@@ -119,21 +119,19 @@ def build_core_graph(
     checkpoint_path: Path | None = None,
     setup_checkpointer: bool = True,
 ) -> CompiledStateGraph:
-    """Compile the core graph with a SQLite checkpointer."""
+    """Compile the query-only graph with a SQLite checkpointer."""
     graph: StateGraph = StateGraph(MyceliumGraphState)
 
     graph.add_node("supervisor", supervisor_agent)
-    graph.add_node("enrich", enrich_agent)
-    graph.add_node("validator", validator_agent)
+    graph.add_node("core_data", core_data_agent)
 
     graph.add_edge(START, "supervisor")
     graph.add_conditional_edges(
         "supervisor",
         _route_after_supervisor,
-        {"enrich": "enrich", "__end__": END},
+        {"core_data": "core_data", "__end__": END},
     )
-    graph.add_edge("enrich", "validator")
-    graph.add_edge("validator", "supervisor")
+    graph.add_edge("core_data", END)
 
     checkpointer: AsyncSqliteSaver | None = None
     if setup_checkpointer:
@@ -239,7 +237,7 @@ def run_query(
     """Invoke the core graph and return a JSON-serializable response.
 
     The LangSmith trace Input always contains a ``query`` section (a query-only
-    ``PersonQuery``). Routing classifies lookups inside ``evaluate_supervisor_turn``.
+    ``PersonQuery``). Supervisor routes to ``core_data``; lookups run in that node.
     """
     graph = get_core_graph()
     initial = MyceliumGraphState(
@@ -264,7 +262,7 @@ def run_query(
     return PersonResponse(
         results=[],
         message="Graph finished without a response payload.",
-        debug="No response set by supervisor.",
+        debug="No response set by core_data.",
         thread_id=thread_id,
         trace_id=captured_trace_id,
     )
