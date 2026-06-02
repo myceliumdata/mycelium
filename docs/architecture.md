@@ -49,15 +49,24 @@ Key implications:
 
 This is a deliberate departure from earlier thinking that treated the core CRM table as a privileged, directly-queryable store.
 
+### Public interface: query-only (June 2026)
+
+The **CLI** (`query`, `seed`) and **MCP** (`query_person`, `list_specialist_routing`) expose **lookups only**. `PersonQuery` has `person_key` and optional `requested_attributes` — no `provided_data` on the public model.
+
+Data addition via the public API was removed in the June 2026 refactor (tasks 1000–1050). It will return later as **internal agent coordination**, not as a direct caller-supplied payload.
+
 ### Supervisor as coordinator (Phase 1 progress)
 
-As of task `2026-06-02-1100`, the **supervisor node** (`src/agents/supervisor.py`) is a thin coordinator:
+The **supervisor node** (`src/agents/supervisor.py`) is a thin coordinator:
 
-- **Routing** — `src/agents/routing.py` classifies the request (lookup, missing, non-core, ingest, post-validation) and chooses the next graph step or response.
-- **Responses** — `src/agents/responses.py` builds `PersonResponse` payloads; the supervisor does not construct messages inline.
-- **CoreIdentity** — `src/agents/core_identity.py` is the Phase 1 implementation of the Core Identity agent (responsible for the core `people` table). The supervisor delegates to it via `CoreIdentity` rather than calling `get_storage()` directly. A more autonomous specialist implementation can replace it later.
+- **Routing** — `src/agents/routing.py` classifies query-only requests (lookup, missing, non-core) and selects the `PersonResponse` shape.
+- **Responses** — `src/agents/responses.py` builds query response payloads; the supervisor does not construct messages inline.
+- **Core data specialist** — `src/agents/core_data.py` defines `core_data_agent`, the LangGraph node that owns core CRM lookups (`find_by_key` via `CoreIdentity`). Wiring supervisor → `core_data_agent` in the graph is in progress (tasks 1070/1100); today routing still performs lookups inline inside the supervisor path.
+- **CoreIdentity** — `src/agents/core_identity.py` remains the storage facade used by `core_data_agent` (and routing until fully wired).
 
-Enrich and validator remain separate graph nodes for ingest preparation and validation. Full specialist-agent routing for non-core attributes is still future work; the supervisor only detects non-core requests and returns an appropriate narrative response.
+Legacy **enrich** / **validator** nodes may still appear in the compiled graph until task 1070 removes them; the supervisor no longer routes to them for public requests.
+
+Full specialist-agent routing for non-core attributes is still future work; the supervisor detects non-core requests and returns an appropriate narrative response.
 
 ---
 
@@ -108,28 +117,24 @@ See `src/storage/core.py` for the current minimal implementation.
 
 ---
 
-## Core Ingestion Handshake (Phase 1)
+## Public query flow (current)
 
-Core storage holds only `id`, `name`, and `employer`. Lookups and ingests share the same **`PersonQuery`** shape; ingestion is triggered by including **`provided_data`** (MCP `submit_person_data` or CLI `ingest`). The flow is single-step: callers supply `name` and `employer` upfront (`id` optional — assigned after validation if empty).
-
-This is why even an "add new record" trace input always contains a "query" section: the top-level entry point (`run_query`) and the graph state (`MyceliumGraphState.query`) are always a `PersonQuery`. The `provided_data` field inside it is what tells the supervisor to treat it as an ingest (see `evaluate_supervisor_turn` in `routing.py`). There is no separate top-level "ingest input" type.
+Core storage holds only `id`, `name`, and `employer`. Callers send a query-only **`PersonQuery`** (`person_key`, optional `requested_attributes`). The graph state always includes `MyceliumGraphState.query`; LangSmith trace input therefore always shows a `query` section even for internal-only operations.
 
 ### Flow summary
 
-| Intent | What the caller sends | Graph path | What comes back |
-|--------|----------------------|------------|-----------------|
-| **Lookup** | `person_key` only | Supervisor reads storage | `results`: one core dict if found; neutral `message` |
-| **Not found** | `person_key` only, no match | Supervisor only | `results`: `[]`; `message` states the miss and briefly notes how to ingest if desired |
-| **Ingest** | `person_key` + `provided_data` | Supervisor → enrich (prepare) → validator → supervisor (persist) | `results`: core dict on success; `[]` on validation failure |
+| Intent | What the caller sends | Graph path (current / target) | What comes back |
+|--------|----------------------|-------------------------------|-----------------|
+| **Lookup (found)** | `person_key` (+ optional non-core attrs) | Supervisor (+ routing / future `core_data_agent`) → `CoreIdentity.find_by_key` | `results`: one core dict; `message` confirms found |
+| **Lookup (miss)** | `person_key`, no match | Same | `results`: `[]`; plain not-found `message` (no public ingest guidance) |
+| **Non-core attrs** | `person_key` + e.g. `age`, `x_handle` | Same lookup; narrative only | `results`: core dict if person exists; `message` notes ongoing research |
 
-Enrich **prepares** the record (including id assignment). The supervisor **writes to SQLite only after** validation succeeds.
-
-### Response fields (ingestion outcomes)
+### Response fields (query outcomes)
 
 All external responses use the minimalist **`PersonResponse`** (`results`, `message`, `debug`, `trace_id`, `thread_id`):
 
-- **`results`** — Factual core data only. Populated when a record exists or was just added; empty when lookup misses or ingest fails.
-- **`message`** — Primary channel for humans and agents: found/not-found narrative, ingest guidance, success ("Added core record for …"), or failure ("Could not add core record: …").
+- **`results`** — Factual core data only. Populated when a record exists; empty when lookup misses.
+- **`message`** — Primary channel for humans and agents: found / not-found / non-core research narrative.
 - **`debug`** — Internal context (original `person_key`, `requested_attributes`, outcome tags). Callers should not depend on it.
 - **`trace_id`** — LangSmith trace identifier for this graph invocation when `LANGCHAIN_TRACING_V2` is enabled; otherwise `null`. Lets operators and developers jump from a JSON response to the matching trace in LangSmith for debugging. When creating your LangSmith API key, select **Personal Access Token (PAT)** (prefix `lsv2_pt_`). `LANGCHAIN_PROJECT` (default "mycelium") names the tracing project in the LangSmith UI — it will be created automatically on first use; no manual pre-creation required. See README.md for full setup steps.
 - **`thread_id`** — Conversation/session identifier for this request. CLI and MCP callers may pass a stable `thread_id` to tie follow-up queries to the same LangGraph checkpoint thread; when omitted, the runtime generates one per invocation.
@@ -137,6 +142,15 @@ All external responses use the minimalist **`PersonResponse`** (`results`, `mess
 These correlation fields support **observability** (trace ↔ response) and **external agent sessions** (same `thread_id` across related MCP or CLI calls). They are set in `run_query` (`src/graphs/core.py`) after the graph finishes, not by individual response builders in the supervisor.
 
 There is no separate `DataRequest` model or `status` enum — outcome is conveyed through `results` plus natural-language `message`.
+
+### Future work: re-adding core data addition
+
+Public ingest (CLI `ingest`, MCP `submit_person_data`, `PersonQuery.provided_data`, enrich/validator loop) was removed June 2026. Planned return:
+
+- Internal coordination via specialist agents (including `core_data_agent` persist paths).
+- No restoration of the old single-step public `provided_data` handshake without a new design review.
+
+Historical reference: tasks `2026-06-02-1000-redesign-ingestion-handshake` (introduced) and `2026-06-05-1000`–`1050` (removed from public surface).
 
 ---
 
@@ -176,9 +190,9 @@ See `prompts/cursor/WORKFLOW.md` for the current handoff protocol.
 
 The goal for this phase is to build a working, minimal system that demonstrates:
 
-- A supervisor that can route requests between core identity and specialist agents (initially stubbed)
+- A supervisor that routes queries to core and specialist agents (core via `core_data_agent`)
 - A very clean, minimal core people dataset
-- An MCP interface that external agents can use to query and contribute person data
+- An MCP interface that external agents use to **query** person data (addition returns via internal agents later)
 - Clear separation of concerns that supports future growth into fully agent-owned data
 
 See `TODO.md` for the current prioritized list of work.

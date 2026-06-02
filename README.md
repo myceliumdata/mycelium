@@ -1,6 +1,6 @@
 # Mycelium
 
-A maintainable LangGraph prototype for **AI-managed data sources**. External agents query people records via MCP; a **supervisor** coordinates core lookup, ingest routing, validation, and specialist handoff for non-core attributes.
+A maintainable LangGraph prototype for **AI-managed data sources**. External agents **query** people records via MCP or CLI; a **supervisor** coordinates core lookups (via the **core data agent** specialist) and specialist handoff for non-core attributes. Public interfaces are **query-only**; data addition will return via internal agent coordination.
 
 ## Quick start
 
@@ -17,10 +17,7 @@ uv run mycelium query --person-key "Nichanan Kesonpat" --thread-id "session-abc"
 # Request non-core attributes (core record in results; message describes ongoing research)
 uv run mycelium query --person-key "Nichanan Kesonpat" --attributes age x_handle
 
-# Ingest a missing person (core fields only)
-uv run mycelium ingest --person-key "new@example.com" --data '{"id":"","name":"New User","employer":"Example Corp"}'
-
-# MCP server (stdio)
+# MCP server (stdio) — query_person only
 uv run mycelium-mcp
 ```
 
@@ -45,7 +42,7 @@ CLI and MCP return **`PersonResponse`** JSON: `results`, `message`, `debug`, plu
 
 ## Enabling LangSmith Tracing
 
-LangSmith provides observability for the graph executions (supervisor routing, ingest paths, etc.).
+LangSmith provides observability for graph executions (supervisor routing, core lookups, etc.).
 
 1. Sign up for a free account at [smith.langchain.com](https://smith.langchain.com).
 2. Go to Settings → API Keys and create a new key. **Choose Key Type: Personal Access Token (PAT)** (not Service Key). This will produce a key starting with `lsv2_pt_`.
@@ -63,7 +60,7 @@ See `docs/architecture.md` and `.env.example` for more.
 
 ## Local Debugging with LangSmith Studio (LangGraph Studio)
 
-The Studio setup gives you a rich visual debugger for the exact graph (supervisor routing, the full ingest path, state inspection, etc.).
+The Studio setup gives you a rich visual debugger for the graph (supervisor routing, core lookup path, state inspection, etc.).
 
 The `langgraph dev` command runs your graph execution locally on your machine. The Studio UI (the visual part) is a web app at smith.langchain.com that connects to your local server via a tunnel (currently ngrok). This is the supported way to get the nice interactive graph view.
 
@@ -85,7 +82,7 @@ The terminal running the dev server will print the local address. ngrok will pri
 
 **Important:** Tunnels are ephemeral. Every new ngrok session (or `./bin/run-studio` restart) gives a new URL. Always use the URL from the *current* terminals. Do not reuse old ones from previous runs or old browser tabs.
 
-Once connected you can send test inputs matching the CLI/MCP and visually step through the supervisor, enrich, and validator nodes.
+Once connected you can send query-only `PersonQuery` inputs (inside `MyceliumGraphState`) and step through the supervisor and related nodes. Legacy enrich/validator nodes may still appear in the diagram until graph simplification (task 1070).
 
 See `.env.example` and the troubleshooting notes below.
 
@@ -125,6 +122,7 @@ This is normal for tunnel-based local dev. The terminal output from ngrok and la
   7. In Advanced Settings (if it complains about domain), add the new bare domain + `https://` version.
   8. Click Connect.
 - The langgraph.json has expanded CORS — restart the dev server after editing it.
+- **Important for schema / form changes (e.g. in Studio's visual Input editor):** If you edit Pydantic models like `src/models/state.py` (Person fields, etc.), simply reloading the Studio page is not enough. The running `langgraph dev` process has the old module/schema in memory. You must Ctrl-C the server, restart `./bin/run-studio` (new ngrok URL), re-warmup the URL, and reconnect in Studio. Only then will the Input editor reflect updated required/optional fields and defaults.
 - Try Incognito or Firefox.
 - Verify locally the server responds (`curl http://127.0.0.1:2024/ok`), then test the *current* ngrok URL directly in a browser tab.
 
@@ -136,24 +134,22 @@ flowchart TD
     CLI[main.py CLI] -->|JSON| Graph
     MCPServer --> Graph[graphs/core.py]
     Graph --> S[Supervisor]
-    S -->|missing lookup| MISS[empty results + message]
+    S -->|target wiring| CDA[core_data_agent]
+    CDA --> CI[CoreIdentity facade]
+    CI --> DB[(mycelium.db)]
     S -->|found| RES[results + message]
+    S -->|missing| MISS[empty results + message]
     S -->|non-core attrs| NC[results + researching message]
-    S -->|provided_data| E[EnrichAgent]
-    E --> V[ValidatorAgent]
-    V --> S
-    S -->|after validation| DB[(mycelium.db)]
     Graph --> CP[(checkpoints.sqlite)]
-    S --> DB
 ```
 
 | Layer | Path | Role |
 |-------|------|------|
 | Models | `src/models/state.py` | `Person`, `PersonQuery`, `PersonResponse`, graph state |
 | Storage | `src/storage/core.py` | SQLite core `people` table (id, name, employer) |
-| Agents | `src/agents/supervisor.py`, `enrich.py`, `validator.py` | Explicit responsibilities |
-| Graph | `src/graphs/core.py` | LangGraph + `SqliteSaver` checkpointer |
-| MCP | `src/mycelium_mcp/server.py` | `query_person`, `submit_person_data`, `list_specialist_routing` |
+| Agents | `supervisor.py`, `core_data.py`, `routing.py`, `responses.py` | Coordinator + core data specialist (+ legacy enrich/validator until 1070) |
+| Graph | `src/graphs/core.py` | LangGraph + async `AsyncSqliteSaver` checkpointer |
+| MCP | `src/mycelium_mcp/server.py` | `query_person`, `list_specialist_routing` |
 | Seed | `data/seed_crm.json` | 457 contacts from `raw_data.json` (dedup: Andrea Kalmans → Lontra Ventures, Pete Townsend → Techstars) loaded on startup |
 
 ## Specialist routing (Phase 1)
@@ -162,7 +158,7 @@ Core CRM fields are **id**, **name**, and **employer** only. When a query asks f
 
 1. The supervisor returns the core person in `results` and explains in `message` that those attributes are still being researched.
 2. No shared derivative-dataset tables or registry exist in Phase 1 — specialist agents are coordinated by the supervisor, not stored as formal datasets in core storage.
-3. Future phases will spawn real specialist agents per attribute domain; enrich/validator today only handle minimum viable core ingest.
+3. Future phases will spawn real specialist agents per attribute domain.
 
 See [docs/architecture.md](docs/architecture.md) for current architecture and direction.
 
@@ -191,4 +187,4 @@ uv run ruff check src tests
 
 ## Status
 
-MVP core flow: MCP + CLI + SQLite persistence + supervisor graph. Next: real specialist agent spawning, vector search, LLM enrichment.
+MVP core flow: query-only MCP + CLI + SQLite persistence + supervisor graph. Next: wire `core_data_agent` in graph (1070/1100), real specialist spawning, vector search.

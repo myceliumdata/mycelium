@@ -23,21 +23,25 @@ The code was written before several key decisions were finalized. The following 
 - [x] Ensure the `Person` model and all code that constructs it only ever uses `id`, `name`, and `employer`.
 - [x] Update tests and CLI/MCP response handling for `specialist_required` (same prompt).
 - [x] **Minimal `PersonResponse`** — `results`, `message`, `debug` only (`2026-06-01-1912-redesign-response-model-light-minimalist`).
-- [x] **Ingestion handshake** — single-step `provided_data` flow via enrich/validator (`2026-06-02-1000-redesign-ingestion-handshake`).
+- [x] **Ingestion handshake** — single-step `provided_data` flow via enrich/validator (`2026-06-02-1000-redesign-ingestion-handshake`) — **removed from public API** June 2026 (`2026-06-05-1000`–`1050`).
 
-**Goal:** After this work, the codebase should clearly reflect that the supervisor coordinates specialist agents, and the only thing the shared storage layer owns is the tiny core `people` table.
+**Goal:** The codebase reflects query-only public interfaces; the supervisor coordinates specialists; shared storage owns only the tiny core `people` table.
 
 ### Supervisor / specialist follow-ups
 
-- [ ] Continue reducing direct data access as specialist agents are introduced (evolve `CoreIdentity` into a full specialist agent).
-- [ ] Evaluate whether core identity resolution should move entirely off the shared storage facade.
+- [x] Query-only public surface (`PersonQuery`, CLI, MCP) — tasks `2026-06-05-1000`–`1050`.
+- [x] `core_data_agent` specialist module (`2026-06-05-1060`).
+- [ ] Wire `core_data_agent` into graph; supervisor routes to it (`1070`, `1100`).
+- [ ] Continue reducing inline routing lookups once core data node is wired.
 - [ ] Further narrow response construction or move it behind specialist-specific builders.
 
-### Ingestion / response follow-ups
+### Re-adding data addition (internal / future — not public yet)
 
-- [ ] Add stronger validation for ingested records (beyond current minimum-viable checks).
-- [ ] Consider whether ingestion should trigger enrichment or specialist work.
-- [ ] Re-evaluate whether a machine-readable `status` or error category is needed for ingestion failures.
+- [ ] Design internal coordination for adding core records (no `provided_data` on public `PersonQuery`).
+- [ ] Persist path on `core_data_agent` (post-validation, specialist-owned).
+- [ ] Stronger validation for new records (beyond former minimum-viable checks).
+- [ ] Consider whether addition should trigger enrichment or specialist work.
+- [ ] Re-evaluate machine-readable `status` or error categories for addition failures.
 - [x] Clean up dead code from pre-1912 response model (`2026-06-02-1010-cleanup-dead-code-post-response-redesign`).
 
 ## Data
@@ -46,12 +50,9 @@ The code was written before several key decisions were finalized. The following 
 
 ## Observability (LangSmith / tracing)
 
-- [ ] After finishing the current 09xx series (trace_id + thread_id in `PersonResponse`, prompts 0920–0980), configure and test LangSmith tracing:
-  - Set `LANGCHAIN_TRACING_V2=true`, `LANGCHAIN_API_KEY`, `LANGCHAIN_PROJECT` (use `.env.example` template).
-  - Verify that `trace_id` is captured and populated in responses when tracing is enabled (and remains `null` when disabled).
-  - Test the full path through CLI and MCP.
-  - Exercise the optional trace URL helper (0980) once added.
-  - Update relevant docs (README, architecture.md) with enablement instructions and when to turn tracing on.
+- [x] `trace_id` + `thread_id` on `PersonResponse` (09xx series).
+- [x] `get_langsmith_trace_url` helper (0980); README/architecture tracing notes.
+- [ ] End-to-end LangSmith verification in Paul's environment (`.env`, CLI/MCP smoke with tracing on).
 
 ## Other Near-Term Items
 
