@@ -121,7 +121,7 @@ def test_graph_invokes_supervisor_then_core_data(temp_storage: CoreStorage) -> N
     from models.state import MyceliumGraphState
 
     _ = temp_storage
-    graph = build_core_graph()
+    graph = build_core_graph(setup_checkpointer=False)
     initial = MyceliumGraphState(
         query=PersonQuery(person_key="person-test"),
         invocation_thread_id="graph-path-test",

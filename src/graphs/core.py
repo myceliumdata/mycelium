@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import sys
 from pathlib import Path
 from typing import Any, Literal
 
@@ -286,4 +287,9 @@ def run_query(
 # asyncio.run for the async checkpointer setup) at import time ensures it
 # happens before the ASGI server loop is active. Subsequent calls return the
 # cached graph without re-entering build_core_graph.
-get_core_graph()
+#
+# Skip during pytest runs (including collection of smoke tests) to avoid
+# creating long-lived aiosqlite connections/threads that prevent the pytest
+# process from exiting promptly after the tests have reported their results.
+if "pytest" not in sys.modules:
+    get_core_graph()

@@ -29,7 +29,7 @@ The current code expects only `id`, `name`, and `employer`. With an old file you
 
 ```bash
 rm -f data/mycelium.db
-uv run mycelium query --person-key "Nichanan Kesonpat"
+uv run mycelium query --person-key "Nichanan Kesonpat"  # CLI exits promptly (resource cleanup)
 ```
 
 The app recreates the schema and reloads seed data.

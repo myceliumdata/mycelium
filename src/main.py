@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import atexit
 import sys
 import uuid
 from pathlib import Path
@@ -17,6 +18,22 @@ from storage.core import get_storage, reset_storage
 from utils.langsmith import get_langsmith_trace_url
 
 console = Console()
+
+
+def _cleanup_resources() -> None:
+    """Defensively close async checkpointer and storage resources.
+
+    Swallows all errors so that cleanup never prevents the process from exiting.
+    Used both in finally blocks and as an atexit handler (belt-and-suspenders).
+    """
+    for closer in (reset_core_graph, reset_storage):
+        try:
+            closer()
+        except Exception:
+            # Never let cleanup errors (e.g. closed loop, double-close, etc.)
+            # prevent the CLI from terminating.
+            pass
+
 
 _THREAD_ID_HELP = (
     "LangGraph conversation thread id (echoed in response.thread_id). "
@@ -74,25 +91,33 @@ def _print_response(response: PersonResponse) -> None:
 def main(argv: list[str] | None = None) -> int:
     load_dotenv()
     args = _parse_args(argv)
+
+    # Register atexit handler as belt-and-suspenders so resources are cleaned
+    # even on unexpected exits (signals, uncaught exceptions in some paths, etc.).
+    atexit.register(_cleanup_resources)
+
     reset_storage()
     reset_core_graph()
     get_storage()
 
-    if args.command == "seed":
-        storage = get_storage()
-        count = storage.seed_from_file(Path(args.seed_path))
-        console.print(f"Seeded {count} new records from {args.seed_path}")
-        return 0
+    try:
+        if args.command == "seed":
+            storage = get_storage()
+            count = storage.seed_from_file(Path(args.seed_path))
+            console.print(f"Seeded {count} new records from {args.seed_path}")
+            return 0
 
-    thread_id = _resolve_thread_id(args.thread_id)
+        thread_id = _resolve_thread_id(args.thread_id)
 
-    query = PersonQuery(
-        person_key=args.person_key,
-        requested_attributes=list(args.attributes),
-    )
-    response = run_query(query, thread_id=thread_id)
-    _print_response(response)
-    return 0 if response.results else 1
+        query = PersonQuery(
+            person_key=args.person_key,
+            requested_attributes=list(args.attributes),
+        )
+        response = run_query(query, thread_id=thread_id)
+        _print_response(response)
+        return 0 if response.results else 1
+    finally:
+        _cleanup_resources()
 
 
 if __name__ == "__main__":

@@ -80,3 +80,6 @@ See `prompts/cursor/WORKFLOW.md` and `.cursor/rules/04-cursor-workflow.mdc`:
 - Frequent: `uv run pytest -m smoke -q`
 - End of major changes: full `uv run pytest -q`
 - Cursor rule: Only run smoke tests by default. If you add a test, Grok determines the category for any new test (smoke = stubs/mocks only; full = real DB/graph/checkpoints). If it's full, run that test (using full marker) *immediately*. Always add the correct `@pytest.mark.*` decorator. See "Test Execution Policy" in `prompts/cursor/WORKFLOW.md` and the .cursor rule.
+
+**Note on CLI:** `uv run mycelium query ...` now exits promptly after printing the result (the async checkpointer is closed in a finally + atexit handler). This makes manual CLI smoke checks reliable and fast. See README for examples.
+

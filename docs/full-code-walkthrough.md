@@ -44,7 +44,7 @@ Example response outcomes in `debug`: `outcome='found'`, `'not_found'`, `'non_co
 
 | Surface | Commands / tools |
 |---------|------------------|
-| **CLI** | `uv run mycelium query ...`, `uv run mycelium seed ...` |
+| **CLI** | `uv run mycelium query ...`, `uv run mycelium seed ...` (now exits promptly after result) |
 | **MCP** | `query_person`, `list_specialist_routing`; schemas via resources |
 | **Studio** | `langgraph dev` via `./bin/run-studio` + optional ngrok |
 

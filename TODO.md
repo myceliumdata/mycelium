@@ -52,7 +52,8 @@ The code was written before several key decisions were finalized. The following 
 
 - [x] `trace_id` + `thread_id` on `PersonResponse` (09xx series).
 - [x] `get_langsmith_trace_url` helper (0980); README/architecture tracing notes.
-- [ ] End-to-end LangSmith verification in Paul's environment (`.env`, CLI/MCP smoke with tracing on).
+- [ ] End-to-end LangSmith verification in Paul's environment (`.env`, CLI/MCP smoke with tracing on). Note: CLI now exits promptly (defensive cleanup + atexit).
+
 
 ## Other Near-Term Items
 

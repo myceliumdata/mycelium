@@ -21,6 +21,9 @@ uv run mycelium query --person-key "Nichanan Kesonpat" --attributes age x_handle
 uv run mycelium-mcp
 ```
 
+**Note:** The `mycelium` CLI now exits promptly after printing the JSON response (previously it could hang on async checkpointer cleanup). This makes ad-hoc CLI verification and smoke checks fast.
+```
+
 See [docs/database-notes.md](docs/database-notes.md) if you have an older `data/mycelium.db` from before the schema simplification.
 
 ### Response shape
