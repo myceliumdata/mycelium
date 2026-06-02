@@ -65,7 +65,7 @@ See `docs/architecture.md` and `.env.example` for more.
 
 The Studio setup gives you a rich visual debugger for the exact graph (supervisor routing, the full ingest path, state inspection, etc.).
 
-The `langgraph dev` command runs your graph execution locally on your machine. The Studio UI (the visual part) is a web app at smith.langchain.com that connects to your local server via the tunnel. This is the supported way to get the nice interactive graph view.
+The `langgraph dev` command runs your graph execution locally on your machine. The Studio UI (the visual part) is a web app at smith.langchain.com that connects to your local server via a tunnel (currently ngrok). This is the supported way to get the nice interactive graph view.
 
 **Recommended way to start:**
 
@@ -73,56 +73,60 @@ The `langgraph dev` command runs your graph execution locally on your machine. T
 ./bin/run-studio
 ```
 
-(This forces tracing off and uses `--tunnel` for reliable connection to the hosted Studio UI.)
+Then in another terminal:
 
-The terminal will print three useful URLs (example only — yours will be different every run):
-- 🚀 API: the address of your local Agent Server (use this when manually connecting).
-- 🎨 Studio UI: a direct link that opens the hosted Studio pre-configured (convenience only).
-- 📚 API Docs: Swagger UI for the local server.
+```bash
+ngrok http 2024
+```
 
-**Important:** Every run of `./bin/run-studio` gives a **brand new random tunnel subdomain**. The old one dies when that terminal stops. Always use the URLs printed in the *current* terminal session. Do not reuse old ones from previous runs or old browser tabs.
+(This forces tracing off. The script starts the dev server on localhost; you expose it with ngrok.)
+
+The terminal running the dev server will print the local address. ngrok will print the public https://...ngrok.io (or ngrok-free.app) URL.
+
+**Important:** Tunnels are ephemeral. Every new ngrok session (or `./bin/run-studio` restart) gives a new URL. Always use the URL from the *current* terminals. Do not reuse old ones from previous runs or old browser tabs.
 
 Once connected you can send test inputs matching the CLI/MCP and visually step through the supervisor, enrich, and validator nodes.
 
-See `.env.example` and the troubleshooting notes below for the exact "domain not allowed" steps (they are normal because tunnels are temporary).
+See `.env.example` and the troubleshooting notes below.
 
-The `langgraph.json` has the graph entrypoint and expanded CORS settings for Studio (smith.langchain.com origins + methods/headers/credentials). If you change it, you must restart `./bin/run-studio`.
+The `langgraph.json` has the graph entrypoint and expanded CORS settings for Studio (smith.langchain.com origins + methods/headers/credentials). If you change it, you must restart the dev server.
 
 **Troubleshooting "Failed to initialize Studio TypeError: Failed to fetch"**:
-- You **must** pass `--tunnel` (see command above). The cloud Studio page cannot directly fetch from your localhost.
+- The cloud Studio page cannot directly fetch from your localhost. You must use a tunnel (ngrok in the current setup).
 - Make sure `LANGCHAIN_TRACING_V2=false` (or unset) so the dev server doesn't try to phone home to LangSmith during startup.
-- After starting, the script prints a 🎨 Studio UI link (with ?baseUrl=...). Open that directly — it is the easiest way to land in Studio already pointed at your server. Alternatively click "Connect to a local server" and paste the 🚀 API URL (https://...trycloudflare.com).
-- Hard-refresh the Studio page (Cmd/Ctrl-Shift-R).
-- If still issues, try a different browser (Chrome/Firefox are usually more lenient than Safari with localhost).
+- After starting `./bin/run-studio` + `ngrok http 2024`, copy the https ngrok URL.
+- In a separate browser tab, visit that plain ngrok URL first and complete the ngrok "Visit Site" / warning page until you see clean JSON `{"ok":true}`.
+- Then go to https://smith.langchain.com/studio/ in a *fresh* tab.
+- Click "Connect to a local server" and paste the current ngrok URL.
+- Hard-refresh the Studio page (Cmd/Ctrl-Shift-R) if needed.
+- If still issues, try a different browser (Chrome/Firefox are usually more lenient).
 - Check terminal output for any server startup errors (e.g. port in use — use `--port 8001`).
 - The CORS config in langgraph.json (full allow_methods, allow_headers, allow_credentials) allows the smith.langchain.com origins. If you edit it, restart the dev server.
 
-**For the specific error you are seeing ("Failed to connect to Agent Server because the domain 'xxx.trycloudflare.com' is not allowed")**:
-- This is the Studio UI's security check for the tunnel domain (Cloudflare tunnels change every run).
+**For the specific error "Failed to connect to Agent Server because the domain 'xxx.ngrok.io' is not allowed"** (or similar for any tunnel):
+- This is the Studio UI's security check for the tunnel domain (tunnels change every run).
 - On the error page you are on (the one with the URL you pasted), look for **"Advanced Settings"** (usually at the bottom or in the connection panel).
-- In Advanced Settings, find the field for "Allowed origins", "Allowed Agent Server domains", "Allowed base URLs", or similar.
-- Add the exact domain from the error: `updated-intensity-disposition-urls.trycloudflare.com`
-- Also add the full origin: `https://updated-intensity-disposition-urls.trycloudflare.com`
+- In Advanced Settings, add the exact domain from the error (both the bare domain and the `https://` version).
 - Save/apply, then click Connect or refresh.
-- The tunnel URL is in the `baseUrl` query param of the link you shared.
-- Next time you run `langgraph dev --tunnel`, you'll get a *new* random tunnel domain, so you'll need to add the new one in Advanced Settings again (or use the "Connect to local server" flow each time, which often lets you approve it).
+- Next time you get a new ngrok URL, you'll need to add the new domain in Advanced Settings again (or use the "Connect to local server" flow each time).
 
-This is normal for the `--tunnel` mode. The terminal output from `langgraph dev --tunnel` will show the exact URL and any connection instructions.
+This is normal for tunnel-based local dev. The terminal output from ngrok and langgraph dev will show the exact current URL.
 
 **For "Failed to initialize Studio" / "TypeError: Failed to fetch" / "ConnectionError: Unable to connect..."** (the most common tunnel gotcha):
-- You **must** have `./bin/run-studio` actively running in a terminal right now (check with `ps` or look at the terminal window). It prints a banner with the **live** URLs for *this run only*.
-- **Tunnels are ephemeral:** The `updated-intensity-disposition-urls.trycloudflare.com` (or any old one) from a previous banner is dead once that process stopped. Curling an old one gives Cloudflare "Tunnel error 1033". You must use the URLs from the *current* running script's banner.
+- You **must** have `./bin/run-studio` actively running and `ngrok http 2024` (or your tunnel) actively running in terminals right now.
+- **Tunnels are ephemeral:** Old URLs are dead once the ngrok session or dev server stops. You must use the URL from the *current* running sessions.
 - **Steps (official + proven flow):**
-  1. In the terminal with the running script, note the **new** 🚀 API URL from the fresh banner (e.g. https://brand-new-random-words.trycloudflare.com).
-  2. In a separate browser tab, visit that **plain new API URL** first. Complete any Cloudflare challenge until it shows clean `{"ok":true}` JSON.
-  3. Open a **completely fresh** tab to `https://smith.langchain.com/studio/` (hard refresh or new tab; old tabs may have stale connections).
-  4. Click **"Connect to a local server"** (the manual button — do not just open an old 🎨 link or rely on auto-connect).
-  5. Paste the **current live** 🚀 API URL.
-  6. In Advanced Settings (if it complains about domain), add the new bare domain + `https://` version.
-  7. Click Connect.
-- The langgraph.json has expanded CORS — restart the script (Ctrl-C + `./bin/run-studio`) after editing it.
+  1. Start `./bin/run-studio`, then in another terminal run `ngrok http 2024`.
+  2. Note the **current** 🚀 API URL from ngrok (https://...ngrok.io).
+  3. In a separate browser tab, visit that **plain new API URL** first. Complete any ngrok warning/visit page until it shows clean `{"ok":true}` JSON.
+  4. Open a **completely fresh** tab to `https://smith.langchain.com/studio/` (hard refresh or new tab; old tabs may have stale connections).
+  5. Click **"Connect to a local server"** (the manual button — do not just open an old pre-filled link or rely on auto-connect).
+  6. Paste the **current live** ngrok URL.
+  7. In Advanced Settings (if it complains about domain), add the new bare domain + `https://` version.
+  8. Click Connect.
+- The langgraph.json has expanded CORS — restart the dev server after editing it.
 - Try Incognito or Firefox.
-- Verify locally the server responds, then test the *current* tunnel URL directly in browser tab.
+- Verify locally the server responds (`curl http://127.0.0.1:2024/ok`), then test the *current* ngrok URL directly in a browser tab.
 
 ## Architecture
 

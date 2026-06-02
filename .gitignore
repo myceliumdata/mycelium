@@ -18,3 +18,6 @@ data/*.sqlite-shm
 data/*.sqlite-wal
 data/checkpoints.sqlite
 .langgraph_api/
+
+# User scratch/dump area for files to share with the AI (e.g. logs, outputs, traces)
+tmp/

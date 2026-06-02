@@ -358,14 +358,14 @@ As mentioned when discussing LangSmith setup, for visual debugging of the exact 
 
 - `langgraph dev` (the in-memory/local CLI) runs the **backend** — your actual Mycelium graph code (the supervisor, the enrich/validator steps, CoreIdentity, storage, the LangGraph state machine, etc.) — **100% locally** on your computer.
 - "Studio" is the name of the **visual debugging frontend/IDE**. The graph visualization, state inspector, interact mode, etc. are provided by a web application hosted at `smith.langchain.com/studio`.
-- `--tunnel` is the bridge that makes *your local server* reachable from that external web UI (via a temporary Cloudflare tunnel). This is the part that touches the internet.
+- A tunnel (currently ngrok in our setup) is the bridge that makes *your local server* reachable from that external web UI. This is the part that touches the internet.
 - The design gives a rich, always-up-to-date visual tool without shipping a full desktop app. The tradeoff is that the UI layer lives outside your machine.
 
-Your code and data never leave the computer when tracing is off. If you want **zero internet at all**, simply do not use `--tunnel` and do not open the hosted Studio. Use the pure-local options below.
+Your code and data never leave the computer when tracing is off. If you want **zero internet at all**, simply do not use a tunnel and do not open the hosted Studio. Use the pure-local options below.
 
 **For truly zero-internet / fully offline debugging (no tunnel, no external domains, no browser to smith.langchain.com):**
 
-Use these options (all run entirely on your machine). The `./bin/run-studio` script (which does `langgraph dev --tunnel`) prints a convenient 🎨 Studio UI link with the `?baseUrl=...` already set — open that for the hosted visual when you want it.
+Use these options (all run entirely on your machine). The `./bin/run-studio` script starts the local dev server (no tunnel). You can then use ngrok (or another tool) for the hosted visual when you want it.
 
 1. **Direct Python (recommended for pure local, no server needed at all)**:
    ```python
@@ -400,14 +400,14 @@ Use these options (all run entirely on your machine). The `./bin/run-studio` scr
    ```
    Starts the server at http://127.0.0.1:2024 on your machine only.
    - Call it from curl, Python requests, or any local tool on the same computer (e.g. POST to /runs/stream).
-   - No Cloudflare, no smith.langchain.com involved.
+   - No tunnel/ngrok, no smith.langchain.com involved.
    - You get the Agent Server API locally for testing inputs/inspecting runs.
 
 See `.env.example` (Local development section) and the official LangGraph docs for more.
 
-The hosted Studio + tunnel is convenient for the visual layer, but the project is fully usable and debuggable offline using the approaches above.
+The hosted Studio + tunnel (ngrok) is convenient for the visual layer, but the project is fully usable and debuggable offline using the approaches above.
 
-Note: "Failed to initialize Studio" / "TypeError: Failed to fetch" / "ConnectionError: Unable to connect..." is common with tunnels. Key gotcha: each `./bin/run-studio` run creates a *new temporary* Cloudflare subdomain. Old URLs (like ones from earlier banners) return 530 "Tunnel error" once the process stops. Always copy the live URLs from the *current running terminal's banner*, warm them up by visiting the plain API URL first in a browser tab, then use the manual "Connect to a local server" flow (not just the pre-filled link). See the detailed steps in the main README.md "Local Debugging" section (it now matches the official LangSmith Studio troubleshooting).
+Note: "Failed to initialize Studio" / "TypeError: Failed to fetch" / "ConnectionError: Unable to connect..." is common with tunnels. Key gotcha: tunnels are ephemeral (new ngrok URL every session). Old URLs stop working once the ngrok process or dev server stops. Always copy the live URL from the *current* terminals, warm it up by visiting the plain API URL first in a browser tab (complete the ngrok visit/warning page), then use the manual "Connect to a local server" flow (not just any pre-filled link). See the detailed steps in the main README.md "Local Debugging" section (it now matches the official LangSmith Studio troubleshooting).
 
 ---
 

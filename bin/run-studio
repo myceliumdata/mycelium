@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
 # ./bin/run-studio
-# Starts the LangGraph dev server with --tunnel so the hosted Studio
-# (smith.langchain.com/studio) can connect to your local graph.
-# Always use the *current* tunnel URL printed below. Tunnels are ephemeral.
+# Starts the LangGraph dev server (for use with LangGraph Studio at
+# smith.langchain.com/studio).
+#
+# We currently use ngrok to expose the local server (Cloudflare --tunnel
+# kept having domain/allowed-list/reliability issues).
+#
+# Typical usage:
+#   ./bin/run-studio
+# Then in another terminal:
+#   ngrok http 2024
+# Use the https://*.ngrok.io (or ngrok-free.app) URL that ngrok prints.
 
 set -e
 
@@ -10,15 +18,16 @@ echo "=== Starting Mycelium for LangGraph Studio ==="
 echo "Tracing forced OFF (LANGCHAIN_TRACING_V2=false)."
 echo ""
 
-echo "Starting LangGraph dev server with tunnel..."
+echo "Starting LangGraph dev server..."
 echo ""
-echo ">>> IMPORTANT (tunnels are ephemeral, use the URLs from THIS run):"
-echo "1. Wait for the banner that prints the 🚀 API https://...trycloudflare.com URL."
-echo "2. In a separate browser tab, open that plain API URL and pass any Cloudflare"
-echo "   'Just a moment...' / check until it shows clean JSON {\"ok\":true}."
-echo "3. Then go to https://smith.langchain.com/studio/ in a *fresh* tab."
-echo "4. Click 'Connect to a local server' and paste the current 🚀 API URL."
-echo "5. If it asks about allowed domain, add the new domain (and https:// version)"
+echo ">>> IMPORTANT (tunnels via ngrok are ephemeral, use the URL from THIS run):"
+echo "1. After this server starts, run 'ngrok http 2024' in another terminal."
+echo "2. Copy the https://...ngrok.io URL it gives you."
+echo "3. In a separate browser tab, open that plain API URL and complete any"
+echo "   ngrok warning/visit page until you see clean JSON {\"ok\":true}."
+echo "4. Then go to https://smith.langchain.com/studio/ in a *fresh* tab."
+echo "5. Click 'Connect to a local server' and paste the current ngrok URL."
+echo "6. If it asks about allowed domain, add the new domain (and https:// version)"
 echo "   in Advanced Settings on the connection panel."
 echo "   (The browser may auto-open a localhost link — ignore it; use the manual flow above.)"
 echo ""
@@ -26,4 +35,5 @@ echo "Starting now..."
 
 LANGCHAIN_TRACING_V2=false \
 uv run --with 'langgraph-cli[inmem]' \
-  langgraph dev --tunnel --no-reload "$@"
+  langgraph dev --no-reload "$@"
+
