@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import atexit
+import os
 import sys
 import uuid
 from pathlib import Path
@@ -11,6 +12,10 @@ from pathlib import Path
 from dotenv import load_dotenv
 from rich.console import Console
 from rich.json import JSON
+
+# Use the stable sync checkpointer path for the one-shot CLI as well.
+# (The MCP server does the same; Studio keeps the async path via default.)
+os.environ["MYCELIUM_USE_SYNC_CHECKPOINTER"] = "1"
 
 from graphs.core import reset_core_graph, run_query
 from models.state import PersonQuery, PersonResponse

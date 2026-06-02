@@ -13,7 +13,7 @@ def _coerce(state: MyceliumGraphState | dict[str, Any]) -> MyceliumGraphState:
     return MyceliumGraphState.model_validate(state)
 
 
-async def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
+def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     """
     Coordinator entry point: classify the query and route to specialists.
 

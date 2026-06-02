@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
 from agents.core_identity import CoreIdentity, get_core_identity
@@ -80,13 +79,17 @@ def _run_core_data_lookup(
     return payload
 
 
-async def core_data_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
+def core_data_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     """
     Specialist agent that owns core CRM data access for public queries.
 
     Resolves ``query.person_key`` via ``CoreIdentity``, then sets ``person`` and
     ``response`` on graph state (found, not-found, or non-core attribute narrative).
     Persist and other mutations will be added here later as internal coordination.
+
+    This is a synchronous function so the compiled graph supports both
+    graph.invoke() (used by the stable MCP server path) and ainvoke()
+    (used by LangGraph Studio).
     """
     current = _coerce(state)
-    return await asyncio.to_thread(_run_core_data_lookup, current)
+    return _run_core_data_lookup(current)

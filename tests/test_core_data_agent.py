@@ -19,8 +19,7 @@ class _StubCoreIdentity(CoreIdentity):
 
 
 @pytest.mark.smoke
-@pytest.mark.asyncio
-async def test_core_data_agent_found(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_core_data_agent_found(monkeypatch: pytest.MonkeyPatch) -> None:
     person = Person(id="p1", name="Ada", employer="Lab")
     stub = _StubCoreIdentity(person)
     monkeypatch.setattr("agents.core_data.get_core_identity", lambda: stub)
@@ -29,7 +28,7 @@ async def test_core_data_agent_found(monkeypatch: pytest.MonkeyPatch) -> None:
         invocation_thread_id="t1",
     )
 
-    result = await core_data_agent(state)
+    result = core_data_agent(state)
 
     assert result["person"] == person
     assert "Found core record" in result["response"].message
@@ -37,15 +36,14 @@ async def test_core_data_agent_found(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.smoke
-@pytest.mark.asyncio
-async def test_core_data_agent_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_core_data_agent_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "agents.core_data.get_core_identity",
         lambda: _StubCoreIdentity(None),
     )
     state = MyceliumGraphState(query=PersonQuery(person_key="Missing"))
 
-    result = await core_data_agent(state)
+    result = core_data_agent(state)
 
     assert "person" not in result
     assert result["response"].results == []
@@ -53,8 +51,7 @@ async def test_core_data_agent_not_found(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 @pytest.mark.smoke
-@pytest.mark.asyncio
-async def test_core_data_agent_non_core(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_core_data_agent_non_core(monkeypatch: pytest.MonkeyPatch) -> None:
     person = Person(id="p1", name="Ada", employer="Lab")
     monkeypatch.setattr(
         "agents.core_data.get_core_identity",
@@ -64,7 +61,7 @@ async def test_core_data_agent_non_core(monkeypatch: pytest.MonkeyPatch) -> None
         query=PersonQuery(person_key="Ada", requested_attributes=["email"]),
     )
 
-    result = await core_data_agent(state)
+    result = core_data_agent(state)
 
     assert result["person"] == person
     assert "still researching" in result["response"].message

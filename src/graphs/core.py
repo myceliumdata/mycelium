@@ -2,9 +2,11 @@
 
 Flow: START → supervisor (classify & route) → core_data (lookup & response) → END.
 
-Uses AsyncSqliteSaver (aiosqlite) + async nodes so langgraph dev / Studio (ASGI)
-can ainvoke without blocking warnings. CLI and MCP use the sync run_query()
-bridge which does asyncio.run(ainvoke) internally.
+The default uses AsyncSqliteSaver (aiosqlite) so LangGraph Studio / langgraph dev
+(ASGI) can use ainvoke cleanly. The MCP server forces the sync SqliteSaver path
+(via MYCELIUM_USE_SYNC_CHECKPOINTER) for stability across many sequential
+run_query calls inside a single long-lived stdio process. CLI currently goes
+through the async path (one-shot invocations).
 """
 
 from __future__ import annotations
@@ -16,7 +18,9 @@ from pathlib import Path
 from typing import Any, Literal
 
 import aiosqlite
+import sqlite3
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
@@ -38,8 +42,9 @@ _CHECKPOINT_MSGPACK_ALLOWLIST: tuple[tuple[str, str], ...] = (
 
 Route = Literal["core_data", "__end__"]
 _compiled_graph: CompiledStateGraph | None = None
-_checkpointer_ctx: AsyncSqliteSaver | None = None
+_checkpointer_ctx: AsyncSqliteSaver | SqliteSaver | None = None
 _last_invocation_trace_id: str | None = None
+_is_async_checkpointer: bool = True
 
 
 async def _setup_async_checkpointer(checkpoint_path: Path) -> AsyncSqliteSaver:
@@ -52,24 +57,31 @@ async def _setup_async_checkpointer(checkpoint_path: Path) -> AsyncSqliteSaver:
     return saver
 
 
-def _close_async_checkpointer() -> None:
-    """Close the process-wide async checkpointer connection if present."""
-    global _checkpointer_ctx
+def _close_checkpointer() -> None:
+    """Close the process-wide checkpointer connection (async or sync) if present."""
+    global _checkpointer_ctx, _is_async_checkpointer
     if _checkpointer_ctx is None:
         return
     conn = _checkpointer_ctx.conn
+    if _is_async_checkpointer:
+        async def _close() -> None:
+            await conn.close()
 
-    async def _close() -> None:
-        await conn.close()
-
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        asyncio.run(_close())
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            asyncio.run(_close())
+        else:
+            # Called from an active loop (unusual for this codebase); schedule close.
+            asyncio.create_task(_close())
     else:
-        # Called from an active loop (unusual for this codebase); schedule close.
-        asyncio.create_task(_close())
+        # Sync SqliteSaver uses a regular sqlite3 connection.
+        try:
+            conn.close()
+        except Exception:
+            pass
     _checkpointer_ctx = None
+    _is_async_checkpointer = True
 
 
 def _langsmith_tracing_enabled() -> bool:
@@ -110,7 +122,7 @@ def reset_last_invocation_trace_id() -> None:
 def reset_core_graph() -> None:
     """Clear compiled graph singleton (for tests)."""
     global _compiled_graph
-    _close_async_checkpointer()
+    _close_checkpointer()
     _compiled_graph = None
     reset_last_invocation_trace_id()
 
@@ -130,8 +142,16 @@ def build_core_graph(
     *,
     checkpoint_path: Path | None = None,
     setup_checkpointer: bool = True,
+    async_checkpointer: bool | None = None,
 ) -> CompiledStateGraph:
-    """Compile the query-only graph with a SQLite checkpointer."""
+    """Compile the query-only graph with a SQLite checkpointer.
+
+    By default uses the async (aiosqlite) saver, which is required for
+    LangGraph Studio / langgraph dev (ASGI). Callers that need a long-lived
+    synchronous process (MCP server, some CLI scenarios) can request the
+    sync SqliteSaver by passing async_checkpointer=False or by setting
+    MYCELIUM_USE_SYNC_CHECKPOINTER=1 before importing graphs.core.
+    """
     graph: StateGraph = StateGraph(MyceliumGraphState)
 
     graph.add_node("supervisor", supervisor_agent)
@@ -145,41 +165,66 @@ def build_core_graph(
     )
     graph.add_edge("core_data", END)
 
-    checkpointer: AsyncSqliteSaver | None = None
+    checkpointer: AsyncSqliteSaver | SqliteSaver | None = None
     if setup_checkpointer:
-        global _checkpointer_ctx
+        global _checkpointer_ctx, _is_async_checkpointer
         resolved = Path(
             os.getenv("MYCELIUM_CHECKPOINT_PATH", str(checkpoint_path or DEFAULT_CHECKPOINT_PATH)),
         )
-        try:
-            asyncio.get_running_loop()
-            in_loop = True
-        except RuntimeError:
-            in_loop = False
 
-        if in_loop:
-            raise RuntimeError(
-                "build_core_graph() (and thus get_core_graph()) was invoked "
-                "from within a running event loop. The eager `get_core_graph()` "
-                "call at the bottom of this module should ensure the (one-time) "
-                "build + asyncio.run for the async checkpointer happens at import "
-                "time, before langgraph dev / Studio's ASGI loop starts serving. "
-                "If you hit this after reset_core_graph() in an async context, "
-                "re-acquire the graph from a synchronous context, or restructure "
-                "so the singleton is not cleared while the server loop is live."
-            )
+        # Determine saver type. Default = async (Studio friendly).
+        # MCP server sets MYCELIUM_USE_SYNC_CHECKPOINTER=1 before import.
+        if async_checkpointer is None:
+            env_sync = os.getenv("MYCELIUM_USE_SYNC_CHECKPOINTER", "").lower()
+            use_sync = env_sync in {"1", "true", "yes", "on"}
+            use_async = not use_sync
+        else:
+            use_async = async_checkpointer
 
-        _checkpointer_ctx = asyncio.run(_setup_async_checkpointer(resolved))
-        checkpointer = _checkpointer_ctx
+        if use_async:
+            try:
+                asyncio.get_running_loop()
+                in_loop = True
+            except RuntimeError:
+                in_loop = False
+
+            if in_loop:
+                raise RuntimeError(
+                    "build_core_graph() (and thus get_core_graph()) was invoked "
+                    "from within a running event loop. The eager `get_core_graph()` "
+                    "call at the bottom of this module should ensure the (one-time) "
+                    "build + asyncio.run for the async checkpointer happens at import "
+                    "time, before langgraph dev / Studio's ASGI loop starts serving. "
+                    "If you hit this after reset_core_graph() in an async context, "
+                    "re-acquire the graph from a synchronous context, or restructure "
+                    "so the singleton is not cleared while the server loop is live."
+                )
+
+            _checkpointer_ctx = asyncio.run(_setup_async_checkpointer(resolved))
+            _is_async_checkpointer = True
+            checkpointer = _checkpointer_ctx
+        else:
+            # Sync path: regular sqlite3 connection + SqliteSaver.
+            # Much more stable for long-running stdio servers (MCP) that make
+            # repeated run_query calls, because we avoid asyncio.run + aiosqlite
+            # loop affinity problems.
+            resolved.parent.mkdir(parents=True, exist_ok=True)
+            conn = sqlite3.connect(str(resolved), check_same_thread=False)
+            serde = JsonPlusSerializer(allowed_msgpack_modules=_CHECKPOINT_MSGPACK_ALLOWLIST)
+            saver = SqliteSaver(conn, serde=serde)
+            saver.setup()
+            _checkpointer_ctx = saver
+            _is_async_checkpointer = False
+            checkpointer = _checkpointer_ctx
 
     return graph.compile(checkpointer=checkpointer)
 
 
-def get_core_graph() -> CompiledStateGraph:
+def get_core_graph(async_checkpointer: bool | None = None) -> CompiledStateGraph:
     """Return a process-wide compiled graph singleton."""
     global _compiled_graph
     if _compiled_graph is None:
-        _compiled_graph = build_core_graph()
+        _compiled_graph = build_core_graph(async_checkpointer=async_checkpointer)
     return _compiled_graph
 
 
@@ -220,8 +265,47 @@ def _invoke_core_graph(
     initial: MyceliumGraphState,
     config: dict[str, Any],
 ) -> Any:
-    """Sync entry for CLI/MCP; runs the async graph invoke in a fresh event loop."""
+    """Sync entry for CLI/MCP when using the async checkpointer.
+
+    Runs the async graph invoke in a fresh event loop via asyncio.run().
+    Only used for the async saver path (Studio, default).
+    """
     return asyncio.run(_ainvoke_core_graph(graph, initial, config))
+
+
+def _invoke_sync_graph(
+    graph: CompiledStateGraph,
+    initial: MyceliumGraphState,
+    config: dict[str, Any],
+) -> Any:
+    """Direct sync invoke for the sync SqliteSaver path (used by MCP server).
+
+    Avoids any asyncio.run() + aiosqlite loop affinity issues in long-lived
+    processes that handle multiple sequential queries.
+    """
+    global _last_invocation_trace_id
+    _last_invocation_trace_id = None
+
+    if _langsmith_tracing_enabled():
+        try:
+            from langsmith import traceable
+            from langsmith.run_helpers import get_current_run_tree
+
+            @traceable(name="mycelium_core_graph", run_type="chain")
+            def _traced_sync_invoke(initial_state: MyceliumGraphState, cfg: dict[str, Any]) -> Any:
+                global _last_invocation_trace_id
+                res = graph.invoke(initial_state, config=cfg)
+                tree = get_current_run_tree()
+                if tree is not None:
+                    _last_invocation_trace_id = str(tree.trace_id) if tree.trace_id else None
+                return res
+
+            return _traced_sync_invoke(initial, config)
+        except Exception:
+            # Fall back to plain invoke if langsmith traceable isn't usable here.
+            pass
+
+    return graph.invoke(initial, config=config)
 
 
 def _finalize_response(
@@ -257,7 +341,12 @@ def run_query(
         invocation_thread_id=thread_id,
     )
     config = {"configurable": {"thread_id": thread_id}}
-    result = _invoke_core_graph(graph, initial, config)
+
+    if _is_async_checkpointer:
+        result = _invoke_core_graph(graph, initial, config)
+    else:
+        result = _invoke_sync_graph(graph, initial, config)
+
     captured_trace_id = get_last_invocation_trace_id()
     final = (
         result
@@ -288,8 +377,15 @@ def run_query(
 # happens before the ASGI server loop is active. Subsequent calls return the
 # cached graph without re-entering build_core_graph.
 #
+# The MCP server (mycelium_mcp/server.py) sets MYCELIUM_USE_SYNC_CHECKPOINTER=1
+# *before* importing this module so it gets a stable sync SqliteSaver instead of
+# the async one. This prevents the repeated-asyncio.run + aiosqlite connection
+# affinity problems that can cause the server to get "stuck" after a few calls
+# in a long-lived stdio process.
+#
 # Skip during pytest runs (including collection of smoke tests) to avoid
 # creating long-lived aiosqlite connections/threads that prevent the pytest
 # process from exiting promptly after the tests have reported their results.
 if "pytest" not in sys.modules:
-    get_core_graph()
+    use_sync = os.getenv("MYCELIUM_USE_SYNC_CHECKPOINTER", "").lower() in {"1", "true", "yes", "on"}
+    get_core_graph(async_checkpointer=not use_sync)

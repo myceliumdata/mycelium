@@ -66,12 +66,11 @@ def test_routing_non_core_attributes() -> None:
 
 
 @pytest.mark.smoke
-@pytest.mark.asyncio
-async def test_supervisor_agent_routes_to_core_data() -> None:
+def test_supervisor_agent_routes_to_core_data() -> None:
     """Supervisor node only classifies; it does not build responses."""
     state = MyceliumGraphState(query=PersonQuery(person_key="any-key"))
 
-    result = await supervisor_agent(state)
+    result = supervisor_agent(state)
 
     assert result["route"] == "core_data"
     assert "response" not in result
