@@ -141,6 +141,24 @@ def build_core_graph(
         resolved = Path(
             os.getenv("MYCELIUM_CHECKPOINT_PATH", str(checkpoint_path or DEFAULT_CHECKPOINT_PATH)),
         )
+        try:
+            loop = asyncio.get_running_loop()
+            in_loop = True
+        except RuntimeError:
+            in_loop = False
+
+        if in_loop:
+            raise RuntimeError(
+                "build_core_graph() (and thus get_core_graph()) was invoked "
+                "from within a running event loop. The eager `get_core_graph()` "
+                "call at the bottom of this module should ensure the (one-time) "
+                "build + asyncio.run for the async checkpointer happens at import "
+                "time, before langgraph dev / Studio's ASGI loop starts serving. "
+                "If you hit this after reset_core_graph() in an async context, "
+                "re-acquire the graph from a synchronous context, or restructure "
+                "so the singleton is not cleared while the server loop is live."
+            )
+
         _checkpointer_ctx = asyncio.run(_setup_async_checkpointer(resolved))
         checkpointer = _checkpointer_ctx
 
@@ -253,3 +271,13 @@ def run_query(
         thread_id=thread_id,
         trace_id=captured_trace_id,
     )
+
+
+# Eager initialization of the graph singleton at module import time.
+# langgraph dev / Studio (and its langgraph_api) lazily invokes the graph factory
+# (get_core_graph) from within a running event loop (during request handling
+# in langgraph_api/graph.py -> get_graph). Performing the build (which calls
+# asyncio.run for the async checkpointer setup) at import time ensures it
+# happens before the ASGI server loop is active. Subsequent calls return the
+# cached graph without re-entering build_core_graph.
+get_core_graph()

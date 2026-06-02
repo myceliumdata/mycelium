@@ -1,13 +1,29 @@
 #!/usr/bin/env bash
-# ./bin/run-studio — Stable version for Mycelium
+# ./bin/run-studio
+# Starts the LangGraph dev server with --tunnel so the hosted Studio
+# (smith.langchain.com/studio) can connect to your local graph.
+# Always use the *current* tunnel URL printed below. Tunnels are ephemeral.
 
 set -e
 
 echo "=== Starting Mycelium for LangGraph Studio ==="
-echo "Tracing forced OFF."
+echo "Tracing forced OFF (LANGCHAIN_TRACING_V2=false)."
 echo ""
 
-# Start the server (use --allow-blocking for now)
+echo "Starting LangGraph dev server with tunnel..."
+echo ""
+echo ">>> IMPORTANT (tunnels are ephemeral, use the URLs from THIS run):"
+echo "1. Wait for the banner that prints the 🚀 API https://...trycloudflare.com URL."
+echo "2. In a separate browser tab, open that plain API URL and pass any Cloudflare"
+echo "   'Just a moment...' / check until it shows clean JSON {\"ok\":true}."
+echo "3. Then go to https://smith.langchain.com/studio/ in a *fresh* tab."
+echo "4. Click 'Connect to a local server' and paste the current 🚀 API URL."
+echo "5. If it asks about allowed domain, add the new domain (and https:// version)"
+echo "   in Advanced Settings on the connection panel."
+echo "   (The browser may auto-open a localhost link — ignore it; use the manual flow above.)"
+echo ""
+echo "Starting now..."
+
 LANGCHAIN_TRACING_V2=false \
 uv run --with 'langgraph-cli[inmem]' \
-  langgraph dev --no-reload --allow-blocking "$@"
+  langgraph dev --tunnel --no-reload "$@"
