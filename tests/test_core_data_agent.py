@@ -48,3 +48,21 @@ async def test_core_data_agent_not_found(monkeypatch: pytest.MonkeyPatch) -> Non
     assert "person" not in result
     assert result["response"].results == []
     assert "No core record found" in result["response"].message
+
+
+@pytest.mark.asyncio
+async def test_core_data_agent_non_core(monkeypatch: pytest.MonkeyPatch) -> None:
+    person = Person(id="p1", name="Ada", employer="Lab")
+    monkeypatch.setattr(
+        "agents.core_data.get_core_identity",
+        lambda: _StubCoreIdentity(person),
+    )
+    state = MyceliumGraphState(
+        query=PersonQuery(person_key="Ada", requested_attributes=["email"]),
+    )
+
+    result = await core_data_agent(state)
+
+    assert result["person"] == person
+    assert "still researching" in result["response"].message
+    assert "email" in result["response"].message

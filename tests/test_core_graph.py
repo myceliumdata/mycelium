@@ -1,4 +1,4 @@
-"""Tests for core Mycelium graph and storage."""
+"""Tests for core Mycelium graph and storage (query-only public paths)."""
 
 from __future__ import annotations
 
@@ -104,3 +104,37 @@ def test_run_query_default_thread_id(temp_storage: CoreStorage) -> None:
     response = run_query(PersonQuery(person_key="person-test"))
     assert response.thread_id == "default"
     assert response.trace_id is None
+
+
+def test_graph_invokes_supervisor_then_core_data(temp_storage: CoreStorage) -> None:
+    """End-to-end graph path after 1070: supervisor routes, core_data responds."""
+    import asyncio
+
+    from graphs.core import build_core_graph
+    from models.state import MyceliumGraphState
+
+    _ = temp_storage
+    graph = build_core_graph()
+    initial = MyceliumGraphState(
+        query=PersonQuery(person_key="person-test"),
+        invocation_thread_id="graph-path-test",
+    )
+    final = asyncio.run(
+        graph.ainvoke(
+            initial,
+            config={"configurable": {"thread_id": "graph-path-test"}},
+        ),
+    )
+    state = (
+        final
+        if isinstance(final, MyceliumGraphState)
+        else MyceliumGraphState.model_validate(final)
+    )
+
+    assert state.response is not None
+    assert len(state.response.results) == 1
+    assert "Found core record" in state.response.message
+    joined_logs = " ".join(state.audit_log)
+    assert "Supervisor" in joined_logs
+    assert "routing to core_data" in joined_logs
+    assert "CoreDataAgent" in joined_logs
