@@ -57,9 +57,57 @@ def test_run_query_clears_trace_id_when_tracing_disabled(
     from storage.core import get_storage
 
     get_storage()
-    run_query(PersonQuery(person_key="person-test"))
+    response = run_query(
+        PersonQuery(person_key="person-test"),
+        thread_id="trace-test-thread",
+    )
 
     assert get_last_invocation_trace_id() is None
+    assert response.thread_id == "trace-test-thread"
+    assert response.trace_id is None
+    reset_storage()
+    reset_core_identity()
+    reset_core_graph()
+
+
+def test_run_query_sets_trace_id_on_response_when_captured(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reset_storage()
+    reset_core_identity()
+    reset_core_graph()
+    seed = tmp_path / "seed.json"
+    seed.write_text(
+        json.dumps(
+            {
+                "people": [
+                    {"id": "person-test", "name": "Test User", "employer": "Test Co"},
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("MYCELIUM_DB_PATH", str(tmp_path / "test.db"))
+    monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
+    monkeypatch.setenv("MYCELIUM_CHECKPOINT_PATH", str(tmp_path / "cp.sqlite"))
+    monkeypatch.setenv("LANGCHAIN_TRACING_V2", "true")
+
+    from storage.core import get_storage
+
+    get_storage()
+
+    with (
+        patch("graphs.core._langsmith_tracing_enabled", return_value=True),
+        patch("graphs.core.capture_langsmith_trace_id", return_value="trace-abc"),
+    ):
+        response = run_query(
+            PersonQuery(person_key="person-test"),
+            thread_id="traced-thread",
+        )
+
+    assert response.thread_id == "traced-thread"
+    assert response.trace_id == "trace-abc"
     reset_storage()
     reset_core_identity()
     reset_core_graph()

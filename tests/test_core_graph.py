@@ -128,3 +128,38 @@ def test_results_are_plain_dicts(temp_storage: CoreStorage) -> None:
     for item in response.results:
         assert isinstance(item, dict)
         assert set(item.keys()) <= {"id", "name", "employer"}
+
+
+def test_run_query_echoes_thread_id_on_lookup(temp_storage: CoreStorage) -> None:
+    _ = temp_storage
+    response = run_query(
+        PersonQuery(person_key="person-test"),
+        thread_id="thread-lookup-1",
+    )
+    assert response.thread_id == "thread-lookup-1"
+    assert response.trace_id is None
+
+
+def test_run_query_echoes_thread_id_on_ingest(temp_storage: CoreStorage) -> None:
+    _ = temp_storage
+    response = run_query(
+        PersonQuery(
+            person_key="Another User",
+            provided_data=Person(
+                id="",
+                name="Another User",
+                employer="Another Co",
+            ),
+        ),
+        thread_id="thread-ingest-1",
+    )
+    assert response.thread_id == "thread-ingest-1"
+    assert response.trace_id is None
+    assert "Added core record" in response.message
+
+
+def test_run_query_default_thread_id(temp_storage: CoreStorage) -> None:
+    _ = temp_storage
+    response = run_query(PersonQuery(person_key="person-test"))
+    assert response.thread_id == "default"
+    assert response.trace_id is None
