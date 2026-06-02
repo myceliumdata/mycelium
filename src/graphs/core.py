@@ -150,6 +150,23 @@ def _invoke_core_graph(
     return graph.invoke(initial, config=config)
 
 
+def _finalize_response(
+    response: PersonResponse,
+    *,
+    thread_id: str,
+    trace_id: str | None,
+) -> PersonResponse:
+    """Ensure caller thread_id and captured trace_id are on the outbound response."""
+    if response.thread_id == thread_id and response.trace_id == trace_id:
+        return response
+    return response.model_copy(
+        update={
+            "thread_id": thread_id,
+            "trace_id": trace_id,
+        },
+    )
+
+
 def run_query(
     query: PersonQuery,
     *,
@@ -157,19 +174,29 @@ def run_query(
 ) -> PersonResponse:
     """Invoke the core graph and return a JSON-serializable response."""
     graph = get_core_graph()
-    initial = MyceliumGraphState(query=query)
+    initial = MyceliumGraphState(
+        query=query,
+        invocation_thread_id=thread_id,
+    )
     config = {"configurable": {"thread_id": thread_id}}
     result = _invoke_core_graph(graph, initial, config)
+    captured_trace_id = get_last_invocation_trace_id()
     final = (
         result
         if isinstance(result, MyceliumGraphState)
         else MyceliumGraphState.model_validate(result)
     )
     if final.response is not None:
-        return final.response
+        return _finalize_response(
+            final.response,
+            thread_id=thread_id,
+            trace_id=captured_trace_id,
+        )
 
     return PersonResponse(
         results=[],
         message="Graph finished without a response payload.",
         debug="No response set by supervisor.",
+        thread_id=thread_id,
+        trace_id=captured_trace_id,
     )
