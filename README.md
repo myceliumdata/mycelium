@@ -180,9 +180,21 @@ mycelium/
 
 ## Development
 
+Frequent/quick smoke tests (during dev, Cursor work, quick checks):
 ```bash
-uv run pytest
+uv run pytest -m smoke -q
 uv run ruff check src tests
+```
+
+Full test suite (end of major changesets, before reviews, full verification):
+```bash
+uv run pytest -q
+uv run ruff check src tests
+```
+
+See `tests/` for `@pytest.mark.smoke` (fast unit) vs `@pytest.mark.full` (integration with real storage/graph).
+
+**For Cursor agents:** See the "Test Execution Policy" in `prompts/cursor/WORKFLOW.md` (and the embedded rule in `.cursor/rules/04-cursor-workflow.mdc`). Default to smoke tests only. If adding a test, Grok determines the category for any new test; run full tests immediately for any full-suite test. See the policy for details.
 ```
 
 ## Status

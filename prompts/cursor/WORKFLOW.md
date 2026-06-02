@@ -204,6 +204,21 @@ If you determine that changes outside this scope are necessary to keep the syste
 
 This rule is mandatory. Violating scope boundaries will be treated as a failure to follow instructions.
 
+## Test Execution Policy (Important for Speed)
+
+To avoid slow full test runs during rapid iteration:
+
+- **Default behavior**: Only ever run smoke tests unless explicitly required otherwise: `uv run pytest -m smoke -q`
+- **Exception**: If your work involves *adding a new test* (or significantly changing one), Grok determines its category (you should document the assignment or ask explicitly). You **must immediately run the appropriate test(s)**:
+  - Smoke tests: pure unit tests (stubs, mocks, monkeypatches only; no real DB/storage, no `run_query`, no full graph `ainvoke` or checkpointing).
+  - Full tests: anything that exercises real storage, checkpoints, `run_query`, `build_core_graph`, or heavy integration (e.g. most of `test_core_graph.py` and the DB-using tests in `test_trace_capture.py`).
+- **Grok decides the category**: Grok determines the category for any new test (you should note it or ask if unclear). Document the category in your `output.md`. If it is full, run the full suite (or at minimum the new test using the full marker) right away before claiming the task is complete.
+- This policy applies even if a task prompt vaguely says "run tests" or "verify". Interpret "tests" as smoke-only unless the task is adding full-suite tests.
+- Update the relevant test file with the correct `@pytest.mark.smoke` or `@pytest.mark.full` decorator as part of the change.
+- See `pyproject.toml` for marker definitions, `README.md` and `TODO.md` for usage, and the current reset file for session context.
+
+This keeps frequent work fast while ensuring new full tests are validated immediately.
+
 ## Current Status (as of creation)
 
 This workflow is being established in late May 2026 to improve collaboration between Grok, Paul, and Cursor agents.

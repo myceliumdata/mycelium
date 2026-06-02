@@ -46,6 +46,7 @@ def temp_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> CoreStorage
     reset_core_graph()
 
 
+@pytest.mark.full
 def test_query_existing_person(temp_storage: CoreStorage) -> None:
     _ = temp_storage
     response = run_query(PersonQuery(person_key="person-test"))
@@ -56,6 +57,7 @@ def test_query_existing_person(temp_storage: CoreStorage) -> None:
     assert "person_key='person-test'" in response.debug
 
 
+@pytest.mark.full
 def test_query_missing_person(temp_storage: CoreStorage) -> None:
     _ = temp_storage
     response = run_query(PersonQuery(person_key="Missing Person"))
@@ -65,6 +67,7 @@ def test_query_missing_person(temp_storage: CoreStorage) -> None:
     assert "outcome='not_found'" in response.debug
 
 
+@pytest.mark.full
 def test_query_non_core_attributes(temp_storage: CoreStorage) -> None:
     _ = temp_storage
     response = run_query(
@@ -81,6 +84,7 @@ def test_query_non_core_attributes(temp_storage: CoreStorage) -> None:
     assert "non_core_requested='age, x_handle'" in response.debug
 
 
+@pytest.mark.full
 def test_results_are_plain_dicts(temp_storage: CoreStorage) -> None:
     _ = temp_storage
     response = run_query(PersonQuery(person_key="person-test"))
@@ -89,6 +93,7 @@ def test_results_are_plain_dicts(temp_storage: CoreStorage) -> None:
         assert set(item.keys()) <= {"id", "name", "employer"}
 
 
+@pytest.mark.full
 def test_run_query_echoes_thread_id_on_lookup(temp_storage: CoreStorage) -> None:
     _ = temp_storage
     response = run_query(
@@ -99,6 +104,7 @@ def test_run_query_echoes_thread_id_on_lookup(temp_storage: CoreStorage) -> None
     assert response.trace_id is None
 
 
+@pytest.mark.full
 def test_run_query_default_thread_id(temp_storage: CoreStorage) -> None:
     _ = temp_storage
     response = run_query(PersonQuery(person_key="person-test"))
@@ -106,6 +112,7 @@ def test_run_query_default_thread_id(temp_storage: CoreStorage) -> None:
     assert response.trace_id is None
 
 
+@pytest.mark.full
 def test_graph_invokes_supervisor_then_core_data(temp_storage: CoreStorage) -> None:
     """End-to-end graph path after 1070: supervisor routes, core_data responds."""
     import asyncio

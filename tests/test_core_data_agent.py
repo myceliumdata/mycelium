@@ -18,6 +18,7 @@ class _StubCoreIdentity(CoreIdentity):
         return self._person
 
 
+@pytest.mark.smoke
 @pytest.mark.asyncio
 async def test_core_data_agent_found(monkeypatch: pytest.MonkeyPatch) -> None:
     person = Person(id="p1", name="Ada", employer="Lab")
@@ -35,6 +36,7 @@ async def test_core_data_agent_found(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result["response"].thread_id == "t1"
 
 
+@pytest.mark.smoke
 @pytest.mark.asyncio
 async def test_core_data_agent_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
@@ -50,6 +52,7 @@ async def test_core_data_agent_not_found(monkeypatch: pytest.MonkeyPatch) -> Non
     assert "No core record found" in result["response"].message
 
 
+@pytest.mark.smoke
 @pytest.mark.asyncio
 async def test_core_data_agent_non_core(monkeypatch: pytest.MonkeyPatch) -> None:
     person = Person(id="p1", name="Ada", employer="Lab")

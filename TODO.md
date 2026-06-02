@@ -83,6 +83,10 @@ Decision owner: Paul
   **Note (Paul, May 2026):** For now, run everything locally. Do not make CI required or blocking. Add the workflows as a foundation, but keep them optional/manual until the core logic has stabilized.
 - [ ] Decide on release / versioning strategy
 
+## Testing
+
+- [x] Split tests into fast smoke (run frequently with `pytest -m smoke`) and full integration (run infrequently with plain `pytest` at end of major changes). See test files for `@pytest.mark.smoke` / `@pytest.mark.full`, README, and "Test Execution Policy" section in `prompts/cursor/WORKFLOW.md`. Cursor must default to smoke tests only, unless adding a full-suite test (in which case run it immediately). Grok determines the category for any new test. (addressed 2026-06)
+
 ## Documentation
 
 - [ ] Keep `docs/architecture.md` up to date as the active implementation guide

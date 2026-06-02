@@ -75,3 +75,8 @@ See `prompts/cursor/WORKFLOW.md` and `.cursor/rules/04-cursor-workflow.mdc`:
 **References:** `docs/full-code-walkthrough.md`, `prompts/cursor/done/2026-06-05-1110-*/review.md`, task 1120 output.
 
 **Suggested approach:** Add focused prompts under `prompts/cursor/next/` per TODO item; claim one at a time per WORKFLOW.md.
+
+**Note on tests:** 
+- Frequent: `uv run pytest -m smoke -q`
+- End of major changes: full `uv run pytest -q`
+- Cursor rule: Only run smoke tests by default. If you add a test, Grok determines the category for any new test (smoke = stubs/mocks only; full = real DB/graph/checkpoints). If it's full, run that test (using full marker) *immediately*. Always add the correct `@pytest.mark.*` decorator. See "Test Execution Policy" in `prompts/cursor/WORKFLOW.md` and the .cursor rule.

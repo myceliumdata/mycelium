@@ -79,7 +79,7 @@ See `docs/architecture.md`.
 - [x] `tmp/restart-server-for-schema.md` query-only; ingest teaching files removed (1110).
 - [x] Resets refreshed; `2026-06-05_mvp_current.md` added.
 - [x] Checkpoint "Deserializing unregistered type" warnings addressed (`JsonPlusSerializer` allowlist in `graphs/core.py`).
-- [x] Tests, linter, CLI/graph smokes pass.
+- [x] Tests (smoke for frequent, full for end-of-changeset), linter, CLI/graph smokes pass. (See split in README, pyproject markers, and "Test Execution Policy" in WORKFLOW.md. Cursor: default to smoke; run full immediately for any new full test added. Grok determines the category for any new test.)
 
 **Relevant Files / References:** `prompts/cursor/done/2026-06-05-1110-*/review.md`, `1120` output, `docs/architecture.md`, `TODO.md`.
 

@@ -67,3 +67,7 @@ disallow_untyped_defs = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+markers = [
+    "smoke: fast smoke tests for frequent runs during development and quick verification",
+    "full: heavier integration tests (real DB, graph, checkpoints) run at end of major changesets",
+]

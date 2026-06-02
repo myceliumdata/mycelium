@@ -23,6 +23,7 @@ class _StubCoreIdentity(CoreIdentity):
         self.persisted.append(person)
 
 
+@pytest.mark.smoke
 def test_routing_delegates_lookup_to_core_identity() -> None:
     person = Person(id="p1", name="Ada", employer="Lab")
     core_identity = _StubCoreIdentity(person)
@@ -35,6 +36,7 @@ def test_routing_delegates_lookup_to_core_identity() -> None:
     assert "Found core record" in decision.response.message
 
 
+@pytest.mark.smoke
 def test_routing_not_found_when_missing() -> None:
     core_identity = _StubCoreIdentity(None)
     state = MyceliumGraphState(query=PersonQuery(person_key="Missing"))
@@ -48,6 +50,7 @@ def test_routing_not_found_when_missing() -> None:
     assert "provided_data" not in decision.response.message.lower()
 
 
+@pytest.mark.smoke
 def test_routing_non_core_attributes() -> None:
     person = Person(id="p1", name="Ada", employer="Lab")
     core_identity = _StubCoreIdentity(person)
@@ -62,6 +65,7 @@ def test_routing_non_core_attributes() -> None:
     assert "age" in decision.response.message
 
 
+@pytest.mark.smoke
 @pytest.mark.asyncio
 async def test_supervisor_agent_routes_to_core_data() -> None:
     """Supervisor node only classifies; it does not build responses."""

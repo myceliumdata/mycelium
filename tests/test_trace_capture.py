@@ -19,11 +19,13 @@ from models.state import PersonQuery
 from storage.core import reset_storage
 
 
+@pytest.mark.smoke
 def test_capture_returns_none_without_run_tree() -> None:
     with patch("langsmith.run_helpers.get_current_run_tree", return_value=None):
         assert capture_langsmith_trace_id() is None
 
 
+@pytest.mark.smoke
 def test_capture_returns_trace_id_from_run_tree() -> None:
     run_tree = MagicMock()
     run_tree.trace_id = "trace-123"
@@ -31,6 +33,7 @@ def test_capture_returns_trace_id_from_run_tree() -> None:
         assert capture_langsmith_trace_id() == "trace-123"
 
 
+@pytest.mark.full
 def test_run_query_clears_trace_id_when_tracing_disabled(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -70,6 +73,7 @@ def test_run_query_clears_trace_id_when_tracing_disabled(
     reset_core_graph()
 
 
+@pytest.mark.full
 def test_run_query_sets_trace_id_on_response_when_captured(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
