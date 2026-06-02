@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from models.state import MINIMUM_VIABLE_FIELDS, Person, PersonQuery, PersonResponse
 
 
@@ -14,6 +16,23 @@ def debug_for_query(query: PersonQuery, **extra: str) -> str:
     return "; ".join(parts)
 
 
+def _make_response(
+    *,
+    results: list[dict[str, Any]],
+    message: str,
+    debug: str,
+    trace_id: str | None = None,
+    thread_id: str | None = None,
+) -> PersonResponse:
+    return PersonResponse(
+        results=results,
+        message=message,
+        debug=debug,
+        trace_id=trace_id,
+        thread_id=thread_id,
+    )
+
+
 def _ingest_guidance_message(person_key: str) -> str:
     required = ", ".join(MINIMUM_VIABLE_FIELDS)
     return (
@@ -24,17 +43,30 @@ def _ingest_guidance_message(person_key: str) -> str:
     )
 
 
-def response_found(query: PersonQuery, person: Person) -> PersonResponse:
-    return PersonResponse(
+def response_found(
+    query: PersonQuery,
+    person: Person,
+    *,
+    trace_id: str | None = None,
+    thread_id: str | None = None,
+) -> PersonResponse:
+    return _make_response(
         results=[person.core_dict()],
         message=f"Found core record for {person.name}.",
         debug=debug_for_query(query, outcome="found"),
+        trace_id=trace_id,
+        thread_id=thread_id,
     )
 
 
-def response_not_found(query: PersonQuery) -> PersonResponse:
+def response_not_found(
+    query: PersonQuery,
+    *,
+    trace_id: str | None = None,
+    thread_id: str | None = None,
+) -> PersonResponse:
     required = ", ".join(MINIMUM_VIABLE_FIELDS)
-    return PersonResponse(
+    return _make_response(
         results=[],
         message=_ingest_guidance_message(query.person_key),
         debug=debug_for_query(
@@ -42,12 +74,21 @@ def response_not_found(query: PersonQuery) -> PersonResponse:
             outcome="ingest_required",
             required_fields=required,
         ),
+        trace_id=trace_id,
+        thread_id=thread_id,
     )
 
 
-def response_non_core(query: PersonQuery, person: Person, attributes: list[str]) -> PersonResponse:
+def response_non_core(
+    query: PersonQuery,
+    person: Person,
+    attributes: list[str],
+    *,
+    trace_id: str | None = None,
+    thread_id: str | None = None,
+) -> PersonResponse:
     attr_list = ", ".join(attributes)
-    return PersonResponse(
+    return _make_response(
         results=[person.core_dict()],
         message=(
             f"We have a core record for {person.name}, but we're still researching "
@@ -58,20 +99,38 @@ def response_non_core(query: PersonQuery, person: Person, attributes: list[str])
             outcome="non_core_requested",
             non_core_requested=attr_list,
         ),
+        trace_id=trace_id,
+        thread_id=thread_id,
     )
 
 
-def response_ingest_success(query: PersonQuery, person: Person) -> PersonResponse:
-    return PersonResponse(
+def response_ingest_success(
+    query: PersonQuery,
+    person: Person,
+    *,
+    trace_id: str | None = None,
+    thread_id: str | None = None,
+) -> PersonResponse:
+    return _make_response(
         results=[person.core_dict()],
         message=f"Added core record for {person.name}.",
         debug=debug_for_query(query, outcome="ingested"),
+        trace_id=trace_id,
+        thread_id=thread_id,
     )
 
 
-def response_ingest_failure(query: PersonQuery, error_summary: str) -> PersonResponse:
-    return PersonResponse(
+def response_ingest_failure(
+    query: PersonQuery,
+    error_summary: str,
+    *,
+    trace_id: str | None = None,
+    thread_id: str | None = None,
+) -> PersonResponse:
+    return _make_response(
         results=[],
         message=f"Could not add core record: {error_summary}",
         debug=debug_for_query(query, outcome="ingest_failed", errors=error_summary),
+        trace_id=trace_id,
+        thread_id=thread_id,
     )

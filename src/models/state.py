@@ -57,6 +57,20 @@ class PersonResponse(BaseModel):
         default="",
         description="Internal diagnostic information only. Not intended for external consumption.",
     )
+    trace_id: str | None = Field(
+        default=None,
+        description=(
+            "LangSmith trace id for this graph run, when tracing is enabled. "
+            "Used to correlate responses with observability tooling."
+        ),
+    )
+    thread_id: str | None = Field(
+        default=None,
+        description=(
+            "LangGraph conversation thread id for this request. "
+            "Used to correlate follow-up calls in the same session."
+        ),
+    )
 
 
 class MyceliumGraphState(BaseModel):
