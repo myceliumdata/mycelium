@@ -23,20 +23,20 @@ def _build_lookup_response(
     state: MyceliumGraphState,
     *,
     core_identity: CoreIdentity,
-) -> tuple[Person | None, PersonResponse, str]:
+) -> tuple[list[Person], PersonResponse, str]:
     """
     Perform a core lookup and select the query response shape.
 
-    Returns (person or None, response, audit outcome tag).
+    Returns (matched persons, response, audit outcome tag).
     """
     query = state.query
     thread_id, trace_id = _resolve_invocation_ids(state)
     id_kwargs = {"thread_id": thread_id, "trace_id": trace_id}
 
-    person = core_identity.find_by_key(query.person_key)
-    if person is None:
+    matches = core_identity.find_by_key(query.person_key)
+    if not matches:
         return (
-            None,
+            [],
             response_not_found(query, **id_kwargs),
             "not_found",
         )
@@ -44,14 +44,14 @@ def _build_lookup_response(
     deferred = non_core_attributes(query.requested_attributes)
     if deferred:
         return (
-            person,
-            response_non_core(query, person, deferred, **id_kwargs),
+            matches,
+            response_non_core(query, matches, deferred, **id_kwargs),
             "non_core_requested",
         )
 
     return (
-        person,
-        response_found(query, person, **id_kwargs),
+        matches,
+        response_found(query, matches, **id_kwargs),
         "found",
     )
 
@@ -63,15 +63,16 @@ def _run_core_data_lookup(
 ) -> dict[str, Any]:
     """Synchronous lookup + response build (for asyncio.to_thread)."""
     identity = core_identity or get_core_identity()
-    person, response, outcome = _build_lookup_response(state, core_identity=identity)
+    matches, response, outcome = _build_lookup_response(state, core_identity=identity)
     logs = [f"CoreDataAgent: lookup {outcome} for person_key={state.query.person_key!r}."]
     payload: dict[str, Any] = {
         "response": response,
         "route": None,
         "audit_log": logs,
+        "persons": matches,
     }
-    if person is not None:
-        payload["person"] = person
+    if len(matches) == 1:
+        payload["person"] = matches[0]
     if state.invocation_thread_id is not None:
         payload["invocation_thread_id"] = state.invocation_thread_id
     if state.invocation_trace_id is not None:

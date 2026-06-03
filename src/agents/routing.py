@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from agents.core_identity import CoreIdentity, get_core_identity
 from agents.responses import response_found, response_non_core, response_not_found
@@ -14,6 +14,7 @@ class SupervisorDecision:
     """Outcome of one supervisor evaluation turn (query-only public paths)."""
 
     response: PersonResponse
+    persons: list[Person] = field(default_factory=list)
     person: Person | None = None
     thread_id: str | None = None
     trace_id: str | None = None
@@ -56,26 +57,29 @@ def evaluate_supervisor_turn(
         "trace_id": resolved_trace_id,
     }
 
-    person = core_identity.find_by_key(query.person_key)
-    if person is None:
+    persons = core_identity.find_by_key(query.person_key)
+    if not persons:
         return SupervisorDecision(
             response=response_not_found(query, **id_kwargs),
             thread_id=resolved_thread_id,
             trace_id=resolved_trace_id,
         )
 
+    single = persons[0] if len(persons) == 1 else None
     deferred = non_core_attributes(query.requested_attributes)
     if deferred:
         return SupervisorDecision(
-            response=response_non_core(query, person, deferred, **id_kwargs),
-            person=person,
+            response=response_non_core(query, persons, deferred, **id_kwargs),
+            persons=persons,
+            person=single,
             thread_id=resolved_thread_id,
             trace_id=resolved_trace_id,
         )
 
     return SupervisorDecision(
-        response=response_found(query, person, **id_kwargs),
-        person=person,
+        response=response_found(query, persons, **id_kwargs),
+        persons=persons,
+        person=single,
         thread_id=resolved_thread_id,
         trace_id=resolved_trace_id,
     )

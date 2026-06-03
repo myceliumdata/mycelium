@@ -106,8 +106,10 @@ class MyceliumGraphState(BaseModel):
 
     In LangGraph Studio (visual editor or JSON input):
     - You must provide at least the top-level "query" key (a PersonQuery).
-    - Everything else (route, person, response, etc.) is internal state
+    - Everything else (route, person, persons, response, etc.) is internal state
       produced by the graph — do not set them in the initial input.
+    - ``persons`` holds all matches for a lookup; ``person`` is set only when
+      exactly one match exists (name ambiguity may yield multiple ``persons``).
     - Use the examples in PersonQuery (they will appear in Studio).
     - For thread persistence in Studio, set the thread ID in the
       Studio UI's Thread/Config panel (it flows into invocation_thread_id).
@@ -117,6 +119,7 @@ class MyceliumGraphState(BaseModel):
     route: Literal["core_data"] | None = None
     response: PersonResponse | None = None
     person: Person | None = None
+    persons: list[Person] = Field(default_factory=list)
     validation_passed: bool | None = None
     validation_errors: Annotated[list[str], operator.add] = Field(default_factory=list)
     audit_log: Annotated[list[str], operator.add] = Field(default_factory=list)

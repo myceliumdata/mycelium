@@ -59,7 +59,7 @@ Package: `mycelium_mcp` (renamed from `mcp` to avoid SDK collision).
 **Achieved (1070/1100, finalized 1110):** `START → supervisor → core_data_agent → END`.
 
 - **Supervisor** sets `route="core_data"` and audit entries; no storage access or `PersonResponse` construction.
-- **core_data** runs `evaluate_supervisor_turn` (via `routing.py`) + `CoreIdentity.find_by_key` and sets `response`.
+- **core_data** runs lookup via `CoreIdentity.find_by_key` (0/1/N matches) and sets `response` with plural-aware messages when names are ambiguous.
 - **Async:** `AsyncSqliteSaver` + async nodes for LangGraph dev / ASGI.
 - **`run_query`:** seeds `invocation_thread_id`, `ainvoke`, captures `trace_id`, `_finalize_response`.
 - Checkpoint serde: `JsonPlusSerializer(allowed_msgpack_modules=...)` for `models.state` types in `_setup_async_checkpointer`.
@@ -79,9 +79,9 @@ Package: `mycelium_mcp` (renamed from `mcp` to avoid SDK collision).
 ## 7. Core data specialist (`src/agents/core_data.py`)
 
 ```python
-async def core_data_agent(state) -> dict[str, Any]:
-    # evaluate_supervisor_turn + CoreIdentity.find_by_key in to_thread
-    # sets person, response, audit_log
+def core_data_agent(state) -> dict[str, Any]:
+    # CoreIdentity.find_by_key → list[Person]; sets persons, response, audit_log
+    # person set only when exactly one match
 ```
 
 Default LangGraph node for core CRM lookups. Tests: `tests/test_core_data_agent.py`, `tests/test_core_graph.py::test_graph_invokes_supervisor_then_core_data`.
@@ -90,7 +90,7 @@ Default LangGraph node for core CRM lookups. Tests: `tests/test_core_data_agent.
 
 ## 8. CoreIdentity facade (`src/agents/core_identity.py`)
 
-Thin wrapper over `storage.core.get_storage()`: `find_by_key`, `persist`. Used by `core_data_agent`.
+Thin wrapper over `storage.core.get_storage()`: `find_by_key` → `find_persons` (id: 0/1; name: 0..N). Used by `core_data_agent`.
 
 ---
 

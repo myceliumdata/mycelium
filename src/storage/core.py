@@ -87,21 +87,22 @@ class CoreStorage:
         ).fetchone()
         return self._row_to_person(row) if row else None
 
-    def find_person(self, person_key: str) -> Person | None:
-        """Resolve by id or exact name (case-insensitive)."""
+    def find_persons(self, person_key: str) -> list[Person]:
+        """Resolve by id or exact name (case-insensitive).
+
+        Id match returns zero or one person. Name match may return multiple records
+        when the same name appears with different employers.
+        """
         key = person_key.strip()
         by_id = self.get_person_by_id(key)
         if by_id:
-            return by_id
+            return [by_id]
 
-        row = self._conn.execute(
-            "SELECT * FROM people WHERE lower(name) = lower(?)",
+        rows = self._conn.execute(
+            "SELECT * FROM people WHERE lower(name) = lower(?) ORDER BY id",
             (key,),
-        ).fetchone()
-        if row:
-            return self._row_to_person(row)
-
-        return None
+        ).fetchall()
+        return [self._row_to_person(row) for row in rows]
 
     @staticmethod
     def _row_to_person(row: sqlite3.Row) -> Person:

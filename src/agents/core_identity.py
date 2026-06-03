@@ -20,9 +20,9 @@ class CoreIdentity:
     def _resolve_storage(self) -> CoreStorage:
         return self._storage if self._storage is not None else get_storage()
 
-    def find_by_key(self, person_key: str) -> Person | None:
-        """Resolve a person by id or name (case-insensitive name match)."""
-        return self._resolve_storage().find_person(person_key)
+    def find_by_key(self, person_key: str) -> list[Person]:
+        """Resolve zero or more persons by id or name (case-insensitive name match)."""
+        return self._resolve_storage().find_persons(person_key)
 
     def persist(self, person: Person) -> None:
         """Upsert a validated core person record."""

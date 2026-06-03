@@ -14,8 +14,8 @@ class _StubCoreIdentity(CoreIdentity):
         super().__init__(storage=None)
         self._person = person
 
-    def find_by_key(self, person_key: str) -> Person | None:
-        return self._person
+    def find_by_key(self, person_key: str) -> list[Person]:
+        return [self._person] if self._person is not None else []
 
 
 @pytest.mark.smoke

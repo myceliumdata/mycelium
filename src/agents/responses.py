@@ -35,15 +35,20 @@ def _make_response(
 
 def response_found(
     query: PersonQuery,
-    person: Person,
+    persons: list[Person],
     *,
     trace_id: str | None = None,
     thread_id: str | None = None,
 ) -> PersonResponse:
+    n = len(persons)
+    if n == 1:
+        message = f"Found core record for {persons[0].name}."
+    else:
+        message = f"Found {n} core records for {query.person_key!r}."
     return _make_response(
-        results=[person.core_dict()],
-        message=f"Found core record for {person.name}.",
-        debug=debug_for_query(query, outcome="found"),
+        results=[p.core_dict() for p in persons],
+        message=message,
+        debug=debug_for_query(query, outcome="found", num_matches=str(n)),
         trace_id=trace_id,
         thread_id=thread_id,
     )
@@ -69,23 +74,32 @@ def response_not_found(
 
 def response_non_core(
     query: PersonQuery,
-    person: Person,
+    persons: list[Person],
     attributes: list[str],
     *,
     trace_id: str | None = None,
     thread_id: str | None = None,
 ) -> PersonResponse:
     attr_list = ", ".join(attributes)
-    return _make_response(
-        results=[person.core_dict()],
-        message=(
-            f"We have a core record for {person.name}, but we're still researching "
+    n = len(persons)
+    if n == 1:
+        message = (
+            f"We have a core record for {persons[0].name}, but we're still researching "
             f"{attr_list}."
-        ),
+        )
+    else:
+        message = (
+            f"We have {n} core records for {query.person_key!r}, but we're still researching "
+            f"{attr_list}."
+        )
+    return _make_response(
+        results=[p.core_dict() for p in persons],
+        message=message,
         debug=debug_for_query(
             query,
             outcome="non_core_requested",
             non_core_requested=attr_list,
+            num_matches=str(n),
         ),
         trace_id=trace_id,
         thread_id=thread_id,

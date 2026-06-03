@@ -125,7 +125,7 @@ Core storage holds only `id`, `name`, and `employer`. Callers send a query-only 
 
 | Intent | What the caller sends | Graph path (current / target) | What comes back |
 |--------|----------------------|-------------------------------|-----------------|
-| **Lookup (found)** | `person_key` (+ optional non-core attrs) | `supervisor` → `core_data_agent` → `CoreIdentity.find_by_key` | `results`: one core dict; `message` confirms found |
+| **Lookup (found)** | `person_key` (+ optional non-core attrs) | `supervisor` → `core_data_agent` → `CoreIdentity.find_by_key` | `results`: one or more core dicts (multiple when a name is ambiguous); plural `message` when N>1 |
 | **Lookup (miss)** | `person_key`, no match | Same | `results`: `[]`; plain not-found `message` (no public ingest guidance) |
 | **Non-core attrs** | `person_key` + e.g. `age`, `x_handle` | Same lookup; narrative only | `results`: core dict if person exists; `message` notes ongoing research |
 
