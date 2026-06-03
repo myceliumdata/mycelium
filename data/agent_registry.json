@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-06-03T17:02:45.150034Z",
+  "agents": {
+    "core_data": {
+      "name": "core_data",
+      "category": "core",
+      "description": "Core identity (id, name, employer) — the always-present fallback specialist.",
+      "module_path": "agents.core_data",
+      "entrypoint": "core_data_agent",
+      "storage_path": null,
+      "strategy_path": null,
+      "is_generated": false,
+      "created_at": null
+    },
+    "demographic_specialist": {
+      "name": "demographic_specialist",
+      "category": "demographic",
+      "description": "Basic personal characteristics and background.",
+      "module_path": "agents.specialists.demographic_specialist",
+      "entrypoint": "demographic_specialist",
+      "storage_path": "data/agents/demographic/storage.json",
+      "strategy_path": "data/agents/demographic/storage_strategy.json",
+      "is_generated": true,
+      "created_at": "2026-06-03T17:02:45.147892+00:00"
+    }
+  }
+}
