@@ -1,0 +1,13 @@
+{
+  "strategy": "flat_json_v1",
+  "version": "1.0",
+  "last_migrated": null,
+  "upgrade_path": {
+    "flat_json_v1": {
+      "description": "Simple per-agent JSON file. Suitable for small-to-medium specialist datasets.",
+      "next_candidates": [
+        "minisql_v1"
+      ]
+    }
+  }
+}

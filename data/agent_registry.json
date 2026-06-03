@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-06-03T17:02:45.150034Z",
+  "last_updated": "2026-06-03T17:08:19.473110Z",
   "agents": {
     "core_data": {
       "name": "core_data",
@@ -23,6 +23,17 @@
       "strategy_path": "data/agents/demographic/storage_strategy.json",
       "is_generated": true,
       "created_at": "2026-06-03T17:02:45.147892+00:00"
+    },
+    "financial_specialist": {
+      "name": "financial_specialist",
+      "category": "financial",
+      "description": "Financial attributes related to an individual's wealth and assets.",
+      "module_path": "agents.specialists.financial_specialist",
+      "entrypoint": "financial_specialist",
+      "storage_path": "data/agents/financial/storage.json",
+      "strategy_path": "data/agents/financial/storage_strategy.json",
+      "is_generated": true,
+      "created_at": "2026-06-03T17:08:19.471942+00:00"
     }
   }
 }
