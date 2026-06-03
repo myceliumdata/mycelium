@@ -59,8 +59,8 @@ Data addition via the public API was removed in the June 2026 refactor (tasks 10
 
 The **supervisor node** (`src/agents/supervisor.py`) is a thin coordinator and router:
 
-- It evaluates the inbound `PersonQuery` (`person_key` + optional `requested_attributes`) and emits a `route` decision plus audit log. For the current public query-only surface it always routes to the core specialist (`route="core_data"`).
-- Classification, core lookup via `CoreIdentity`, and construction of the minimal `PersonResponse` (`results`, `message`, `debug`, `trace_id`, `thread_id`) are performed by the specialist.
+- It evaluates the inbound `PersonQuery` (`person_key` + optional `requested_attributes`) and emits a `route` decision plus audit log. For non-core `requested_attributes` it runs fast cached classification via `src/agents/classification/` (see below) and injects metadata into `state.classifications` and the audit log. It always routes to the core specialist (`route="core_data"`).
+- Core lookup via `CoreIdentity` and construction of the minimal `PersonResponse` (`results`, `message`, `debug`, `trace_id`, `thread_id`) are performed by `core_data_agent` (including `classifications` in `response.debug` when present).
 - **Core data specialist** — `src/agents/core_data.py` defines `core_data_agent`, the LangGraph node that owns core CRM lookups (`find_by_key` via `CoreIdentity`). Wiring supervisor → `core_data_agent` (with the conditional edge in `graphs/core.py`) was completed in tasks 1070/1100 and the final alignment pass was 1110.
 - **CoreIdentity** — `src/agents/core_identity.py` is the storage facade used by `core_data_agent` (and available for future specialists).
 
@@ -93,8 +93,12 @@ The `Person` model represents only records in the primary core `people` table.
 
 ## Derivative / Non-Core Data
 
+Phase 1 adds a **Classification Engine** (cached lookup in `src/agents/classification/`, backed by `data/categories.json`) that the supervisor uses for non-core `requested_attributes`. Known attributes are instant map lookups; first-time unknowns may call the LLM once (lazy, structured proposals), then cache—including garbage rejected as `unknown`. Batch tree evolution uses `CategoryTree.refresh_from_llm` (admin/off-path). Metadata flows to `audit_log`, `state.classifications`, and `response.debug` (see `docs/plans/classification-engine-phase1.md`).
+
+**Phase 2 Agent Factory** adds on-demand creation of committed specialist agents (Jinja2 template in `src/agents/factory/`, `data/agent_registry.json`, `src/agents/specialists/*.py` with an AUTO-GENERATED header, and `specialist_dispatcher`). The supervisor triggers `AgentFactory.create_specialist` when classification names an `assigned_agent` that is not yet registered. Each specialist starts with per-category flat JSON plus `storage_strategy.json` hooks for future self-evolution (see `docs/plans/agent-factory-phase2.md`).
+
 - We **explicitly do not pre-define** derivative attributes, dataset types, or storage structures.
-- The supervisor classifies requested data and hands it off to the appropriate specialist agent.
+- The supervisor classifies requested attributes (lookup only in Phase 1) before routing; real specialist handoff is future work.
 - If no suitable agent exists, the system should support creating one.
 - How a specialist agent stores and manages its data is not defined centrally.
 
@@ -199,4 +203,4 @@ See `TODO.md` for the current prioritized list of work.
 
 ---
 
-**Last major update:** June 2026 (query-only migration 1000–1110 + niggle cleanup 1120)
+**Last major update:** June 2026 (query-only migration + Classification Engine Phase 1 complete)

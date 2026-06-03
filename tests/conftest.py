@@ -7,7 +7,10 @@ test has completed and printed its output.
 """
 import pytest
 
+from agents.classification import reset_category_tree
 from agents.core_identity import reset_core_identity
+from agents.factory.agent_factory import reset_agent_factory
+from agents.registry import reset_agent_registry
 from graphs.core import reset_core_graph
 from storage.core import reset_storage
 
@@ -18,7 +21,14 @@ def _final_cleanup():
     yield
     # Defensive cleanup (swallow errors) so that even if close fails for some
     # reason (closed loop, etc.), the pytest process can still exit promptly.
-    for reset_func in (reset_core_graph, reset_storage, reset_core_identity):
+    for reset_func in (
+        reset_core_graph,
+        reset_storage,
+        reset_core_identity,
+        reset_category_tree,
+        reset_agent_registry,
+        reset_agent_factory,
+    ):
         try:
             reset_func()
         except Exception:

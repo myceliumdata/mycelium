@@ -121,15 +121,27 @@ def query_person(query_json: str) -> str:
 
 @mcp.tool
 def list_specialist_routing() -> str:
-    """Phase 1 stub: lists specialist routing status (no persisted specialist registry)."""
+    """List registered specialist agents from the Agent Registry (Phase 2)."""
     _bootstrap()
+    from agents.registry import get_agent_registry
+
+    reg = get_agent_registry()
+    specialists = [
+        {
+            "name": agent["name"],
+            "category": agent.get("category"),
+            "is_generated": agent.get("is_generated"),
+            "storage_path": agent.get("storage_path"),
+        }
+        for agent in reg.list_agents()
+    ]
     return json.dumps(
         {
             "message": (
-                "Specialist agent routing is coordinated by the supervisor. "
-                "Phase 1 does not persist a specialist registry in core storage."
+                "Specialist agent routing is coordinated by the supervisor "
+                "via the Agent Registry (Phase 2)."
             ),
-            "datasets": [],
+            "specialists": specialists,
         },
         indent=2,
     )

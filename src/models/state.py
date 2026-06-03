@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import operator
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 
@@ -116,10 +116,24 @@ class MyceliumGraphState(BaseModel):
     """
 
     query: PersonQuery
-    route: Literal["core_data"] | None = None
+    route: str | None = Field(
+        default=None,
+        description=(
+            'Target specialist name (e.g. "core_data", "contact_specialist"). '
+            "Set by supervisor; used by dispatch to invoke the registered agent. "
+            "Phase 2+ dynamic."
+        ),
+    )
     response: PersonResponse | None = None
     person: Person | None = None
     persons: list[Person] = Field(default_factory=list)
+    classifications: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description=(
+            "Per-attribute classification metadata from supervisor "
+            "(category, assigned_agent, confidence, ...). Phase 1 lookup only."
+        ),
+    )
     validation_passed: bool | None = None
     validation_errors: Annotated[list[str], operator.add] = Field(default_factory=list)
     audit_log: Annotated[list[str], operator.add] = Field(default_factory=list)

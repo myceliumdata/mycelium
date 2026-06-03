@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from agents.classification import reset_category_tree
 from agents.core_identity import reset_core_identity
 from graphs.core import reset_core_graph, run_query
 from models.state import PersonQuery
@@ -18,6 +19,7 @@ def temp_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> CoreStorage
     reset_storage()
     reset_core_identity()
     reset_core_graph()
+    reset_category_tree()
     db = tmp_path / "test.db"
     seed = tmp_path / "seed.json"
     seed.write_text(
@@ -37,13 +39,27 @@ def temp_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> CoreStorage
     monkeypatch.setenv("MYCELIUM_DB_PATH", str(db))
     monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
     monkeypatch.setenv("MYCELIUM_CHECKPOINT_PATH", str(tmp_path / "cp.sqlite"))
+    monkeypatch.setenv("MYCELIUM_CATEGORIES_PATH", str(tmp_path / "categories.json"))
+    monkeypatch.setenv(
+        "MYCELIUM_AGENT_REGISTRY_PATH",
+        str(tmp_path / "agent_registry.json"),
+    )
+    monkeypatch.setenv("MYCELIUM_SPECIALISTS_DIR", str(tmp_path / "specialists"))
+    monkeypatch.setenv("MYCELIUM_AGENT_DATA_DIR", str(tmp_path / "agent_data"))
+    from agents.factory.agent_factory import reset_agent_factory
+    from agents.registry import reset_agent_registry
     from storage.core import get_storage
 
+    reset_agent_registry()
+    reset_agent_factory()
     storage = get_storage()
     yield storage
     reset_storage()
     reset_core_identity()
     reset_core_graph()
+    reset_category_tree()
+    reset_agent_registry()
+    reset_agent_factory()
 
 
 @pytest.mark.full
@@ -80,8 +96,13 @@ def test_query_non_core_attributes(temp_storage: CoreStorage) -> None:
     assert response.results[0]["name"] == "Test User"
     assert "still researching" in response.message
     assert "age" in response.message
-    assert "x_handle" in response.message
-    assert "non_core_requested='age, x_handle'" in response.debug
+    assert "x_handle" in response.debug
+    assert "non_core_requested='age'" in response.debug
+    assert "classifications=" in response.debug
+    assert "demographic" in response.debug
+    assert "social" in response.debug
+    assert "via demographic_specialist" in response.message
+    assert "specialist='demographic_specialist'" in response.debug
 
 
 @pytest.mark.full

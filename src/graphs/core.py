@@ -1,6 +1,6 @@
-"""Core Mycelium LangGraph: Supervisor + Core Data specialist (query-only).
+"""Core Mycelium LangGraph: Supervisor + specialist dispatch (query-only).
 
-Flow: START → supervisor (classify & route) → core_data (lookup & response) → END.
+Flow: START → supervisor (classify & route) → specialist (registry dispatch) → END.
 
 The default uses AsyncSqliteSaver (aiosqlite) so LangGraph Studio / langgraph dev
 (ASGI) can use ainvoke cleanly. The MCP server forces the sync SqliteSaver path
@@ -25,7 +25,7 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from agents.core_data import core_data_agent
+from agents.dispatch import specialist_dispatcher
 from agents.supervisor import supervisor_agent
 from models.state import MyceliumGraphState, PersonQuery, PersonResponse
 
@@ -40,7 +40,7 @@ _CHECKPOINT_MSGPACK_ALLOWLIST: tuple[tuple[str, str], ...] = (
     ("models.state", "PersonResponse"),
 )
 
-Route = Literal["core_data", "__end__"]
+Route = Literal["specialist", "__end__"]
 _compiled_graph: CompiledStateGraph | None = None
 _checkpointer_ctx: AsyncSqliteSaver | SqliteSaver | None = None
 _last_invocation_trace_id: str | None = None
@@ -133,9 +133,9 @@ def _route_after_supervisor(state: MyceliumGraphState | dict[str, Any]) -> Route
         if isinstance(state, MyceliumGraphState)
         else MyceliumGraphState.model_validate(state)
     )
-    if current.route == "core_data":
-        return "core_data"
-    return "__end__"
+    if current.route in (None, "__end__"):
+        return "__end__"
+    return "specialist"
 
 
 def build_core_graph(
@@ -155,15 +155,15 @@ def build_core_graph(
     graph: StateGraph = StateGraph(MyceliumGraphState)
 
     graph.add_node("supervisor", supervisor_agent)
-    graph.add_node("core_data", core_data_agent)
+    graph.add_node("specialist", specialist_dispatcher)
 
     graph.add_edge(START, "supervisor")
     graph.add_conditional_edges(
         "supervisor",
         _route_after_supervisor,
-        {"core_data": "core_data", "__end__": END},
+        {"specialist": "specialist", "__end__": END},
     )
-    graph.add_edge("core_data", END)
+    graph.add_edge("specialist", END)
 
     checkpointer: AsyncSqliteSaver | SqliteSaver | None = None
     if setup_checkpointer:
@@ -333,7 +333,7 @@ def run_query(
     """Invoke the core graph and return a JSON-serializable response.
 
     The LangSmith trace Input always contains a ``query`` section (a query-only
-    ``PersonQuery``). Supervisor routes to ``core_data``; lookups run in that node.
+    ``PersonQuery``). Supervisor sets ``route``; dispatch invokes the registered specialist.
     """
     graph = get_core_graph()
     initial = MyceliumGraphState(
@@ -363,7 +363,7 @@ def run_query(
     return PersonResponse(
         results=[],
         message="Graph finished without a response payload.",
-        debug="No response set by core_data.",
+        debug="No response set by specialist dispatch.",
         thread_id=thread_id,
         trace_id=captured_trace_id,
     )

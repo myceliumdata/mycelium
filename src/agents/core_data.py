@@ -32,12 +32,15 @@ def _build_lookup_response(
     query = state.query
     thread_id, trace_id = _resolve_invocation_ids(state)
     id_kwargs = {"thread_id": thread_id, "trace_id": trace_id}
+    classifications = state.classifications or None
+    clf_kwargs = {"classifications": classifications} if classifications else {}
+    specialist_kwargs = {"specialist": "core_data"}
 
     matches = core_identity.find_by_key(query.person_key)
     if not matches:
         return (
             [],
-            response_not_found(query, **id_kwargs),
+            response_not_found(query, **id_kwargs, **clf_kwargs, **specialist_kwargs),
             "not_found",
         )
 
@@ -45,13 +48,20 @@ def _build_lookup_response(
     if deferred:
         return (
             matches,
-            response_non_core(query, matches, deferred, **id_kwargs),
+            response_non_core(
+                query,
+                matches,
+                deferred,
+                **id_kwargs,
+                **clf_kwargs,
+                **specialist_kwargs,
+            ),
             "non_core_requested",
         )
 
     return (
         matches,
-        response_found(query, matches, **id_kwargs),
+        response_found(query, matches, **id_kwargs, **clf_kwargs, **specialist_kwargs),
         "found",
     )
 
@@ -70,6 +80,7 @@ def _run_core_data_lookup(
         "route": None,
         "audit_log": logs,
         "persons": matches,
+        "classifications": state.classifications,
     }
     if len(matches) == 1:
         payload["person"] = matches[0]
