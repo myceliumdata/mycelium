@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-06-04T08:37:03.012871Z",
+  "last_updated": "2026-06-04T08:37:12.159348Z",
   "agents": {
     "core_data": {
       "name": "core_data",
@@ -45,6 +45,17 @@
       "strategy_path": "data/agents/professional/storage_strategy.json",
       "is_generated": true,
       "created_at": "2026-06-04T08:37:03.011996+00:00"
+    },
+    "contact_specialist": {
+      "name": "contact_specialist",
+      "category": "contact",
+      "description": "Direct ways to reach the person (email, phone, physical).",
+      "module_path": "agents.specialists.contact_specialist",
+      "entrypoint": "contact_specialist",
+      "storage_path": "data/agents/contact/storage.json",
+      "strategy_path": "data/agents/contact/storage_strategy.json",
+      "is_generated": true,
+      "created_at": "2026-06-04T08:37:12.158224+00:00"
     }
   }
 }
