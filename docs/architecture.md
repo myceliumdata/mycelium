@@ -211,7 +211,7 @@ The seed-data-context redesign is **implemented** (Cursor slices `2026-06-09-150
 
 See `docs/plans/seed-data-context-architecture.md` and the reprocess reviews (`prompts/cursor/done/2026-06-09-*-reprocess/`).
 
-**Next phases:** robust pending handling, peer context retrieval, real LLM+tools research, richer output shape.
+**Next phases:** robust pending handling, peer context retrieval, real LLM+tools research (Tavily scaffold in `src/tools/tavily.py`; see `docs/plans/specialist-research-phase1.md`), richer output shape.
 
 See `TODO.md` for follow-ups.
 
