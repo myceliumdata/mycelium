@@ -77,7 +77,7 @@ START → supervisor → build_context → invoke_specialists → assemble_respo
 - **invoke_specialists** — each required specialist receives full `context`, `current_id`, and `target_fields` (owned attributes only).
 - **assemble_response** — unified `PersonResponse` from seed identity + specialist contributions.
 
-Generated specialists (`src/agents/specialists/*_specialist.py`, Agent Factory template) implement three scenarios: has data, pending research (background stub thread), or N/A. See `docs/plans/seed-data-context-architecture.md` and Cursor slices `2026-06-09-15xx`.
+Generated specialists (`src/agents/specialists/*_specialist.py`, Agent Factory template) implement three scenarios: has data, **synchronous** field research on cache miss (when `OPENAI_API_KEY` + `TAVILY_API_KEY` are set), or pending / N/A. Research runs via `tools.research.run_field_research` and Tavily `web_search` (`src/tools/tavily.py`). See `docs/plans/seed-data-context-architecture.md`, `docs/plans/specialist-research-phase1.md`, and Cursor slices `2026-06-09-1100`–`1400`.
 
 Legacy **enrich**, **validator**, **person_prep**, and **core_identity** remain on disk as unwired legacy; queries do not depend on them.
 
@@ -211,10 +211,12 @@ The seed-data-context redesign is **implemented** (Cursor slices `2026-06-09-150
 
 See `docs/plans/seed-data-context-architecture.md` and the reprocess reviews (`prompts/cursor/done/2026-06-09-*-reprocess/`).
 
-**Next phases:** robust pending handling, peer context retrieval, real LLM+tools research (Tavily scaffold in `src/tools/tavily.py`; see `docs/plans/specialist-research-phase1.md`), richer output shape.
+**Phase 1 specialist research (implemented, sync):** On cache miss, specialists call `run_field_research` inline (LLM + Tavily `web_search`, bounded tool rounds). Low confidence → `na` + `reason`; API/timeout failure → `pending`. **Async dispatch** (non-blocking queries) is deferred — see `docs/plans/specialist-research-phase1.md`.
+
+**Next phases:** async research dispatch (non-blocking queries), peer context retrieval, Tavily Extract/Crawl. Attribute-scoped `results` and specialist-first merge are already live (`2026-06-04-1400-filter-query-results-and-trace-url`).
 
 See `TODO.md` for follow-ups.
 
 ---
 
-**Last major update:** June 2026 (seed-data-context redesign integrated)
+**Last major update:** June 2026 (seed-data-context redesign + Phase 1 sync specialist research)

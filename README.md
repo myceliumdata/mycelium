@@ -22,7 +22,8 @@ uv run mycelium-mcp
 ```
 
 **Note:** The `mycelium` CLI now exits promptly after printing the JSON response (previously it could hang on async checkpointer cleanup). This makes ad-hoc CLI verification and smoke checks fast.
-```
+
+**Research latency:** When `OPENAI_API_KEY` and `TAVILY_API_KEY` are set, the first query for a non-core attribute (e.g. `email`) may run **synchronous** LLM + web search on cache miss and can take tens of seconds. Future work will move that to async dispatch so the CLI returns faster while research continues in the background.
 
 See [docs/database-notes.md](docs/database-notes.md) if you have an older `data/mycelium.db` from before the schema simplification.
 

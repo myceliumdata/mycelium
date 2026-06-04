@@ -1,17 +1,15 @@
 # Plan: Specialist Research — Phase 1 (Tavily + LLM tool loop)
 
-**Status:** Draft for review (June 2026)  
+**Status:** Implemented (June 2026). Approved by Paul; built via Cursor slices 1100–1400 (`prompts/cursor/done/2026-06-09-11xx`–`14xx`).  
 **Depends on:** Seed-data-context graph (`docs/plans/seed-data-context-architecture.md`), Classification Engine (`docs/plans/classification-engine-phase1.md`), Agent Factory (`docs/plans/agent-factory-phase2.md`), `docs/architecture.md`, `prompts/system/CORE_PROMPT.md`
 
-> **Lightweight priority:** Ship a **single shared research runner** and wire it through the **specialist Jinja template** (all six categories) before adding Extract/Crawl, sync in-graph research, or per-category prompt tuning. Keep the supervisor thin; no public API shape changes.
+> **Lightweight priority:** Ship a **single shared research runner** and wire it through the **specialist Jinja template**. Phase 1 runs research **synchronously** in the specialist node (better demos; one query can return researched values). Design the runner API so **async** execution can return later without rewriting core logic. Defer Extract/Crawl and per-category prompt tuning. Keep the supervisor thin; no public API shape changes.
 
 ---
 
 ## Context
 
-Mycelium specialists today implement three storage scenarios (found / pending / N/A) but **research is a stub**: `_stub_background_research` in each `*_specialist.py` starts a daemon thread and does nothing. Queries therefore return provisional seed values and messages like “verification in progress” without ever filling specialist storage.
-
-Phase 1 of **specialist research** replaces that stub with a bounded **LLM + tools** loop that can discover attribute values on the web, validate them, and persist into per-category `data/agents/<category>/storage.json`.
+Mycelium specialists implement three storage scenarios (found / pending / N/A). **Before Phase 1**, research was a stub (`_stub_background_research` daemon thread, no persistence). **Phase 1 (implemented)** adds a bounded **LLM + tools** loop that discovers attribute values on the web, validates them, and persists into per-category `data/agents/<category>/storage.json`.
 
 This plan is **research only** — not classification (Phase 1 intelligence), not Agent Factory creation, not changes to `PersonQuery` / MCP / CLI contracts.
 
@@ -23,9 +21,11 @@ This plan is **research only** — not classification (Phase 1 intelligence), no
 | Provider | **Tavily** for web search (`langchain-tavily`; env `TAVILY_API_KEY`). |
 | Tools and LLM | Tool **definitions** are passed to the LLM; **execution** stays in application code (or LangChain runner on our behalf). |
 | Specialist invocation | **Always invoke** the specialist for classified requested attributes — even when seed already has `name` / `employer`. Specialist may **correct** seed (e.g. legal name vs shortened seed). |
-| Merge order | **Specialist non-pending value wins** over seed; seed is **provisional** while specialist research is pending. Assembly already implements this in `assemble_response` (slice 1400). |
+| Merge order | **Specialist non-pending value wins** over seed; seed is **provisional** while specialist research is pending. Assembly implements this in `assemble_response` (attribute-scoped `results`; see slice `2026-06-04-1400-filter-query-results-and-trace-url`). |
 | God agents | **No** single research agent for all categories. Each specialist runs research only for **its** `target_fields` and **its** storage. |
-| Observability | LangSmith tracing on research runs (same project or tagged child runs). `trace_id` on `PersonResponse` remains graph-level; CLI LangSmith URL stays **outside** JSON. |
+| Phase 1 execution | **Sync** — specialist blocks on `run_field_research` before returning `specialist_contrib`. **Future:** async (background thread or job queue) for latency; runner API and docs should not assume threads. |
+| Observability | LangSmith tracing when enabled (research runs as part of the graph trace). `trace_id` on `PersonResponse` remains graph-level; CLI LangSmith URL stays **outside** JSON. |
+| Low confidence | **`na`** with a clear **`reason`** (e.g. insufficient evidence), not `pending` and not a silent guess. |
 
 ---
 
@@ -33,10 +33,10 @@ This plan is **research only** — not classification (Phase 1 intelligence), no
 
 - **Graph:** `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` (`src/graphs/core.py`).
 - **Specialists:** Six generated agents under `src/agents/specialists/`, template `src/agents/factory/templates/specialist_agent.py.j2`.
-- **On cache miss:** Mark field `pending` in `storage.json`, start `_stub_background_research` thread, return `specialist_contrib` with `values[field] = "pending"`.
-- **invoke_specialists_node:** Appends contributions to `context._meta.contributions`; does **not** promote specialist-internal `response` to final state (final response built in `assemble_response_node`).
+- **On cache miss (implemented):** Pre-mark `pending`, run **sync** `tools.research.run_field_research` when keys are set, reload storage, return `found` / `na` / `pending` in `specialist_contrib`. Retry `pending` + `last_error` on later queries.
+- **invoke_specialists_node:** Appends contributions to `context._meta.contributions`; final response built in `assemble_response_node`.
 - **Classification:** `src/agents/classification/` — LLM only for **first-time unknown attribute → category**; unrelated to per-person research.
-- **Tools package:** `src/tools/` exists; Tavily integration may be prototyped locally — **implementation follows approval of this plan**, not the other way around.
+- **Tools:** `src/tools/tavily.py` (web search), `src/tools/research.py` (LLM + tool loop), Jinja under `src/agents/factory/templates/research/`.
 
 ---
 
@@ -50,7 +50,7 @@ When a specialist has no stored value for an owned field:
 4. **Persist** to `SpecialistStorage` (`found`, `na`, or leave `pending` on failure).
 5. **Audit** and LangSmith-trace the run.
 
-Callers still get fast graph responses: research continues on the **existing async path** (background thread) unless we add sync mode in a later phase.
+**Phase 1 (sync):** The specialist runs steps 1–5 **before** returning `specialist_contrib`, so a single query can return `found` / `na` in `results` when keys and APIs are configured. **Tradeoff:** higher latency on cache misses. **Future:** move execution off the hot path (async thread, queue, or in-graph task) without changing storage shape or merge rules.
 
 ---
 
@@ -70,9 +70,7 @@ sequenceDiagram
     alt has value or N/A
         Spec->>Graph: specialist_contrib (found/na)
     else missing
-        Spec->>Store: mark pending
-        Spec->>Graph: specialist_contrib (pending)
-        Spec->>Res: start background thread
+        Spec->>Res: run_field_research (sync)
         Res->>LLM: messages + tool schemas
         LLM->>Res: tool_call web_search
         Res->>Tavily: invoke(query)
@@ -80,6 +78,7 @@ sequenceDiagram
         Res->>LLM: tool results
         LLM->>Res: structured field values
         Res->>Store: write found / na + sources
+        Spec->>Graph: specialist_contrib (found / na / pending on failure)
     end
     Graph->>Graph: assemble_response merges contrib + seed
 ```
@@ -90,7 +89,7 @@ sequenceDiagram
 |-------|----------------|
 | **Supervisor** | Seed match, classify attributes, plan `specialists_to_invoke`. No tools. |
 | **build_context** | Union seed + all specialist stores for `id`. |
-| **Specialist node** | Read store, decide scenario, enqueue research, return `specialist_contrib`. |
+| **Specialist node** | Read store, decide scenario; on miss run **sync** research, persist, return `specialist_contrib`. |
 | **`src/tools/tavily.py`** | Tavily-backed `web_search` + `create_tavily_search_tool()` (thin wrapper, normalized `SearchHit`). |
 | **`src/tools/research.py`** (new) | Prompt build, LLM loop, validation, persist helpers — **category-agnostic**. |
 | **Jinja fragments** (new) | Per-category system prompt additions (examples, field semantics). |
@@ -121,9 +120,8 @@ sequenceDiagram
 | Input | Source |
 |-------|--------|
 | `person_id` | `state.current_id` |
-| Seed identity | `context.seed` — `name`, `employer` (provisional hints, not authoritative) |
-| Cross-specialist context | `context.specialists` — other categories’ stored values for same `id` |
-| `target_fields` | Owned attributes for this invocation only |
+| **Full built context** | Same dict `build_context` produced — `context.seed` plus `context.specialists` (union of all categories for this `id`). Serialized into the research prompt so the model sees seed **and** peer specialist values. Seed `name` / `employer` are hints only (specialist may correct); merge rules at response time are unchanged. |
+| `target_fields` | Owned attributes for this invocation — **only fields the model may propose**; does not limit what context is visible. |
 | Category metadata | `data/categories.json` — description, examples |
 | Specialist name | e.g. `contact_specialist` |
 
@@ -136,10 +134,9 @@ sequenceDiagram
 
 ### User prompt (per run)
 
-- Person: name, employer, `id`.
-- Fields to research: list with one-line semantics from category examples.
-- Snippet of existing specialist data (if any partial/pending).
-- Optional: “seed name may be abbreviated; prefer verified full name” for contact/demographic categories.
+- **Full context** (JSON or structured summary): seed row + per-category specialist slices for this `id`.
+- `id` and **fields to research** (`target_fields`) with one-line semantics from category examples.
+- Category fragment may add guidance (e.g. verify legal name vs abbreviated seed) — not a substitute for passing context.
 
 ### Category fragments
 
@@ -184,20 +181,21 @@ Align with existing specialist helpers (`_field_has_value`, `_field_is_pending`,
 {
   "x_handle": {
     "status": "na",
-    "reason": "No public profile found after search",
+    "reason": "Confidence 0.42 below threshold; search results did not corroborate a handle",
     "researched_at": "..."
   }
 }
 ```
 
-**Pending** (in-flight): unchanged — `{"status": "pending", "started_at": "..."}` until thread completes.
+**Pending:** Used when research **cannot complete** (missing API keys, API/LLM failure, timeout) — `{"status": "pending", "started_at": "...", "last_error": "..."}` optional. Not used for “low confidence” outcomes (those are **`na` + `reason`**). With sync Phase 1, callers rarely see pending on success paths; a follow-up query after failure may still show pending until retry.
 
 ### Validation rules (runner)
 
 - Reject proposals for fields not in `target_fields`.
 - `found` requires `value` non-empty and `confidence >= RESEARCH_MIN_CONFIDENCE` (default `0.6`, env override).
 - `found` requires at least one `source` URL when value is factual (not N/A).
-- On LLM/ tool failure: leave `pending` or revert to `pending` with `last_error` in record (optional debug sub-object) — do not write junk `found`.
+- Below `RESEARCH_MIN_CONFIDENCE`: persist **`na`** with **`reason`** explaining low confidence / weak evidence.
+- On LLM / tool failure: leave or set **`pending`** with `last_error` — do not write junk `found`.
 
 ---
 
@@ -215,12 +213,13 @@ def run_field_research(
     context: dict[str, Any],
     storage: SpecialistStorage,
 ) -> ResearchRunResult:
-    """Execute LLM+tool loop and persist outcomes. Intended for background thread."""
+    """Execute LLM+tool loop and persist outcomes. Phase 1: called synchronously from specialist node."""
 ```
 
-- **`ResearchRunResult`:** `fields_updated`, `errors`, `tool_calls_count`, `langsmith_run_id` (optional).
+- **`ResearchRunResult`:** `fields_updated`, `errors`, `tool_calls_count`.
 - **`is_research_available()`:** `TAVILY_API_KEY` + `OPENAI_API_KEY` present.
 - If unavailable: log to `audit_log`, leave `pending` (no silent fake data).
+- **Future async:** same function; specialist (or a thin wrapper) dispatches to a thread/queue without changing persist/validation logic.
 
 ### Bounded loop
 
@@ -229,43 +228,49 @@ def run_field_research(
 | Max tool rounds | 3 | `MYCELIUM_RESEARCH_MAX_TOOL_ROUNDS` |
 | Max results per search | 5 | (Tavily tool ctor) |
 | Search depth | `basic` | upgrade per-category later |
-| Thread timeout | 120s | `MYCELIUM_RESEARCH_TIMEOUT_SEC` |
+| Run timeout | 120s | `MYCELIUM_RESEARCH_TIMEOUT_SEC` |
 
 ---
 
 ## Specialist template changes
 
-Replace `_stub_background_research` body with:
+On cache miss, **call research synchronously** in the specialist node (replace stub thread):
 
 ```python
 from tools.research import run_field_research, is_research_available
 
-def _background_research(...):
-    if not is_research_available():
-        return  # stays pending; audit elsewhere
+# Inside missing-field path, before building specialist_contrib:
+if is_research_available():
     run_field_research(
         category="contact",
         specialist_name="contact_specialist",
         person_id=pid,
-        ...
+        context=context,  # full build_context payload
+        target_fields=target_fields,
         storage=storage,
+        ...
     )
+# Re-read storage and build contrib from found / na / pending
 ```
 
-**Regenerate** all six specialists from updated `specialist_agent.py.j2` (same pattern as prior factory regen slices).
+Remove `_stub_background_research` daemon threads in Phase 1. Keep a **single hook** (e.g. `_run_field_research`) so a later slice can swap sync → async dispatch without duplicating prompt/validation logic.
 
-**Do not** build `PersonResponse` inside research thread — only update storage; next query picks up values.
+**Rollout:** Prove on **`contact`** + **`email`** in slice 3; **regenerate all six** specialists in the same slice once the template is stable (Paul approved this order).
+
+**Do not** build `PersonResponse` inside the research runner — only update storage; `assemble_response` merges as today.
 
 ---
 
-## Async vs sync (Phase 1 decision)
+## Sync vs async (Phase 1 decision)
 
-| Mode | Behavior |
-|------|----------|
-| **Async (default, Phase 1)** | Graph returns immediately with provisional seed + pending message; thread runs research. Matches today’s UX and keeps `run_query` fast. |
-| **Sync (deferred)** | Optional flag `MYCELIUM_RESEARCH_SYNC=1` or per-query internal flag — block until research completes. Higher latency; simpler demos. |
+| Mode | Phase | Behavior |
+|------|-------|----------|
+| **Sync (Phase 1)** | Now | Specialist runs `run_field_research` before returning; same query can show `found` / `na`. Higher latency on cache misses; best for demos and integration tests. |
+| **Async (future)** | Later | Graph returns quickly with provisional seed + pending (or partial) while research runs off-thread or via a job. Reuse the same `run_field_research` implementation; change only dispatch in the template. Document in code (`research.py` module docstring) and this plan. |
 
-**Follow-up query:** Same `thread_id` optional; new query reads updated `storage.json` — no checkpoint dependency for specialist data.
+**Implementation note:** Avoid baking “must be a daemon thread” into validation, storage, or prompts. The stub thread exists today only as a placeholder.
+
+**Checkpointing:** Specialist data lives in `storage.json`, not LangGraph checkpoints — `thread_id` is optional for conversation continuity, not required to see research results after sync completion.
 
 ---
 
@@ -277,14 +282,14 @@ def _background_research(...):
 | Missing `OPENAI_API_KEY` | Same |
 | Tavily rate limit / API error | Retry once with backoff; then pending + `last_error` |
 | LLM refuses or malformed JSON | pending + audit |
-| Low confidence | Treat as `na` or stay pending (config: `MYCELIUM_RESEARCH_LOW_CONFIDENCE_AS=na|pending`) |
-| Duplicate thread | Existing `pending` + started_at prevents duplicate starts (keep current guard) |
+| Low confidence | **`na`** + **`reason`** (required explanation) |
+| Concurrent research (future async) | When async returns, guard duplicate starts via `pending` + `started_at` (not critical for sync Phase 1) |
 
 ---
 
 ## Observability
 
-- Wrap `run_field_research` in LangSmith trace when `LANGCHAIN_TRACING_V2=true` (child run under graph trace when invoked from graph thread).
+- When `LANGCHAIN_TRACING_V2=true`, research LLM/tool steps appear in LangSmith as part of the **same graph run** as the query (no separate product decision required). Implementers may add run tags/metadata for filtering; not blocking approval.
 - Append specialist `audit_log`: `contact_specialist: research completed for id=… fields=[email] tool_calls=2`.
 - Do **not** put raw search snippets in public `PersonResponse.debug` by default (optional `MYCELIUM_RESEARCH_VERBOSE_DEBUG=1`).
 
@@ -326,9 +331,9 @@ docs/architecture.md         # pointer under Next phases (after implementation)
 |-------|----------------|-------|
 | 1 | `2026-06-xx-1000-tavily-tool` | `src/tools/tavily.py`, env, smoke tests (mock API) |
 | 2 | `2026-06-xx-1100-research-runner` | `research.py`, models, prompts template dir, unit tests with mocked LLM/tools |
-| 3 | `2026-06-xx-1200-specialist-template-research` | Update `specialist_agent.py.j2`, regen six specialists, audit strings |
-| 4 | `2026-06-xx-1300-research-integration` | Full test: query with attr → pending → (mock research) → second query found; docs |
-| 5 | `2026-06-xx-1400-research-polish` (optional) | LangSmith tags, timeout, `MYCELIUM_RESEARCH_LOW_CONFIDENCE_AS`, README |
+| 3 | `2026-06-xx-1200-specialist-template-research` | Sync hook in `specialist_agent.py.j2`; prove **contact** + **email**; regen all six specialists |
+| 4 | `2026-06-xx-1300-research-integration` | Full test: one query with attr → mock sync research → `found` / `na` in same response; docs |
+| 5 | `2026-06-09-1400-specialist-research-capstone` | Polish: pending/retry/mixed messaging, integration `na` test, audit line (**done**) |
 
 Each slice: claim via `prompts/cursor/WORKFLOW.md`, smoke by default, output in `prompts/cursor/done/`.
 
@@ -341,7 +346,7 @@ Each slice: claim via `prompts/cursor/WORKFLOW.md`, smoke by default, output in 
 | Unit | `uv run pytest -m smoke -q` |
 | Research logic | `uv run pytest tests/test_research.py -q` |
 | Lint | `uv run ruff check src tests` |
-| Manual (keys required) | `uv run mycelium query --person-key "…" --attributes email` → pending/provisional; after thread, re-query → value or N/A |
+| Manual (keys required) | `uv run mycelium query --person-key "…" --attributes email` → same response includes researched value or `na` with reason (sync); may take tens of seconds |
 | No key | Unset `TAVILY_API_KEY` → pending, no crash |
 | Grep | No direct `TavilySearch` in specialist files (only via `tools`) |
 
@@ -354,7 +359,7 @@ Each slice: claim via `prompts/cursor/WORKFLOW.md`, smoke by default, output in 
 | Hallucinated contact info | Require sources + confidence threshold; N/A when weak |
 | Runaway tool spend | Max rounds + timeout |
 | Stale pending forever | `last_error` + audit; future: retry job |
-| Thread safety on storage | Keep `SpecialistStorage._atomic_write`; one thread per person+specialist |
+| Storage writes | Keep `SpecialistStorage._atomic_write`; sync Phase 1 avoids concurrent writers per record |
 | Name/employer conflation | Category fragments + explicit “verify legal name” for contact |
 | Duplicate LLM concerns | Classification cache separate; research prompt includes only person-specific context |
 
@@ -363,7 +368,7 @@ Each slice: claim via `prompts/cursor/WORKFLOW.md`, smoke by default, output in 
 ## Out of scope (Phase 1)
 
 - Tavily Extract / Crawl / Research API
-- Sync in-graph research
+- **Async** background research (daemon thread, job queue, or non-blocking graph node)
 - Supervisor or MCP exposing `web_search` to external callers
 - Embedding / vector retrieval
 - Specialist-to-specialist messaging (peer context remains supervisor-built union)
@@ -372,23 +377,27 @@ Each slice: claim via `prompts/cursor/WORKFLOW.md`, smoke by default, output in 
 
 ---
 
-## Open questions (for Paul / review)
+## Resolved decisions (Paul, 2026-06-04)
 
-1. **Low confidence:** default `na` vs stay `pending` for human retry?
-2. **LangSmith:** child run name `specialist-research/{category}` vs flat?
-3. **First slice to prove:** `contact` + `email` only before regen all six?
-4. **Provisional seed in research prompt:** always include name/employer, or only for fields that overlap identity?
+| Topic | Decision |
+|-------|----------|
+| Execution mode | **Sync** in Phase 1 (demos); **async** later — runner API and docs must stay dispatch-agnostic. |
+| Low confidence | **`na`** with required **`reason`** (explanation), not `pending`. |
+| LangSmith | No open product choice — traces follow the graph run when tracing is on; optional tags are implementation detail. |
+| Rollout | Prove **`contact` + `email`**, then regen **all six** specialists from one template update. |
+| Research prompt context | Pass **full** `build_context` output (seed + all specialist slices for the `id`); `target_fields` only limits **writes**, not what the model can read. |
 
 ---
 
 ## Approval checklist
 
-- [ ] Async-only Phase 1 accepted  
-- [ ] Storage record shape accepted  
-- [ ] Tavily-only tools accepted for v1  
-- [ ] Shared `research.py` + Jinja fragments accepted  
-- [ ] Slice order accepted  
-- [ ] Ready for Cursor prompts (Grok drafts `prompts/cursor/next/` after approval)
+- [x] Sync Phase 1 accepted (async deferred, design for swap)  
+- [x] Storage record shape accepted  
+- [x] Tavily-only tools accepted for v1  
+- [x] Shared `research.py` + Jinja fragments accepted (preferred long-term; not a hard forever constraint)  
+- [x] Slice order accepted  
+- [x] Cursor prompts drafted (`prompts/cursor/next/2026-06-04-11xx-specialist-research-*.md`)
+- [x] Implemented in repo (slices 1100–1400; reviews in `prompts/cursor/done/2026-06-09-*`)
 
 ---
 

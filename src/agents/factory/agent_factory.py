@@ -5,6 +5,7 @@ See approved plan Step 4 for full design and create_specialist contract.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
@@ -64,22 +65,14 @@ class AgentFactory:
         if self.registry.has_agent(agent_name):
             return {"created": False, "reason": "already registered"}
 
-        template = self.env.get_template("specialist_agent.py.j2")
-        now = datetime.now(timezone.utc).isoformat()
-        raw_code = template.render(
-            agent_name=agent_name,
+        py_path = self.render_specialist_py(
             category=category,
+            agent_name=agent_name,
             description=description,
-            examples=examples or [],
-            created_at=now,
+            examples=examples,
+            llm_refine=llm_refine,
         )
-        code = raw_code
-        if llm_refine:
-            code = self._refine_with_llm(raw_code, agent_name)
-
-        self.specialists_dir.mkdir(parents=True, exist_ok=True)
-        py_path = self.specialists_dir / f"{agent_name}.py"
-        py_path.write_text(code, encoding="utf-8")
+        now = datetime.now(timezone.utc).isoformat()
 
         SpecialistStorage(category=category)
 
@@ -114,6 +107,79 @@ class AgentFactory:
             "fn_loaded": callable(fn),
             "registry_path": str(self.registry.registry_path),
         }
+
+    def render_specialist_py(
+        self,
+        *,
+        category: str,
+        agent_name: str,
+        description: str,
+        examples: list[str] | None = None,
+        llm_refine: bool = False,
+        created_at: str | None = None,
+    ) -> Path:
+        """Render specialist_agent.py.j2 and write the module (no registry registration)."""
+        if not _AGENT_NAME_RE.match(agent_name):
+            raise ValueError(
+                f"Invalid agent_name {agent_name!r}: must match "
+                r"^[a-z][a-z0-9_]*_specialist$"
+            )
+
+        template = self.env.get_template("specialist_agent.py.j2")
+        now = created_at or datetime.now(timezone.utc).isoformat()
+        raw_code = template.render(
+            agent_name=agent_name,
+            category=category,
+            description=description,
+            examples=examples or [],
+            created_at=now,
+        )
+        code = raw_code
+        if llm_refine:
+            code = self._refine_with_llm(raw_code, agent_name)
+
+        self.specialists_dir.mkdir(parents=True, exist_ok=True)
+        py_path = self.specialists_dir / f"{agent_name}.py"
+        py_path.write_text(code, encoding="utf-8")
+        return py_path
+
+    def regenerate_specialists_from_registry(
+        self,
+        *,
+        registry_path: Path | None = None,
+        categories_path: Path | None = None,
+    ) -> list[Path]:
+        """Re-render all registered generated specialists from the Jinja template."""
+        reg_path = registry_path or Path(
+            os.getenv("MYCELIUM_AGENT_REGISTRY_PATH", "data/agent_registry.json"),
+        )
+        cat_path = categories_path or Path(
+            os.getenv("MYCELIUM_CATEGORIES_PATH", "data/categories.json"),
+        )
+        reg = json.loads(reg_path.read_text(encoding="utf-8"))
+        categories: dict[str, Any] = {}
+        if cat_path.is_file():
+            cat_doc = json.loads(cat_path.read_text(encoding="utf-8"))
+            categories = cat_doc.get("categories", {})
+
+        written: list[Path] = []
+        for entry in reg.get("agents", {}).values():
+            if not entry.get("is_generated"):
+                continue
+            agent_name = entry["name"]
+            category = entry["category"]
+            cat_meta = categories.get(category, {})
+            description = entry.get("description") or cat_meta.get("description", "")
+            examples = cat_meta.get("examples") or []
+            written.append(
+                self.render_specialist_py(
+                    category=category,
+                    agent_name=agent_name,
+                    description=description,
+                    examples=examples,
+                ),
+            )
+        return written
 
     def _refine_with_llm(self, code: str, agent_name: str) -> str:
         """Optional LLM polish (off by default per lightweight).

@@ -1,0 +1,224 @@
+"""Integration tests for Phase 1 sync specialist research via run_query (slice 1300/1400)."""
+
+from __future__ import annotations
+
+import json
+import shutil
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from agents.classification import reset_category_tree
+from agents.context import reset_context_builder
+from agents.core_identity import reset_core_identity
+from agents.seed import get_seed_data, reset_seed_data
+from graphs.core import reset_core_graph, run_query
+from models.state import PersonQuery, PersonResponse
+from storage.core import CoreStorage, get_storage, reset_storage
+from tools.research import ResearchRunResult
+
+
+def _assert_single_person_assembled(
+    response: PersonResponse,
+    *,
+    person_name: str = "Test User",
+    min_contributions: int = 1,
+) -> dict[str, Any]:
+    """Stable assertions for assembled non-core query outcomes (avoid brittle debug substrings)."""
+    assert len(response.results) == 1
+    row = response.results[0]
+    assert row.get("id")
+    assert response.message.startswith(f"Found record for {person_name}")
+    assert "assembled" in response.debug
+    assert f"contributions={min_contributions}" in response.debug
+    return row
+
+
+@pytest.fixture
+def research_integration_env(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> CoreStorage:
+    """Isolated DB/seed/registry for end-to-end run_query with contact research."""
+    reset_storage()
+    reset_seed_data()
+    reset_context_builder()
+    reset_core_identity()
+    reset_core_graph()
+    reset_category_tree()
+
+    from agents.factory.agent_factory import reset_agent_factory
+    from agents.registry import reset_agent_registry
+
+    db = tmp_path / "test.db"
+    seed = tmp_path / "seed.json"
+    seed.write_text(
+        json.dumps(
+            {
+                "people": [
+                    {"name": "Test User", "employer": "Test Co"},
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    categories_src = Path("data/categories.json")
+    categories_dst = tmp_path / "categories.json"
+    if categories_src.is_file():
+        shutil.copy(categories_src, categories_dst)
+
+    monkeypatch.setenv("MYCELIUM_DB_PATH", str(db))
+    monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
+    monkeypatch.setenv("MYCELIUM_CHECKPOINT_PATH", str(tmp_path / "cp.sqlite"))
+    monkeypatch.setenv("MYCELIUM_CATEGORIES_PATH", str(categories_dst))
+    monkeypatch.setenv(
+        "MYCELIUM_AGENT_REGISTRY_PATH",
+        str(tmp_path / "agent_registry.json"),
+    )
+    monkeypatch.setenv("MYCELIUM_SPECIALISTS_DIR", str(tmp_path / "specialists"))
+    monkeypatch.setenv("MYCELIUM_AGENT_DATA_DIR", str(tmp_path / "agent_data"))
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+
+    reset_agent_registry()
+    reset_agent_factory()
+    storage = get_storage()
+    storage.seed_from_file(seed)
+    reset_seed_data()
+    _ = get_seed_data()
+
+    yield storage
+
+    reset_storage()
+    reset_seed_data()
+    reset_context_builder()
+    reset_core_identity()
+    reset_core_graph()
+    reset_category_tree()
+    reset_agent_registry()
+    reset_agent_factory()
+
+
+@pytest.mark.smoke
+def test_run_query_email_returns_found_in_same_response_when_research_mocked(
+    research_integration_env: CoreStorage,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Single run_query with --attributes email: mocked research returns found in one response.
+
+    Proves contact + email through supervisor → specialists → assemble (not pending forever).
+    """
+    _ = research_integration_env
+    captured: dict[str, Any] = {}
+
+    def _fake_run_field_research(
+        *,
+        category: str,
+        specialist_name: str,
+        person_id: str,
+        target_fields: list[str],
+        context: dict[str, Any],
+        storage: Any,
+        llm: Any | None = None,
+    ) -> ResearchRunResult:
+        _ = category, specialist_name, context, llm
+        captured["person_id"] = person_id
+        captured["target_fields"] = list(target_fields)
+        assert "email" in target_fields
+        data = storage.load()
+        rec = data.setdefault("records", {}).setdefault(person_id, {})
+        now = datetime.now(timezone.utc).isoformat()
+        rec["email"] = {
+            "status": "found",
+            "value": "test.user@example.com",
+            "confidence": 0.92,
+            "sources": ["https://example.com/contact"],
+            "researched_at": now,
+        }
+        storage.save(data)
+        return ResearchRunResult(fields_updated=["email"], tool_calls_count=1)
+
+    monkeypatch.setattr("tools.research.is_research_available", lambda: True)
+    monkeypatch.setattr("tools.research.run_field_research", _fake_run_field_research)
+
+    response = run_query(
+        PersonQuery(person_key="Test User", requested_attributes=["email"]),
+    )
+
+    row = _assert_single_person_assembled(response)
+    assert row["email"] == "test.user@example.com"
+    assert "not currently available" not in response.message
+    assert "may be in the future" not in response.message
+    assert captured.get("person_id") == row["id"]
+
+
+@pytest.mark.smoke
+def test_run_query_email_na_in_same_response_when_research_mocked(
+    research_integration_env: CoreStorage,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Mocked research marks email N/A: same run_query exposes N/A in results, not as found.
+
+    assemble_response merges specialist contrib; public results show email as N/A and the
+    message does not claim the attribute was discovered.
+    """
+    _ = research_integration_env
+
+    def _fake_run_field_research(
+        *,
+        category: str,
+        specialist_name: str,
+        person_id: str,
+        target_fields: list[str],
+        context: dict[str, Any],
+        storage: Any,
+        llm: Any | None = None,
+    ) -> ResearchRunResult:
+        _ = category, specialist_name, context, llm, target_fields
+        now = datetime.now(timezone.utc).isoformat()
+        data = storage.load()
+        rec = data.setdefault("records", {}).setdefault(person_id, {})
+        rec["email"] = {
+            "status": "na",
+            "reason": "No public email found for this person",
+            "researched_at": now,
+        }
+        storage.save(data)
+        return ResearchRunResult(fields_updated=["email"], tool_calls_count=1)
+
+    monkeypatch.setattr("tools.research.is_research_available", lambda: True)
+    monkeypatch.setattr("tools.research.run_field_research", _fake_run_field_research)
+
+    response = run_query(
+        PersonQuery(person_key="Test User", requested_attributes=["email"]),
+    )
+
+    row = _assert_single_person_assembled(response)
+    assert row.get("email") == "N/A"
+    assert "test.user@" not in response.message
+    assert "not currently available" not in response.message
+
+
+@pytest.mark.smoke
+def test_run_query_email_pending_when_research_unavailable_no_crash(
+    research_integration_env: CoreStorage,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without API keys, research is skipped; email stays pending and query completes."""
+    _ = research_integration_env
+    monkeypatch.setattr("tools.research.is_research_available", lambda: False)
+
+    response = run_query(
+        PersonQuery(person_key="Test User", requested_attributes=["email"]),
+    )
+
+    row = _assert_single_person_assembled(response)
+    assert "email" not in row
+    assert (
+        "not currently available" in response.message
+        or "still researching" in response.message
+    )
