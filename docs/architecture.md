@@ -95,7 +95,7 @@ class Person(BaseModel):
 ```
 
 **Identity rules:**
-- Seed provides `id`, `name`, `employer` (legacy seed `id` until slice 1720); runtime adds `person_id` (UUID).
+- Seed provides `name`, `employer` (no legacy `id`); public `results["id"]` and `person_id` are the stable UUID assigned by the seed loader (`agents/seed.py`).
 - `name` and `employer` are specialist-owned like any other attribute when requested (no privileged core filter).
 - There is no `extra` field on `Person`.
 
@@ -199,12 +199,16 @@ See `prompts/cursor/WORKFLOW.md` for the current handoff protocol.
 
 ## Current Phase Focus (as of June 2026)
 
-The seed-data-context redesign is **implemented** (Cursor slices `2026-06-09-1500` through `1600`):
+The seed-data-context redesign is **implemented** (Cursor slices `2026-06-09-1500` through `1720` via the reprocess queue):
 
-- Seed JSON origin + idempotent `person_id`
-- Supervisor plans specialists; graph builds context and invokes them
-- No `core_data`; unified response language
-- Agent Factory template with 3-scenario specialist stub
+- Seed JSON origin (`data/seed.json` + `data/prepare_seed.py`) with no legacy `id`; public `results["id"]` = stable `person_id` (UUID)
+- No `core_data` specialist; `name`/`employer` are specialist-owned like any other attribute
+- Supervisor is a pure planner (resolves seed, classifies, builds full context plan in state)
+- Graph: `supervisor` → `build_context` → `invoke_specialists` → `assemble_response`
+- Agent Factory template with 3 scenarios (`found` / `pending` / `N/A`), `specialist_contrib`, `person_id`/`context`/`target_fields`
+- Full integration, docs refresh, specialist re-gens, removal of core-person-field privileges, and legacy `id` elimination complete
+
+See `docs/plans/seed-data-context-architecture.md` and the reprocess reviews (`prompts/cursor/done/2026-06-09-*-reprocess/`).
 
 **Next phases:** robust pending handling, peer context retrieval, real LLM+tools research, richer output shape.
 
