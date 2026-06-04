@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-06-03T17:08:19.473110Z",
+  "last_updated": "2026-06-04T08:37:03.012871Z",
   "agents": {
     "core_data": {
       "name": "core_data",
@@ -34,6 +34,17 @@
       "strategy_path": "data/agents/financial/storage_strategy.json",
       "is_generated": true,
       "created_at": "2026-06-03T17:08:19.471942+00:00"
+    },
+    "professional_specialist": {
+      "name": "professional_specialist",
+      "category": "professional",
+      "description": "Career, education, and investment-related details.",
+      "module_path": "agents.specialists.professional_specialist",
+      "entrypoint": "professional_specialist",
+      "storage_path": "data/agents/professional/storage.json",
+      "strategy_path": "data/agents/professional/storage_strategy.json",
+      "is_generated": true,
+      "created_at": "2026-06-04T08:37:03.011996+00:00"
     }
   }
 }
