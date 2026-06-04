@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-06-04T08:37:40.189232Z",
+  "last_updated": "2026-06-04T08:38:02.737180Z",
   "agents": {
     "core_data": {
       "name": "core_data",
@@ -67,6 +67,17 @@
       "strategy_path": "data/agents/social/storage_strategy.json",
       "is_generated": true,
       "created_at": "2026-06-04T08:37:40.187882+00:00"
+    },
+    "relationships_specialist": {
+      "name": "relationships_specialist",
+      "category": "relationships",
+      "description": "Personal and family relationships.",
+      "module_path": "agents.specialists.relationships_specialist",
+      "entrypoint": "relationships_specialist",
+      "storage_path": "data/agents/relationships/storage.json",
+      "strategy_path": "data/agents/relationships/storage_strategy.json",
+      "is_generated": true,
+      "created_at": "2026-06-04T08:38:02.735966+00:00"
     }
   }
 }
