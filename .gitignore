@@ -19,5 +19,15 @@ data/*.sqlite-wal
 data/checkpoints.sqlite
 .langgraph_api/
 
+# Runtime classification cache (canonical taxonomy: _SEED_CATEGORIES in classification/engine.py)
+data/categories.json
+
+# Runtime agent factory / specialist data
+data/agent_registry.json
+data/agents/
+
+# AUTO-GENERATED specialists (recreated by AgentFactory on demand)
+src/agents/specialists/*_specialist.py
+
 # User scratch/dump area for files to share with the AI (e.g. logs, outputs, traces)
 tmp/

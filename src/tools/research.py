@@ -23,9 +23,6 @@ from tools.tavily import create_tavily_search_tool, is_web_search_available
 _RESEARCH_TEMPLATE_DIR = (
     Path(__file__).resolve().parent.parent / "agents" / "factory" / "templates" / "research"
 )
-_CATEGORIES_PATH = Path(os.getenv("MYCELIUM_CATEGORIES_PATH", "data/categories.json"))
-
-
 class FieldProposal(BaseModel):
     """One researched attribute proposal from the LLM."""
 
@@ -95,21 +92,18 @@ def is_research_available() -> bool:
 
 
 def load_category_metadata(category: str) -> dict[str, Any]:
-    """Load category description and examples from categories.json."""
+    """Load category description and examples from the classification tree cache."""
+    from agents.classification import get_category_tree
+
     slug = category.strip().lower()
-    if not _CATEGORIES_PATH.exists():
+    tree = get_category_tree()
+    if tree._data is None or slug not in tree._data.categories:
         return {"description": "", "examples": [], "assigned_agent": ""}
-    payload = json.loads(_CATEGORIES_PATH.read_text(encoding="utf-8"))
-    cats = payload.get("categories") or {}
-    if not isinstance(cats, dict):
-        return {"description": "", "examples": [], "assigned_agent": ""}
-    entry = cats.get(slug)
-    if not isinstance(entry, dict):
-        return {"description": "", "examples": [], "assigned_agent": ""}
+    cat = tree._data.categories[slug]
     return {
-        "description": entry.get("description") or "",
-        "examples": list(entry.get("examples") or []),
-        "assigned_agent": entry.get("assigned_agent") or "",
+        "description": cat.description,
+        "examples": list(cat.examples),
+        "assigned_agent": cat.assigned_agent or "",
     }
 
 

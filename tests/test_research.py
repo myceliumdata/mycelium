@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from agents.classification import get_category_tree, reset_category_tree
 from agents.specialists.base import SpecialistStorage
 from tools.research import (
     FieldProposal,
@@ -22,15 +23,26 @@ from tools.research import (
 )
 
 
+@pytest.fixture
+def categories_seed_tree(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Isolated categories cache from embedded _SEED_CATEGORIES."""
+    monkeypatch.setenv("MYCELIUM_CATEGORIES_PATH", str(tmp_path / "categories.json"))
+    reset_category_tree()
+    get_category_tree()
+
+
 @pytest.mark.smoke
-def test_load_category_metadata_contact() -> None:
+def test_load_category_metadata_contact(categories_seed_tree: None) -> None:
     meta = load_category_metadata("contact")
     assert "email" in meta.get("examples", [])
     assert meta.get("assigned_agent") == "contact_specialist"
 
 
 @pytest.mark.smoke
-def test_load_category_metadata_financial() -> None:
+def test_load_category_metadata_financial(categories_seed_tree: None) -> None:
     meta = load_category_metadata("financial")
     assert meta.get("description")
     assert "net_worth" in meta.get("examples", [])

@@ -325,7 +325,7 @@ def test_refresh_from_llm_merge_with_mock_llm(tmp_path: Path) -> None:
             return CategoryProposals(
                 proposals=[
                     CategoryProposal(
-                        attribute="net_worth",
+                        attribute="liquid_assets",
                         category="financial",
                         description="Financial attributes",
                         assigned_agent="financial_specialist",
@@ -339,11 +339,10 @@ def test_refresh_from_llm_merge_with_mock_llm(tmp_path: Path) -> None:
             _ = schema
             return _FakeStructured()
 
-    changes = tree.refresh_from_llm(["net_worth"], llm=_FakeLLM())
+    changes = tree.refresh_from_llm(["liquid_assets"], llm=_FakeLLM())
 
-    assert "net_worth" in changes["updated_attributes"]
-    assert "financial" in changes["added_categories"]
-    assert tree.classify("net_worth").category == "financial"
+    assert "liquid_assets" in changes["updated_attributes"]
+    assert tree.classify("liquid_assets").category == "financial"
 
 
 @pytest.mark.smoke
@@ -432,7 +431,7 @@ def test_classify_sensible_unknown_llm_then_cached(tmp_path: Path) -> None:
             _ = prompt
             return [
                 CategoryProposal(
-                    attribute="net_worth",
+                    attribute="liquid_assets",
                     category="financial",
                     description="Financial attributes",
                     assigned_agent="financial_specialist",
@@ -459,8 +458,8 @@ def test_classify_sensible_unknown_llm_then_cached(tmp_path: Path) -> None:
 
     tree._llm_propose_for_attributes = types.MethodType(_counting_propose, tree)
 
-    first = tree.classify("net_worth")
-    second = tree.classify("net_worth")
+    first = tree.classify("liquid_assets")
+    second = tree.classify("liquid_assets")
     assert first.category == "financial"
     assert second.category == "financial"
     assert first.confidence == 0.9

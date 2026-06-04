@@ -30,7 +30,7 @@ def _default_categories_path() -> Path:
     return Path(os.getenv("MYCELIUM_CATEGORIES_PATH", "data/categories.json"))
 
 
-# Embedded fallback seed (must stay in sync with committed data/categories.json).
+# Embedded canonical taxonomy (written to data/categories.json on first use; file is gitignored).
 _SEED_CATEGORIES: dict[str, Any] = {
     "version": "1.0",
     "last_updated": "2026-06-03T00:00:00+00:00",
@@ -61,6 +61,11 @@ _SEED_CATEGORIES: dict[str, Any] = {
             "assigned_agent": "professional_specialist",
             "examples": ["title", "bio", "education", "previous_firms", "investments"],
         },
+        "financial": {
+            "description": "Net worth, compensation, investments, and other financial attributes.",
+            "assigned_agent": "financial_specialist",
+            "examples": ["net_worth", "salary", "compensation", "portfolio"],
+        },
     },
     "attribute_map": {
         "email": "contact",
@@ -88,6 +93,10 @@ _SEED_CATEGORIES: dict[str, Any] = {
         "education": "professional",
         "previous_firms": "professional",
         "investments": "professional",
+        "net_worth": "financial",
+        "salary": "financial",
+        "compensation": "financial",
+        "portfolio": "financial",
     },
 }
 

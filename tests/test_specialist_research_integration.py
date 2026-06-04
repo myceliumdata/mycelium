@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -64,15 +63,15 @@ def research_integration_env(
         ),
         encoding="utf-8",
     )
-    categories_src = Path("data/categories.json")
     categories_dst = tmp_path / "categories.json"
-    if categories_src.is_file():
-        shutil.copy(categories_src, categories_dst)
-
     monkeypatch.setenv("MYCELIUM_DB_PATH", str(db))
     monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
     monkeypatch.setenv("MYCELIUM_CHECKPOINT_PATH", str(tmp_path / "cp.sqlite"))
     monkeypatch.setenv("MYCELIUM_CATEGORIES_PATH", str(categories_dst))
+    reset_category_tree()
+    from agents.classification import get_category_tree
+
+    get_category_tree()
     monkeypatch.setenv(
         "MYCELIUM_AGENT_REGISTRY_PATH",
         str(tmp_path / "agent_registry.json"),
