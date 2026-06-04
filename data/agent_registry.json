@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-06-04T08:37:12.159348Z",
+  "last_updated": "2026-06-04T08:37:40.189232Z",
   "agents": {
     "core_data": {
       "name": "core_data",
@@ -56,6 +56,17 @@
       "strategy_path": "data/agents/contact/storage_strategy.json",
       "is_generated": true,
       "created_at": "2026-06-04T08:37:12.158224+00:00"
+    },
+    "social_specialist": {
+      "name": "social_specialist",
+      "category": "social",
+      "description": "Social and professional network profiles and handles.",
+      "module_path": "agents.specialists.social_specialist",
+      "entrypoint": "social_specialist",
+      "storage_path": "data/agents/social/storage.json",
+      "strategy_path": "data/agents/social/storage_strategy.json",
+      "is_generated": true,
+      "created_at": "2026-06-04T08:37:40.187882+00:00"
     }
   }
 }
