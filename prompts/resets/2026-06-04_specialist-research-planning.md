@@ -27,7 +27,9 @@ Planning **Phase 1 specialist research**: replace the empty `_stub_background_re
 | Public `results` | Attribute-scoped: `id` + requested keys only; bare lookup returns `id`, `name`, `employer` |
 | Canonical id | **`id` only** (no `person_id` in public results); rename landed in slice 1300 |
 | LangSmith URL | Stays on **CLI second line** — not inside `PersonResponse` JSON |
-| Phase 1 execution mode | **Async** background research thread (keep current UX); sync in-graph deferred |
+| Phase 1 execution mode | **Sync** — specialist blocks on research before returning (demos); **async** deferred; runner API must stay dispatch-agnostic |
+| Low confidence | **`na`** with required **`reason`** (not `pending`) |
+| Research prompt | **Full** `build_context` (seed + all specialist slices); `target_fields` limits writes only |
 | Phase 1 tools | **`web_search` only** (Tavily); Extract/Crawl later |
 | God agents | **No** — shared `research.py` runner, per-category Jinja prompt fragments only |
 
@@ -79,14 +81,9 @@ Do not assume — inspect.
 
 ---
 
-## Design doc — open questions for Paul
+## Design doc — resolved (Paul, 2026-06-04)
 
-From bottom of `specialist-research-phase1.md`:
-
-1. **Low confidence:** default `na` vs stay `pending`?
-2. **LangSmith:** child run naming preference?
-3. **Rollout:** prove `contact` + `email` first vs regen all six specialists at once?
-4. **Research prompt:** always include seed `name`/`employer` as hints?
+See **Resolved decisions** in `docs/plans/specialist-research-phase1.md`: sync Phase 1, low confidence → `na` + reason, contact+email proof then regen all six, full context in research prompts. LangSmith naming was an implementation detail only — dropped as an open question.
 
 ---
 
