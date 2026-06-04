@@ -9,7 +9,10 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from models.state import MINIMUM_VIABLE_FIELDS, MyceliumGraphState
+from models.state import MyceliumGraphState
+
+# Legacy ingest validator (unwired); kept local to avoid reviving removed state constants.
+_MINIMUM_VIABLE_FIELDS = ["name", "employer"]
 
 _NAME_PATTERN = re.compile(r"^[\w\s\.\-'’,]{2,}$", re.UNICODE)
 
@@ -29,7 +32,7 @@ async def validator_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[st
     if person is None:
         errors.append("ValidatorAgent: person record missing.")
     else:
-        for field in MINIMUM_VIABLE_FIELDS:
+        for field in _MINIMUM_VIABLE_FIELDS:
             value = getattr(person, field, None)
             if not value or not str(value).strip():
                 errors.append(f"ValidatorAgent: required field '{field}' is empty.")

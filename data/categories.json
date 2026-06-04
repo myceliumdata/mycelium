@@ -1,32 +1,62 @@
 {
   "version": "1.0",
-  "last_updated": "2026-06-03T00:00:00+00:00",
+  "last_updated": "2026-06-04T14:03:15.920331Z",
   "model_used": "",
   "categories": {
     "contact": {
       "description": "Direct ways to reach the person (email, phone, physical).",
       "assigned_agent": "contact_specialist",
-      "examples": ["email", "phone", "mobile", "address", "website"]
+      "examples": [
+        "email",
+        "phone",
+        "mobile",
+        "address",
+        "website"
+      ]
     },
     "social": {
       "description": "Social and professional network profiles and handles.",
       "assigned_agent": "social_specialist",
-      "examples": ["linkedin", "x_handle", "twitter", "facebook", "instagram"]
+      "examples": [
+        "linkedin",
+        "x_handle",
+        "twitter",
+        "facebook",
+        "instagram"
+      ]
     },
     "relationships": {
       "description": "Personal and family relationships.",
       "assigned_agent": "relationships_specialist",
-      "examples": ["spouse", "partner", "family", "children", "parents"]
+      "examples": [
+        "spouse",
+        "partner",
+        "family",
+        "children",
+        "parents"
+      ]
     },
     "demographic": {
       "description": "Basic personal characteristics and background.",
       "assigned_agent": "demographic_specialist",
-      "examples": ["age", "birthday", "gender", "nationality", "location"]
+      "examples": [
+        "age",
+        "birthday",
+        "gender",
+        "nationality",
+        "location"
+      ]
     },
     "professional": {
       "description": "Career, education, and investment-related details.",
       "assigned_agent": "professional_specialist",
-      "examples": ["title", "bio", "education", "previous_firms", "investments"]
+      "examples": [
+        "title",
+        "bio",
+        "education",
+        "previous_firms",
+        "investments"
+      ]
     }
   },
   "attribute_map": {
@@ -54,6 +84,8 @@
     "bio": "professional",
     "education": "professional",
     "previous_firms": "professional",
-    "investments": "professional"
+    "investments": "professional",
+    "name": "contact",
+    "foo_unknown": "unknown"
   }
 }

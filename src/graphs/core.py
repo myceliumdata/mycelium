@@ -1,6 +1,7 @@
-"""Core Mycelium LangGraph: Supervisor + specialist dispatch (query-only).
+"""Core Mycelium LangGraph: seed resolution, context build, specialists, assembly.
 
-Flow: START → supervisor (classify & route) → specialist (registry dispatch) → END.
+Flow: START → supervisor → build_context (if specialists needed) → invoke_specialists
+→ assemble_response → END; or supervisor → assemble_response when name-only / not found.
 
 The default uses AsyncSqliteSaver (aiosqlite) so LangGraph Studio / langgraph dev
 (ASGI) can use ainvoke cleanly. The MCP server forces the sync SqliteSaver path
@@ -25,7 +26,11 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from agents.dispatch import specialist_dispatcher
+from agents.dispatch import (
+    assemble_response_node,
+    build_context_node,
+    invoke_specialists_node,
+)
 from agents.supervisor import supervisor_agent
 from models.state import MyceliumGraphState, PersonQuery, PersonResponse
 
@@ -40,7 +45,7 @@ _CHECKPOINT_MSGPACK_ALLOWLIST: tuple[tuple[str, str], ...] = (
     ("models.state", "PersonResponse"),
 )
 
-Route = Literal["specialist", "__end__"]
+AfterSupervisor = Literal["build_context", "assemble_response"]
 _compiled_graph: CompiledStateGraph | None = None
 _checkpointer_ctx: AsyncSqliteSaver | SqliteSaver | None = None
 _last_invocation_trace_id: str | None = None
@@ -127,15 +132,26 @@ def reset_core_graph() -> None:
     reset_last_invocation_trace_id()
 
 
-def _route_after_supervisor(state: MyceliumGraphState | dict[str, Any]) -> Route:
+def _specialists_planned(state: MyceliumGraphState) -> bool:
+    ctx = state.context if isinstance(state.context, dict) else {}
+    meta = ctx.get("_meta")
+    if not isinstance(meta, dict):
+        return False
+    planned = meta.get("specialists_to_invoke") or []
+    return bool(planned)
+
+
+def _route_after_supervisor(
+    state: MyceliumGraphState | dict[str, Any],
+) -> AfterSupervisor:
     current = (
         state
         if isinstance(state, MyceliumGraphState)
         else MyceliumGraphState.model_validate(state)
     )
-    if current.route in (None, "__end__"):
-        return "__end__"
-    return "specialist"
+    if _specialists_planned(current):
+        return "build_context"
+    return "assemble_response"
 
 
 def build_core_graph(
@@ -155,15 +171,22 @@ def build_core_graph(
     graph: StateGraph = StateGraph(MyceliumGraphState)
 
     graph.add_node("supervisor", supervisor_agent)
-    graph.add_node("specialist", specialist_dispatcher)
+    graph.add_node("build_context", build_context_node)
+    graph.add_node("invoke_specialists", invoke_specialists_node)
+    graph.add_node("assemble_response", assemble_response_node)
 
     graph.add_edge(START, "supervisor")
     graph.add_conditional_edges(
         "supervisor",
         _route_after_supervisor,
-        {"specialist": "specialist", "__end__": END},
+        {
+            "build_context": "build_context",
+            "assemble_response": "assemble_response",
+        },
     )
-    graph.add_edge("specialist", END)
+    graph.add_edge("build_context", "invoke_specialists")
+    graph.add_edge("invoke_specialists", "assemble_response")
+    graph.add_edge("assemble_response", END)
 
     checkpointer: AsyncSqliteSaver | SqliteSaver | None = None
     if setup_checkpointer:
@@ -333,7 +356,7 @@ def run_query(
     """Invoke the core graph and return a JSON-serializable response.
 
     The LangSmith trace Input always contains a ``query`` section (a query-only
-    ``PersonQuery``). Supervisor sets ``route``; dispatch invokes the registered specialist.
+    ``PersonQuery``). Supervisor plans specialists; graph nodes build context, invoke, assemble.
     """
     graph = get_core_graph()
     initial = MyceliumGraphState(
@@ -363,7 +386,7 @@ def run_query(
     return PersonResponse(
         results=[],
         message="Graph finished without a response payload.",
-        debug="No response set by specialist dispatch.",
+        debug="No response set by assemble_response.",
         thread_id=thread_id,
         trace_id=captured_trace_id,
     )

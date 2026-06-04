@@ -55,18 +55,31 @@ The **CLI** (`query`, `seed`) and **MCP** (`query_person`, `list_specialist_rout
 
 Data addition via the public API was removed in the June 2026 refactor (tasks 1000–1050). It will return later as **internal agent coordination**, not as a direct caller-supplied payload.
 
-### Supervisor as coordinator (Phase 1 complete)
+### Seed origin and identity (June 2026 — seed-data-context redesign)
 
-The **supervisor node** (`src/agents/supervisor.py`) is a thin coordinator and router:
+- **Canonical seed:** `data/seed.json` — static JSON origin of person records (`people` array). Replace the file manually to reset origin data; `bin/reset-mycelium` does **not** touch it.
+- **Transform:** `data/prepare_seed.py` builds `seed.json` from `seed_crm.json` (name + employer only; no legacy `id` in the file).
+- **Loader:** `src/agents/seed.py` assigns stable `person_id` (uuid5 from name|employer) at load time; public `results["id"]` is that UUID; supervisor resolves lookups via `find_by_key` (name or `person_id`).
+- **No `core_data` specialist** — identity fields (name, employer) come from seed; specialists may override them later.
 
-- It evaluates the inbound `PersonQuery` (`person_key` + optional `requested_attributes`) and emits a `route` decision plus audit log. For non-core `requested_attributes` it runs fast cached classification via `src/agents/classification/` (see below) and injects metadata into `state.classifications` and the audit log. It always routes to the core specialist (`route="core_data"`).
-- Core lookup via `CoreIdentity` and construction of the minimal `PersonResponse` (`results`, `message`, `debug`, `trace_id`, `thread_id`) are performed by `core_data_agent` (including `classifications` in `response.debug` when present).
-- **Core data specialist** — `src/agents/core_data.py` defines `core_data_agent`, the LangGraph node that owns core CRM lookups (`find_by_key` via `CoreIdentity`). Wiring supervisor → `core_data_agent` (with the conditional edge in `graphs/core.py`) was completed in tasks 1070/1100 and the final alignment pass was 1110.
-- **CoreIdentity** — `src/agents/core_identity.py` is the storage facade used by `core_data_agent` (and available for future specialists).
+### Supervisor and graph (current)
 
-Legacy **enrich**, **validator**, and **person_prep** modules remain on disk as *unwired legacy* (see the module docstrings in those files). They are not imported by `src/agents/__init__.py` and are not present in the compiled public graph. They are reserved exclusively for future internal agent-coordinated data addition (see TODO.md "Re-adding data addition").
+The **supervisor** (`src/agents/supervisor.py`) resolves seed matches, classifies `requested_attributes`, and plans which generated specialists to invoke. It does **not** build the final response when specialists are needed.
 
-Full specialist-agent routing for non-core attributes is still future work. When a query requests non-core attributes, the core record (if present) is returned and the `message` field contains a narrative (e.g. "we're still researching X").
+**Graph flow** (`src/graphs/core.py`):
+
+```
+START → supervisor → build_context → invoke_specialists → assemble_response → END
+              └──────────────── assemble_response (name-only / not found)
+```
+
+- **build_context** (`src/agents/context.py`) — union of seed + all specialist storage for the `person_id`(s).
+- **invoke_specialists** — each required specialist receives full `context`, `current_person_id`, and `target_fields` (owned attributes only).
+- **assemble_response** — unified `PersonResponse` from seed identity + specialist contributions.
+
+Generated specialists (`src/agents/specialists/*_specialist.py`, Agent Factory template) implement three scenarios: has data, pending research (background stub thread), or N/A. See `docs/plans/seed-data-context-architecture.md` and Cursor slices `2026-06-09-15xx`.
+
+Legacy **enrich**, **validator**, **person_prep**, and **core_identity** remain on disk as unwired legacy; queries do not depend on them.
 
 ---
 
@@ -81,13 +94,10 @@ class Person(BaseModel):
     employer: str | None = None
 ```
 
-**Core Rules:**
-- `CORE_PERSON_FIELDS = {"id", "name", "employer"}`
-- `MINIMUM_VIABLE_FIELDS = ["name", "employer"]`
-- All other attributes (email, phone, demographics, social handles, etc.) are non-core and routed to specialist agents.
-- There is no `extra` field on the core `Person` model.
-
-The `Person` model represents only records in the primary core `people` table.
+**Identity rules:**
+- Seed provides `id`, `name`, `employer` (legacy seed `id` until slice 1720); runtime adds `person_id` (UUID).
+- `name` and `employer` are specialist-owned like any other attribute when requested (no privileged core filter).
+- There is no `extra` field on `Person`.
 
 ---
 
@@ -108,16 +118,13 @@ Phase 1 adds a **Classification Engine** (cached lookup in `src/agents/classific
 
 ---
 
-## Storage Constraints (Phase 1)
+## Storage (current)
 
-- **SQLite only**.
-- Two separate database files:
-  - `data/mycelium.db` — application data (currently only the minimal core `people` table)
-  - `data/checkpoints.sqlite` — LangGraph checkpointer (AsyncSqliteSaver + aiosqlite for langgraph dev / Studio ASGI compatibility; sync callers go through run_query bridge)
-- The shared storage layer must remain **dead simple**.
-- Direct storage access by the supervisor is a **Phase 1 concession**, not the long-term target architecture.
+- **Seed (queries):** `data/seed.json` via `agents.seed` — not auto-loaded into SQLite on query.
+- **Specialists:** per-category JSON under `data/agents/<category>/` (`SpecialistStorage` in `src/agents/specialists/base.py`), keyed by `person_id`.
+- **SQLite:** `data/mycelium.db` (legacy `people` table; checkpoints/history only in this phase) and `data/checkpoints.sqlite` (LangGraph checkpointer).
 
-See `src/storage/core.py` for the current minimal implementation.
+See `src/storage/core.py` (DB retained for checkpointer-era compatibility; people auto-seed disabled by default).
 
 ---
 
@@ -129,16 +136,16 @@ Core storage holds only `id`, `name`, and `employer`. Callers send a query-only 
 
 | Intent | What the caller sends | Graph path (current / target) | What comes back |
 |--------|----------------------|-------------------------------|-----------------|
-| **Lookup (found)** | `person_key` (+ optional non-core attrs) | `supervisor` → `core_data_agent` → `CoreIdentity.find_by_key` | `results`: one or more core dicts (multiple when a name is ambiguous); plural `message` when N>1 |
-| **Lookup (miss)** | `person_key`, no match | Same | `results`: `[]`; plain not-found `message` (no public ingest guidance) |
-| **Non-core attrs** | `person_key` + e.g. `age`, `x_handle` | Same lookup; narrative only | `results`: core dict if person exists; `message` notes ongoing research |
+| **Lookup (found)** | `person_key` only | `supervisor` → `assemble_response` (seed) | `results`: identity dict(s) from seed; `message`: "Found record for …" |
+| **Lookup (miss)** | unknown `person_key` | `supervisor` → `assemble_response` | `results`: `[]`; not-found `message` |
+| **Non-core attrs** | `person_key` + attrs | `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` | `results`: seed identity; `message`: specialist status (pending / N/A / values) |
 
 ### Response fields (query outcomes)
 
 All external responses use the minimalist **`PersonResponse`** (`results`, `message`, `debug`, `trace_id`, `thread_id`):
 
-- **`results`** — Factual core data only. Populated when a record exists; empty when lookup misses.
-- **`message`** — Primary channel for humans and agents: found / not-found / non-core research narrative.
+- **`results`** — Identity records from seed (name, employer); `"id"` and `"person_id"` are the stable UUID from the seed loader (disambiguation for multi-result sets; specialist storage key). Specialist overrides may apply later.
+- **`message`** — Primary channel: found / not-found / specialist attribute status (no "core record" wording).
 - **`debug`** — Internal context (original `person_key`, `requested_attributes`, outcome tags). Callers should not depend on it.
 - **`trace_id`** — LangSmith trace identifier for this graph invocation when `LANGCHAIN_TRACING_V2` is enabled; otherwise `null`. Lets operators and developers jump from a JSON response to the matching trace in LangSmith for debugging. When creating your LangSmith API key, select **Personal Access Token (PAT)** (prefix `lsv2_pt_`). `LANGCHAIN_PROJECT` (default "mycelium") names the tracing project in the LangSmith UI — it will be created automatically on first use; no manual pre-creation required. See README.md for full setup steps.
 - **`thread_id`** — Conversation/session identifier for this request. CLI and MCP callers may pass a stable `thread_id` to tie follow-up queries to the same LangGraph checkpoint thread; when omitted, the runtime generates one per invocation.
@@ -151,7 +158,7 @@ There is no separate `DataRequest` model or `status` enum — outcome is conveye
 
 Public ingest (CLI `ingest`, MCP `submit_person_data`, `PersonQuery.provided_data`, enrich/validator loop) was removed June 2026. Planned return:
 
-- Internal coordination via specialist agents (including `core_data_agent` persist paths).
+- Internal coordination via specialist agents (including seed/specialist persist paths).
 - No restoration of the old single-step public `provided_data` handshake without a new design review.
 
 Historical reference: tasks `2026-06-02-1000-redesign-ingestion-handshake` (introduced) and `2026-06-05-1000`–`1050` (removed from public surface).
@@ -192,15 +199,17 @@ See `prompts/cursor/WORKFLOW.md` for the current handoff protocol.
 
 ## Current Phase Focus (as of June 2026)
 
-The goal for this phase is to build a working, minimal system that demonstrates:
+The seed-data-context redesign is **implemented** (Cursor slices `2026-06-09-1500` through `1600`):
 
-- A supervisor that routes queries to core and specialist agents (core via `core_data_agent`)
-- A very clean, minimal core people dataset
-- An MCP interface that external agents use to **query** person data (addition returns via internal agents later)
-- Clear separation of concerns that supports future growth into fully agent-owned data
+- Seed JSON origin + idempotent `person_id`
+- Supervisor plans specialists; graph builds context and invokes them
+- No `core_data`; unified response language
+- Agent Factory template with 3-scenario specialist stub
 
-See `TODO.md` for the current prioritized list of work.
+**Next phases:** robust pending handling, peer context retrieval, real LLM+tools research, richer output shape.
+
+See `TODO.md` for follow-ups.
 
 ---
 
-**Last major update:** June 2026 (query-only migration + Classification Engine Phase 1 complete)
+**Last major update:** June 2026 (seed-data-context redesign integrated)

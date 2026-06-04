@@ -8,7 +8,9 @@ test has completed and printed its output.
 import pytest
 
 from agents.classification import reset_category_tree
+from agents.context import reset_context_builder
 from agents.core_identity import reset_core_identity
+from agents.seed import reset_seed_data
 from agents.factory.agent_factory import reset_agent_factory
 from agents.registry import reset_agent_registry
 from graphs.core import reset_core_graph
@@ -24,6 +26,8 @@ def _final_cleanup():
     for reset_func in (
         reset_core_graph,
         reset_storage,
+        reset_seed_data,
+        reset_context_builder,
         reset_core_identity,
         reset_category_tree,
         reset_agent_registry,

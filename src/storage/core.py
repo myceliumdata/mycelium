@@ -1,4 +1,8 @@
-"""SQLite data layer for minimal core people records.
+"""SQLite data layer for checkpoints and history in this phase.
+
+People seeding moved to agents.seed (direct JSON). This module retained for
+checkpoints/history only; the people table and seed_from_file remain for
+compatibility but are no longer auto-populated on get_storage().
 
 Schema: people(id, name, employer) only. If you have an older data/mycelium.db
 with extra columns or derivative_* tables, see docs/database-notes.md.
@@ -11,6 +15,7 @@ import os
 import sqlite3
 from pathlib import Path
 
+from agents.seed import _assign_person_id
 from models.state import Person
 
 DEFAULT_DB_PATH = Path("data/mycelium.db")
@@ -50,9 +55,11 @@ class CoreStorage:
         people = payload.get("people", [])
         inserted = 0
         for row in people:
+            pid = row.get("id") or _assign_person_id(row)
             person = Person.model_validate(
                 {
-                    "id": row["id"],
+                    "id": pid,
+                    "person_id": pid,
                     "name": row["name"],
                     "employer": row.get("employer"),
                 },
@@ -120,9 +127,9 @@ def get_storage(
     *,
     db_path: Path | None = None,
     seed_path: Path | None = None,
-    auto_seed: bool = True,
+    auto_seed: bool = False,
 ) -> CoreStorage:
-    """Return process-wide storage, seeding CRM data on first access."""
+    """Return process-wide storage (no automatic CRM people seeding)."""
     global _storage
     if _storage is None:
         resolved_db = Path(os.getenv("MYCELIUM_DB_PATH", str(db_path or DEFAULT_DB_PATH)))

@@ -1,4 +1,9 @@
-"""PersonResponse builders for supervisor query outcomes."""
+"""PersonResponse builders for supervisor query outcomes.
+
+Unified in seed-data-context redesign. No more special 'core' layer.
+results come from seed + specialist overrides (specialist wins).
+See 3 scenarios in specialists.
+"""
 
 from __future__ import annotations
 
@@ -23,6 +28,18 @@ def debug_for_query(query: PersonQuery, **extra: Any) -> str:
     return "; ".join(parts)
 
 
+def _build_identity_results(
+    persons: list[Person] | None = None,
+    *,
+    base_records: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    if base_records is not None:
+        return list(base_records)
+    if persons:
+        return [p.core_dict() for p in persons]
+    return []
+
+
 def _make_response(
     *,
     results: list[dict[str, Any]],
@@ -42,20 +59,23 @@ def _make_response(
 
 def response_found(
     query: PersonQuery,
-    persons: list[Person],
+    persons: list[Person] | None = None,
     *,
+    base_records: list[dict[str, Any]] | None = None,
     classifications: list[dict[str, Any]] | None = None,
     specialist: str | None = None,
     trace_id: str | None = None,
     thread_id: str | None = None,
 ) -> PersonResponse:
-    n = len(persons)
+    records = _build_identity_results(persons, base_records=base_records)
+    n = len(records)
     if n == 1:
-        message = f"Found core record for {persons[0].name}."
+        name = records[0].get("name") or query.person_key
+        message = f"Found record for {name}."
     else:
-        message = f"Found {n} core records for {query.person_key!r}."
+        message = f"Found {n} records for {query.person_key!r}."
     return _make_response(
-        results=[p.core_dict() for p in persons],
+        results=records,
         message=message,
         debug=debug_for_query(
             query,
@@ -80,8 +100,8 @@ def response_not_found(
     return _make_response(
         results=[],
         message=(
-            f"No core record found for {query.person_key!r}. "
-            "This lookup did not match anyone in core storage."
+            f"No record found for {query.person_key!r}. "
+            "This lookup did not match anyone."
         ),
         debug=debug_for_query(
             query,
@@ -96,33 +116,37 @@ def response_not_found(
 
 def response_non_core(
     query: PersonQuery,
-    persons: list[Person],
-    attributes: list[str],
+    persons: list[Person] | None = None,
+    attributes: list[str] | None = None,
     *,
+    base_records: list[dict[str, Any]] | None = None,
     classifications: list[dict[str, Any]] | None = None,
     specialist: str | None = None,
     trace_id: str | None = None,
     thread_id: str | None = None,
 ) -> PersonResponse:
-    attr_list = ", ".join(attributes)
-    n = len(persons)
+    attrs = attributes or []
+    attr_list = ", ".join(attrs)
+    records = _build_identity_results(persons, base_records=base_records)
+    n = len(records)
     via_suffix = (
         f" (via {specialist})"
         if specialist and specialist != "core_data"
         else ""
     )
     if n == 1:
+        name = records[0].get("name") or query.person_key
         message = (
-            f"We have a core record for {persons[0].name}, but we're still researching "
+            f"Found record for {name}. We're still researching "
             f"{attr_list}{via_suffix}."
         )
     else:
         message = (
-            f"We have {n} core records for {query.person_key!r}, but we're still researching "
+            f"Found {n} records for {query.person_key!r}. We're still researching "
             f"{attr_list}{via_suffix}."
         )
     return _make_response(
-        results=[p.core_dict() for p in persons],
+        results=records,
         message=message,
         debug=debug_for_query(
             query,

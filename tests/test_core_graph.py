@@ -8,7 +8,9 @@ from pathlib import Path
 import pytest
 
 from agents.classification import reset_category_tree
+from agents.context import reset_context_builder
 from agents.core_identity import reset_core_identity
+from agents.seed import get_seed_data, reset_seed_data
 from graphs.core import reset_core_graph, run_query
 from models.state import PersonQuery
 from storage.core import CoreStorage, reset_storage
@@ -17,6 +19,8 @@ from storage.core import CoreStorage, reset_storage
 @pytest.fixture
 def temp_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> CoreStorage:
     reset_storage()
+    reset_seed_data()
+    reset_context_builder()
     reset_core_identity()
     reset_core_graph()
     reset_category_tree()
@@ -27,7 +31,6 @@ def temp_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> CoreStorage
             {
                 "people": [
                     {
-                        "id": "person-test",
                         "name": "Test User",
                         "employer": "Test Co",
                     },
@@ -53,8 +56,13 @@ def temp_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> CoreStorage
     reset_agent_registry()
     reset_agent_factory()
     storage = get_storage()
+    storage.seed_from_file(seed)
+    reset_seed_data()
+    _ = get_seed_data()
     yield storage
     reset_storage()
+    reset_seed_data()
+    reset_context_builder()
     reset_core_identity()
     reset_core_graph()
     reset_category_tree()
@@ -65,12 +73,17 @@ def temp_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> CoreStorage
 @pytest.mark.full
 def test_query_existing_person(temp_storage: CoreStorage) -> None:
     _ = temp_storage
-    response = run_query(PersonQuery(person_key="person-test"))
+    response = run_query(PersonQuery(person_key="Test User"))
     assert len(response.results) == 1
     assert response.results[0]["name"] == "Test User"
     assert response.results[0]["employer"] == "Test Co"
-    assert "Found core record" in response.message
-    assert "person_key='person-test'" in response.debug
+    pid = response.results[0]["person_id"]
+    assert pid
+    assert response.results[0]["id"] == pid
+    assert len(pid.split("-")) == 5
+    assert "Found record for" in response.message
+    assert "core record" not in response.message.lower()
+    assert "person_key='Test User'" in response.debug
 
 
 @pytest.mark.full
@@ -78,7 +91,8 @@ def test_query_missing_person(temp_storage: CoreStorage) -> None:
     _ = temp_storage
     response = run_query(PersonQuery(person_key="Missing Person"))
     assert response.results == []
-    assert "No core record found" in response.message
+    assert "No record found" in response.message
+    assert "core record" not in response.message.lower()
     assert "did not match" in response.message.lower()
     assert "outcome='not_found'" in response.debug
 
@@ -88,37 +102,38 @@ def test_query_non_core_attributes(temp_storage: CoreStorage) -> None:
     _ = temp_storage
     response = run_query(
         PersonQuery(
-            person_key="person-test",
+            person_key="Test User",
             requested_attributes=["age", "x_handle"],
         ),
     )
     assert len(response.results) == 1
     assert response.results[0]["name"] == "Test User"
-    assert "still researching" in response.message
+    assert (
+        "not currently available" in response.message
+        or "still researching" in response.message
+    )
     assert "age" in response.message
-    assert "x_handle" in response.debug
-    assert "non_core_requested='age'" in response.debug
-    assert "classifications=" in response.debug
-    assert "demographic" in response.debug
-    assert "social" in response.debug
-    assert "via demographic_specialist" in response.message
-    assert "specialist='demographic_specialist'" in response.debug
+    assert "x_handle" in response.message or "x_handle" in response.debug
+    assert "contributions=2" in response.debug
+    assert "outcome='assembled'" in response.debug
 
 
 @pytest.mark.full
 def test_results_are_plain_dicts(temp_storage: CoreStorage) -> None:
     _ = temp_storage
-    response = run_query(PersonQuery(person_key="person-test"))
+    response = run_query(PersonQuery(person_key="Test User"))
     for item in response.results:
         assert isinstance(item, dict)
-        assert set(item.keys()) <= {"id", "name", "employer"}
+        assert set(item.keys()) <= {"id", "name", "employer", "person_id"}
+        assert item.get("person_id")
+        assert item.get("id") == item.get("person_id")
 
 
 @pytest.mark.full
 def test_run_query_echoes_thread_id_on_lookup(temp_storage: CoreStorage) -> None:
     _ = temp_storage
     response = run_query(
-        PersonQuery(person_key="person-test"),
+        PersonQuery(person_key="Test User"),
         thread_id="thread-lookup-1",
     )
     assert response.thread_id == "thread-lookup-1"
@@ -128,14 +143,14 @@ def test_run_query_echoes_thread_id_on_lookup(temp_storage: CoreStorage) -> None
 @pytest.mark.full
 def test_run_query_default_thread_id(temp_storage: CoreStorage) -> None:
     _ = temp_storage
-    response = run_query(PersonQuery(person_key="person-test"))
+    response = run_query(PersonQuery(person_key="Test User"))
     assert response.thread_id == "default"
     assert response.trace_id is None
 
 
 @pytest.mark.full
-def test_graph_invokes_supervisor_then_core_data(temp_storage: CoreStorage) -> None:
-    """End-to-end graph path after 1070: supervisor routes, core_data responds."""
+def test_graph_invokes_supervisor_assemble_response(temp_storage: CoreStorage) -> None:
+    """End-to-end graph: supervisor + assemble_response for name-only query."""
     import asyncio
 
     from graphs.core import build_core_graph
@@ -144,7 +159,7 @@ def test_graph_invokes_supervisor_then_core_data(temp_storage: CoreStorage) -> N
     _ = temp_storage
     graph = build_core_graph(setup_checkpointer=False)
     initial = MyceliumGraphState(
-        query=PersonQuery(person_key="person-test"),
+        query=PersonQuery(person_key="Test User"),
         invocation_thread_id="graph-path-test",
     )
     final = asyncio.run(
@@ -161,8 +176,9 @@ def test_graph_invokes_supervisor_then_core_data(temp_storage: CoreStorage) -> N
 
     assert state.response is not None
     assert len(state.response.results) == 1
-    assert "Found core record" in state.response.message
+    assert "Found record for" in state.response.message
+    assert "core record" not in state.response.message.lower()
     joined_logs = " ".join(state.audit_log)
     assert "Supervisor" in joined_logs
-    assert "routing to core_data" in joined_logs
-    assert "CoreDataAgent" in joined_logs
+    assert "assemble_response" in joined_logs
+    assert state.route is None

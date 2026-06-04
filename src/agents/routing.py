@@ -6,7 +6,12 @@ from dataclasses import dataclass, field
 
 from agents.core_identity import CoreIdentity, get_core_identity
 from agents.responses import response_found, response_non_core, response_not_found
-from models.state import MyceliumGraphState, Person, PersonResponse, non_core_attributes
+from models.state import (
+    MyceliumGraphState,
+    Person,
+    PersonResponse,
+    normalized_requested_attributes,
+)
 
 
 @dataclass(frozen=True)
@@ -66,10 +71,10 @@ def evaluate_supervisor_turn(
         )
 
     single = persons[0] if len(persons) == 1 else None
-    deferred = non_core_attributes(query.requested_attributes)
-    if deferred:
+    requested = normalized_requested_attributes(query.requested_attributes)
+    if requested:
         return SupervisorDecision(
-            response=response_non_core(query, persons, deferred, **id_kwargs),
+            response=response_non_core(query, persons, requested, **id_kwargs),
             persons=persons,
             person=single,
             thread_id=resolved_thread_id,

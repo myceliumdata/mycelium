@@ -22,7 +22,6 @@ CATEGORIES_PATH = Path("data/categories.json")
 REGISTRY_PATH = Path("data/agent_registry.json")
 SPECIALISTS_DIR = Path("src/agents/specialists")
 AGENT_DATA_ROOT = Path("data/agents")
-CORE_AGENT_NAME = "core_data"
 
 
 def _repo_path(rel: str | Path) -> Path:
@@ -91,12 +90,12 @@ def _load_registry_data() -> AgentRegistryData:
 
 
 def _collect_all_specialist_names(data: AgentRegistryData) -> list[str]:
-    names = [n for n in data.agents if n != CORE_AGENT_NAME]
+    names = list(data.agents)
     spec_dir = _repo_path(SPECIALISTS_DIR)
     if spec_dir.is_dir():
         for py_file in spec_dir.glob("*_specialist.py"):
             stem = py_file.stem
-            if stem.endswith("_specialist") and stem != CORE_AGENT_NAME:
+            if stem.endswith("_specialist"):
                 names.append(stem)
     return sorted(set(names))
 
@@ -111,12 +110,7 @@ def _prune_registry(
     new_agents: dict[str, RegisteredAgent] = {}
     removed_from_registry: list[str] = []
 
-    if CORE_AGENT_NAME in current.agents:
-        new_agents[CORE_AGENT_NAME] = current.agents[CORE_AGENT_NAME]
-
     for name, entry in current.agents.items():
-        if name == CORE_AGENT_NAME:
-            continue
         if name in remove_names:
             removed_from_registry.append(name)
             if entry.category:
@@ -163,7 +157,7 @@ def _reset_base(*, dry_run: bool) -> None:
 
         reset_storage()
         get_storage()
-        print("  DB reset (re-seeded from data/seed_crm.json on access)")
+        print("  DB reset (SQLite recreated; queries use data/seed.json via agents.seed)")
 
 
 def _reset_categories(*, dry_run: bool) -> None:

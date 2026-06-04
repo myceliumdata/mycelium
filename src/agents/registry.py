@@ -1,8 +1,8 @@
 """Agent Registry (data/agent_registry.json + in-memory).
 
 See approved plan 'Agent Registry' design (docs/plans/agent-factory-phase2.md).
-Core is special-cased for no file dependency. File-spec load supports test isolation
-via MYCELIUM_SPECIALISTS_DIR (used in factory tests). Atomic save per Phase 1 classification pattern.
+Generated specialists are loaded from MYCELIUM_SPECIALISTS_DIR (factory tests).
+Atomic save per Phase 1 classification pattern. No privileged core agent.
 """
 
 from __future__ import annotations
@@ -20,28 +20,16 @@ from typing import Any
 
 from pydantic import BaseModel
 
-# Embedded fallback seed (must stay in sync with committed data/agent_registry.json).
+# Embedded fallback when registry file is missing (empty; specialists added via factory).
 _SEED_REGISTRY: dict[str, Any] = {
     "version": "1.0",
     "last_updated": "2026-06-03T00:00:00+00:00",
-    "agents": {
-        "core_data": {
-            "name": "core_data",
-            "category": "core",
-            "description": "Core identity (id, name, employer) — the always-present fallback specialist.",
-            "module_path": "agents.core_data",
-            "entrypoint": "core_data_agent",
-            "storage_path": None,
-            "strategy_path": None,
-            "is_generated": False,
-            "created_at": None,
-        },
-    },
+    "agents": {},
 }
 
 
 class RegisteredAgent(BaseModel):
-    """A registered specialist (core or generated)."""
+    """A registered generated specialist."""
 
     name: str
     category: str
@@ -118,11 +106,6 @@ class AgentRegistry:
         self,
         entry: RegisteredAgent,
     ) -> Callable[[Any], dict[str, Any]] | None:
-        if entry.name == "core_data" or entry.module_path == "agents.core_data":
-            from agents.core_data import core_data_agent
-
-            return core_data_agent
-
         specialists_dir = Path(
             os.getenv("MYCELIUM_SPECIALISTS_DIR", "src/agents/specialists"),
         )

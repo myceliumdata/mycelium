@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -53,6 +54,10 @@ def test_create_specialist_writes_files_and_registers(
     assert "contact" in text
     assert "SpecialistStorage" in text
     assert "def contact_specialist(" in text
+    assert "core_identity" not in text
+    assert "person_id" in text
+    assert "specialist_contrib" in text
+    assert "not currently available but may be in the future" in text
 
     registry = get_agent_registry()
     assert registry.has_agent("contact_specialist")
@@ -68,6 +73,27 @@ def test_create_specialist_writes_files_and_registers(
     result = fn(state)
     assert "response" in result
     assert result["response"].results == []
+    assert result.get("specialist_contrib", {}).get("status") == "not_found"
+
+    person_id = "test-person-uuid-1540"
+    state_pending = MyceliumGraphState(
+        query=PersonQuery(person_key="Test User", requested_attributes=["email"]),
+        current_person_id=person_id,
+        context={
+            "seed": {
+                "id": "p1",
+                "name": "Test User",
+                "employer": "Co",
+                "person_id": person_id,
+            },
+        },
+        target_fields=["email"],
+    )
+    result_pending = fn(state_pending)
+    assert result_pending["specialist_contrib"]["status"] == "pending"
+    assert "not currently available but may be in the future" in result_pending["response"].message
+    stored = json.loads(storage_path.read_text(encoding="utf-8"))
+    assert stored["records"][person_id]["email"]["status"] == "pending"
 
 
 @pytest.mark.smoke

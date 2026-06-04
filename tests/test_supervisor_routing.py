@@ -36,7 +36,8 @@ def test_routing_delegates_lookup_to_core_identity() -> None:
 
     assert len(decision.response.results) == 1
     assert decision.response.results[0]["name"] == "Ada"
-    assert "Found core record" in decision.response.message
+    assert "Found record for" in decision.response.message
+    assert "core record" not in decision.response.message.lower()
 
 
 @pytest.mark.smoke
@@ -47,7 +48,8 @@ def test_routing_not_found_when_missing() -> None:
     decision = evaluate_supervisor_turn(state, core_identity=core_identity)
 
     assert decision.response.results == []
-    assert "No core record found" in decision.response.message
+    assert "No record found" in decision.response.message
+    assert "core record" not in decision.response.message.lower()
     assert core_identity.persisted == []
     assert "ingest" not in decision.response.message.lower()
     assert "provided_data" not in decision.response.message.lower()
@@ -69,16 +71,37 @@ def test_routing_non_core_attributes() -> None:
 
 
 @pytest.mark.smoke
-def test_supervisor_agent_routes_to_core_data() -> None:
-    """Supervisor node only classifies; it does not build responses."""
-    state = MyceliumGraphState(query=PersonQuery(person_key="any-key"))
+def test_supervisor_agent_plans_no_specialists_without_attrs(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Name-only query: supervisor resolves seed; graph assemble builds response."""
+    import json
 
+    from agents.seed import reset_seed_data
+
+    seed = tmp_path / "seed.json"
+    seed.write_text(
+        json.dumps(
+            {
+                "people": [
+                    {"id": "p1", "name": "any-key", "employer": "Co"},
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
+    reset_seed_data()
+
+    state = MyceliumGraphState(query=PersonQuery(person_key="any-key"))
     result = supervisor_agent(state)
 
-    assert result["route"] == "core_data"
+    assert result.get("route") is None
     assert "response" not in result
-    assert "classifications" not in result
-    assert any("core_data" in entry for entry in result["audit_log"])
+    meta = result["context"]["_meta"]
+    assert meta.get("specialists_to_invoke") == []
+    assert any("resolved via seed" in entry for entry in result["audit_log"])
 
 
 @pytest.mark.smoke
@@ -127,8 +150,8 @@ def test_supervisor_agent_classifies_requested_attributes(
             "name": "contact_specialist",
             "category": "contact",
             "description": "Contact specialist (pre-registered for routing test)",
-            "module_path": "agents.core_data",
-            "entrypoint": "core_data_agent",
+            "module_path": "agents.specialists.contact_specialist",
+            "entrypoint": "contact_specialist",
             "is_generated": False,
         },
         save=False,
@@ -143,7 +166,7 @@ def test_supervisor_agent_classifies_requested_attributes(
 
     result = supervisor_agent(state)
 
-    assert result["route"] == "contact_specialist"
+    assert "contact_specialist" in result["context"]["_meta"]["specialists_to_invoke"]
     assert len(result["classifications"]) == 2
     by_attr = {c["attribute"]: c for c in result["classifications"]}
     assert by_attr["email"]["category"] == "contact"
@@ -152,7 +175,7 @@ def test_supervisor_agent_classifies_requested_attributes(
     assert by_attr["foo_unknown"]["confidence"] == 0.0
     assert any("classified 'email'" in entry for entry in result["audit_log"])
     assert not any("classified 'foo_unknown'" in entry for entry in result["audit_log"])
-    assert any("routing to contact_specialist" in entry for entry in result["audit_log"])
+    assert any("contact_specialist" in entry for entry in result["audit_log"])
 
 
 @pytest.mark.smoke
@@ -212,8 +235,8 @@ def test_supervisor_triggers_creation_for_unregistered_specialist(
                 "name": agent_name,
                 "category": category,
                 "description": description,
-                "module_path": "agents.core_data",
-                "entrypoint": "core_data_agent",
+                "module_path": f"agents.specialists.{agent_name}",
+                "entrypoint": agent_name,
                 "is_generated": True,
             },
             save=False,
@@ -230,7 +253,8 @@ def test_supervisor_triggers_creation_for_unregistered_specialist(
     assert len(create_calls) == 1
     assert create_calls[0]["agent_name"] == "contact_specialist"
     assert create_calls[0]["category"] == "contact"
-    assert result["route"] == "contact_specialist"
+    assert "contact_specialist" in result["context"]["_meta"]["specialists_to_invoke"]
+    assert any("created new specialist" in entry for entry in result["audit_log"])
 
 
 @pytest.mark.smoke
@@ -445,7 +469,7 @@ def test_classify_sensible_unknown_llm_then_cached(tmp_path: Path) -> None:
 
 
 @pytest.mark.smoke
-def test_agent_registry_seeds_core_and_loads_fn(
+def test_agent_registry_empty_seed_when_missing_file(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -454,10 +478,8 @@ def test_agent_registry_seeds_core_and_loads_fn(
     monkeypatch.setenv("MYCELIUM_AGENT_REGISTRY_PATH", str(tmp_path / "reg.json"))
     reset_agent_registry()
     registry = get_agent_registry()
-    assert registry.has_agent("core_data")
-    fn = registry.get_agent_fn("core_data")
-    assert callable(fn)
-    assert "core_data" in [agent["name"] for agent in registry.list_agents()]
+    assert not registry.has_agent("core_data")
+    assert registry.list_agents() == []
 
 
 @pytest.mark.smoke
@@ -476,8 +498,8 @@ def test_agent_registry_register_persists_to_tmp(
             "name": "demo_specialist",
             "category": "demo",
             "description": "Demo specialist for registry test",
-            "module_path": "agents.core_data",
-            "entrypoint": "core_data_agent",
+            "module_path": "agents.specialists.demographic_specialist",
+            "entrypoint": "demographic_specialist",
             "is_generated": True,
             "created_at": "2026-06-07T00:00:00+00:00",
         },
@@ -485,8 +507,8 @@ def test_agent_registry_register_persists_to_tmp(
     reset_agent_registry()
     reloaded = get_agent_registry()
     assert reloaded.has_agent("demo_specialist")
-    assert reloaded.has_agent("core_data")
-    assert len(reloaded.list_agents()) == 2
+    assert not reloaded.has_agent("core_data")
+    assert len(reloaded.list_agents()) == 1
     assert reg_path.exists()
 
 

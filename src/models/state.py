@@ -7,23 +7,15 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 
-# Strictly minimal core person fields (see docs/architecture.md)
-CORE_PERSON_FIELDS: frozenset[str] = frozenset({"id", "name", "employer"})
-
-MINIMUM_VIABLE_FIELDS: list[str] = ["name", "employer"]
-
-
 class Person(BaseModel):
-    """Core CRM person record — id, name, employer only.
+    """Identity record from seed (``data/seed.json``).
 
-    `id` defaults to "" (empty string). When a new record is supplied to the
-    core data agent, an empty `id` will be auto-generated as
-    `person-{name-slug}-{6hex}`.
-
-    This is why `id` is NOT part of MINIMUM_VIABLE_FIELDS.
+    ``id`` and ``person_id`` are the stable UUID from the seed loader (slice 1720).
+    ``name`` and ``employer`` live in the seed but may be overridden by specialists.
     """
 
     id: str = ""
+    person_id: str = ""
     name: str
     employer: str | None = None
 
@@ -59,11 +51,14 @@ class PersonQuery(BaseModel):
     }
 
     person_key: str = Field(
-        description="Person id or name used for core lookup.",
+        description="Person UUID (person_id) or name used for seed lookup.",
     )
     requested_attributes: list[str] = Field(
         default_factory=list,
-        description="Non-core attributes requested; routed to specialist agents later.",
+        description=(
+            "Attributes requested (including name, employer); classified and "
+            "routed to specialist agents when present."
+        ),
     )
 
 
@@ -72,7 +67,10 @@ class PersonResponse(BaseModel):
 
     results: list[dict[str, Any]] = Field(
         default_factory=list,
-        description="Core person records as plain dicts (id, name, employer only). Always a list.",
+        description=(
+            "Identity records as plain dicts (id and person_id are the seed-loader "
+            "UUID; name, employer). Always a list."
+        ),
     )
     message: str = Field(
         default="",
@@ -110,6 +108,9 @@ class MyceliumGraphState(BaseModel):
       produced by the graph — do not set them in the initial input.
     - ``persons`` holds all matches for a lookup; ``person`` is set only when
       exactly one match exists (name ambiguity may yield multiple ``persons``).
+    - ``matched_persons``, ``context``, ``current_person_id``, and ``target_fields``
+      are internal bags for the seed-data-context redesign (visible in Studio/LangSmith
+      for debugging; populated by supervisor/context logic in later slices).
     - Use the examples in PersonQuery (they will appear in Studio).
     - For thread persistence in Studio, set the thread ID in the
       Studio UI's Thread/Config panel (it flows into invocation_thread_id).
@@ -119,7 +120,7 @@ class MyceliumGraphState(BaseModel):
     route: str | None = Field(
         default=None,
         description=(
-            'Target specialist name (e.g. "core_data", "contact_specialist"). '
+            'Target specialist name (e.g. "contact_specialist"). '
             "Set by supervisor; used by dispatch to invoke the registered agent. "
             "Phase 2+ dynamic."
         ),
@@ -134,6 +135,35 @@ class MyceliumGraphState(BaseModel):
             "(category, assigned_agent, confidence, ...). Phase 1 lookup only."
         ),
     )
+    # Context / person_id fields added in the seed-data-context redesign
+    # (see RESTART_PROMPT_FOR_PLAN.md and docs/plans/seed-data-context-architecture.md).
+    # These are the mechanism by which the supervisor passes seed + cross-specialist
+    # data to specialists.
+    # TODO (future): specialists retrieve needed context from peers instead of
+    # supervisor providing the full union.
+    matched_persons: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description=(
+            "Enriched seed records for matched person(s), including person_id "
+            "from the seed loader."
+        ),
+    )
+    context: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Supervisor-built context for matched person(s): "
+            "{'seed': {...}, 'specialists': {'contact': {...}, ...}}. "
+            "Specialist values override seed."
+        ),
+    )
+    current_person_id: str | None = Field(
+        default=None,
+        description="Stable person_id for the specialist invocation path.",
+    )
+    target_fields: list[str] = Field(
+        default_factory=list,
+        description="Attributes the invoked specialist owns for this query.",
+    )
     validation_passed: bool | None = None
     validation_errors: Annotated[list[str], operator.add] = Field(default_factory=list)
     audit_log: Annotated[list[str], operator.add] = Field(default_factory=list)
@@ -147,8 +177,6 @@ class MyceliumGraphState(BaseModel):
     )
 
 
-def non_core_attributes(requested: list[str]) -> list[str]:
-    """Return requested attribute names that are outside the minimal core model."""
-    normalized = [a.strip().lower() for a in requested if a.strip()]
-    core_lower = {f.lower() for f in CORE_PERSON_FIELDS}
-    return [attr for attr in normalized if attr not in core_lower]
+def normalized_requested_attributes(requested: list[str]) -> list[str]:
+    """Return trimmed, lowercased requested attribute names (empty strings dropped)."""
+    return [a.strip().lower() for a in requested if a.strip()]

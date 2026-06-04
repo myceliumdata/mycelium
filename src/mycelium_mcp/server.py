@@ -28,7 +28,7 @@ mcp = FastMCP(
         "Use query_person for lookups. Responses are PersonResponse JSON with results, "
         "message, debug, trace_id (LangSmith when tracing is on), and thread_id. "
         "Optional thread_id in the request JSON is echoed in the response. "
-        "Non-core attribute requests return core results plus a researching narrative in message. "
+        "Non-core attribute requests return seed identity in results plus specialist status in message. "
         "All payloads are JSON. "
         "Use health_check() to verify the server is responsive and to inspect internal stabilization "
         "(sync checkpointer, automatic recovery after query issues). "
@@ -45,7 +45,7 @@ def _bootstrap() -> None:
     load_dotenv()
     get_storage(
         db_path=Path(os.getenv("MYCELIUM_DB_PATH", "data/mycelium.db")),
-        seed_path=Path(os.getenv("MYCELIUM_SEED_PATH", "data/seed_crm.json")),
+        seed_path=Path(os.getenv("MYCELIUM_SEED_PATH", "data/seed.json")),
     )
 
 

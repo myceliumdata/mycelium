@@ -10,6 +10,8 @@ The tasks in this document represent the long-term shared TODO between Grok and 
 
 ## High Priority / Near Term
 
+- [x] **Seed-data-context redesign** landed (June 2026): `data/seed.json` + `agents.seed`, no `core_data`, context build + specialist invoke graph, 3-scenario template (`prompts/cursor/done/2026-06-09-15xx`).
+
 ### Codebase Catch-up to Current Direction
 
 The code was written before several key decisions were finalized. The following work is needed to bring the implementation in line with `docs/architecture.md`.

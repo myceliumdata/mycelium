@@ -127,9 +127,9 @@ class AgentFactory:
         prompt = (
             "You are an expert Python developer maintaining the Mycelium project. "
             "Review the following generated specialist agent code for consistency "
-            "with project style (see core_data.py: thin, explicit _coerce, use of "
-            "SpecialistStorage, response builders with specialist= kwarg, "
-            "classifications handling, audit logs, payload shape). Keep all "
+            "with project style (see agents/supervisor.py and specialist template: "
+            "thin _coerce, SpecialistStorage keyed by person_id, context + "
+            "target_fields, 3 scenarios, specialist_contrib, response builders). Keep all "
             "functionality and structure. Improve comments/docstrings if missing "
             "or unclear. Output ONLY the complete valid Python source code, "
             "no markdown fences or explanation.\n\n"

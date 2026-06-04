@@ -1,51 +1,7 @@
 {
   "version": "1.0",
-  "last_updated": "2026-06-04T08:38:02.737180Z",
+  "last_updated": "2026-06-04T15:42:33.430438Z",
   "agents": {
-    "core_data": {
-      "name": "core_data",
-      "category": "core",
-      "description": "Core identity (id, name, employer) — the always-present fallback specialist.",
-      "module_path": "agents.core_data",
-      "entrypoint": "core_data_agent",
-      "storage_path": null,
-      "strategy_path": null,
-      "is_generated": false,
-      "created_at": null
-    },
-    "demographic_specialist": {
-      "name": "demographic_specialist",
-      "category": "demographic",
-      "description": "Basic personal characteristics and background.",
-      "module_path": "agents.specialists.demographic_specialist",
-      "entrypoint": "demographic_specialist",
-      "storage_path": "data/agents/demographic/storage.json",
-      "strategy_path": "data/agents/demographic/storage_strategy.json",
-      "is_generated": true,
-      "created_at": "2026-06-03T17:02:45.147892+00:00"
-    },
-    "financial_specialist": {
-      "name": "financial_specialist",
-      "category": "financial",
-      "description": "Financial attributes related to an individual's wealth and assets.",
-      "module_path": "agents.specialists.financial_specialist",
-      "entrypoint": "financial_specialist",
-      "storage_path": "data/agents/financial/storage.json",
-      "strategy_path": "data/agents/financial/storage_strategy.json",
-      "is_generated": true,
-      "created_at": "2026-06-03T17:08:19.471942+00:00"
-    },
-    "professional_specialist": {
-      "name": "professional_specialist",
-      "category": "professional",
-      "description": "Career, education, and investment-related details.",
-      "module_path": "agents.specialists.professional_specialist",
-      "entrypoint": "professional_specialist",
-      "storage_path": "data/agents/professional/storage.json",
-      "strategy_path": "data/agents/professional/storage_strategy.json",
-      "is_generated": true,
-      "created_at": "2026-06-04T08:37:03.011996+00:00"
-    },
     "contact_specialist": {
       "name": "contact_specialist",
       "category": "contact",
@@ -55,7 +11,7 @@
       "storage_path": "data/agents/contact/storage.json",
       "strategy_path": "data/agents/contact/storage_strategy.json",
       "is_generated": true,
-      "created_at": "2026-06-04T08:37:12.158224+00:00"
+      "created_at": "2026-06-04T15:42:32.658785+00:00"
     },
     "social_specialist": {
       "name": "social_specialist",
@@ -66,7 +22,7 @@
       "storage_path": "data/agents/social/storage.json",
       "strategy_path": "data/agents/social/storage_strategy.json",
       "is_generated": true,
-      "created_at": "2026-06-04T08:37:40.187882+00:00"
+      "created_at": "2026-06-04T15:42:32.862020+00:00"
     },
     "relationships_specialist": {
       "name": "relationships_specialist",
@@ -77,7 +33,40 @@
       "storage_path": "data/agents/relationships/storage.json",
       "strategy_path": "data/agents/relationships/storage_strategy.json",
       "is_generated": true,
-      "created_at": "2026-06-04T08:38:02.735966+00:00"
+      "created_at": "2026-06-04T15:42:32.904614+00:00"
+    },
+    "demographic_specialist": {
+      "name": "demographic_specialist",
+      "category": "demographic",
+      "description": "Basic personal characteristics and background.",
+      "module_path": "agents.specialists.demographic_specialist",
+      "entrypoint": "demographic_specialist",
+      "storage_path": "data/agents/demographic/storage.json",
+      "strategy_path": "data/agents/demographic/storage_strategy.json",
+      "is_generated": true,
+      "created_at": "2026-06-04T15:42:33.210131+00:00"
+    },
+    "professional_specialist": {
+      "name": "professional_specialist",
+      "category": "professional",
+      "description": "Career, education, and investment-related details.",
+      "module_path": "agents.specialists.professional_specialist",
+      "entrypoint": "professional_specialist",
+      "storage_path": "data/agents/professional/storage.json",
+      "strategy_path": "data/agents/professional/storage_strategy.json",
+      "is_generated": true,
+      "created_at": "2026-06-04T15:42:33.353166+00:00"
+    },
+    "financial_specialist": {
+      "name": "financial_specialist",
+      "category": "financial",
+      "description": "Financial attributes related to an individual's wealth and assets.",
+      "module_path": "agents.specialists.financial_specialist",
+      "entrypoint": "financial_specialist",
+      "storage_path": "data/agents/financial/storage.json",
+      "strategy_path": "data/agents/financial/storage_strategy.json",
+      "is_generated": true,
+      "created_at": "2026-06-04T15:42:33.428829+00:00"
     }
   }
 }

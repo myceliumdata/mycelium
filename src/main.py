@@ -56,7 +56,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--attributes",
         nargs="*",
         default=[],
-        help="Non-core attributes (core record returned; message describes ongoing research)",
+        help="Non-core attributes (seed identity in results; message describes specialist status)",
     )
     query_cmd.add_argument(
         "--thread-id",
@@ -65,11 +65,14 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=_THREAD_ID_HELP,
     )
 
-    seed_cmd = sub.add_parser("seed", help="Reload seed CRM data into SQLite")
+    seed_cmd = sub.add_parser(
+        "seed",
+        help="Legacy: load a JSON people file into SQLite (queries use data/seed.json via agents.seed)",
+    )
     seed_cmd.add_argument(
         "--seed-path",
         default="data/seed_crm.json",
-        help="Path to seed JSON file",
+        help="Path to legacy seed JSON for SQLite load",
     )
 
     return parser.parse_args(argv)
