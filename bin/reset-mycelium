@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Dev/ops reset for Mycelium canonical data paths (ignores MYCELIUM_* env redirection)."""
 
 from __future__ import annotations
@@ -13,7 +13,23 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT))
+_SRC_ROOT = REPO_ROOT / "src"
+_VENV_PYTHON = REPO_ROOT / ".venv" / "bin" / "python3"
+
+
+def _bootstrap() -> None:
+    if _VENV_PYTHON.is_file():
+        try:
+            if Path(sys.executable).resolve() != _VENV_PYTHON.resolve():
+                os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON), *sys.argv])
+        except OSError:
+            pass
+    src = str(_SRC_ROOT)
+    if src not in sys.path:
+        sys.path.insert(0, src)
+
+
+_bootstrap()
 
 from agents.registry import AgentRegistryData, RegisteredAgent  # noqa: E402
 

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-06-04T14:03:15.920331Z",
+  "last_updated": "2026-06-03T00:00:00Z",
   "model_used": "",
   "categories": {
     "contact": {
@@ -57,17 +57,6 @@
         "previous_firms",
         "investments"
       ]
-    },
-    "financial": {
-      "description": "Financial attributes related to an individual's wealth and assets.",
-      "assigned_agent": "financial_specialist",
-      "examples": [
-        "net_worth",
-        "assets",
-        "income",
-        "investments",
-        "funding"
-      ]
     }
   },
   "attribute_map": {
@@ -95,12 +84,6 @@
     "bio": "professional",
     "education": "professional",
     "previous_firms": "professional",
-    "investments": "professional",
-    "net_worth": "financial",
-    "assets": "financial",
-    "income": "financial",
-    "funding": "financial",
-    "name": "contact",
-    "foo_unknown": "unknown"
+    "investments": "professional"
   }
 }
