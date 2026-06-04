@@ -6,7 +6,13 @@ from typing import Any
 
 from agents.context import get_context_builder
 from agents.registry import get_agent_registry
-from agents.responses import debug_for_query, response_found, response_non_core, response_not_found
+from agents.responses import (
+    merge_requested_record,
+    response_assembled,
+    response_found,
+    response_non_core,
+    response_not_found,
+)
 from agents.supervisor import _identity_records_from_seed, _target_fields_for_agent
 from models.state import MyceliumGraphState, normalized_requested_attributes
 
@@ -24,16 +30,16 @@ def _meta(state: MyceliumGraphState) -> dict[str, Any]:
 
 
 def build_context_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
-    """Pull seed + all specialist storage for matched person_id(s) into state.context."""
+    """Pull seed + all specialist storage for matched id(s) into state.context."""
     current = _coerce(state)
     meta = _meta(current)
-    person_ids = list(meta.get("person_ids") or [])
-    if current.current_person_id and current.current_person_id not in person_ids:
-        person_ids.append(current.current_person_id)
+    ids = list(meta.get("ids") or [])
+    if current.current_id and current.current_id not in ids:
+        ids.append(current.current_id)
 
     builder = get_context_builder()
     full_ctx = builder.build_full_context(
-        person_ids,
+        ids,
         seed_records=current.matched_persons or None,
     )
     meta = dict(meta)
@@ -48,7 +54,7 @@ def build_context_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, 
     n_cats = len(merged.get("specialists") or {})
     logs = [
         f"build_context: built context from {n_cats} specialist store(s) "
-        f"for {len(person_ids)} person_id(s).",
+        f"for {len(ids)} id(s).",
     ]
     return {"context": merged, "audit_log": logs}
 
@@ -74,7 +80,7 @@ def invoke_specialists_node(state: MyceliumGraphState | dict[str, Any]) -> dict[
         enriched = current.model_copy(
             update={
                 "context": current.context,
-                "current_person_id": current.current_person_id,
+                "current_id": current.current_id,
                 "target_fields": target_fields,
                 "route": agent_name,
             },
@@ -117,89 +123,78 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
         if current.classifications
         else {}
     )
-    identity_records = _identity_records_from_seed(current.matched_persons or [])
     meta = _meta(current)
     contributions = meta.get("contributions") or []
+    matched = current.matched_persons or []
 
-    if not current.matched_persons:
+    if not matched:
         return {
             "response": response_not_found(query, **id_kwargs, **clf_kwargs),
             "audit_log": ["assemble_response: no seed match."],
         }
 
     requested = normalized_requested_attributes(query.requested_attributes)
-    if requested and contributions:
-        specialists_named = [c["agent"] for c in contributions if c.get("agent")]
-        specialist_label = (
-            ", ".join(specialists_named) if specialists_named else None
+
+    if not requested:
+        identity_records = _identity_records_from_seed(matched)
+        return {
+            "response": response_found(
+                query,
+                base_records=identity_records,
+                **id_kwargs,
+                **clf_kwargs,
+            ),
+            "audit_log": ["assemble_response: seed identity response."],
+        }
+
+    merged_records: list[dict[str, Any]] = []
+    all_provisional: list[str] = []
+    all_unavailable: list[str] = []
+    for seed_rec in matched:
+        merged, provisional, unavailable = merge_requested_record(
+            seed_rec,
+            contributions,
+            requested,
         )
-        resp = response_non_core(
-            query,
-            base_records=identity_records,
-            attributes=requested,
-            specialist=specialist_label,
-            **id_kwargs,
-            **clf_kwargs,
-        )
-        pending_bits: list[str] = []
-        for contrib in contributions:
-            sc = contrib.get("specialist_contrib") or {}
-            if sc.get("status") == "pending":
-                pending_bits.append(
-                    ", ".join(sc.get("fields") or contrib.get("target_fields") or []),
-                )
-        if pending_bits:
-            name = identity_records[0]["name"] if identity_records else query.person_key
-            attrs = ", ".join(requested)
-            resp = resp.model_copy(
-                update={
-                    "message": (
-                        f"Found record for {name}. {attrs} not currently available "
-                        f"but may be in the future"
-                        + (
-                            f" (via {specialist_label})."
-                            if specialist_label
-                            else "."
-                        )
-                    ),
-                },
-            )
+        merged_records.append(merged)
+        all_provisional.extend(provisional)
+        all_unavailable.extend(unavailable)
+
+    specialists_named = [c["agent"] for c in contributions if c.get("agent")]
+    specialist_label = (
+        ", ".join(specialists_named) if specialists_named else None
+    )
+
+    if contributions:
         debug_extra = {
             "context_specialist_categories": list(
                 (current.context or {}).get("specialists", {}).keys(),
             ),
             "contributions": len(contributions),
+            **({"classifications": current.classifications} if current.classifications else {}),
         }
-        return {
-            "response": resp.model_copy(
-                update={
-                    "debug": debug_for_query(query, outcome="assembled", **debug_extra),
-                },
-            ),
-            "audit_log": ["assemble_response: merged specialist contributions."],
-        }
-
-    if requested:
-        return {
-            "response": response_non_core(
-                query,
-                base_records=identity_records,
-                attributes=requested,
-                **id_kwargs,
-                **clf_kwargs,
-            ),
-            "audit_log": ["assemble_response: requested attrs, no contributions."],
-        }
-
-    return {
-        "response": response_found(
+        resp = response_assembled(
             query,
-            base_records=identity_records,
+            merged_records=merged_records,
+            provisional=sorted(set(all_provisional)),
+            unavailable=sorted(set(all_unavailable)),
+            specialist_label=specialist_label,
+            debug_extra=debug_extra,
+            **id_kwargs,
+        )
+        audit = "assemble_response: merged specialist contributions."
+    else:
+        resp = response_non_core(
+            query,
+            base_records=merged_records,
+            attributes=requested,
+            specialist=specialist_label,
             **id_kwargs,
             **clf_kwargs,
-        ),
-        "audit_log": ["assemble_response: seed identity response."],
-    }
+        )
+        audit = "assemble_response: requested attrs, no contributions."
+
+    return {"response": resp, "audit_log": [audit]}
 
 
 # Legacy name used by older graph wiring (replaced by invoke_specialists_node).

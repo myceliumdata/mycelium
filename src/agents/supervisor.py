@@ -21,16 +21,15 @@ def _coerce(state: MyceliumGraphState | dict[str, Any]) -> MyceliumGraphState:
 
 
 def _identity_records_from_seed(matched: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Build public result dicts; ``id`` and ``person_id`` are the seed-loader UUID."""
+    """Build public result dicts; ``id`` is the seed-loader UUID."""
     records: list[dict[str, Any]] = []
     for rec in matched:
-        pid = rec.get("person_id", "")
+        pid = rec.get("id", "")
         records.append(
             {
                 "id": pid,
                 "name": rec.get("name", ""),
                 "employer": rec.get("employer"),
-                "person_id": pid,
             },
         )
     return records
@@ -39,8 +38,7 @@ def _identity_records_from_seed(matched: list[dict[str, Any]]) -> list[dict[str,
 def _persons_from_seed(matched: list[dict[str, Any]]) -> list[Person]:
     return [
         Person(
-            id=rec.get("person_id", ""),
-            person_id=rec.get("person_id", ""),
+            id=rec.get("id", ""),
             name=rec.get("name", ""),
             employer=rec.get("employer"),
         )
@@ -105,7 +103,7 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
 
     matched = find_by_key(query.person_key)
     persons = _persons_from_seed(matched)
-    person_ids = [m["person_id"] for m in matched if m.get("person_id")]
+    ids = [m["id"] for m in matched if m.get("id")]
 
     if matched:
         audit_log.append(
@@ -137,7 +135,7 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
         "seed": matched[0] if len(matched) == 1 else matched,
         "specialists": {},
         "_meta": {
-            "person_ids": person_ids,
+            "ids": ids,
             "specialists_to_invoke": specialists_to_invoke,
             "contributions": [],
         },
@@ -152,7 +150,7 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
     if classifications:
         result["classifications"] = classifications
     if len(matched) == 1:
-        result["current_person_id"] = matched[0]["person_id"]
+        result["current_id"] = matched[0]["id"]
     if persons:
         result["persons"] = persons
         if len(persons) == 1:

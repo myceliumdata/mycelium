@@ -15,7 +15,7 @@ import os
 import sqlite3
 from pathlib import Path
 
-from agents.seed import _assign_person_id
+from agents.seed import _assign_id
 from models.state import Person
 
 DEFAULT_DB_PATH = Path("data/mycelium.db")
@@ -55,11 +55,10 @@ class CoreStorage:
         people = payload.get("people", [])
         inserted = 0
         for row in people:
-            pid = row.get("id") or _assign_person_id(row)
+            pid = row.get("id") or _assign_id(row)
             person = Person.model_validate(
                 {
                     "id": pid,
-                    "person_id": pid,
                     "name": row["name"],
                     "employer": row.get("employer"),
                 },
@@ -87,10 +86,10 @@ class CoreStorage:
         self._conn.commit()
         return True
 
-    def get_person_by_id(self, person_id: str) -> Person | None:
+    def get_person_by_id(self, record_id: str) -> Person | None:
         row = self._conn.execute(
             "SELECT * FROM people WHERE id = ?",
-            (person_id,),
+            (record_id,),
         ).fetchone()
         return self._row_to_person(row) if row else None
 

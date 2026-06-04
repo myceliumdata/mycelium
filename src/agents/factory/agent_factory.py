@@ -128,7 +128,7 @@ class AgentFactory:
             "You are an expert Python developer maintaining the Mycelium project. "
             "Review the following generated specialist agent code for consistency "
             "with project style (see agents/supervisor.py and specialist template: "
-            "thin _coerce, SpecialistStorage keyed by person_id, context + "
+            "thin _coerce, SpecialistStorage keyed by id (UUID), context + "
             "target_fields, 3 scenarios, specialist_contrib, response builders). Keep all "
             "functionality and structure. Improve comments/docstrings if missing "
             "or unclear. Output ONLY the complete valid Python source code, "

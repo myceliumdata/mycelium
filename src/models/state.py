@@ -10,12 +10,11 @@ from pydantic import BaseModel, Field
 class Person(BaseModel):
     """Identity record from seed (``data/seed.json``).
 
-    ``id`` and ``person_id`` are the stable UUID from the seed loader (slice 1720).
+    ``id`` is the stable UUID from the seed loader.
     ``name`` and ``employer`` live in the seed but may be overridden by specialists.
     """
 
     id: str = ""
-    person_id: str = ""
     name: str
     employer: str | None = None
 
@@ -51,7 +50,7 @@ class PersonQuery(BaseModel):
     }
 
     person_key: str = Field(
-        description="Person UUID (person_id) or name used for seed lookup.",
+        description="Person UUID (``id``) or name used for seed lookup.",
     )
     requested_attributes: list[str] = Field(
         default_factory=list,
@@ -68,8 +67,9 @@ class PersonResponse(BaseModel):
     results: list[dict[str, Any]] = Field(
         default_factory=list,
         description=(
-            "Identity records as plain dicts (id and person_id are the seed-loader "
-            "UUID; name, employer). Always a list."
+            "Plain dicts per matched person. Always includes id (stable UUID). "
+            "With no requested_attributes: id, name, employer. "
+            "With requested_attributes: id plus only those keys after merge."
         ),
     )
     message: str = Field(
@@ -108,7 +108,7 @@ class MyceliumGraphState(BaseModel):
       produced by the graph — do not set them in the initial input.
     - ``persons`` holds all matches for a lookup; ``person`` is set only when
       exactly one match exists (name ambiguity may yield multiple ``persons``).
-    - ``matched_persons``, ``context``, ``current_person_id``, and ``target_fields``
+    - ``matched_persons``, ``context``, ``current_id``, and ``target_fields``
       are internal bags for the seed-data-context redesign (visible in Studio/LangSmith
       for debugging; populated by supervisor/context logic in later slices).
     - Use the examples in PersonQuery (they will appear in Studio).
@@ -135,7 +135,7 @@ class MyceliumGraphState(BaseModel):
             "(category, assigned_agent, confidence, ...). Phase 1 lookup only."
         ),
     )
-    # Context / person_id fields added in the seed-data-context redesign
+    # Context / id fields added in the seed-data-context redesign
     # (see RESTART_PROMPT_FOR_PLAN.md and docs/plans/seed-data-context-architecture.md).
     # These are the mechanism by which the supervisor passes seed + cross-specialist
     # data to specialists.
@@ -144,7 +144,7 @@ class MyceliumGraphState(BaseModel):
     matched_persons: list[dict[str, Any]] = Field(
         default_factory=list,
         description=(
-            "Enriched seed records for matched person(s), including person_id "
+            "Enriched seed records for matched person(s), including id "
             "from the seed loader."
         ),
     )
@@ -156,9 +156,9 @@ class MyceliumGraphState(BaseModel):
             "Specialist values override seed."
         ),
     )
-    current_person_id: str | None = Field(
+    current_id: str | None = Field(
         default=None,
-        description="Stable person_id for the specialist invocation path.",
+        description="Stable id (UUID) for the specialist invocation path.",
     )
     target_fields: list[str] = Field(
         default_factory=list,

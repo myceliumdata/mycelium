@@ -1,4 +1,4 @@
-"""Build full person context: seed records + union of all specialist storage (by person_id).
+"""Build full person context: seed records + union of all specialist storage (by id).
 
 TODO: Eventually specialists should retrieve context from peer agents instead of the
 supervisor assembling and passing the full union on every invocation.
@@ -27,7 +27,7 @@ class ContextBuilder:
 
     def build_full_context(
         self,
-        person_ids: list[str],
+        ids: list[str],
         *,
         seed_records: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
@@ -37,8 +37,8 @@ class ContextBuilder:
             )
         else:
             data = get_seed_data()
-            by_id = {p["person_id"]: p for p in data.people if p.get("person_id")}
-            selected = [by_id[pid] for pid in person_ids if pid in by_id]
+            by_id = {p["id"]: p for p in data.people if p.get("id")}
+            selected = [by_id[pid] for pid in ids if pid in by_id]
             seed_part = selected[0] if len(selected) == 1 else selected
 
         specialist_part: dict[str, Any] = {}
@@ -54,7 +54,7 @@ class ContextBuilder:
                 payload = store.load()
                 records = payload.get("records", {})
                 cat_slice: dict[str, Any] = {}
-                for pid in person_ids:
+                for pid in ids:
                     if pid in records:
                         cat_slice[pid] = records[pid]
                 if cat_slice:

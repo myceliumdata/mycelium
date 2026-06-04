@@ -10,7 +10,7 @@ from uuid import uuid4
 from models.state import Person
 
 
-def ensure_person_id(person: Person) -> Person:
+def ensure_id(person: Person) -> Person:
     """Assign a stable id when preparing a new core record (legacy addition path)."""
     if person.id:
         return person

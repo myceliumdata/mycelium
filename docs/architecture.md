@@ -59,7 +59,7 @@ Data addition via the public API was removed in the June 2026 refactor (tasks 10
 
 - **Canonical seed:** `data/seed.json` — static JSON origin of person records (`people` array). Replace the file manually to reset origin data; `bin/reset-mycelium` does **not** touch it.
 - **Transform:** `data/prepare_seed.py` builds `seed.json` from `seed_crm.json` (name + employer only; no legacy `id` in the file).
-- **Loader:** `src/agents/seed.py` assigns stable `person_id` (uuid5 from name|employer) at load time; public `results["id"]` is that UUID; supervisor resolves lookups via `find_by_key` (name or `person_id`).
+- **Loader:** `src/agents/seed.py` assigns stable `id` (uuid5 from name|employer) at load time on enriched records; public `results["id"]` is that UUID; supervisor resolves lookups via `find_by_key` (name or `id`).
 - **No `core_data` specialist** — identity fields (name, employer) come from seed; specialists may override them later.
 
 ### Supervisor and graph (current)
@@ -73,8 +73,8 @@ START → supervisor → build_context → invoke_specialists → assemble_respo
               └──────────────── assemble_response (name-only / not found)
 ```
 
-- **build_context** (`src/agents/context.py`) — union of seed + all specialist storage for the `person_id`(s).
-- **invoke_specialists** — each required specialist receives full `context`, `current_person_id`, and `target_fields` (owned attributes only).
+- **build_context** (`src/agents/context.py`) — union of seed + all specialist storage for the matched `id`(s).
+- **invoke_specialists** — each required specialist receives full `context`, `current_id`, and `target_fields` (owned attributes only).
 - **assemble_response** — unified `PersonResponse` from seed identity + specialist contributions.
 
 Generated specialists (`src/agents/specialists/*_specialist.py`, Agent Factory template) implement three scenarios: has data, pending research (background stub thread), or N/A. See `docs/plans/seed-data-context-architecture.md` and Cursor slices `2026-06-09-15xx`.
@@ -95,7 +95,7 @@ class Person(BaseModel):
 ```
 
 **Identity rules:**
-- Seed provides `name`, `employer` (no legacy `id`); public `results["id"]` and `person_id` are the stable UUID assigned by the seed loader (`agents/seed.py`).
+- Seed file provides `name`, `employer` only; runtime and public `results["id"]` use the stable UUID from the seed loader (`agents/seed.py`).
 - `name` and `employer` are specialist-owned like any other attribute when requested (no privileged core filter).
 - There is no `extra` field on `Person`.
 
@@ -121,7 +121,7 @@ Phase 1 adds a **Classification Engine** (cached lookup in `src/agents/classific
 ## Storage (current)
 
 - **Seed (queries):** `data/seed.json` via `agents.seed` — not auto-loaded into SQLite on query.
-- **Specialists:** per-category JSON under `data/agents/<category>/` (`SpecialistStorage` in `src/agents/specialists/base.py`), keyed by `person_id`.
+- **Specialists:** per-category JSON under `data/agents/<category>/` (`SpecialistStorage` in `src/agents/specialists/base.py`), keyed by `id` (UUID).
 - **SQLite:** `data/mycelium.db` (legacy `people` table; checkpoints/history only in this phase) and `data/checkpoints.sqlite` (LangGraph checkpointer).
 
 See `src/storage/core.py` (DB retained for checkpointer-era compatibility; people auto-seed disabled by default).
@@ -138,13 +138,13 @@ Core storage holds only `id`, `name`, and `employer`. Callers send a query-only 
 |--------|----------------------|-------------------------------|-----------------|
 | **Lookup (found)** | `person_key` only | `supervisor` → `assemble_response` (seed) | `results`: identity dict(s) from seed; `message`: "Found record for …" |
 | **Lookup (miss)** | unknown `person_key` | `supervisor` → `assemble_response` | `results`: `[]`; not-found `message` |
-| **Non-core attrs** | `person_key` + attrs | `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` | `results`: seed identity; `message`: specialist status (pending / N/A / values) |
+| **Non-core attrs** | `person_key` + attrs | `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` | `results`: `id` + requested attrs (merged); `message`: provisional seed / specialist status |
 
 ### Response fields (query outcomes)
 
 All external responses use the minimalist **`PersonResponse`** (`results`, `message`, `debug`, `trace_id`, `thread_id`):
 
-- **`results`** — Identity records from seed (name, employer); `"id"` and `"person_id"` are the stable UUID from the seed loader (disambiguation for multi-result sets; specialist storage key). Specialist overrides may apply later.
+- **`results`** — One dict per match. Always includes `"id"` (stable UUID). With no `requested_attributes`: `id`, `name`, `employer`. With `requested_attributes`: `id` plus only those keys after specialist-first merge (specialist value wins; seed provisional while pending). No `person_id` field.
 - **`message`** — Primary channel: found / not-found / specialist attribute status (no "core record" wording).
 - **`debug`** — Internal context (original `person_key`, `requested_attributes`, outcome tags). Callers should not depend on it.
 - **`trace_id`** — LangSmith trace identifier for this graph invocation when `LANGCHAIN_TRACING_V2` is enabled; otherwise `null`. Lets operators and developers jump from a JSON response to the matching trace in LangSmith for debugging. When creating your LangSmith API key, select **Personal Access Token (PAT)** (prefix `lsv2_pt_`). `LANGCHAIN_PROJECT` (default "mycelium") names the tracing project in the LangSmith UI — it will be created automatically on first use; no manual pre-creation required. See README.md for full setup steps.
@@ -201,11 +201,12 @@ See `prompts/cursor/WORKFLOW.md` for the current handoff protocol.
 
 The seed-data-context redesign is **implemented** (Cursor slices `2026-06-09-1500` through `1720` via the reprocess queue):
 
-- Seed JSON origin (`data/seed.json` + `data/prepare_seed.py`) with no legacy `id`; public `results["id"]` = stable `person_id` (UUID)
+- Seed JSON origin (`data/seed.json` + `data/prepare_seed.py`) with no legacy `id` in the file; public `results["id"]` = stable UUID
 - No `core_data` specialist; `name`/`employer` are specialist-owned like any other attribute
 - Supervisor is a pure planner (resolves seed, classifies, builds full context plan in state)
 - Graph: `supervisor` → `build_context` → `invoke_specialists` → `assemble_response`
-- Agent Factory template with 3 scenarios (`found` / `pending` / `N/A`), `specialist_contrib`, `person_id`/`context`/`target_fields`
+- Agent Factory template with 3 scenarios (`found` / `pending` / `N/A`), `specialist_contrib`, `id`/`context`/`target_fields`
+- Canonical rename: `person_id` → `id` everywhere (slice 1300, June 2026)
 - Full integration, docs refresh, specialist re-gens, removal of core-person-field privileges, and legacy `id` elimination complete
 
 See `docs/plans/seed-data-context-architecture.md` and the reprocess reviews (`prompts/cursor/done/2026-06-09-*-reprocess/`).

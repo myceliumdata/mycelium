@@ -2,10 +2,9 @@
 
 The committed ``data/seed.json`` is the read-only origin of person records
 (name + employer only; no legacy ``id`` in the file — see ``data/prepare_seed.py``).
-``person_id`` is assigned idempotently at load time (uuid5 from name|employer)
-and is never written back into the static JSON. Public ``results["id"]`` is
-that UUID (slice 1720). Supervisor and tests resolve people by name or
-``person_id`` via :func:`find_by_key`.
+Stable ``id`` (UUID, uuid5 from name|employer) is assigned at load time and is
+never written back into the static JSON. Supervisor and tests resolve people by
+name or ``id`` via :func:`find_by_key`.
 
 People seeding no longer flows through SQLite; see :mod:`storage.core` for
 checkpoints/history only in this phase.
@@ -25,23 +24,23 @@ from typing import Any
 # instead of supervisor context fan-out.
 
 DEFAULT_SEED_PATH = Path("data/seed.json")
-_PERSON_ID_NAMESPACE = uuid.NAMESPACE_DNS
-_PERSON_ID_PREFIX = "mycelium-seed-v1:"
+_ID_NAMESPACE = uuid.NAMESPACE_DNS
+_ID_PREFIX = "mycelium-seed-v1:"
 
 
 def _default_seed_path() -> Path:
     return Path(os.getenv("MYCELIUM_SEED_PATH", str(DEFAULT_SEED_PATH)))
 
 
-def _assign_person_id(record: dict[str, Any]) -> str:
+def _assign_id(record: dict[str, Any]) -> str:
     """Stable UUID for a seed row (name|employer); does not mutate the JSON file."""
     base = f"{record.get('name', '')}|{record.get('employer', '')}"
-    return str(uuid.uuid5(_PERSON_ID_NAMESPACE, f"{_PERSON_ID_PREFIX}{base}"))
+    return str(uuid.uuid5(_ID_NAMESPACE, f"{_ID_PREFIX}{base}"))
 
 
 def _enrich_person(record: dict[str, Any]) -> dict[str, Any]:
     enriched = dict(record)
-    enriched["person_id"] = _assign_person_id(record)
+    enriched["id"] = _assign_id(record)
     return enriched
 
 
@@ -50,7 +49,7 @@ class SeedData:
     """Loaded seed with enriched person records."""
 
     people: list[dict[str, Any]] = field(default_factory=list)
-    by_person_id: dict[str, dict[str, Any]] = field(default_factory=dict)
+    by_id: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     def reload_from_path(self, path: Path) -> None:
         if not path.exists():
@@ -58,7 +57,7 @@ class SeedData:
         payload = json.loads(path.read_text(encoding="utf-8"))
         raw_people = payload.get("people", [])
         self.people = [_enrich_person(row) for row in raw_people]
-        self.by_person_id = {p["person_id"]: p for p in self.people}
+        self.by_id = {p["id"]: p for p in self.people}
 
 
 _seed_data: SeedData | None = None
@@ -81,7 +80,7 @@ def reset_seed_data() -> None:
 
 
 def find_by_key(person_key: str) -> list[dict[str, Any]]:
-    """Resolve by ``person_id`` UUID or exact name (case-insensitive).
+    """Resolve by ``id`` UUID or exact name (case-insensitive).
 
     UUID match returns zero or one record. Name match may return multiple
     records when the same name appears with different employers.
@@ -91,8 +90,8 @@ def find_by_key(person_key: str) -> list[dict[str, Any]]:
         return []
 
     data = get_seed_data()
-    if key in data.by_person_id:
-        return [data.by_person_id[key]]
+    if key in data.by_id:
+        return [data.by_id[key]]
 
     key_lower = key.lower()
     return [p for p in data.people if (p.get("name") or "").lower() == key_lower]

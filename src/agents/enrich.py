@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from agents.person_prep import ensure_person_id
+from agents.person_prep import ensure_id
 from models.state import MyceliumGraphState
 
 
@@ -30,7 +30,7 @@ async def enrich_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, 
             "audit_log": ["EnrichAgent: aborted — missing person payload."],
         }
 
-    person = ensure_person_id(raw_person)
+    person = ensure_id(raw_person)
 
     return {
         "person": person,

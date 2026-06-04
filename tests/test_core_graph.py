@@ -77,9 +77,9 @@ def test_query_existing_person(temp_storage: CoreStorage) -> None:
     assert len(response.results) == 1
     assert response.results[0]["name"] == "Test User"
     assert response.results[0]["employer"] == "Test Co"
-    pid = response.results[0]["person_id"]
+    pid = response.results[0]["id"]
     assert pid
-    assert response.results[0]["id"] == pid
+    assert len(pid.split("-")) == 5
     assert len(pid.split("-")) == 5
     assert "Found record for" in response.message
     assert "core record" not in response.message.lower()
@@ -107,7 +107,9 @@ def test_query_non_core_attributes(temp_storage: CoreStorage) -> None:
         ),
     )
     assert len(response.results) == 1
-    assert response.results[0]["name"] == "Test User"
+    assert "name" not in response.results[0]
+    assert "employer" not in response.results[0]
+    assert response.results[0]["id"]
     assert (
         "not currently available" in response.message
         or "still researching" in response.message
@@ -124,9 +126,8 @@ def test_results_are_plain_dicts(temp_storage: CoreStorage) -> None:
     response = run_query(PersonQuery(person_key="Test User"))
     for item in response.results:
         assert isinstance(item, dict)
-        assert set(item.keys()) <= {"id", "name", "employer", "person_id"}
-        assert item.get("person_id")
-        assert item.get("id") == item.get("person_id")
+        assert set(item.keys()) <= {"id", "name", "employer"}
+        assert item.get("id")
 
 
 @pytest.mark.full

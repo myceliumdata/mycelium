@@ -50,7 +50,7 @@ class SpecialistStorage:
             }
             self._atomic_write(self.strategy_file, strategy)
         if not self.storage_file.exists():
-            # records keyed by person_id (uuid from seed loader), e.g.:
+            # records keyed by id (uuid from seed loader), e.g.:
             # {"<person-id>": {"email": "a@b.com", "phone": {"status": "pending", ...},
             #                  "linkedin": {"status": "na"}}}
             initial = {

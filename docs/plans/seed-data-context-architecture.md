@@ -4,14 +4,14 @@
 
 ## Context & Motivation
 
-The supervisor treats committed `data/seed.json` as read-only origin data, assigns stable `person_id` values at load time, builds a union of seed + specialist storage for each query, and invokes all required generated specialists sequentially. Specialist-owned data overrides seed on conflicts. There is no privileged core specialist.
+The supervisor treats committed `data/seed.json` as read-only origin data, assigns stable `id` (UUID) values at load time, builds a union of seed + specialist storage for each query, and invokes all required generated specialists sequentially. Specialist-owned data overrides seed on conflicts. There is no privileged core specialist.
 
 ## Target slices (completed)
 
 | Slice | Focus |
 |-------|--------|
 | 1500 | `data/seed.json` + `agents/seed.py` |
-| 1510 | `matched_persons`, `context`, `current_person_id`, `target_fields` on graph state |
+| 1510 | `matched_persons`, `context`, `current_id`, `target_fields` on graph state |
 | 1520 | Unified `PersonResponse` builders (no "core record" language) |
 | 1530 | Remove `core_data` agent and registry entry |
 | 1540 | Specialist Jinja template (3 scenarios, `specialist_contrib`) |
@@ -20,6 +20,7 @@ The supervisor treats committed `data/seed.json` as read-only origin data, assig
 | 1700 | Expose `person_id` (UUID) in public `results` (alongside legacy `id` at the time) |
 | 1710 | Eliminate `CORE_PERSON_FIELDS` / `non_core_attributes`; any requested attr (incl. name/employer) now goes through specialist status/contribution path |
 | 1720 | Eliminate legacy `id` from seed transform (`data/prepare_seed.py`); public `results["id"]` = UUID; update loader, builders, tests, docs |
+| 1300 | Rename `person_id` → `id` everywhere (canonical UUID field name) |
 
 ## Deferred / follow-on work
 
