@@ -17,9 +17,15 @@ Mycelium exists to create data infrastructure that is **100% managed by AI agent
 - **Observability**: LangSmith tracing from day one.
 - **Changes**: Small, reviewable increments only.
 
+## Storage (current)
+- **SQLite** — LangGraph conversation checkpoints only (`data/checkpoints.sqlite`; legacy `data/mycelium.db` retained minimally).
+- **JSON flat files** — everything else: seed (`data/seed.json`), classification (`data/categories.json`), agent registry (`data/agent_registry.json`), per-specialist data under `data/agents/<category>/`.
+
+Details: `docs/architecture.md` (Storage section).
+
 ## Project Rules (Enforce Strictly)
 - Maintain clean, modular architecture at all times.
-- Folder structure: `src/agents/`, `src/graphs/`, `src/tools/`, `src/models/`, `src/persistence/`, `tests/`, `prompts/`, `docs/`.
+- Folder structure: `src/agents/`, `src/graphs/`, `src/tools/`, `src/models/`, `src/storage/`, `tests/`, `prompts/`, `docs/`.
 - All code must be type-hinted, well-documented, and include relevant tests (pytest).
 - Reference `prompts/system/CORE_PROMPT.md` and `docs/architecture.md` as the primary sources of truth.
 

@@ -1,6 +1,7 @@
 # Project Brief
 
-The canonical project brief for agents and tooling lives in:
+Canonical sources for agents and tooling:
 
-- **[prompts/system/CORE_PROMPT.md](prompts/system/CORE_PROMPT.md)** — structured core prompt (preferred)
-- **[prompts/system/PROJECT_BRIEF.md](prompts/system/PROJECT_BRIEF.md)** — original brief text
+- **[prompts/system/CORE_PROMPT.md](prompts/system/CORE_PROMPT.md)** — philosophy, rules, storage summary (preferred entry point)
+- **[docs/architecture.md](docs/architecture.md)** — current design, flows, and implementation detail
+- **[prompts/system/PROJECT_BRIEF.md](prompts/system/PROJECT_BRIEF.md)** — original vision + historical bootstrap notes

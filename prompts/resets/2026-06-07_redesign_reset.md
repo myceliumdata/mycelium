@@ -11,7 +11,7 @@
 
 The conversation has two main threads that are now converging:
 
-1. Earlier work on a dev tool called `bin/reset-mycelium` (Python script for cleaning generated specialists, registry, data dirs, etc., to support frequent "nuking" during agent development). This was initially implemented directly (user was unhappy about writing code without being asked), then properly driven via Cursor prompts in `prompts/cursor/done/reset-mycelium/` and a cleanup slice. The physical script was temporarily removed during "cleanup the mistaken code" but has been restored as the "Cursor-produced" version. The user has now asked to commit/push recent changes (including all the prompt records and the script).
+1. Earlier work on a dev tool called `bin/reset-mycelium` (Python script for cleaning generated specialists, registry, data dirs, etc., to support frequent "nuking" during agent development). This was initially implemented directly (user was unhappy about writing code without being asked), then properly driven via Cursor prompts in `prompts/cursor/done/2026-06-03-2200-reset-mycelium/` and a cleanup slice. The physical script was temporarily removed during "cleanup the mistaken code" but has been restored as the "Cursor-produced" version. The user has now asked to commit/push recent changes (including all the prompt records and the script).
 
 2. The current long discussion (the main focus now): Completely redesigning how the supervisor and specialists interact, moving away from the current "core_data is special" model.
 
