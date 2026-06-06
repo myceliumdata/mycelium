@@ -8,6 +8,11 @@ We now direct Cursor (as a senior developer) using structured prompts located in
 
 The tasks in this document represent the long-term shared TODO between Grok and Paul. When we agree on work, we create a prompt in `prompts/cursor/next/` for Cursor to execute.
 
+## Top priority — Brand & launch
+
+- [ ] **Explainer video** — short video introducing Mycelium networks (what they are, specialists, query flow, vision). For site, repo, and outreach ahead of [myceliumdata.org](https://myceliumdata.org) public launch.
+- [ ] **Logo** — Mycelium / Mycelium Data mark for site, GitHub org, docs, and video. Decision owner: Paul.
+
 ## High Priority / Near Term
 
 - [x] **Seed-data-context redesign** landed (June 2026): `data/seed.json` + `agents.seed`, no `core_data`, context build + specialist invoke graph, 3-scenario template (`prompts/cursor/done/2026-06-09-15xx`).
@@ -139,4 +144,4 @@ Strategic direction agreed with Paul (June 2026). These are **not** near-term Cu
 
 ---
 
-Last updated: 2026-06-04 (networks roadmap items; myceliumdata.org hosting)
+Last updated: 2026-06-04 (explainer video + logo at top; networks roadmap)
