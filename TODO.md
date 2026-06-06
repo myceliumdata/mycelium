@@ -64,20 +64,13 @@ The code was written before several key decisions were finalized. The following 
 
 ## Other Near-Term Items
 
-- [ ] Add a proper LICENSE file (currently deferred — see note below)
+- [x] Add a proper LICENSE file — **MIT** (`LICENSE`; matches `pyproject.toml`).
 
 ## Licensing
 
-**Status:** Deferred
+**Status:** MIT (June 2026)
 
-We intentionally skipped adding a LICENSE during the initial GitHub push (May 2026). This needs to be addressed before any public release or significant external usage.
-
-Options to consider later:
-- MIT (most permissive, common default)
-- Apache 2.0
-- Other
-
-Decision owner: Paul
+`LICENSE` at repo root. `pyproject.toml` already declared `license = { text = "MIT" }`.
 
 ## Product vision — Networks (roadmap)
 
@@ -144,4 +137,4 @@ Strategic direction agreed with Paul (June 2026). These are **not** near-term Cu
 
 ---
 
-Last updated: 2026-06-04 (explainer video + logo at top; networks roadmap)
+Last updated: 2026-06-04 (MIT LICENSE added)
