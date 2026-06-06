@@ -59,7 +59,7 @@ MCP is a **long-lived stdio process**. Configure your client with the **reposito
 
 You must include **`requested_attributes`** for non-core fields. Without it, responses contain seed identity only (`id`, `name`, `employer`).
 
-**Restart MCP** after changing `.env`, specialist registry, or research cache on disk — or when results disagree with a fresh CLI query. Other tools: `list_specialist_routing`, `health_check`.
+The MCP server reloads registry, categories, seed, and specialist modules from disk before each query; **restart MCP only after a code deploy or if reload fails** and results still disagree with a fresh CLI query. Other tools: `list_specialist_routing`, `health_check`.
 
 See [docs/database-notes.md](docs/database-notes.md) if you have an older `data/mycelium.db` from before the schema simplification.
 

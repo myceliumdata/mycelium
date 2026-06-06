@@ -12,7 +12,8 @@ Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture
 
 ## Near term — Engineering
 
-- [ ] **MCP singleton reload** — reload registry / category tree / graph state per `query_person` so MCP matches CLI without manual server restart (Paul hit this with email vs CLI).
+- [x] **MCP runtime reload** — `refresh_runtime_from_disk()` before each MCP query (slice `2026-06-09-1200`; commit when landed on `main`).
+- [ ] **MCP `health_check` double refresh** — `health_check` calls `list_specialist_routing` (refresh) then `_run_mcp_query` ping (refresh again); dedupe to one refresh per health invocation.
 - [ ] **End-to-end LangSmith verification** — `.env`, CLI/MCP smoke with tracing on in Paul's environment.
 - [ ] **GitHub Actions (non-blocking)** — ruff + pytest workflows; optional/manual until core stabilizes (per May 2026 note).
 - [x] **README refresh** — run instructions, MCP `cwd` + `requested_attributes`, architecture summary (June 2026).
@@ -67,4 +68,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-04 (README refresh; logo done; video de-prioritized)
+Last updated: 2026-06-05 (MCP reload done; health_check cleanup queued)

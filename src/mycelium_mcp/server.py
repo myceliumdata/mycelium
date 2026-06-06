@@ -17,6 +17,7 @@ from fastmcp import FastMCP
 # (used primarily for LangGraph Studio / ASGI).
 os.environ["MYCELIUM_USE_SYNC_CHECKPOINTER"] = "1"
 
+from agents.runtime import refresh_runtime_from_disk
 from graphs.core import run_query
 from models.state import Person, PersonQuery, PersonResponse
 from storage.core import get_storage
@@ -32,6 +33,8 @@ mcp = FastMCP(
         "All payloads are JSON. "
         "Use health_check() to verify the server is responsive and to inspect internal stabilization "
         "(sync checkpointer, automatic recovery after query issues). "
+        "Registry, categories, seed, and specialist modules reload from disk before each query — "
+        "restart the MCP server only after code deploy or if reload fails. "
         "To get a direct link to the trace in LangSmith, use the get_langsmith_trace_url helper "
         "from the mycelium package (or implement equivalent from utils.langsmith) with the trace_id."
     ),
@@ -74,6 +77,7 @@ def _serialize_response(response: PersonResponse) -> str:
 
 def _run_mcp_query(query_json: str) -> str:
     _bootstrap()
+    refresh_runtime_from_disk()
     query, thread_id = _parse_query_payload(query_json)
     try:
         response = run_query(query, thread_id=thread_id)
@@ -123,6 +127,7 @@ def query_person(query_json: str) -> str:
 def list_specialist_routing() -> str:
     """List registered specialist agents from the Agent Registry (Phase 2)."""
     _bootstrap()
+    refresh_runtime_from_disk()
     from agents.registry import get_agent_registry
 
     reg = get_agent_registry()
