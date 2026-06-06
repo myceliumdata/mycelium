@@ -12,7 +12,7 @@ Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture
 
 ## Near term — Engineering
 
-- [x] **MCP runtime reload** — `refresh_runtime_from_disk()` before each MCP query (slice `2026-06-09-1200`; commit when landed on `main`).
+- [x] **MCP runtime reload** — `refresh_runtime_from_disk()` before each MCP query (slice `2026-06-09-1200`, `7e991cb`).
 - [ ] **MCP `health_check` double refresh** — `health_check` calls `list_specialist_routing` (refresh) then `_run_mcp_query` ping (refresh again); dedupe to one refresh per health invocation.
 - [ ] **End-to-end LangSmith verification** — `.env`, CLI/MCP smoke with tracing on in Paul's environment.
 - [ ] **GitHub Actions (non-blocking)** — ruff + pytest workflows; optional/manual until core stabilizes (per May 2026 note).
