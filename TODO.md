@@ -19,8 +19,8 @@ Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture
 
 ## Hosting & governance
 
-- [ ] **GitHub org + repo move** — create org (myceliumdata.org alignment), transfer `mycelium` from `murphy/mycelium`, make **public**.
-- [ ] **Branch protection** — require Paul's approval on PRs to `main` (CODEOWNERS + branch rules).
+- [x] **GitHub org + repo move** — [myceliumdata/mycelium](https://github.com/myceliumdata/mycelium) (public; transferred from `murphy/mycelium`, June 2026).
+- [x] **Branch protection** — `main` requires PR + CODEOWNERS review (`CODEOWNERS` → `@murphy`).
 - [x] **MIT license** — `LICENSE` at repo root (June 2026).
 
 ## Product vision — Networks (roadmap)
@@ -67,4 +67,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-04 (TODO cleanup; org move in progress)
+Last updated: 2026-06-04 (myceliumdata org; public repo; branch protection)
