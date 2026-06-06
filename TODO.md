@@ -74,6 +74,40 @@ Options to consider later:
 
 Decision owner: Paul
 
+## Product vision — Networks (roadmap)
+
+Strategic direction agreed with Paul (June 2026). These are **not** near-term Cursor slices until we write plans in `docs/plans/`.
+
+### Hosting & governance
+
+- [ ] **Move project under [myceliumdata.org](https://myceliumdata.org)** — make the repo public; require Paul to approve all PRs (branch protection / CODEOWNERS).
+
+### Terminology
+
+- [ ] **Rename “instance” → “network”** in docs, code comments, and user-facing language. A Mycelium **network** is a coordinated set of specialist agents (not a single monolith).
+
+### Network bootstrap & ontology
+
+- [ ] **Creation prompt defines the network** — on create, the operator supplies a prompt describing what data the network will manage; the system uses that to propose a reasonable **ontology** (categories + specialist agents) rather than a fixed six-category default.
+- [ ] **Custom specialists per network** — beyond generated taxonomy specialists, a network can include **custom** specialist agents (domain-specific modules, prompts, storage).
+
+### Inter-network protocol
+
+- [ ] **Inter-network discovery and handoff** — design a protocol so one network can discover peers (e.g. car network learns an airplane network exists) and **redirect** or delegate queries the local ontology cannot satisfy. Open design: discovery registry, capability advertisement, trust, and MCP/HTTP message shape.
+
+### Conversation & ambiguity
+
+- [ ] **Long-running threads (client dialogue)** — build on existing `thread_id` + LangGraph checkpoints so a network can **suspend** work and **ask the client for clarification** when a request is ambiguous (generic names, missing employer, conflicting attributes). Bones exist; product behavior and response contract need design + implementation.
+
+### Query-as-seed (automatic seeding)
+
+- [ ] **Queries act as seeds** — no separate manual seed step for unknown people. Example: “Paul Murphy’s address” when the network knows nothing about Paul Murphy:
+  1. Create a stable **id** for the new person from whatever identity hints exist.
+  2. Route **name / demographic context** to the appropriate specialist (disambiguation, employer, location).
+  3. Route **address** to the contact specialist with enriched context.
+  4. If identity is too ambiguous (common name), **pause and ask the client** for more information before expensive research.
+- [ ] Relates to: query-only public API today (`data/seed.json` as static origin); this vision replaces or augments that with **runtime person creation** driven by queries.
+
 ## Architecture & Design
 
 - [ ] Decide on long-term strategy for the MCP server (keep in-repo vs extract later)
@@ -105,4 +139,4 @@ Decision owner: Paul
 
 ---
 
-Last updated: 2026-06-05 (docs/reset niggle cleanup; task 1120)
+Last updated: 2026-06-04 (networks roadmap items; myceliumdata.org hosting)
