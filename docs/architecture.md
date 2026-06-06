@@ -171,7 +171,7 @@ Historical reference: tasks `2026-06-02-1000-redesign-ingestion-handshake` (intr
 - **Checkpointer**: SQLite (`langgraph-checkpoint-sqlite`)
 - **Integration**: MCP server for external AI agents (JSON-only)
 - **Language & Standards**: Python 3.12+, strict typing with Pydantic, high code quality
-- **Observability**: LangSmith tracing from day one; successful responses echo `trace_id` when tracing is on. See README.md for setup (create account + key, copy .env.example, set vars). The optional `get_langsmith_trace_url()` helper (in `src/utils/langsmith.py`) turns a `trace_id` into a clickable URL; it is exercised in the CLI output.
+- **Observability**: LangSmith tracing from day one; successful responses echo `trace_id` when tracing is on. See README.md for setup (create account + key, copy .env.example, set vars). The `get_langsmith_trace_url()` helper (in `src/utils/langsmith.py`) turns a `trace_id` into a clickable URL; it auto-resolves org/project scope from the LangSmith API when env UUIDs are unset, and is printed by the CLI after JSON output.
 
 ---
 

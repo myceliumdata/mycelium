@@ -141,7 +141,7 @@ Full detail: [docs/architecture.md](docs/architecture.md). Phase 1 research plan
 1. Account at [smith.langchain.com](https://smith.langchain.com).
 2. Create a **Personal Access Token** (`lsv2_pt_…`).
 3. In `.env`: `LANGCHAIN_TRACING_V2=true`, `LANGCHAIN_API_KEY=…`, `LANGCHAIN_PROJECT=mycelium`.
-4. Optional: `LANGSMITH_ORG_ID` and `LANGSMITH_PROJECT_ID` for trace URLs in CLI output.
+4. CLI trace URLs: with `LANGCHAIN_API_KEY` and `LANGCHAIN_PROJECT` set, the app auto-resolves org/project IDs for clickable deep links (`/o/…/projects/p/…/r/…`). Optional `LANGSMITH_ORG_ID` and `LANGSMITH_PROJECT_ID` override that lookup. Short `/r/{trace_id}` links may show "Page not found" in the LangSmith UI when scope cannot be resolved.
 
 Disable with `LANGCHAIN_TRACING_V2=false` or unset; `trace_id` will be `null`.
 
