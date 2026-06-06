@@ -13,8 +13,9 @@ Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture
 ## Near term — Engineering
 
 - [x] **MCP runtime reload** — `refresh_runtime_from_disk()` before each MCP query (slice `2026-06-09-1200`, `7e991cb`).
-- [ ] **MCP `health_check` double refresh** — `health_check` calls `list_specialist_routing` (refresh) then `_run_mcp_query` ping (refresh again); dedupe to one refresh per health invocation.
-- [ ] **End-to-end LangSmith verification** — `.env`, CLI/MCP smoke with tracing on in Paul's environment.
+- [x] **MCP `health_check` double refresh** — deduped via `_routing_payload` / `_execute_mcp_query` helpers (slice `2026-06-09-0900`).
+- [ ] **End-to-end LangSmith verification** — CLI tracing confirmed (`trace_id` + cloud upload); short `/r/` URLs 404 — fix queued (`2026-06-09-1000`); MCP trace still to verify.
+- [ ] **LangSmith trace URL auto-resolve** — `get_langsmith_trace_url` + docs (slice `2026-06-09-1000`).
 - [ ] **GitHub Actions (non-blocking)** — ruff + pytest workflows; optional/manual until core stabilizes (per May 2026 note).
 - [x] **README refresh** — run instructions, MCP `cwd` + `requested_attributes`, architecture summary (June 2026).
 
@@ -68,4 +69,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-05 (MCP reload done; health_check cleanup queued)
+Last updated: 2026-06-06 (health_check dedupe done; LangSmith URL fix queued)

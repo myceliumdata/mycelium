@@ -79,3 +79,47 @@ def test_evict_cached_specialist_modules_removes_dyn_and_generated() -> None:
     assert dyn_name not in sys.modules
     assert gen_name not in sys.modules
     assert sys.modules.get("agents.specialists.base") is real_base
+
+
+@pytest.mark.smoke
+def test_health_check_refreshes_runtime_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """health_check performs one refresh despite routing + ping sub-checks."""
+    call_count = 0
+
+    def _count_refresh(*, reload_dotenv: bool = True) -> None:
+        nonlocal call_count
+        _ = reload_dotenv
+        call_count += 1
+
+    monkeypatch.setattr("mycelium_mcp.server.refresh_runtime_from_disk", _count_refresh)
+
+    from mycelium_mcp.server import health_check
+
+    payload = json.loads(health_check())
+    assert payload.get("status") in ("ok", "degraded")
+    assert "checks" in payload
+    assert call_count == 1
+
+
+@pytest.mark.smoke
+def test_list_specialist_routing_refreshes_runtime_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Standalone list_specialist_routing still refreshes exactly once."""
+    call_count = 0
+
+    def _count_refresh(*, reload_dotenv: bool = True) -> None:
+        nonlocal call_count
+        _ = reload_dotenv
+        call_count += 1
+
+    monkeypatch.setattr("mycelium_mcp.server.refresh_runtime_from_disk", _count_refresh)
+
+    from mycelium_mcp.server import list_specialist_routing
+
+    payload = json.loads(list_specialist_routing())
+    assert payload.get("message")
+    assert "specialists" in payload
+    assert call_count == 1

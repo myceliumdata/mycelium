@@ -75,9 +75,8 @@ def _serialize_response(response: PersonResponse) -> str:
     return response.model_dump_json(indent=2)
 
 
-def _run_mcp_query(query_json: str) -> str:
-    _bootstrap()
-    refresh_runtime_from_disk()
+def _execute_mcp_query(query_json: str) -> str:
+    """Run a query and serialize PersonResponse JSON (no bootstrap or runtime refresh)."""
     query, thread_id = _parse_query_payload(query_json)
     try:
         response = run_query(query, thread_id=thread_id)
@@ -106,6 +105,35 @@ def _run_mcp_query(query_json: str) -> str:
         )
 
 
+def _run_mcp_query(query_json: str) -> str:
+    _bootstrap()
+    refresh_runtime_from_disk()
+    return _execute_mcp_query(query_json)
+
+
+def _routing_payload() -> dict[str, Any]:
+    """Build specialist routing dict (no bootstrap or runtime refresh)."""
+    from agents.registry import get_agent_registry
+
+    reg = get_agent_registry()
+    specialists = [
+        {
+            "name": agent["name"],
+            "category": agent.get("category"),
+            "is_generated": agent.get("is_generated"),
+            "storage_path": agent.get("storage_path"),
+        }
+        for agent in reg.list_agents()
+    ]
+    return {
+        "message": (
+            "Specialist agent routing is coordinated by the supervisor "
+            "via the Agent Registry (Phase 2)."
+        ),
+        "specialists": specialists,
+    }
+
+
 @mcp.tool
 def query_person(query_json: str) -> str:
     """
@@ -128,28 +156,7 @@ def list_specialist_routing() -> str:
     """List registered specialist agents from the Agent Registry (Phase 2)."""
     _bootstrap()
     refresh_runtime_from_disk()
-    from agents.registry import get_agent_registry
-
-    reg = get_agent_registry()
-    specialists = [
-        {
-            "name": agent["name"],
-            "category": agent.get("category"),
-            "is_generated": agent.get("is_generated"),
-            "storage_path": agent.get("storage_path"),
-        }
-        for agent in reg.list_agents()
-    ]
-    return json.dumps(
-        {
-            "message": (
-                "Specialist agent routing is coordinated by the supervisor "
-                "via the Agent Registry (Phase 2)."
-            ),
-            "specialists": specialists,
-        },
-        indent=2,
-    )
+    return json.dumps(_routing_payload(), indent=2)
 
 
 def _health_check_status(check_result: str) -> bool:
@@ -168,6 +175,7 @@ def health_check() -> str:
     """
     try:
         _bootstrap()
+        refresh_runtime_from_disk()
         checks: dict[str, str] = {}
 
         try:
@@ -185,8 +193,7 @@ def health_check() -> str:
             checks["graph"] = f"error: {exc}"
 
         try:
-            routing_raw = list_specialist_routing()
-            routing = json.loads(routing_raw)
+            routing = _routing_payload()
             if isinstance(routing, dict) and routing.get("message"):
                 checks["lightweight_tool"] = "ok"
             else:
@@ -195,7 +202,7 @@ def health_check() -> str:
             checks["lightweight_tool"] = f"error: {exc}"
 
         try:
-            ping_raw = _run_mcp_query(
+            ping_raw = _execute_mcp_query(
                 json.dumps({"person_key": _HEALTH_PING_PERSON_KEY}),
             )
             ping = json.loads(ping_raw)
