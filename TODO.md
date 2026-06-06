@@ -14,9 +14,9 @@ Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture
 
 - [x] **MCP runtime reload** — `refresh_runtime_from_disk()` before each MCP query (slice `2026-06-09-1200`, `7e991cb`).
 - [x] **MCP `health_check` double refresh** — deduped via `_routing_payload` / `_execute_mcp_query` helpers (slice `2026-06-09-0900`).
-- [ ] **End-to-end LangSmith verification** — CLI tracing + auto-resolve URLs done; Paul to confirm link opens in browser; MCP trace still to verify.
+- [x] **End-to-end LangSmith verification** — CLI + MCP `trace_id`, cloud upload, auto-resolve URLs (June 2026).
 - [x] **LangSmith trace URL auto-resolve** — `get_langsmith_trace_url` API resolve + docs (slice `2026-06-09-1000`).
-- [ ] **GitHub Actions (non-blocking)** — ruff + pytest workflows; optional/manual until core stabilizes (per May 2026 note).
+- [x] **GitHub Actions (non-blocking)** — `.github/workflows/ci.yml` (ruff + smoke); not a required merge check yet.
 - [x] **README refresh** — run instructions, MCP `cwd` + `requested_attributes`, architecture summary (June 2026).
 
 ## Hosting & governance
@@ -69,4 +69,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-06 (LangSmith URL auto-resolve done)
+Last updated: 2026-06-06 (LangSmith e2e + CI + README polish done)

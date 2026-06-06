@@ -29,7 +29,7 @@ uv run mycelium query --person-key "Nichanan Kesonpat" --thread-id "session-abc"
 
 The CLI starts a **fresh process** each run and reloads registry/storage from disk.
 
-**Research latency:** With `OPENAI_API_KEY` and `TAVILY_API_KEY` set, the first query for a missing attribute (e.g. `email`) may run **synchronous** LLM + Tavily web search and take tens of seconds. Results are cached under `data/agents/<category>/` (gitignored).
+**Research latency (CLI and MCP):** With `OPENAI_API_KEY` and `TAVILY_API_KEY` set, the **first** query for a missing attribute (e.g. `email`) runs **synchronous** LLM + Tavily web search and may take tens of seconds. Results are persisted under `data/agents/<category>/` (gitignored). **Repeat queries** for the same person + attribute are fast — specialists read from cache and skip research unless retry flags apply.
 
 ### MCP server
 
@@ -59,7 +59,9 @@ MCP is a **long-lived stdio process**. Configure your client with the **reposito
 
 You must include **`requested_attributes`** for non-core fields. Without it, responses contain seed identity only (`id`, `name`, `employer`).
 
-The MCP server reloads registry, categories, seed, and specialist modules from disk before each query; **restart MCP only after a code deploy or if reload fails** and results still disagree with a fresh CLI query. Other tools: `list_specialist_routing`, `health_check`.
+**Attribute fan-out:** Each requested attribute is classified to a category (contact, social, professional, etc.) and routed to the matching specialist. Multiple attributes may invoke **multiple specialists** in one query (e.g. `["email", "linkedin"]` → contact + social). Core fields (`name`, `employer`) come from seed; everything else is specialist-owned.
+
+The MCP server reloads registry, categories, seed, and specialist modules from disk before each query; **restart MCP only after a code deploy or if reload fails** and results still disagree with a fresh CLI query. MCP returns the same `trace_id` as the CLI when LangSmith tracing is on (verify in the LangSmith UI under project `mycelium`). Other tools: `list_specialist_routing`, `health_check`.
 
 See [docs/database-notes.md](docs/database-notes.md) if you have an older `data/mycelium.db` from before the schema simplification.
 
@@ -164,7 +166,7 @@ uv run pytest -q                     # full suite before major merges
 uv run ruff check src tests bin/
 ```
 
-Smoke vs full: `@pytest.mark.smoke` vs `@pytest.mark.full` in `tests/`. Cursor workflow: `prompts/cursor/WORKFLOW.md`.
+Smoke vs full: `@pytest.mark.smoke` vs `@pytest.mark.full` in `tests/`. CI runs ruff + smoke on push/PR (non-blocking). Cursor workflow: `prompts/cursor/WORKFLOW.md`.
 
 ## Repository layout
 
