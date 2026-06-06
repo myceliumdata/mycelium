@@ -1,2 +1,2 @@
-# Require Paul to review changes to the default branch (enable branch protection in GitHub).
+# PRs to main require review from @murphy (branch protection + require_code_owner_reviews).
 * @murphy
