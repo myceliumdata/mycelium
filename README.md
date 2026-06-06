@@ -1,206 +1,188 @@
 # Mycelium
 
-A maintainable LangGraph prototype for **AI-managed data sources**. External agents **query** people records via MCP or CLI; a **supervisor** coordinates core lookups (via the **core data agent** specialist) and specialist handoff for non-core attributes. Public interfaces are **query-only**; data addition will return via internal agent coordination.
+**AI-managed people data** via networks of LangGraph specialist agents. External clients **query** records through the CLI or MCP; a **supervisor** resolves seed identity, classifies requested attributes, and coordinates specialists that own domain data (contact, social, demographic, etc.).
+
+Public repo: [github.com/myceliumdata/mycelium](https://github.com/myceliumdata/mycelium) · Architecture: [docs/architecture.md](docs/architecture.md) · License: MIT
 
 ## Quick start
 
 ```bash
+git clone https://github.com/myceliumdata/mycelium.git
+cd mycelium
 uv sync --all-extras
 cp .env.example .env
+# Add OPENAI_API_KEY and TAVILY_API_KEY to .env for synchronous field research on cache miss.
+```
 
-# Query existing CRM seed record
+### CLI
+
+```bash
+# Seed identity only (name + employer from data/seed.json)
 uv run mycelium query --person-key "Nichanan Kesonpat"
 
-# Same query with a stable conversation thread (echoed in JSON as thread_id)
+# Request non-core attributes (merged into results when specialists have data)
+uv run mycelium query --person-key "Andrea Kalmans" --attributes email
+
+# Stable conversation thread (echoed as thread_id in JSON)
 uv run mycelium query --person-key "Nichanan Kesonpat" --thread-id "session-abc"
+```
 
-# Request non-core attributes (core record in results; message describes ongoing research)
-uv run mycelium query --person-key "Nichanan Kesonpat" --attributes age x_handle
+The CLI starts a **fresh process** each run and reloads registry/storage from disk.
 
-# MCP server (stdio) — query_person only
+**Research latency:** With `OPENAI_API_KEY` and `TAVILY_API_KEY` set, the first query for a missing attribute (e.g. `email`) may run **synchronous** LLM + Tavily web search and take tens of seconds. Results are cached under `data/agents/<category>/` (gitignored).
+
+### MCP server
+
+```bash
 uv run mycelium-mcp
 ```
 
-**Note:** The `mycelium` CLI now exits promptly after printing the JSON response (previously it could hang on async checkpointer cleanup). This makes ad-hoc CLI verification and smoke checks fast.
-
-**Research latency:** When `OPENAI_API_KEY` and `TAVILY_API_KEY` are set, the first query for a non-core attribute (e.g. `email`) may run **synchronous** LLM + web search on cache miss and can take tens of seconds. Future work will move that to async dispatch so the CLI returns faster while research continues in the background.
-
-See [docs/database-notes.md](docs/database-notes.md) if you have an older `data/mycelium.db` from before the schema simplification.
-
-### Response shape
-
-CLI and MCP return **`PersonResponse`** JSON: `results`, `message`, `debug`, plus optional correlation fields:
+MCP is a **long-lived stdio process**. Configure your client with the **repository as working directory** so `.env` and `data/` resolve correctly:
 
 ```json
 {
-  "results": [{ "id": "…", "name": "…", "employer": "…" }],
-  "message": "Found core record for …",
+  "command": "uv",
+  "args": ["run", "mycelium-mcp"],
+  "cwd": "/absolute/path/to/mycelium"
+}
+```
+
+**`query_person`** accepts JSON (`PersonQuery` fields plus optional top-level `thread_id`):
+
+```json
+{
+  "person_key": "Andrea Kalmans",
+  "requested_attributes": ["email"],
+  "thread_id": "optional-session-id"
+}
+```
+
+You must include **`requested_attributes`** for non-core fields. Without it, responses contain seed identity only (`id`, `name`, `employer`).
+
+**Restart MCP** after changing `.env`, specialist registry, or research cache on disk — or when results disagree with a fresh CLI query. Other tools: `list_specialist_routing`, `health_check`.
+
+See [docs/database-notes.md](docs/database-notes.md) if you have an older `data/mycelium.db` from before the schema simplification.
+
+### Dev reset
+
+```bash
+./bin/reset-mycelium --all --yes   # seed-only platform; removes generated specialists
+```
+
+Uses `.venv/bin/python3` automatically when present. Preview with `--dry-run --all`.
+
+## Response shape
+
+CLI and MCP return **`PersonResponse`** JSON:
+
+```json
+{
+  "results": [
+    {
+      "id": "3fe6db14-a41d-50fe-9959-c5263dc5f53b",
+      "name": "Andrea Kalmans",
+      "employer": "Lontra Ventures",
+      "email": "akalmans@example.com"
+    }
+  ],
+  "message": "Found record for Andrea Kalmans; assembled from seed and specialist contributions.",
   "debug": "…",
   "trace_id": null,
   "thread_id": "session-abc"
 }
 ```
 
-- **`thread_id`** — Passed via `--thread-id` (CLI) or top-level `thread_id` in MCP request JSON; used for session continuity and LangGraph checkpointing.
-- **`trace_id`** — Populated when LangSmith tracing is enabled (`LANGCHAIN_TRACING_V2`); links the response to the run in LangSmith.
+- **`results`** — One dict per seed match. Always includes `"id"`. With `requested_attributes`, includes only those keys after specialist-first merge.
+- **`message`** — Human-readable status (seed found, research pending, N/A, etc.).
+- **`thread_id`** — CLI `--thread-id` or MCP top-level `thread_id`; used for LangGraph checkpointing.
+- **`trace_id`** — Set when LangSmith tracing is enabled.
 
-## Enabling LangSmith Tracing
+## How it works (summary)
 
-LangSmith provides observability for graph executions (supervisor routing, core lookups, etc.).
+1. **Seed** — `data/seed.json` is the static origin (~457 people). Runtime assigns stable UUIDs (`agents/seed.py`).
+2. **Supervisor** — Resolves `person_key`, classifies attributes (`data/categories.json`, gitignored cache seeded from code).
+3. **Agent factory** — Creates specialist modules on demand (`src/agents/specialists/*_specialist.py`, gitignored).
+4. **Graph** — `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` (or direct assemble for name-only / not found).
+5. **Research** — Specialists run sync LLM + Tavily on cache miss when keys are set; persist to `data/agents/<category>/storage.json`.
 
-1. Sign up for a free account at [smith.langchain.com](https://smith.langchain.com).
-2. Go to Settings → API Keys and create a new key. **Choose Key Type: Personal Access Token (PAT)** (not Service Key). This will produce a key starting with `lsv2_pt_`.
-3. Copy `.env.example` to `.env` and fill in:
-   - `LANGCHAIN_TRACING_V2=true`
-   - `LANGCHAIN_API_KEY=lsv2_pt_...` (paste your PAT)
-   - `LANGCHAIN_PROJECT=mycelium` (or your project name)
-     **No need to pre-create this project in the LangSmith UI.** The first trace sent with this project name will automatically create a new project called "mycelium" (or whatever you set) under your workspace. You can later rename, organize, or add tags in the LangSmith dashboard if desired. This variable controls which "folder"/project your traces appear under in the LangSmith UI.
-4. (Optional) For full trace URLs in output, set `LANGSMITH_ORG_ID` and `LANGSMITH_PROJECT_ID`.
-5. Run commands as usual. Responses will include `trace_id`, and the CLI will print a direct LangSmith trace URL when tracing is active.
-
-To disable (no key needed, no data sent): set `LANGCHAIN_TRACING_V2=false` or unset it. `trace_id` will be `null`.
-
-See `docs/architecture.md` and `.env.example` for more.
-
-## Local Debugging with LangSmith Studio (LangGraph Studio)
-
-The Studio setup gives you a rich visual debugger for the graph (supervisor routing, core lookup path, state inspection, etc.).
-
-The `langgraph dev` command runs your graph execution locally on your machine. The Studio UI (the visual part) is a web app at smith.langchain.com that connects to your local server via a tunnel (currently ngrok). This is the supported way to get the nice interactive graph view.
-
-**Recommended way to start:**
-
-```bash
-./bin/run-studio
-```
-
-Then in another terminal:
-
-```bash
-ngrok http 2024
-```
-
-(This forces tracing off. The script starts the dev server on localhost; you expose it with ngrok.)
-
-The terminal running the dev server will print the local address. ngrok will print the public https://...ngrok.io (or ngrok-free.app) URL.
-
-**Important:** Tunnels are ephemeral. Every new ngrok session (or `./bin/run-studio` restart) gives a new URL. Always use the URL from the *current* terminals. Do not reuse old ones from previous runs or old browser tabs.
-
-Once connected you can send query-only `PersonQuery` inputs (inside `MyceliumGraphState`) and step through the supervisor and related nodes. Legacy enrich/validator nodes may still appear in the diagram until graph simplification (task 1070).
-
-See `.env.example` and the troubleshooting notes below.
-
-The `langgraph.json` has the graph entrypoint and expanded CORS settings for Studio (smith.langchain.com origins + methods/headers/credentials). If you change it, you must restart the dev server.
-
-**Troubleshooting "Failed to initialize Studio TypeError: Failed to fetch"**:
-- The cloud Studio page cannot directly fetch from your localhost. You must use a tunnel (ngrok in the current setup).
-- Make sure `LANGCHAIN_TRACING_V2=false` (or unset) so the dev server doesn't try to phone home to LangSmith during startup.
-- After starting `./bin/run-studio` + `ngrok http 2024`, copy the https ngrok URL.
-- In a separate browser tab, visit that plain ngrok URL first and complete the ngrok "Visit Site" / warning page until you see clean JSON `{"ok":true}`.
-- Then go to https://smith.langchain.com/studio/ in a *fresh* tab.
-- Click "Connect to a local server" and paste the current ngrok URL.
-- Hard-refresh the Studio page (Cmd/Ctrl-Shift-R) if needed.
-- If still issues, try a different browser (Chrome/Firefox are usually more lenient).
-- Check terminal output for any server startup errors (e.g. port in use — use `--port 8001`).
-- The CORS config in langgraph.json (full allow_methods, allow_headers, allow_credentials) allows the smith.langchain.com origins. If you edit it, restart the dev server.
-
-**For the specific error "Failed to connect to Agent Server because the domain 'xxx.ngrok.io' is not allowed"** (or similar for any tunnel):
-- This is the Studio UI's security check for the tunnel domain (tunnels change every run).
-- On the error page you are on (the one with the URL you pasted), look for **"Advanced Settings"** (usually at the bottom or in the connection panel).
-- In Advanced Settings, add the exact domain from the error (both the bare domain and the `https://` version).
-- Save/apply, then click Connect or refresh.
-- Next time you get a new ngrok URL, you'll need to add the new domain in Advanced Settings again (or use the "Connect to local server" flow each time).
-
-This is normal for tunnel-based local dev. The terminal output from ngrok and langgraph dev will show the exact current URL.
-
-**For "Failed to initialize Studio" / "TypeError: Failed to fetch" / "ConnectionError: Unable to connect..."** (the most common tunnel gotcha):
-- You **must** have `./bin/run-studio` actively running and `ngrok http 2024` (or your tunnel) actively running in terminals right now.
-- **Tunnels are ephemeral:** Old URLs are dead once the ngrok session or dev server stops. You must use the URL from the *current* running sessions.
-- **Steps (official + proven flow):**
-  1. Start `./bin/run-studio`, then in another terminal run `ngrok http 2024`.
-  2. Note the **current** 🚀 API URL from ngrok (https://...ngrok.io).
-  3. In a separate browser tab, visit that **plain new API URL** first. Complete any ngrok warning/visit page until it shows clean `{"ok":true}` JSON.
-  4. Open a **completely fresh** tab to `https://smith.langchain.com/studio/` (hard refresh or new tab; old tabs may have stale connections).
-  5. Click **"Connect to a local server"** (the manual button — do not just open an old pre-filled link or rely on auto-connect).
-  6. Paste the **current live** ngrok URL.
-  7. In Advanced Settings (if it complains about domain), add the new bare domain + `https://` version.
-  8. Click Connect.
-- The langgraph.json has expanded CORS — restart the dev server after editing it.
-- **Important for schema / form changes (e.g. in Studio's visual Input editor):** If you edit Pydantic models like `src/models/state.py` (Person fields, etc.), simply reloading the Studio page is not enough. The running `langgraph dev` process has the old module/schema in memory. You must Ctrl-C the server, restart `./bin/run-studio` (new ngrok URL), re-warmup the URL, and reconnect in Studio. Only then will the Input editor reflect updated required/optional fields and defaults.
-- Try Incognito or Firefox.
-- Verify locally the server responds (`curl http://127.0.0.1:2024/ok`), then test the *current* ngrok URL directly in a browser tab.
-
-## Architecture
+Runtime agent data (`data/agents/`, `data/agent_registry.json`, generated specialists, `categories.json`) is **gitignored** and recreated locally.
 
 ```mermaid
 flowchart TD
-    MCP[MCP Client] -->|JSON| MCPServer[mycelium_mcp/server.py]
-    CLI[main.py CLI] -->|JSON| Graph
-    MCPServer --> Graph[graphs/core.py]
-    Graph --> S[Supervisor]
-    S -->|target wiring| CDA[core_data_agent]
-    CDA --> CI[CoreIdentity facade]
-    CI --> DB[(mycelium.db)]
-    S -->|found| RES[results + message]
-    S -->|missing| MISS[empty results + message]
-    S -->|non-core attrs| NC[results + researching message]
+    Client[CLI or MCP] --> Graph[graphs/core.py]
+    Graph --> S[supervisor]
+    S -->|specialists needed| BC[build_context]
+    BC --> INV[invoke_specialists]
+    INV --> ASM[assemble_response]
+    S -->|name only / not found| ASM
+    ASM --> RES[PersonResponse JSON]
     Graph --> CP[(checkpoints.sqlite)]
+    Seed[(data/seed.json)] --> S
+    Store[(data/agents/)] --> BC
+    Store --> INV
 ```
 
 | Layer | Path | Role |
 |-------|------|------|
 | Models | `src/models/state.py` | `Person`, `PersonQuery`, `PersonResponse`, graph state |
-| Storage | `src/storage/core.py` | SQLite core `people` table (id, name, employer) |
-| Agents | `supervisor.py`, `core_data.py`, `routing.py`, `responses.py` | Coordinator + core data specialist (+ legacy enrich/validator until 1070) |
-| Graph | `src/graphs/core.py` | LangGraph + async `AsyncSqliteSaver` checkpointer |
-| MCP | `src/mycelium_mcp/server.py` | `query_person`, `list_specialist_routing` |
-| Seed | `data/seed_crm.json` | 457 contacts from `raw_data.json` (dedup: Andrea Kalmans → Lontra Ventures, Pete Townsend → Techstars) loaded on startup |
+| Seed | `src/agents/seed.py`, `data/seed.json` | Static origin + stable UUID assignment |
+| Supervisor | `src/agents/supervisor.py` | Seed resolution, classification, specialist planning |
+| Classification | `src/agents/classification/` | Attribute → category map |
+| Factory | `src/agents/factory/` | Jinja template → generated specialists |
+| Research | `src/tools/research.py`, `src/tools/tavily.py` | Sync LLM + web search, persist fields |
+| Graph | `src/graphs/core.py` | LangGraph; async checkpointer (Studio), sync path (MCP) |
+| MCP | `src/mycelium_mcp/server.py` | `query_person`, `list_specialist_routing`, `health_check` |
+| CLI | `src/main.py` | `mycelium query`, `mycelium seed` |
 
-## Specialist routing (Phase 1)
+Full detail: [docs/architecture.md](docs/architecture.md). Phase 1 research plan: [docs/plans/specialist-research-phase1.md](docs/plans/specialist-research-phase1.md).
 
-Core CRM fields are **id**, **name**, and **employer** only. When a query asks for anything else (e.g. `age`, `x_handle`):
+## LangSmith tracing
 
-1. The supervisor returns the core person in `results` and explains in `message` that those attributes are still being researched.
-2. No shared derivative-dataset tables or registry exist in Phase 1 — specialist agents are coordinated by the supervisor, not stored as formal datasets in core storage.
-3. Future phases will spawn real specialist agents per attribute domain.
+1. Account at [smith.langchain.com](https://smith.langchain.com).
+2. Create a **Personal Access Token** (`lsv2_pt_…`).
+3. In `.env`: `LANGCHAIN_TRACING_V2=true`, `LANGCHAIN_API_KEY=…`, `LANGCHAIN_PROJECT=mycelium`.
+4. Optional: `LANGSMITH_ORG_ID` and `LANGSMITH_PROJECT_ID` for trace URLs in CLI output.
 
-See [docs/architecture.md](docs/architecture.md) for current architecture and direction.
+Disable with `LANGCHAIN_TRACING_V2=false` or unset; `trace_id` will be `null`.
+
+## LangGraph Studio (optional)
+
+Visual debugging via local dev server + tunnel:
+
+```bash
+./bin/run-studio
+# separate terminal: ngrok http 2024
+```
+
+Connect from [smith.langchain.com/studio](https://smith.langchain.com/studio/) using the **current** ngrok URL (tunnels are ephemeral). Restart `./bin/run-studio` after graph or schema changes. See `.env.example` and `langgraph.json`.
+
+## Development
+
+```bash
+uv run pytest -m smoke -q          # frequent dev checks
+uv run pytest -q                     # full suite before major merges
+uv run ruff check src tests bin/
+```
+
+Smoke vs full: `@pytest.mark.smoke` vs `@pytest.mark.full` in `tests/`. Cursor workflow: `prompts/cursor/WORKFLOW.md`.
 
 ## Repository layout
 
 ```
 mycelium/
-├── data/seed_crm.json
-├── src/
-│   ├── agents/
-│   ├── graphs/core.py
-│   ├── models/state.py
-│   ├── storage/core.py
-│   ├── mycelium_mcp/server.py
-│   └── main.py
-├── prompts/system/CORE_PROMPT.md
-└── docs/architecture.md
-```
-
-## Development
-
-Frequent/quick smoke tests (during dev, Cursor work, quick checks):
-```bash
-uv run pytest -m smoke -q
-uv run ruff check src tests
-```
-
-Full test suite (end of major changesets, before reviews, full verification):
-```bash
-uv run pytest -q
-uv run ruff check src tests
-```
-
-See `tests/` for `@pytest.mark.smoke` (fast unit) vs `@pytest.mark.full` (integration with real storage/graph).
-
-**For Cursor agents:** See the "Test Execution Policy" in `prompts/cursor/WORKFLOW.md` (and the embedded rule in `.cursor/rules/04-cursor-workflow.mdc`). Default to smoke tests only. If adding a test, Grok determines the category for any new test; run full tests immediately for any full-suite test. See the policy for details.
+├── data/seed.json              # committed static seed
+├── data/agents/                # runtime specialist storage (gitignored)
+├── src/agents/                 # supervisor, classification, factory, dispatch
+├── src/graphs/core.py
+├── src/mycelium_mcp/server.py
+├── src/main.py
+├── bin/reset-mycelium
+├── docs/architecture.md
+└── prompts/
 ```
 
 ## Status
 
-MVP core flow: query-only MCP + CLI + SQLite persistence + supervisor graph. Next: wire `core_data_agent` in graph (1070/1100), real specialist spawning, vector search.
+**Implemented (June 2026):** Query-only CLI/MCP, seed-data-context graph, classification engine, agent factory, Phase 1 **synchronous** specialist research (LLM + Tavily), public repo under [myceliumdata](https://github.com/myceliumdata).
+
+**Roadmap:** Networks terminology, query-as-seed, client clarification threads, inter-network handoff — see [TODO.md](TODO.md).

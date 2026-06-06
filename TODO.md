@@ -5,17 +5,17 @@ Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture
 
 ---
 
-## Top priority — Brand & launch
+## Brand & launch
 
-- [ ] **Explainer video** — short intro to Mycelium networks (specialists, query flow, vision). For site, repo, outreach.
-- [ ] **Logo** — mark for myceliumdata.org, GitHub org, docs, video. Decision owner: Paul.
+- [x] **Logo** — done (June 2026).
+- [ ] **Explainer video** — *de-prioritized*; short intro to networks when time allows (site, repo, outreach).
 
 ## Near term — Engineering
 
 - [ ] **MCP singleton reload** — reload registry / category tree / graph state per `query_person` so MCP matches CLI without manual server restart (Paul hit this with email vs CLI).
 - [ ] **End-to-end LangSmith verification** — `.env`, CLI/MCP smoke with tracing on in Paul's environment.
 - [ ] **GitHub Actions (non-blocking)** — ruff + pytest workflows; optional/manual until core stabilizes (per May 2026 note).
-- [ ] **README refresh** — run instructions, MCP `cwd` + `requested_attributes` example, architecture pointer.
+- [x] **README refresh** — run instructions, MCP `cwd` + `requested_attributes`, architecture summary (June 2026).
 
 ## Hosting & governance
 
@@ -67,4 +67,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-04 (branch protection note: admins not enforced)
+Last updated: 2026-06-04 (README refresh; logo done; video de-prioritized)
