@@ -10,9 +10,9 @@
 | `name` | TEXT NOT NULL | Display name |
 | `employer` | TEXT | Optional |
 
-On first run, the app creates this schema if needed and loads seed data from `data/seed_crm.json` when the database is empty.
+Queries resolve people from `<network_root>/seed.json` via `agents.seed` (not auto-loaded into SQLite on query). The legacy `seed` CLI subcommand can still load a JSON file into SQLite for compatibility.
 
-LangGraph checkpoints live separately in `data/checkpoints.sqlite` (see `MYCELIUM_CHECKPOINT_PATH` in `.env.example`).
+LangGraph checkpoints live under `<network_root>/checkpoints.sqlite` (see `MYCELIUM_CHECKPOINT_PATH` / network path resolver in `.env.example`).
 
 ## Legacy `data/mycelium.db` files
 

@@ -1,6 +1,6 @@
 # Networks — Terminology, Namespaces & Packaging Plan
 
-**Status:** Approved (June 2026) — Paul decisions incorporated below. **Phase 1 (terminology docs)** delivered via Cursor slice `2026-06-07-1000`; Phases 2–4 queued in `prompts/cursor/next/`.
+**Status:** Approved (June 2026) — Paul decisions incorporated below. **Delivered:** Networks Phases 1–5 (`2026-06-09-1000` … `1800`): path resolver, registry, CRM example, integration testing (`1400`), **`network create`** with per-network `specialists/` and skeleton ontology (`1500`–`1800`). **Next:** query-as-seed (v2), inter-network handoff (Phase 6).
 **Audience:** Paul + Grok (planning); Cursor (implementation slices after approval)  
 **Depends on:** `TODO.md` → Product vision — Networks → Terminology & bootstrap
 
@@ -8,7 +8,7 @@
 
 ## Why this doc exists
 
-**Product model (Paul, June 2026):** Users download the **Mycelium framework** (this repo) and **launch named networks**. Each network lives in its **own namespace** (isolated seed, ontology, registry, specialist storage, checkpoints). The repo today still embeds **CRM prototype data** (`data/seed.json`, `seed_crm.json`, `raw_data.json`, etc.) from early development—that must move out so the framework is domain-neutral.
+**Product model (Paul, June 2026):** Users download the **Mycelium framework** (this repo) and **launch named networks**. Each network lives in its **own namespace** (isolated seed, ontology, registry, specialist storage, checkpoints). **Phase 4 complete:** CRM seed no longer ships in repo-root `data/` — bootstrap from committed **`examples/networks/crm/`** via `bin/copy-example-network`. Legacy `data/` is an empty runtime shim until populated.
 
 The TODO item “rename instance → network” is therefore **not** a mechanical find-and-replace (the word *instance* barely appears). It is:
 
@@ -34,7 +34,7 @@ A **network** is a **scoped Mycelium deployment** that owns:
 | Classification ontology | `data/categories.json` | `<network_root>/categories.json` |
 | Specialist registry | `data/agent_registry.json` | `<network_root>/agent_registry.json` |
 | Specialist storage | `data/agents/<category>/` | `<network_root>/agents/<category>/` |
-| Generated specialists | `src/agents/specialists/*_specialist.py` | TBD: per-network dir under root or shared framework cache (Phase 4) |
+| Generated specialists | `src/agents/specialists/*_specialist.py` (CRM reference) | `<network_root>/specialists/*_specialist.py` (Phase 5) |
 | Checkpoints | `data/checkpoints.sqlite` | `<network_root>/checkpoints.sqlite` |
 | SQLite legacy DB | `data/mycelium.db` | `<network_root>/mycelium.db` (if retained) |
 | LangSmith project | `LANGCHAIN_PROJECT=mycelium` | `mycelium-<name>` or caller-configured |
@@ -59,6 +59,7 @@ A network is identified by **`network_root`**: an absolute path to a directory t
   seed.json
   categories.json       # runtime; seeded on first use
   agent_registry.json
+  specialists/          # generated *_specialist.py (Phase 5)
   agents/<category>/storage.json
   checkpoints.sqlite
   mycelium.db           # optional legacy
@@ -128,7 +129,7 @@ Three distinct senses appear today:
 2. **Create** a network: user picks **name** and **`network_root` path** (where data lives).
 3. **Query** via CLI with **`--network-dir`** (path) or **`--network`** (name → resolved via registry); if omitted, use **default network**.
 4. **MCP:** one **long-lived server process per network**; run several in parallel with different `MYCELIUM_NETWORK_ROOT` in each client config. Framework `cwd` stays the repo; data paths come from env.
-5. Optional inter-network handoff later (Phase 5).
+5. Optional inter-network handoff later (Phase 6).
 
 **Principle:** **Network root path** is the runtime source of truth. Name is metadata + convenience alias. Until migration ships, legacy flat `data/` remains the implicit default network root for dev.
 
@@ -241,6 +242,8 @@ Each MCP process binds to **one** `network_root` for its lifetime. Multiple netw
 
 ### Env vars (consolidation target)
 
+**Credentials:** `OPENAI_API_KEY`, `TAVILY_API_KEY`, `LANGCHAIN_*`, etc. stay in the **framework** `.env` (process-wide). They are **not** per-network and are **not** written into `network_root`. MCP parallel servers reuse the same keys; only `MYCELIUM_NETWORK_*` differs per entry.
+
 | Variable | Purpose |
 |----------|---------|
 | `MYCELIUM_NETWORK_ROOT` | Absolute path to network data directory (primary for MCP) |
@@ -274,7 +277,7 @@ Large effort; ship in **independent slices** with legacy `data/` shim until each
 - New module e.g. `src/network/paths.py` (or `src/storage/network_root.py`):
   - `resolve_network_root(cli_dir=, cli_name=, env) -> Path`
   - Derive seed, registry, agents, checkpoints, DB paths from root.
-- Wire into `main.py`, `mycelium_mcp/server.py` `_bootstrap()`, `reset-mycelium`.
+- Wire into `main.py`, `mycelium_mcp/server.py` `_bootstrap()` (path resolver; no reset script).
 - CLI: `--network-dir`, `--network` on `query` (and global default resolution).
 - MCP: read `MYCELIUM_NETWORK_ROOT`; include network name in `health_check` / instructions.
 - **Legacy shim:** unset → `data/` under framework root (current behavior).
@@ -298,28 +301,28 @@ Paul: **keep a CRM example in the repo** — it will evolve with the product.
 - Optional `bin/copy-example-network` to bootstrap a local network from `examples/networks/crm/`.
 - Paul's live CRM stays at a user path (not necessarily committed).
 
-### Phase 4.5 — Integration testing (before Phase 5)
-
-Paul: **serious testing** after Phases 1–4 land, **before** network creation prompt (Phase 5).
+### Phase 4.5 — Integration testing — **delivered** (`2026-06-09-1400`)
 
 - Multi-network CLI isolation (`--network-dir`, `--network`, default).
 - Parallel MCP: two roots, `health_check` + `query_person` parity.
 - Example-network copy → register → query happy path.
 - Checkpoint/thread hygiene (unique `thread_id` per scenario; document stale-thread gotcha).
-- Add targeted smoke/full tests; manual checklist in slice `output.md`.
-- Fix bugs found (in slice scope only).
+- `tests/test_network_integration.py`; MCP path preservation fix in `refresh_runtime_from_disk`.
 
-**Cursor slice:** `2026-06-07-1400-networks-integration-testing.md` (queued after Phase 4).
+### Networks polish (short-term squirt)
 
-### Networks polish (short-term squirts)
+After Phase 4, one bounded slice from `TODO.md` → **Networks polish** (`2026-06-09-1350`) **before** Phase 4.5 integration testing. Not blocking Phase 5.
 
-After Phase 4, optional small slices from `TODO.md` → **Networks polish** (before or after 4.5 testing). Not blocking Phase 5.
+### Phase 5 — Network launch v1 — **delivered** (`1500`–`1800`)
 
-### Phase 5 — Network creation prompt + ontology (large)
+See [`docs/plans/networks-phase5.md`](networks-phase5.md) for full design.
 
-- `mycelium network create <name> --root <path>` runs creation prompt → custom specialists/categories (not fixed six).
-- Generated specialist module strategy per network (design sub-task).
-- **Gate:** Phase 4 + Phase 4.5 testing complete (polish optional).
+- **`mycelium network create`** — `--root`, required `--seed`, creation `--prompt` (or `--prompt-file`); optional `--display-name`, `--default`, `--dry-run`, `--force`, `--no-mcp-snippet`.
+- **Skeleton ontology** at create: LLM maps creation prompt → `categories.json` + `agent_registry.json` + minimal `attribute_map` (examples only).
+- **Per-network specialists:** `<network_root>/specialists/` via `MYCELIUM_SPECIALISTS_DIR`; isolated from other networks on the same machine.
+- **Classification unchanged:** unknown attributes still classify lazily at query time; supervisor can create specialists on demand.
+- **CRM path unchanged:** `bin/copy-example-network` for committed reference; `network create` for custom domains.
+- **Cleanup:** `bin/reset-mycelium` removed (`1760`) — start a new `--root` or `network create --force` instead.
 
 ### Phase 6 — Inter-network discovery & handoff (future)
 
@@ -333,9 +336,10 @@ After Phase 4, optional small slices from `TODO.md` → **Networks polish** (bef
 
 ```
 Phase 1 → 2 → 3 → 4 (CRM example)
-       → 4.5 (integration testing) — gate before Phase 5
-       → [optional polish squirts from TODO]
-       → 5 (create prompt + ontology)
+       → polish squirt (1350)
+       → categories sample + alignment (1380)
+       → 4.5 (integration testing) ✓
+       → 5 (create prompt + ontology) ✓
        → 6 (distributed discovery + handoff)
 ```
 
@@ -348,7 +352,7 @@ Phase 2 unlocks parallel MCP servers immediately (different `MYCELIUM_NETWORK_RO
 | In scope | Out of scope |
 |----------|--------------|
 | Product noun **network** = named namespace | Renaming Python `isinstance` |
-| Framework vs network data separation (plan + phases) | Inter-network protocol (Phase 5) |
+| Framework vs network data separation (plan + phases) | Inter-network protocol (Phase 6) |
 | Moving CRM seed out of default repo | Full ontology LLM on day one |
 | `networks/<name>/` layout | Renaming every `data/` symbol in one PR |
 
@@ -369,11 +373,11 @@ Phase 2 unlocks parallel MCP servers immediately (different `MYCELIUM_NETWORK_RO
 
 ## Open questions (remaining)
 
-1. **Config file location** — Default `~/.config/mycelium/networks.json` unless Paul prefers project-local; override via `MYCELIUM_NETWORKS_CONFIG`.
+1. ~~**Config file location**~~ — **Decided:** `~/.config/mycelium/networks.json` default; override via `MYCELIUM_NETWORKS_CONFIG`.
 2. ~~**CRM in repo**~~ — **Decided:** `examples/networks/crm/` committed reference network (evolves over time).
-3. **Non-person networks** — Same noun “network” for cars/airplanes?
-4. **Generated specialists** — Per-network directory under `network_root` vs shared `src/agents/specialists/` (Phase 5 design)?
-5. ~~**Start Cursor work**~~ — **Phase 1 done** (docs). Phases 2–4 in `prompts/cursor/next/` (`1100` … `1300`). Phase 5+ not queued yet.
+3. **Non-person networks** — Same noun “network” for cars/airplanes? (Yes — ontology is domain-agnostic; v1 seed loader still expects person-shaped `people` array; deferred generic seed schemas in `TODO.md`.)
+4. ~~**Generated specialists**~~ — **Decided:** `<network_root>/specialists/` (Phase 5a); CRM reference modules remain under `src/agents/specialists/`.
+5. ~~**Phase 5 queue**~~ — **Done** (slices `1500`–`1800` in `prompts/cursor/done/`).
 
 ---
 
@@ -396,4 +400,4 @@ Phase 2 unlocks parallel MCP servers immediately (different `MYCELIUM_NETWORK_RO
 - **MCP:** Parallel servers each bound to one root via env.
 - **Honesty:** Docs describe prototype flat `data/` as transitional until migration lands.
 
-**Last updated:** 2026-06-06 (network root path, CLI dir flag, MCP-per-network, default network, staged phases)
+**Last updated:** 2026-06-09 (Phase 5 delivered; specialists layout; open questions closed)

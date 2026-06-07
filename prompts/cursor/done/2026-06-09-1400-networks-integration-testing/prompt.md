@@ -3,13 +3,13 @@
 **Read these first (mandatory):**
 - `prompts/cursor/WORKFLOW.md`
 - `docs/plans/networks-terminology.md` (Phases 1–4, testing section)
-- `src/network/paths.py`, `src/network/registry.py` (if present)
+- `src/network/paths.py`, `src/network/registry.py`
 - `tests/test_network_paths.py`, `tests/conftest.py`
-- Phase 1–4 done folders
+- Phase 1–4, polish (`1350`), and alignment (`1380`) done folders
 
-**Depends on:** Phases 1–4 complete (path resolver, registry, CRM example, no committed `data/seed.json`).
+**Depends on:** Phases 1–4, polish (`2026-06-09-1350`), and categories alignment (`2026-06-09-1380`) reviewed.
 
-**Do not start** until Phase 4 (`2026-06-07-1300`) is merged and reviewed.
+**Do not start** until `2026-06-09-1380-networks-categories-sample-and-alignment` is in `prompts/cursor/done/`.
 
 ---
 
@@ -25,7 +25,7 @@ Paul explicitly wants this **before Phase 5**.
 
 ### 1. Path resolver + legacy
 
-- Unset env/flags → legacy behavior or registered default (per post-Phase 4 layout).
+- Unset env/flags → registered default or post-Phase 4 example layout (no committed `data/seed.json`).
 - `--network-dir` overrides registry default.
 - `MYCELIUM_NETWORK_ROOT` used by MCP bootstrap.
 
@@ -47,7 +47,7 @@ Paul explicitly wants this **before Phase 5**.
 
 ### 5. MCP
 
-- `_bootstrap` + `health_check`: `info.network_root` correct.
+- `_bootstrap` + `health_check`: `info.network_root` and `info.network_display_name` (if polish landed) correct.
 - `query_person` reads correct network when `MYCELIUM_NETWORK_ROOT` set.
 - (Manual) two MCP config entries with different roots — describe in `output.md`.
 
@@ -62,7 +62,7 @@ Paul explicitly wants this **before Phase 5**.
 - Prefer **new** `tests/test_network_integration.py` (smoke where mocked; `@pytest.mark.full` for real `run_query` with tmp network roots).
 - Fix bugs discovered (e.g. checkpoint reuse, path wiring gaps) — keep fixes minimal and in-scope.
 - Do **not** implement Phase 5 creation prompt or distributed discovery.
-- Polish items from `TODO.md` → Networks polish: **only** if required to make tests pass; otherwise leave for squirt slices.
+- Polish backlog should already be closed in slice `1350`; only touch polish items here if required to make tests pass.
 
 ---
 
@@ -88,6 +88,6 @@ uv run ruff check src tests bin/
 
 ## Deliverables
 
-`prompts/cursor/done/2026-06-07-1400-networks-integration-testing/` with `prompt.md`, `output.md`, manual checklist.
+`prompts/cursor/done/2026-06-09-1400-networks-integration-testing/` with `prompt.md`, `output.md`, manual checklist.
 
 **After this slice:** Phase 5 creation prompt may be queued (Grok + Paul).

@@ -19,7 +19,7 @@ from agents.seed import _assign_id
 from models.state import Person
 
 DEFAULT_DB_PATH = Path("data/mycelium.db")
-DEFAULT_SEED_PATH = Path("data/seed_crm.json")
+DEFAULT_SEED_PATH = Path("data/seed.json")
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS people (

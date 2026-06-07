@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import os
 import uuid
-from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
@@ -22,28 +21,69 @@ from graphs.core import run_query
 from models.state import Person, PersonQuery, PersonResponse
 from storage.core import get_storage
 
-mcp = FastMCP(
-    "Mycelium",
-    instructions=(
+def _build_mcp_instructions(
+    *,
+    network_name: str | None = None,
+    network_display_name: str | None = None,
+) -> str:
+    text = (
         "Mycelium manages AI-native CRM person data (core fields: id, name, employer). "
         "Use query_person for lookups. Responses are PersonResponse JSON with results, "
         "message, debug, trace_id (LangSmith when tracing is on), and thread_id. "
         "Optional thread_id in the request JSON is echoed in the response. "
         "Non-core attribute requests return seed identity in results plus specialist status in message. "
         "All payloads are JSON. "
-        "Use health_check() to verify the server is responsive and to inspect internal stabilization "
+        "Use health_check() to verify the server is responsive and to inspect network_root, "
+        "network_name, and network_display_name plus internal stabilization "
         "(sync checkpointer, automatic recovery after query issues). "
         "Registry, categories, seed, and specialist modules reload from disk before each query — "
         "restart the MCP server only after code deploy or if reload fails. "
-        "Each MCP process is bound to one network_root via MYCELIUM_NETWORK_ROOT "
-        "(unset uses legacy <framework>/data/). "
+        "Each MCP process is bound to one network via MYCELIUM_NETWORK_ROOT, "
+        "MYCELIUM_NETWORK (registered name), or the default from "
+        "~/.config/mycelium/networks.json (unset uses legacy <framework>/data/). "
         "To get a direct link to the trace in LangSmith, use the get_langsmith_trace_url helper "
         "from the mycelium package (or implement equivalent from utils.langsmith) with the trace_id."
-    ),
-)
+    )
+    if network_name or network_display_name:
+        if network_display_name and network_name and network_display_name != network_name:
+            label = f"{network_display_name} ({network_name})"
+        else:
+            label = network_display_name or network_name
+        text += f" Active network: {label}."
+    return text
+
+
+mcp = FastMCP("Mycelium", instructions=_build_mcp_instructions())
 
 # Seed person used for optional internal ping in health_check (no caller input).
 _HEALTH_PING_PERSON_KEY = "Nichanan Kesonpat"
+
+
+def _network_health_info() -> dict[str, str | None]:
+    from network.paths import legacy_network_root, network_metadata
+
+    try:
+        return network_metadata()
+    except Exception:
+        root = os.environ.get("MYCELIUM_NETWORK_ROOT", "").strip()
+        if not root:
+            root = str(legacy_network_root())
+        env_name = os.environ.get("MYCELIUM_NETWORK", "").strip()
+        return {
+            "network_root": root,
+            "network_name": env_name or None,
+            "network_display_name": None,
+        }
+
+
+def _apply_mcp_instructions() -> None:
+    meta = _network_health_info()
+    instructions = _build_mcp_instructions(
+        network_name=meta.get("network_name"),
+        network_display_name=meta.get("network_display_name"),
+    )
+    if getattr(mcp, "instructions", None) != instructions:
+        mcp.instructions = instructions
 
 
 def _bootstrap() -> None:
@@ -52,6 +92,7 @@ def _bootstrap() -> None:
 
     paths = NetworkPaths.from_root(resolve_network_root())
     apply_network_paths(paths)
+    _apply_mcp_instructions()
     get_storage(
         db_path=paths.db_path,
         seed_path=paths.seed_path,
@@ -224,6 +265,7 @@ def health_check() -> str:
         all_ok = all(_health_check_status(v) for v in checks.values())
         sync_forced = os.environ.get("MYCELIUM_USE_SYNC_CHECKPOINTER") == "1"
 
+        network_info = _network_health_info()
         payload = {
             "status": "ok" if all_ok else "degraded",
             "checks": checks,
@@ -233,10 +275,9 @@ def health_check() -> str:
                     if sync_forced
                     else f"env={os.environ.get('MYCELIUM_USE_SYNC_CHECKPOINTER', 'unset')!r}"
                 ),
-                "network_root": os.environ.get(
-                    "MYCELIUM_NETWORK_ROOT",
-                    str(Path("data").resolve()),
-                ),
+                "network_root": network_info["network_root"],
+                "network_name": network_info["network_name"],
+                "network_display_name": network_info["network_display_name"],
                 "recovery_wrapper": "active",
                 "server": "mycelium-mcp",
             },
@@ -248,6 +289,7 @@ def health_check() -> str:
         }
         return json.dumps(payload, indent=2)
     except Exception as exc:
+        network_info = _network_health_info()
         return json.dumps(
             {
                 "status": "degraded",
@@ -256,6 +298,9 @@ def health_check() -> str:
                     "checkpointer": "sync (forced for MCP)"
                     if os.environ.get("MYCELIUM_USE_SYNC_CHECKPOINTER") == "1"
                     else "unknown",
+                    "network_root": network_info["network_root"],
+                    "network_name": network_info["network_name"],
+                    "network_display_name": network_info["network_display_name"],
                     "recovery_wrapper": "active",
                     "server": "mycelium-mcp",
                 },

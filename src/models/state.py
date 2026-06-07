@@ -8,7 +8,7 @@ from typing import Annotated, Any
 from pydantic import BaseModel, Field
 
 class Person(BaseModel):
-    """Identity record from seed (``data/seed.json``).
+    """Identity record from seed (``<network_root>/seed.json``).
 
     ``id`` is the stable UUID from the seed loader.
     ``name`` and ``employer`` live in the seed but may be overridden by specialists.

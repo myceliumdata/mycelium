@@ -59,8 +59,8 @@ Data addition via the public API was removed in the June 2026 refactor (tasks 10
 
 ### Seed origin and identity (June 2026 — seed-data-context redesign)
 
-- **Canonical seed:** `data/seed.json` — static JSON origin of person records (`people` array). Replace the file manually to reset origin data; `bin/reset-mycelium` does **not** touch it.
-- **Transform:** `data/prepare_seed.py` builds `seed.json` from `seed_crm.json` (name + employer only; no legacy `id` in the file).
+- **Canonical seed:** `<network_root>/seed.json` — static JSON origin of person records (`people` array). Committed CRM example: `examples/networks/crm/seed.json` (public-safe subset). Copy via `bin/copy-example-network` or `mycelium network create`. Rebuild ontology with `network create --force`; start fresh with a new `--root`.
+- **Transform (maintainers):** `examples/networks/crm/prepare_seed.py` builds example `seed.json` from a CRM source file (name + employer only; no legacy `id` in the file). Full prototype data: git tag `prototype`.
 - **Loader:** `src/agents/seed.py` assigns stable `id` (uuid5 from name|employer) at load time on enriched records; public `results["id"]` is that UUID; supervisor resolves lookups via `find_by_key` (name or `id`).
 - **No `core_data` specialist** — identity fields (name, employer) come from seed; specialists may override them later.
 
@@ -105,7 +105,7 @@ class Person(BaseModel):
 
 ## Derivative / Non-Core Data
 
-Phase 1 adds a **Classification Engine** (cached lookup in `src/agents/classification/`, backed by runtime `data/categories.json` seeded from `_SEED_CATEGORIES` in `engine.py`; gitignored) that the supervisor uses for non-core `requested_attributes`. Known attributes are instant map lookups; first-time unknowns may call the LLM once (lazy, structured proposals), then cache—including garbage rejected as `unknown`. Batch tree evolution uses `CategoryTree.refresh_from_llm` (admin/off-path). Metadata flows to `audit_log`, `state.classifications`, and `response.debug` (see `docs/plans/classification-engine-phase1.md`).
+Phase 1 adds a **Classification Engine** (cached lookup in `src/agents/classification/`, backed by runtime `<network_root>/categories.json` seeded from `_SEED_CATEGORIES` in `engine.py`; gitignored) that the supervisor uses for non-core `requested_attributes`. Illustrative shape: [`docs/examples/sample-categories.json`](examples/sample-categories.json) (documentation only, not copied to networks). Known attributes are instant map lookups; first-time unknowns may call the LLM once (lazy, structured proposals), then cache—including garbage rejected as `unknown`. Batch tree evolution uses `CategoryTree.refresh_from_llm` (admin/off-path). Metadata flows to `audit_log`, `state.classifications`, and `response.debug` (see `docs/plans/classification-engine-phase1.md`).
 
 **Phase 2 Agent Factory** adds on-demand creation of specialist agents (Jinja2 template in `src/agents/factory/`, runtime `data/agent_registry.json`, gitignored `src/agents/specialists/*_specialist.py` with an AUTO-GENERATED header, and `specialist_dispatcher`). The supervisor triggers `AgentFactory.create_specialist` when classification names an `assigned_agent` that is not yet registered. Each specialist starts with per-category flat JSON plus `storage_strategy.json` hooks for future self-evolution (see `docs/plans/agent-factory-phase2.md`).
 
@@ -122,9 +122,9 @@ Phase 1 adds a **Classification Engine** (cached lookup in `src/agents/classific
 
 ## Storage (current)
 
-- **Seed (queries):** `data/seed.json` via `agents.seed` — not auto-loaded into SQLite on query.
-- **Specialists:** per-category JSON under `data/agents/<category>/` (`SpecialistStorage` in `src/agents/specialists/base.py`), keyed by `id` (UUID).
-- **SQLite:** `data/mycelium.db` (legacy `people` table; checkpoints/history only in this phase) and `data/checkpoints.sqlite` (LangGraph checkpointer).
+- **Seed (queries):** `<network_root>/seed.json` via `agents.seed` — not auto-loaded into SQLite on query.
+- **Specialists:** per-category JSON under `<network_root>/agents/<category>/` (`SpecialistStorage` in `src/agents/specialists/base.py`), keyed by `id` (UUID).
+- **SQLite:** `<network_root>/mycelium.db` (legacy `people` table; checkpoints/history only in this phase) and `<network_root>/checkpoints.sqlite` (LangGraph checkpointer).
 
 See `src/storage/core.py` (DB retained for checkpointer-era compatibility; people auto-seed disabled by default).
 
@@ -139,7 +139,7 @@ Users download the **framework** (this repo: `src/`, `bin/`, docs, tests) and ru
 | **Framework** | Repo clone | Code, tooling, tests |
 | **Network root** | User-chosen directory | All runtime artifacts for one network |
 | **Example network** | `examples/networks/` (Phase 4) | Committed reference (e.g. CRM) |
-| **Prototype shim** | Flat `data/` today | Transitional default until path resolver lands |
+| **Prototype shim** | Flat `data/` under repo | Empty on fresh clone; bootstrap from `examples/networks/crm/` |
 
 **Standard layout under `network_root`** (target contract):
 
@@ -147,18 +147,37 @@ Users download the **framework** (this repo: `src/`, `bin/`, docs, tests) and ru
 <network_root>/
   network.json
   seed.json
-  categories.json
+  categories.json       # skeleton ontology at create; runtime (see docs/examples/sample-categories.json)
   agent_registry.json
+  specialists/          # generated *_specialist.py (Phase 5; per-network)
   agents/<category>/storage.json
   checkpoints.sqlite
   mycelium.db          # optional legacy
 ```
+
+**Ontology vs classification:** `network create` writes a **skeleton ontology** (categories, specialists, minimal `attribute_map` from examples). The classification engine still **grows `attribute_map` lazily** at query time when clients request attributes not yet mapped.
 
 **Selection (target resolution order):** CLI `--network-dir` → CLI `--network` (name via registry, Phase 3) → env `MYCELIUM_NETWORK_ROOT` → env `MYCELIUM_NETWORK` → **default network** from user config (Phase 3) → legacy repo `data/` shim (current prototype).
 
 **MCP:** One long-lived stdio process **per network**. Run several MCP servers in parallel by giving each client entry a different `MYCELIUM_NETWORK_ROOT` while `cwd` stays the framework repo. `refresh_runtime_from_disk()` reloads only that process’s network files. No network switching inside a single MCP process.
 
 **Terminology:** Product **network** ≠ LangGraph **agent collective** ≠ social **profiles** (attribute domain). Full map and phased delivery: [`docs/plans/networks-terminology.md`](plans/networks-terminology.md). Pre-networks baseline: git tag `prototype`.
+
+### Framework credentials vs network data (June 2026)
+
+**API keys and provider config are framework-level, not per-network.** One `.env` (or equivalent env block in the MCP client) per machine/operator covers all networks:
+
+| Lives in framework `.env` (process-wide) | Lives under `network_root` (per network) |
+|------------------------------------------|------------------------------------------|
+| `OPENAI_API_KEY`, `TAVILY_API_KEY`, `ANTHROPIC_API_KEY`, … | `seed.json`, `categories.json`, `agent_registry.json`, `specialists/`, `agents/` |
+| `LANGCHAIN_*`, `LANGSMITH_*` (tracing) | `checkpoints.sqlite`, `mycelium.db`, `network.json` |
+| `MYCELIUM_RESEARCH_*` tuning | — |
+
+CLI and MCP call `load_dotenv()` at startup from the **framework** working directory. **`MYCELIUM_NETWORK_ROOT`** / **`MYCELIUM_NETWORK`** select which data directory to use; they do not hold secrets. Launching or registering a network does **not** copy or create a `.env` inside `network_root`.
+
+**MCP:** `cwd` = framework repo; per-server `env` sets only network selection (plus the same shared API keys as other servers on that host). Person lookups use **`person_key`** against that network’s seed and specialist storage — not env vars.
+
+Future (not v1): per-network LangSmith project names, optional credential profiles — see `TODO.md`.
 
 ---
 
@@ -235,7 +254,7 @@ See `prompts/cursor/WORKFLOW.md` for the current handoff protocol.
 
 The seed-data-context redesign is **implemented** (Cursor slices `2026-06-09-1500` through `1720` via the reprocess queue):
 
-- Seed JSON origin (`data/seed.json` + `data/prepare_seed.py`) with no legacy `id` in the file; public `results["id"]` = stable UUID
+- Seed JSON origin (`<network_root>/seed.json`; example at `examples/networks/crm/`) with no legacy `id` in the file; public `results["id"]` = stable UUID
 - No `core_data` specialist; `name`/`employer` are specialist-owned like any other attribute
 - Supervisor is a pure planner (resolves seed, classifies, builds full context plan in state)
 - Graph: `supervisor` → `build_context` → `invoke_specialists` → `assemble_response`

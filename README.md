@@ -1,8 +1,10 @@
 # Mycelium
 
+> **⚠️ Not yet tested by Paul (maintainer).** Networks Phase 5 (`network create`, per-network `specialists/`, skeleton ontology) shipped via Cursor slices `1500`–`1800`. Automated tests run in CI; **hands-on verification by Paul is pending** and will happen after this docs slice + review. Treat `main` as **implement-but-unverified** until this notice is removed.
+
 **Download the framework** (this repo), then **run named networks** at paths you choose. Each **network** is an isolated data namespace (seed, ontology, specialist registry, storage, checkpoints). The **supervisor** and specialist agents operate inside one network at a time.
 
-Today’s checkout still uses a flat **`data/`** tree as the **default network** when no path is selected (prototype / transitional layout; CRM seed committed for dev). Point the CLI at another directory with **`--network-dir`**, or set **`MYCELIUM_NETWORK_ROOT`** for MCP and scripts. Phase 3 adds a name registry and default network; Phase 4 adds `examples/networks/crm/`. Pre-networks snapshot: git tag **`prototype`**.
+A fresh clone has **no committed CRM seed** in `data/` — bootstrap from **`examples/networks/crm/`**, register a network, then query. Register named networks in **`~/.config/mycelium/networks.json`** (override with **`MYCELIUM_NETWORKS_CONFIG`**) so you can use **`--network <name>`** or rely on a **default** without repeating paths. Pre-networks snapshot: git tag **`prototype`**.
 
 Public repo: [github.com/myceliumdata/mycelium](https://github.com/myceliumdata/mycelium) · Architecture: [docs/architecture.md](docs/architecture.md) · Networks plan: [docs/plans/networks-terminology.md](docs/plans/networks-terminology.md) · License: MIT
 
@@ -14,12 +16,38 @@ cd mycelium
 uv sync --all-extras
 cp .env.example .env
 # Add OPENAI_API_KEY and TAVILY_API_KEY to .env for synchronous field research on cache miss.
+
+# Bootstrap the CRM example into a network_root and register it
+./bin/copy-example-network crm --root ~/mycelium-networks/crm --register --default
+
+# Query (uses default registered network)
+uv run mycelium query --person-key "Nichanan Kesonpat"
 ```
+
+**When to use which:**
+
+| Goal | Command |
+|------|---------|
+| **CRM example** (committed reference ontology) | `./bin/copy-example-network crm --root <path> --register` |
+| **Custom domain** (your categories + specialists) | `uv run mycelium network create <name> --root <path> --seed <file> --prompt "..."` |
+
+Custom network example (fake paths):
+
+```bash
+uv run mycelium network create wheat_farm \
+  --root ~/mycelium-networks/wheat \
+  --seed ./seed.json \
+  --prompt "Agronomic network: wheat yield, soil chemistry, weather risk — not person CRM" \
+  --display-name "Wheat Farm" \
+  --default
+```
+
+`network create` copies seed, runs an LLM **skeleton ontology** (categories + specialists under `<root>/specialists/`), registers the name, and prints an MCP snippet. **Ontology** is fixed at create; **classification** still grows `attribute_map` lazily when clients request unknown attributes. See [docs/plans/networks-phase5.md](docs/plans/networks-phase5.md).
 
 ### CLI
 
 ```bash
-# Seed identity only (name + employer from data/seed.json)
+# Seed identity only (name + employer from your network's seed.json)
 uv run mycelium query --person-key "Nichanan Kesonpat"
 
 # Request non-core attributes (merged into results when specialists have data)
@@ -28,13 +56,26 @@ uv run mycelium query --person-key "Andrea Kalmans" --attributes email
 # Stable conversation thread (echoed as thread_id in JSON)
 uv run mycelium query --person-key "Nichanan Kesonpat" --thread-id "session-abc"
 
-# Alternate network root (overrides MYCELIUM_NETWORK_ROOT for this invocation)
-uv run mycelium query --network-dir ~/mycelium-networks/prm_crm --person-key "Andrea Kalmans"
+# Explicit example path (no registry required)
+uv run mycelium query --network-dir examples/networks/crm --person-key "Nichanan Kesonpat"
+
+# Registered network name (from ~/.config/mycelium/networks.json)
+uv run mycelium query --network crm --person-key "Andrea Kalmans"
+
+# Network management
+uv run mycelium network create my_net --root ~/mycelium-networks/my_net --seed ./seed.json --prompt "..."
+uv run mycelium network register crm --root ~/mycelium-networks/crm --default
+uv run mycelium network list
+uv run mycelium network use crm
 ```
 
-The CLI starts a **fresh process** each run and reloads registry/storage from disk. **`--network-dir`** selects the network data root (seed, registry, `agents/`, DB, checkpoints); when omitted, resolution uses `MYCELIUM_NETWORK_ROOT` from the environment, then falls back to **`data/`** under the framework repo.
+The CLI starts a **fresh process** each run and reloads registry/storage from disk. Network selection order: **`--network-dir`** → **`--network`** → **`MYCELIUM_NETWORK_ROOT`** → **`MYCELIUM_NETWORK`** → default from config → **`data/`** under the framework repo (empty until you bootstrap).
 
-**Research latency (CLI and MCP):** With `OPENAI_API_KEY` and `TAVILY_API_KEY` set, the **first** query for a missing attribute (e.g. `email`) runs **synchronous** LLM + Tavily web search and may take tens of seconds. Results are persisted under `data/agents/<category>/` (gitignored). **Repeat queries** for the same person + attribute are fast — specialists read from cache and skip research unless retry flags apply.
+### Credentials vs network data
+
+**`.env` is framework-level** — set once per clone/machine (`cp .env.example .env`). API keys (`OPENAI_API_KEY`, `TAVILY_API_KEY`, LangSmith vars, etc.) are shared across all networks; they are **not** stored under `network_root` and are **not** part of `network register` / `network create`. Each network only owns its **data** (seed, categories, agents, DB, checkpoints). MCP: keep `cwd` on the framework repo; add `MYCELIUM_NETWORK_ROOT` or `MYCELIUM_NETWORK` per server — reuse the same API keys in each client `env` block. Detail: [docs/architecture.md](docs/architecture.md#framework-credentials-vs-network-data-june-2026).
+
+**Research latency (CLI and MCP):** With `OPENAI_API_KEY` and `TAVILY_API_KEY` set, the **first** query for a missing attribute (e.g. `email`) runs **synchronous** LLM + Tavily web search and may take tens of seconds. Results are persisted under `<network_root>/agents/<category>/` (gitignored). **Repeat queries** for the same person + attribute are fast — specialists read from cache and skip research unless retry flags apply.
 
 ### MCP server
 
@@ -42,17 +83,29 @@ The CLI starts a **fresh process** each run and reloads registry/storage from di
 uv run mycelium-mcp
 ```
 
-MCP is a **long-lived stdio process** — **one server per network**. Configure your client with the **framework repo as `cwd`**; bind each server to a `network_root` via **`MYCELIUM_NETWORK_ROOT`** (unset uses prototype `data/`).
+MCP is a **long-lived stdio process** — **one server per network**. Configure your client with the **framework repo as `cwd`**; bind each server to a `network_root` via **`MYCELIUM_NETWORK_ROOT`** or **`MYCELIUM_NETWORK`** (unset with no config uses empty legacy `data/`).
 
-Single network (prototype layout):
+Single network (after bootstrap) — by path or registered name:
 
 ```json
 {
   "command": "uv",
   "args": ["run", "mycelium-mcp"],
-  "cwd": "/absolute/path/to/mycelium"
+  "cwd": "/absolute/path/to/mycelium",
+  "env": { "MYCELIUM_NETWORK_ROOT": "/Users/you/mycelium-networks/crm" }
 }
 ```
+
+```json
+{
+  "command": "uv",
+  "args": ["run", "mycelium-mcp"],
+  "cwd": "/absolute/path/to/mycelium",
+  "env": { "MYCELIUM_NETWORK": "crm" }
+}
+```
+
+(`MYCELIUM_NETWORK` looks up the name in `~/.config/mycelium/networks.json` on the machine running the server.)
 
 Two networks in parallel (paths are examples):
 
@@ -62,7 +115,7 @@ Two networks in parallel (paths are examples):
     "command": "uv",
     "args": ["run", "mycelium-mcp"],
     "cwd": "/absolute/path/to/mycelium",
-    "env": { "MYCELIUM_NETWORK_ROOT": "/Users/you/mycelium-networks/prm_crm" }
+    "env": { "MYCELIUM_NETWORK_ROOT": "/Users/you/mycelium-networks/crm" }
   },
   "mycelium-fleet": {
     "command": "uv",
@@ -91,13 +144,22 @@ The MCP server reloads registry, categories, seed, and specialist modules from d
 
 See [docs/database-notes.md](docs/database-notes.md) if you have an older `data/mycelium.db` from before the schema simplification.
 
-### Dev reset
+### Rebuild or start fresh
+
+Use a **new network root** instead of resetting in place:
 
 ```bash
-./bin/reset-mycelium --all --yes   # seed-only platform; removes generated specialists
+# Custom domain (LLM ontology from creation prompt)
+uv run mycelium network create my_net --root /abs/path --seed ./seed.json --prompt "..."
+
+# Rebuild same root (overwrites ontology artifacts; does not touch seed.json)
+uv run mycelium network create my_net --root /abs/path --seed ./seed.json --prompt "..." --force
+
+# CRM example
+./bin/copy-example-network crm --root ~/mycelium-networks/crm --register --default
 ```
 
-Uses `.venv/bin/python3` automatically when present. Preview with `--dry-run --all`.
+To drop a network entirely, remove its directory and edit `~/.config/mycelium/networks.json` (or set `MYCELIUM_NETWORKS_CONFIG`).
 
 ## Response shape
 
@@ -127,13 +189,13 @@ CLI and MCP return **`PersonResponse`** JSON:
 
 ## How it works (summary)
 
-1. **Seed** — `data/seed.json` is the static origin (~457 people). Runtime assigns stable UUIDs (`agents/seed.py`).
-2. **Supervisor** — Resolves `person_key`, classifies attributes (`data/categories.json`, gitignored cache seeded from code).
-3. **Agent factory** — Creates specialist modules on demand (`src/agents/specialists/*_specialist.py`, gitignored).
+1. **Seed** — `<network_root>/seed.json` is the static origin (CRM example: 15 public-safe people). Runtime assigns stable UUIDs (`agents/seed.py`).
+2. **Supervisor** — Resolves `person_key`, classifies attributes (`categories.json` under network root — runtime only; sample shape in [`docs/examples/sample-categories.json`](docs/examples/sample-categories.json)).
+3. **Agent factory** — Creates specialist modules on demand (`<network_root>/specialists/*_specialist.py`; CRM reference modules also live under `src/agents/specialists/`).
 4. **Graph** — `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` (or direct assemble for name-only / not found).
-5. **Research** — Specialists run sync LLM + Tavily on cache miss when keys are set; persist to `data/agents/<category>/storage.json`.
+5. **Research** — Specialists run sync LLM + Tavily on cache miss when keys are set; persist to `<network_root>/agents/<category>/storage.json`.
 
-Runtime agent data (`data/agents/`, `data/agent_registry.json`, generated specialists, `categories.json`) is **gitignored** and recreated locally.
+Runtime agent data under your `network_root` (`agents/`, `agent_registry.json`, generated specialists, `categories.json`) is **gitignored** when using the legacy `data/` shim.
 
 ```mermaid
 flowchart TD
@@ -145,22 +207,23 @@ flowchart TD
     S -->|name only / not found| ASM
     ASM --> RES[PersonResponse JSON]
     Graph --> CP[(checkpoints.sqlite)]
-    Seed[(data/seed.json)] --> S
-    Store[(data/agents/)] --> BC
+    Seed[(network_root/seed.json)] --> S
+    Store[(network_root/agents/)] --> BC
     Store --> INV
 ```
 
 | Layer | Path | Role |
 |-------|------|------|
 | Models | `src/models/state.py` | `Person`, `PersonQuery`, `PersonResponse`, graph state |
-| Seed | `src/agents/seed.py`, `data/seed.json` | Static origin + stable UUID assignment |
+| Seed | `src/agents/seed.py`, `<network_root>/seed.json` | Static origin + stable UUID assignment |
+| Example | `examples/networks/crm/` | Committed CRM reference network |
 | Supervisor | `src/agents/supervisor.py` | Seed resolution, classification, specialist planning |
 | Classification | `src/agents/classification/` | Attribute → category map |
 | Factory | `src/agents/factory/` | Jinja template → generated specialists |
 | Research | `src/tools/research.py`, `src/tools/tavily.py` | Sync LLM + web search, persist fields |
 | Graph | `src/graphs/core.py` | LangGraph; async checkpointer (Studio), sync path (MCP) |
 | MCP | `src/mycelium_mcp/server.py` | `query_person`, `list_specialist_routing`, `health_check` |
-| CLI | `src/main.py` | `mycelium query`, `mycelium seed` |
+| CLI | `src/main.py` | `mycelium query`, `mycelium network`, `mycelium seed` |
 
 Full detail: [docs/architecture.md](docs/architecture.md). Phase 1 research plan: [docs/plans/specialist-research-phase1.md](docs/plans/specialist-research-phase1.md).
 
@@ -198,19 +261,19 @@ Smoke vs full: `@pytest.mark.smoke` vs `@pytest.mark.full` in `tests/`. CI runs 
 
 ```
 mycelium/
-├── data/seed.json              # committed static seed
-├── data/agents/                # runtime specialist storage (gitignored)
+├── examples/networks/crm/      # committed CRM example (seed.json, network.json)
+├── data/                       # legacy shim network_root (runtime; see data/README.md)
 ├── src/agents/                 # supervisor, classification, factory, dispatch
 ├── src/graphs/core.py
 ├── src/mycelium_mcp/server.py
 ├── src/main.py
-├── bin/reset-mycelium
+├── bin/copy-example-network
 ├── docs/architecture.md
 └── prompts/
 ```
 
 ## Status
 
-**Implemented (June 2026):** Query-only CLI/MCP, seed-data-context graph, classification engine, agent factory, Phase 1 **synchronous** specialist research (LLM + Tavily), public repo under [myceliumdata](https://github.com/myceliumdata).
+**Implemented (June 2026):** Query-only CLI/MCP, seed-data-context graph, classification engine, agent factory, **specialist research Phase 1** (synchronous LLM + Tavily), **Networks Phases 1–5** (path resolver, name registry, CRM example, integration testing, **`network create`** with per-network `specialists/` and skeleton ontology — slices `1500`–`1800`), public repo under [myceliumdata](https://github.com/myceliumdata).
 
-**Roadmap:** Networks path resolver (Phase 2), default-network registry (Phase 3), `examples/networks/crm/` (Phase 4), query-as-seed, inter-network handoff — see [TODO.md](TODO.md) and [docs/plans/networks-terminology.md](docs/plans/networks-terminology.md).
+**Roadmap:** Query-as-seed launch (v2), inter-network handoff (Phase 6), per-network LangSmith projects — see [TODO.md](TODO.md) and [docs/plans/networks-terminology.md](docs/plans/networks-terminology.md).

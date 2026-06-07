@@ -1,7 +1,8 @@
 """Direct JSON seed loader for the seed-data-context redesign.
 
-The committed ``data/seed.json`` is the read-only origin of person records
-(name + employer only; no legacy ``id`` in the file — see ``data/prepare_seed.py``).
+Each network's ``seed.json`` under ``network_root`` is the read-only origin of
+person records (name + employer only; no legacy ``id`` in the file). The CRM
+example lives at ``examples/networks/crm/seed.json``.
 Stable ``id`` (UUID, uuid5 from name|employer) is assigned at load time and is
 never written back into the static JSON. Supervisor and tests resolve people by
 name or ``id`` via :func:`find_by_key`.

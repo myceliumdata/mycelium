@@ -29,5 +29,13 @@ data/agents/
 # AUTO-GENERATED specialists (recreated by AgentFactory on demand)
 src/agents/specialists/*_specialist.py
 
+# Runtime artifacts under committed example networks (seed.json + network.json stay tracked)
+examples/networks/**/categories.json
+examples/networks/**/mycelium.db
+examples/networks/**/checkpoints.sqlite
+examples/networks/**/checkpoints.sqlite-*
+examples/networks/**/agent_registry.json
+examples/networks/**/agents/
+
 # User scratch/dump area for files to share with the AI (e.g. logs, outputs, traces)
 tmp/

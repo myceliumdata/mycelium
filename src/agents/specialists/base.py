@@ -10,6 +10,33 @@ from pathlib import Path
 from typing import Any
 
 
+def category_slug(category: str) -> str:
+    """Normalize a category name to a filesystem-safe slug."""
+    return category.strip().lower().replace(" ", "_").replace("-", "_")
+
+
+def registry_storage_paths(category: str) -> tuple[str, str]:
+    """Return storage paths for registry metadata (network-relative when possible).
+
+    Does not create directories — safe for ontology/bootstrap paths only.
+    """
+    slug = category_slug(category)
+    agents_base = Path(os.getenv("MYCELIUM_AGENT_DATA_DIR", "data/agents"))
+    storage_file = agents_base / slug / "storage.json"
+    strategy_file = agents_base / slug / "storage_strategy.json"
+
+    network_root = os.getenv("MYCELIUM_NETWORK_ROOT", "").strip()
+    if network_root:
+        root = Path(network_root).expanduser().resolve()
+        agents_resolved = agents_base.expanduser().resolve()
+        if agents_resolved.is_relative_to(root):
+            return (
+                str(storage_file.resolve().relative_to(root)),
+                str(strategy_file.resolve().relative_to(root)),
+            )
+    return (str(storage_file), str(strategy_file))
+
+
 class SpecialistStorage:
     """Per-specialist flat-JSON storage with explicit strategy metadata for future self-evolution.
 
@@ -29,7 +56,7 @@ class SpecialistStorage:
         self._ensure_initialized()
 
     def _slug(self, c: str) -> str:
-        return c.strip().lower().replace(" ", "_").replace("-", "_")
+        return category_slug(c)
 
     def _ensure_initialized(self) -> None:
         self.base_dir.mkdir(parents=True, exist_ok=True)

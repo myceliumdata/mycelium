@@ -20,29 +20,59 @@ def framework_root() -> Path:
     return Path(__file__).resolve().parent.parent.parent
 
 
-def resolve_network_root(*, cli_network_dir: str | None = None) -> Path:
+def legacy_network_root() -> Path:
+    """Return the legacy prototype shim path ``<framework>/data``."""
+    return (framework_root() / "data").resolve()
+
+
+def resolve_network_root(
+    *,
+    cli_network_dir: str | None = None,
+    cli_network_name: str | None = None,
+) -> Path:
     """Resolve the active network data root.
 
-    Precedence (Phase 2): CLI ``--network-dir`` → env ``MYCELIUM_NETWORK_ROOT``
-    → legacy ``<framework>/data``.
+    Precedence: CLI ``--network-dir`` → CLI ``--network`` (registry name) → env
+    ``MYCELIUM_NETWORK_ROOT`` → env ``MYCELIUM_NETWORK`` (name) → default from
+    registry → legacy ``<framework>/data``.
     """
+    from network.registry import default_network_root, resolve_root_by_name
+
     if cli_network_dir:
         return Path(cli_network_dir).expanduser().resolve()
+    if cli_network_name:
+        root = resolve_root_by_name(cli_network_name)
+        if root is None:
+            raise ValueError(f"Unknown network: {cli_network_name}")
+        return root
     env_root = os.getenv("MYCELIUM_NETWORK_ROOT", "").strip()
     if env_root:
         return Path(env_root).expanduser().resolve()
-    return (framework_root() / "data").resolve()
+    env_name = os.getenv("MYCELIUM_NETWORK", "").strip()
+    if env_name:
+        root = resolve_root_by_name(env_name)
+        if root is None:
+            raise ValueError(f"Unknown network: {env_name}")
+        return root
+    default_root = default_network_root()
+    if default_root is not None:
+        return default_root
+    return legacy_network_root()
 
 
 @dataclass(frozen=True)
 class NetworkPaths:
-    """Standard layout paths under a single network_root."""
+    """Standard layout paths under a single network_root.
+
+    ``specialists/`` holds generated ``*_specialist.py`` modules (per-network).
+    """
 
     root: Path
     seed_path: Path
     registry_path: Path
     categories_path: Path
     agents_dir: Path
+    specialists_dir: Path
     checkpoint_path: Path
     db_path: Path
 
@@ -55,6 +85,7 @@ class NetworkPaths:
             registry_path=resolved / "agent_registry.json",
             categories_path=resolved / "categories.json",
             agents_dir=resolved / "agents",
+            specialists_dir=resolved / "specialists",
             checkpoint_path=resolved / "checkpoints.sqlite",
             db_path=resolved / "mycelium.db",
         )
@@ -67,8 +98,42 @@ def apply_network_paths(paths: NetworkPaths) -> None:
     os.environ["MYCELIUM_AGENT_REGISTRY_PATH"] = str(paths.registry_path)
     os.environ["MYCELIUM_CATEGORIES_PATH"] = str(paths.categories_path)
     os.environ["MYCELIUM_AGENT_DATA_DIR"] = str(paths.agents_dir)
+    os.environ["MYCELIUM_SPECIALISTS_DIR"] = str(paths.specialists_dir)
     os.environ["MYCELIUM_CHECKPOINT_PATH"] = str(paths.checkpoint_path)
     os.environ["MYCELIUM_DB_PATH"] = str(paths.db_path)
+
+
+def network_metadata(*, root: Path | None = None) -> dict[str, str | None]:
+    """Resolved network_root plus optional name metadata from registry / network.json."""
+    from network.registry import load_network_registry
+
+    resolved_root = (root or resolve_network_root()).expanduser().resolve()
+    paths = NetworkPaths.from_root(resolved_root)
+    display_name = network_display_name(paths)
+
+    network_name: str | None = os.getenv("MYCELIUM_NETWORK", "").strip() or None
+    if not network_name:
+        for entry in load_network_registry():
+            if Path(entry.root).expanduser().resolve() == resolved_root:
+                network_name = entry.name
+                break
+    if not network_name:
+        network_json = resolved_root / "network.json"
+        if network_json.is_file():
+            try:
+                data = json.loads(network_json.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                data = None
+            if isinstance(data, dict):
+                raw = data.get("name")
+                if isinstance(raw, str) and raw.strip():
+                    network_name = raw.strip()
+
+    return {
+        "network_root": str(resolved_root),
+        "network_name": network_name,
+        "network_display_name": display_name,
+    }
 
 
 def network_display_name(paths: NetworkPaths) -> str | None:
