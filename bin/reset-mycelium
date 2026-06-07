@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Dev/ops reset for Mycelium canonical data paths (ignores MYCELIUM_* env redirection)."""
+"""Dev/ops reset for Mycelium network data paths.
+
+Uses ``MYCELIUM_NETWORK_ROOT`` when set (via env or ``.env``); otherwise the
+legacy prototype layout ``<framework>/data/``. Specialist source modules under
+``src/agents/specialists/`` are always repo-relative.
+"""
 
 from __future__ import annotations
 
@@ -32,12 +37,13 @@ def _bootstrap() -> None:
 _bootstrap()
 
 from agents.registry import AgentRegistryData, RegisteredAgent  # noqa: E402
+from network.paths import NetworkPaths, apply_network_paths, resolve_network_root  # noqa: E402
 
-DB_PATH = Path("data/mycelium.db")
-CATEGORIES_PATH = Path("data/categories.json")
-REGISTRY_PATH = Path("data/agent_registry.json")
 SPECIALISTS_DIR = Path("src/agents/specialists")
-AGENT_DATA_ROOT = Path("data/agents")
+
+
+def _network_paths() -> NetworkPaths:
+    return NetworkPaths.from_root(resolve_network_root())
 
 
 def _repo_path(rel: str | Path) -> Path:
@@ -92,7 +98,7 @@ def _parse_specialist_args(values: list[str]) -> list[str]:
 
 
 def _load_registry_data() -> AgentRegistryData:
-    reg_path = _repo_path(REGISTRY_PATH)
+    reg_path = _network_paths().registry_path
     if reg_path.exists():
         raw = json.loads(reg_path.read_text(encoding="utf-8"))
         return AgentRegistryData.model_validate(raw)
@@ -144,27 +150,27 @@ def _prune_registry(
     )
 
     used_categories = {e.category for e in new_agents.values() if e.category}
-    data_root = _repo_path(AGENT_DATA_ROOT)
+    data_root = _network_paths().agents_dir
     if data_root.is_dir():
         for child in data_root.iterdir():
             if child.is_dir() and child.name not in used_categories:
                 categories_to_clean.add(child.name)
 
     if not dry_run and registry_changed:
-        reg_path = _repo_path(REGISTRY_PATH)
+        reg_path = _network_paths().registry_path
         reg_path.parent.mkdir(parents=True, exist_ok=True)
         reg_path.write_text(
             pruned.model_dump_json(indent=2) + "\n",
             encoding="utf-8",
         )
-        print("registry written: data/agent_registry.json")
+        print(f"registry written: {reg_path}")
 
     return pruned, categories_to_clean, registry_changed
 
 
 def _reset_base(*, dry_run: bool) -> None:
     print("Resetting base data (DB)...")
-    db = _repo_path(DB_PATH)
+    db = _network_paths().db_path
     if dry_run:
         print(f"  (would unlink) {db}")
     else:
@@ -173,12 +179,13 @@ def _reset_base(*, dry_run: bool) -> None:
 
         reset_storage()
         get_storage()
-        print("  DB reset (SQLite recreated; queries use data/seed.json via agents.seed)")
+        seed = _network_paths().seed_path
+        print(f"  DB reset (SQLite recreated; queries use {seed} via agents.seed)")
 
 
 def _reset_categories(*, dry_run: bool) -> None:
     print("Resetting categories...")
-    cat = _repo_path(CATEGORIES_PATH)
+    cat = _network_paths().categories_path
     if dry_run:
         print(f"  (would unlink) {cat}")
     else:
@@ -205,7 +212,7 @@ def _reset_specialists(
     )
 
     for category in sorted(categories_to_clean):
-        data_dir = _repo_path(AGENT_DATA_ROOT / category)
+        data_dir = _network_paths().agents_dir / category
         if dry_run:
             print(f"  (would clean data dir) {data_dir}")
         else:
@@ -223,17 +230,22 @@ def _reset_specialists(
         _remove_path(py_path, dry_run=dry_run)
 
     if not dry_run and not no_git and registry_changed:
-        reg = _repo_path(REGISTRY_PATH)
+        reg = _network_paths().registry_path
         if reg.exists():
-            rel = reg.relative_to(REPO_ROOT)
-            if _in_git_repo():
-                subprocess.run(
-                    ["git", "add", str(rel)],
-                    cwd=REPO_ROOT,
-                    check=False,
-                )
-            else:
-                print("  [git] warning: not in a git repository; skipping git add")
+            try:
+                rel = reg.relative_to(REPO_ROOT)
+            except ValueError:
+                print(f"  registry updated at {reg} (outside repo; skipping git add)")
+                rel = None
+            if rel is not None:
+                if _in_git_repo():
+                    subprocess.run(
+                        ["git", "add", str(rel)],
+                        cwd=REPO_ROOT,
+                        check=False,
+                    )
+                else:
+                    print("  [git] warning: not in a git repository; skipping git add")
 
 
 def _reset_singletons(*, dry_run: bool) -> None:
@@ -269,9 +281,9 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="bin/reset-mycelium",
         description=(
-            "Reset Mycelium dev data on canonical source paths only "
-            "(ignores MYCELIUM_* env redirection). Keeps agent_registry.json "
-            "in sync when removing generated specialists."
+            "Reset Mycelium dev data for the active network_root "
+            "(MYCELIUM_NETWORK_ROOT or legacy <framework>/data/). "
+            "Keeps agent_registry.json in sync when removing generated specialists."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
@@ -283,12 +295,12 @@ Examples:
   bin/reset-mycelium --specialist demographic_specialist,financial_specialist --no-git
 """,
     )
-    parser.add_argument("-b", "--base", action="store_true", help="Reset data/mycelium.db")
+    parser.add_argument("-b", "--base", action="store_true", help="Reset network mycelium.db")
     parser.add_argument(
         "-c",
         "--categories",
         action="store_true",
-        help="Reset data/categories.json",
+        help="Reset network categories.json",
     )
     parser.add_argument(
         "-s",
@@ -326,6 +338,14 @@ Examples:
 
 def main(argv: list[str] | None = None) -> int:
     os.chdir(REPO_ROOT)
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv(REPO_ROOT / ".env")
+    except ImportError:
+        pass
+    paths = _network_paths()
+    apply_network_paths(paths)
     args = _build_parser().parse_args(argv)
 
     do_base = args.base or args.all
@@ -339,6 +359,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     print("=== reset-mycelium ===")
+    print(f"  network_root: {paths.root}")
     print(f"  base:        {do_base}")
     print(f"  categories:  {do_categories}")
     if do_all_specialists:

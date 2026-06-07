@@ -19,6 +19,7 @@ os.environ["MYCELIUM_USE_SYNC_CHECKPOINTER"] = "1"
 
 from graphs.core import reset_core_graph, run_query
 from models.state import PersonQuery, PersonResponse
+from network.paths import NetworkPaths, apply_network_paths, resolve_network_root
 from storage.core import get_storage, reset_storage
 from utils.langsmith import get_langsmith_trace_url
 
@@ -64,6 +65,15 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         metavar="ID",
         help=_THREAD_ID_HELP,
     )
+    query_cmd.add_argument(
+        "--network-dir",
+        default=None,
+        metavar="DIR",
+        help=(
+            "Network data root (seed, registry, agents, DB). "
+            "Overrides MYCELIUM_NETWORK_ROOT; default is <framework>/data/"
+        ),
+    )
 
     seed_cmd = sub.add_parser(
         "seed",
@@ -96,6 +106,13 @@ def _print_response(response: PersonResponse) -> None:
             pass  # helper raises on empty, but we already checked
 
 
+def _configure_network_paths(cli_network_dir: str | None = None) -> Path:
+    """Resolve network_root and export derived paths via MYCELIUM_* env vars."""
+    root = resolve_network_root(cli_network_dir=cli_network_dir)
+    apply_network_paths(NetworkPaths.from_root(root))
+    return root
+
+
 def main(argv: list[str] | None = None) -> int:
     load_dotenv()
     args = _parse_args(argv)
@@ -103,6 +120,9 @@ def main(argv: list[str] | None = None) -> int:
     # Register atexit handler as belt-and-suspenders so resources are cleaned
     # even on unexpected exits (signals, uncaught exceptions in some paths, etc.).
     atexit.register(_cleanup_resources)
+
+    if args.command == "query":
+        _configure_network_paths(getattr(args, "network_dir", None))
 
     reset_storage()
     reset_core_graph()

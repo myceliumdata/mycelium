@@ -35,6 +35,8 @@ mcp = FastMCP(
         "(sync checkpointer, automatic recovery after query issues). "
         "Registry, categories, seed, and specialist modules reload from disk before each query — "
         "restart the MCP server only after code deploy or if reload fails. "
+        "Each MCP process is bound to one network_root via MYCELIUM_NETWORK_ROOT "
+        "(unset uses legacy <framework>/data/). "
         "To get a direct link to the trace in LangSmith, use the get_langsmith_trace_url helper "
         "from the mycelium package (or implement equivalent from utils.langsmith) with the trace_id."
     ),
@@ -46,9 +48,13 @@ _HEALTH_PING_PERSON_KEY = "Nichanan Kesonpat"
 
 def _bootstrap() -> None:
     load_dotenv()
+    from network.paths import NetworkPaths, apply_network_paths, resolve_network_root
+
+    paths = NetworkPaths.from_root(resolve_network_root())
+    apply_network_paths(paths)
     get_storage(
-        db_path=Path(os.getenv("MYCELIUM_DB_PATH", "data/mycelium.db")),
-        seed_path=Path(os.getenv("MYCELIUM_SEED_PATH", "data/seed.json")),
+        db_path=paths.db_path,
+        seed_path=paths.seed_path,
     )
 
 
@@ -226,6 +232,10 @@ def health_check() -> str:
                     "sync (forced for MCP)"
                     if sync_forced
                     else f"env={os.environ.get('MYCELIUM_USE_SYNC_CHECKPOINTER', 'unset')!r}"
+                ),
+                "network_root": os.environ.get(
+                    "MYCELIUM_NETWORK_ROOT",
+                    str(Path("data").resolve()),
                 ),
                 "recovery_wrapper": "active",
                 "server": "mycelium-mcp",

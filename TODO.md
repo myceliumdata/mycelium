@@ -32,7 +32,7 @@ Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture
 ### Terminology & bootstrap
 
 - [x] **Networks terminology (Phase 1)** — docs: framework vs network root, default network, MCP-per-network (slice `2026-06-09-1000`).
-- [ ] **Network path resolver (Phase 2)** — `MYCELIUM_NETWORK_ROOT`, CLI flags, legacy `data/` shim.
+- [x] **Network path resolver (Phase 2)** — `MYCELIUM_NETWORK_ROOT`, CLI `--network-dir`, legacy `data/` shim (slice `2026-06-09-1100`).
 - [ ] **Network registry + default (Phase 3)** — `network list|register|use`, config file.
 - [ ] **CRM example network (Phase 4)** — `examples/networks/crm/` in repo (evolving reference); remove flat `data/` seed from default clone.
 - [ ] **Network creation prompt (Phase 5)** — ontology of specialist agents (not fixed six-category default).

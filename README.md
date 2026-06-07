@@ -2,7 +2,7 @@
 
 **Download the framework** (this repo), then **run named networks** at paths you choose. Each **network** is an isolated data namespace (seed, ontology, specialist registry, storage, checkpoints). The **supervisor** and specialist agents operate inside one network at a time.
 
-Today’s checkout still uses a flat **`data/`** tree as a **prototype / transitional** default network (CRM seed committed for dev). Phases 2–4 will add `MYCELIUM_NETWORK_ROOT`, a default-network registry, and `examples/networks/crm/` as the evolving reference layout. Pre-networks snapshot: git tag **`prototype`**.
+Today’s checkout still uses a flat **`data/`** tree as the **default network** when no path is selected (prototype / transitional layout; CRM seed committed for dev). Point the CLI at another directory with **`--network-dir`**, or set **`MYCELIUM_NETWORK_ROOT`** for MCP and scripts. Phase 3 adds a name registry and default network; Phase 4 adds `examples/networks/crm/`. Pre-networks snapshot: git tag **`prototype`**.
 
 Public repo: [github.com/myceliumdata/mycelium](https://github.com/myceliumdata/mycelium) · Architecture: [docs/architecture.md](docs/architecture.md) · Networks plan: [docs/plans/networks-terminology.md](docs/plans/networks-terminology.md) · License: MIT
 
@@ -27,9 +27,12 @@ uv run mycelium query --person-key "Andrea Kalmans" --attributes email
 
 # Stable conversation thread (echoed as thread_id in JSON)
 uv run mycelium query --person-key "Nichanan Kesonpat" --thread-id "session-abc"
+
+# Alternate network root (overrides MYCELIUM_NETWORK_ROOT for this invocation)
+uv run mycelium query --network-dir ~/mycelium-networks/prm_crm --person-key "Andrea Kalmans"
 ```
 
-The CLI starts a **fresh process** each run and reloads registry/storage from disk.
+The CLI starts a **fresh process** each run and reloads registry/storage from disk. **`--network-dir`** selects the network data root (seed, registry, `agents/`, DB, checkpoints); when omitted, resolution uses `MYCELIUM_NETWORK_ROOT` from the environment, then falls back to **`data/`** under the framework repo.
 
 **Research latency (CLI and MCP):** With `OPENAI_API_KEY` and `TAVILY_API_KEY` set, the **first** query for a missing attribute (e.g. `email`) runs **synchronous** LLM + Tavily web search and may take tens of seconds. Results are persisted under `data/agents/<category>/` (gitignored). **Repeat queries** for the same person + attribute are fast — specialists read from cache and skip research unless retry flags apply.
 
@@ -39,7 +42,7 @@ The CLI starts a **fresh process** each run and reloads registry/storage from di
 uv run mycelium-mcp
 ```
 
-MCP is a **long-lived stdio process** — **one server per network**. Configure your client with the **framework repo as `cwd`**; bind each server to a `network_root` via env (today: unset uses prototype `data/`; Phase 2: `MYCELIUM_NETWORK_ROOT`).
+MCP is a **long-lived stdio process** — **one server per network**. Configure your client with the **framework repo as `cwd`**; bind each server to a `network_root` via **`MYCELIUM_NETWORK_ROOT`** (unset uses prototype `data/`).
 
 Single network (prototype layout):
 
@@ -51,7 +54,7 @@ Single network (prototype layout):
 }
 ```
 
-Two networks in parallel (after Phase 2 path resolver; paths are examples):
+Two networks in parallel (paths are examples):
 
 ```json
 {
