@@ -1,4 +1,4 @@
-# Networks — Terminology & Naming Plan
+# Networks — Terminology, Namespaces & Packaging Plan
 
 **Status:** Draft for review (June 2026)  
 **Audience:** Paul + Grok (planning); Cursor (implementation slices after approval)  
@@ -8,9 +8,16 @@
 
 ## Why this doc exists
 
-The roadmap uses **network** as the primary product noun (a bounded people-data ecosystem with its own specialist ontology). README and architecture already say “networks of LangGraph agents,” but the codebase today runs as a **single implicit network** with no `network_id`, no network creation flow, and no inter-network protocol.
+**Product model (Paul, June 2026):** Users download the **Mycelium framework** (this repo) and **launch named networks**. Each network lives in its **own namespace** (isolated seed, ontology, registry, specialist storage, checkpoints). The repo today still embeds **CRM prototype data** (`data/seed.json`, `seed_crm.json`, `raw_data.json`, etc.) from early development—that must move out so the framework is domain-neutral.
 
-The TODO item “rename instance → network” is **forward-looking**: the word *instance* does not appear in user-facing docs or code today (only Python `isinstance`, factory “instance,” Cursor “instance”). This plan **introduces** network terminology and disambiguates overloads—not a mechanical find-and-replace.
+The TODO item “rename instance → network” is therefore **not** a mechanical find-and-replace (the word *instance* barely appears). It is:
+
+1. **Terminology** — *network* is the product noun for a named namespace users launch.
+2. **Packaging** — separate framework code from network-specific data.
+3. **Layout** — per-network paths and env resolution (replacing flat `data/` assumptions).
+4. **UX** — eventually `network create` / `network launch` (or equivalent) with a creation prompt defining specialist ontology.
+
+README/architecture already say “networks of LangGraph agents” (the agent collective). This plan adds the **named network namespace** sense and disambiguates overloads.
 
 ---
 
@@ -20,15 +27,24 @@ The TODO item “rename instance → network” is **forward-looking**: the word
 
 A **network** is a **scoped Mycelium deployment** that owns:
 
-| Artifact | Today (single network) | Future (per network) |
-|----------|------------------------|----------------------|
-| Seed origin | `data/seed.json` | `data/networks/<network_id>/seed.json` (illustrative) |
-| Classification ontology | `data/categories.json` | per-network categories |
-| Specialist registry | `data/agent_registry.json` | per-network registry |
-| Specialist storage | `data/agents/<category>/` | per-network storage roots |
-| Generated specialists | `src/agents/specialists/*_specialist.py` | per-network or namespaced modules |
-| Checkpoints | `data/checkpoints.sqlite` | per-network or namespaced threads |
-| LangSmith project | `LANGCHAIN_PROJECT=mycelium` | per-network tracing project (optional) |
+| Artifact | Today (prototype — CRM in repo) | Target (per named network) |
+|----------|----------------------------------|----------------------------|
+| Seed origin | `data/seed.json` *(committed CRM seed)* | `networks/<name>/seed.json` *(user data, gitignored)* |
+| Classification ontology | `data/categories.json` | `networks/<name>/categories.json` |
+| Specialist registry | `data/agent_registry.json` | `networks/<name>/agent_registry.json` |
+| Specialist storage | `data/agents/<category>/` | `networks/<name>/agents/<category>/` |
+| Generated specialists | `src/agents/specialists/*_specialist.py` | per-network generated modules or dynamic load path |
+| Checkpoints | `data/checkpoints.sqlite` | `networks/<name>/checkpoints.sqlite` |
+| SQLite legacy DB | `data/mycelium.db` | `networks/<name>/mycelium.db` (if retained) |
+| LangSmith project | `LANGCHAIN_PROJECT=mycelium` | `mycelium-<name>` or caller-configured |
+
+**Framework vs network data:**
+
+| Layer | Lives in repo | Examples |
+|-------|---------------|----------|
+| **Framework** | Yes (committed) | `src/`, `bin/`, docs, tests, empty `networks/` scaffold |
+| **Example network** | Optional `examples/` or `networks/_template/` | Tiny demo seed, not Paul's CRM |
+| **User networks** | No (gitignored) | `networks/prm_crm/`, `networks/car_fleet/` |
 
 A network is **not** the same as:
 
@@ -50,7 +66,8 @@ A network is **not** the same as:
 | Term | Meaning | Use when | Avoid |
 |------|---------|----------|-------|
 | **Network** | Scoped deployment + ontology + data | Product, docs, MCP instructions, env naming | “Instance,” “deployment,” “tenant” (unless infra context) |
-| **Default network** | Implicit single-network mode (current) | Describing today’s behavior before multi-network ships | Pretending multi-network already exists |
+| **Active network** | The named namespace currently selected for CLI/MCP | “Launch network `prm_crm`” | “Default” without explaining selection |
+| **Framework** | Downloadable Mycelium project (code + tooling) | README quick start | Confusing with a network |
 | **Agent network** / **specialist graph** | LangGraph topology inside one network | Architecture (supervisor → specialists) | Bare “network” when domain profiles are meant |
 | **Supervisor** | Coordinator/router inside a network | Code and docs (unchanged) | “Orchestrator,” “god agent” |
 | **Specialist** | Domain-owning agent inside a network | Code and user-facing | “Sub-agent” without context |
@@ -77,21 +94,22 @@ Three distinct senses appear today:
 
 ## Today vs target (honest framing)
 
-### Today (June 2026)
+### Today (June 2026 — prototype debt)
 
-- One implicit **default network** per repo checkout / MCP `cwd`.
-- No `network_id` in `PersonQuery`, `PersonResponse`, or MCP tools.
+- Flat `data/` layout; paths hardcoded or via `MYCELIUM_*_PATH` env vars.
+- **CRM seed committed in repo** (`data/seed.json`, `seed_crm.json`, `raw_data.json`, `prepare_seed.py`).
+- Behaves like one network per checkout, but there is no **network name** or launcher.
 - Categories seeded from code (`_SEED_CATEGORIES`); six-ish default domains.
 - Inter-network handoff: not implemented.
 
-### Target (roadmap — not this slice)
+### Target (Paul’s model)
 
-- Explicit network creation (prompt → ontology of specialists).
-- Custom specialists per network.
-- `network_id` or network selector on queries (design TBD).
-- Inter-network discovery and handoff protocol.
+1. Clone/download **framework** — no private CRM data in tree.
+2. **Create** a named network (creation prompt → ontology of specialists, not fixed six categories).
+3. **Launch** / select active network — all queries, MCP, checkpoints scoped to `networks/<name>/`.
+4. Multiple networks on one machine; optional inter-network handoff later.
 
-**Principle:** Terminology docs and user-facing copy should describe **network** as the product noun while clearly labeling current builds as **single-network / default network** mode.
+**Principle:** Docs and UX say **network** = named namespace. Until migration ships, call current behavior **legacy flat layout** or **pre-networks prototype**—not “multi-network ready.”
 
 ---
 
@@ -101,52 +119,81 @@ Use these in docs now; code adopts when multi-network lands.
 
 | Concept | Recommended id form | Display name | Notes |
 |---------|---------------------|--------------|-------|
-| Network id | `snake_case` or `kebab-case` slug | Title Case | e.g. `crm`, `car_fleet` |
-| Env prefix (future) | `MYCELIUM_NETWORK_ID` | — | Default `default` or unset = current behavior |
-| Data root (future) | `data/networks/<network_id>/` | — | Migration path from flat `data/` |
-| MCP (future) | `network_id` optional on `query_person` | — | Default network when omitted |
+| Network name | `snake_case` slug | Title Case | e.g. `prm_crm`, `car_fleet` — user-chosen at create |
+| Active network | `MYCELIUM_NETWORK` env or CLI `--network` | — | Required once multi-network ships |
+| Namespace root | `networks/<name>/` | — | All runtime artifacts under here |
+| MCP | `cwd` = framework root; `MYCELIUM_NETWORK` selects namespace | — | Or per-network MCP config later |
 
 Do **not** rename Python `isinstance`, factory singletons, or Cursor “instance” in `PARALLEL_EXECUTION_GUIDE.md`.
 
 ---
 
-## What changes in slice 1 (terminology only)
+## Phased work (revised scope)
 
-**In scope — docs + user-facing strings, no runtime behavior change:**
+Renaming/clarification spans multiple slices. **Do not lump namespace migration into a doc-only pass.**
 
-1. **`docs/architecture.md`** — Add “Networks” section: definition, default network, disambiguation, link to this plan.
-2. **`README.md`** — Lead with network concept; state “this repo runs one default network”; roadmap pointer.
-3. **`TODO.md`** — Mark terminology slice criteria (not done until review).
-4. **Classification category descriptions** — Optional: “social and professional **profiles**” instead of “network profiles” in `engine.py` seed categories and generated specialist headers (small, user-visible).
-5. **`docs/full-code-walkthrough.md`** — Align overview paragraph if it mentions agents/networks vaguely.
-6. **MCP `instructions` string** — One sentence: queries run against the default network for this server’s `cwd`.
+### Phase 1 — Terminology docs (small, safe)
 
-**Out of scope for slice 1:**
+Doc + user-facing strings only; acknowledge prototype CRM-in-repo as debt.
 
-- `network_id` field on models
-- Multi-network data paths
-- Network creation prompt / ontology bootstrap
-- Inter-network handoff
-- Renaming code symbols (`graphs`, `registry` paths unchanged)
+- `docs/architecture.md` — Networks section (framework vs network namespace).
+- `README.md` — “Download framework → create/launch named networks”; note current flat `data/` is transitional.
+- Disambiguate “social profiles” vs product “network” in category copy (optional).
+- MCP instructions: active network / namespace (wording only until Phase 2).
+
+### Phase 2 — Namespace layout + path resolver (medium)
+
+Introduce `networks/<name>/` and central path resolution (replaces scattered `MYCELIUM_*_PATH` defaults).
+
+- `MYCELIUM_NETWORK` (or `MYCELIUM_NETWORKS_ROOT` + active name).
+- Single helper, e.g. `network_paths.py`, used by seed, registry, factory, storage, checkpoints, MCP bootstrap.
+- **Migration shim:** if `MYCELIUM_NETWORK` unset, fall back to legacy `data/` (backward compat for dev).
+- Tests use temp `networks/test_net/`.
+
+### Phase 3 — Extract CRM from repo (medium, user-visible)
+
+Move prototype CRM data out of committed tree.
+
+| Current (committed) | Proposed |
+|-------------------|----------|
+| `data/seed.json` | `examples/networks/prm_crm/seed.json` or local-only after import |
+| `data/seed_crm.json`, `raw_data.json` | `examples/` or remove from default clone |
+| `data/prepare_seed.py` | `bin/` or `examples/scripts/` |
+
+- Gitignore `networks/*/` (keep `networks/.gitkeep` or `networks/_template/`).
+- README quick start: create network from template or minimal demo seed (3–5 people).
+- Paul's CRM: lives in `networks/prm_crm/` locally, not pushed.
+
+### Phase 4 — Network launcher + creation prompt (larger)
+
+- CLI: `mycelium network create <name>`, `mycelium network use <name>`, `mycelium network list`.
+- Creation prompt produces ontology (specialists/categories), not fixed six-category default.
+- Custom specialists per network (ties to agent factory).
+
+### Phase 5 — Inter-network handoff (future)
+
+Discovery and query routing across named namespaces.
 
 ---
 
-## Cursor slice proposal (after Paul approves this plan)
+## What “rename instance → network” means now
 
-**Slug:** `2026-06-09-1100-networks-terminology-docs` (or next available timestamp)
-
-**Objective:** Doc-only terminology alignment per “What changes in slice 1” above.
-
-**Verification:** No test changes required; `grep` audit that user-facing “instance” (product sense) is absent and “default network” appears in README + architecture.
+| In scope | Out of scope |
+|----------|--------------|
+| Product noun **network** = named namespace | Renaming Python `isinstance` |
+| Framework vs network data separation (plan + phases) | Inter-network protocol (Phase 5) |
+| Moving CRM seed out of default repo | Full ontology LLM on day one |
+| `networks/<name>/` layout | Renaming every `data/` symbol in one PR |
 
 ---
 
 ## Open questions for Paul
 
-1. **Default network name** — Use `default`, `crm`, or name after primary seed (e.g. `prm_crm`)? Affects future paths and LangSmith project naming.
-2. **“Social network” in category copy** — Change to “social profiles” everywhere, or keep in technical classification metadata?
-3. **Public branding** — Is a network always “people data,” or can non-person networks (cars, airplanes) share the same noun without qualifier (“vehicle network”)?
-4. **Slice 1 timing** — Docs-only now, or wait until network creation design is sketched?
+1. **Namespace root** — `networks/<name>/` at repo root (preferred?) vs `~/.mycelium/networks/<name>/` for user data outside clone?
+2. **CRM migration** — Move to `examples/networks/prm_crm/` in repo for docs, or entirely local/gitignored with import script?
+3. **Active network selection** — Env-only (`MYCELIUM_NETWORK`), CLI flag (`--network`), or both?
+4. **Non-person networks** — Same noun “network” for cars/airplanes, or always qualified (“vehicle network”)?
+5. **Phase order** — Phase 1 docs now, then Phase 2+3 together (paths + CRM extract), or paths before docs?
 
 ---
 
@@ -163,9 +210,9 @@ Do **not** rename Python `isinstance`, factory singletons, or Cursor “instance
 
 ## Success criteria
 
-- Readers can answer: “What is a Mycelium network?” in one sentence.
-- No ambiguous “network” without context in README or architecture.
-- Current single-network behavior is explicit—not implied multi-network.
-- Cursor has a bounded doc-only slice ready in `prompts/cursor/next/` after approval.
+- **Terminology:** “Network” = user-launched named namespace; “framework” = downloadable Mycelium project.
+- **Packaging:** Default clone is CRM-free; prototype data is example or user-local.
+- **Runtime:** Queries resolve paths under active `networks/<name>/` (after Phase 2+).
+- **Honesty:** Docs describe prototype flat `data/` as transitional until migration lands.
 
-**Last updated:** 2026-06-06 (draft)
+**Last updated:** 2026-06-06 (revised per Paul — named namespaces + CRM extract)
