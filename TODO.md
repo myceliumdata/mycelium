@@ -27,16 +27,29 @@ Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture
 
 ## Product vision — Networks (roadmap)
 
-**Plan:** `docs/plans/networks-terminology.md` (staged phases). **Cursor queue:** `prompts/cursor/next/2026-06-07-1000` … `1300` (Phases 1–4). Network = user-chosen **`network_root`** path; CLI `--network-dir` / `--network`; default network; one MCP server per network (parallel via env).
+**Plan:** `docs/plans/networks-terminology.md` (staged phases). **Order:** Phases 1–4 → **integration testing** → optional **polish squirts** → Phase 5. **Cursor queue:** Phase 4 (`1300`), then integration testing (`1400`).
 
 ### Terminology & bootstrap
 
 - [x] **Networks terminology (Phase 1)** — docs: framework vs network root, default network, MCP-per-network (slice `2026-06-09-1000`).
 - [x] **Network path resolver (Phase 2)** — `MYCELIUM_NETWORK_ROOT`, CLI `--network-dir`, legacy `data/` shim (slice `2026-06-09-1100`).
-- [ ] **Network registry + default (Phase 3)** — `network list|register|use`, config file.
+- [x] **Network registry + default (Phase 3)** — `network list|register|use`, config file (slice `2026-06-09-1200`).
 - [ ] **CRM example network (Phase 4)** — `examples/networks/crm/` in repo (evolving reference); remove flat `data/` seed from default clone.
-- [ ] **Network creation prompt (Phase 5)** — ontology of specialist agents (not fixed six-category default).
+- [ ] **Networks integration testing (Phase 4.5)** — serious CLI/MCP/multi-root/registry tests **before Phase 5** (slice `2026-06-07-1400` queued).
+- [ ] **Network creation prompt (Phase 5)** — ontology of specialist agents (not fixed six-category default); **after testing + polish window**.
 - [ ] **Custom specialists** per network (Phase 5).
+
+### Networks polish (short-term — squirt after Phase 4)
+
+Small tasks; pick any as a one-off Cursor slice between Phase 4 and Phase 5:
+
+- [ ] `health_check` — expose `network_display_name` from `network.json` in `info`.
+- [ ] `health_check` error path — `network_root` fallback via `framework_root() / "data"`, not cwd `data/`.
+- [ ] `.env.example` — document `MYCELIUM_NETWORK_ROOT`, `MYCELIUM_FRAMEWORK_ROOT`, `MYCELIUM_NETWORKS_CONFIG`.
+- [ ] Legacy `mycelium seed` — wire `_configure_network_paths` or deprecate clearly in help text.
+- [ ] `docs/full-code-walkthrough.md` — remove stale `core_data_agent` references.
+- [ ] README — disambiguate “Phase 1 research” vs “Networks Phase N” in Status section.
+- [ ] MCP instructions — include resolved network name when registry/`network.json` provides it.
 
 ### Protocol & conversation
 
@@ -73,4 +86,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-07 (networks Phases 1–4 queued; distributed discovery → long-term)
+Last updated: 2026-06-07 (testing before Phase 5; networks polish backlog added)

@@ -298,10 +298,28 @@ Paul: **keep a CRM example in the repo** — it will evolve with the product.
 - Optional `bin/copy-example-network` to bootstrap a local network from `examples/networks/crm/`.
 - Paul's live CRM stays at a user path (not necessarily committed).
 
+### Phase 4.5 — Integration testing (before Phase 5)
+
+Paul: **serious testing** after Phases 1–4 land, **before** network creation prompt (Phase 5).
+
+- Multi-network CLI isolation (`--network-dir`, `--network`, default).
+- Parallel MCP: two roots, `health_check` + `query_person` parity.
+- Example-network copy → register → query happy path.
+- Checkpoint/thread hygiene (unique `thread_id` per scenario; document stale-thread gotcha).
+- Add targeted smoke/full tests; manual checklist in slice `output.md`.
+- Fix bugs found (in slice scope only).
+
+**Cursor slice:** `2026-06-07-1400-networks-integration-testing.md` (queued after Phase 4).
+
+### Networks polish (short-term squirts)
+
+After Phase 4, optional small slices from `TODO.md` → **Networks polish** (before or after 4.5 testing). Not blocking Phase 5.
+
 ### Phase 5 — Network creation prompt + ontology (large)
 
 - `mycelium network create <name> --root <path>` runs creation prompt → custom specialists/categories (not fixed six).
 - Generated specialist module strategy per network (design sub-task).
+- **Gate:** Phase 4 + Phase 4.5 testing complete (polish optional).
 
 ### Phase 6 — Inter-network discovery & handoff (future)
 
@@ -314,8 +332,11 @@ Paul: **keep a CRM example in the repo** — it will evolve with the product.
 ### Suggested implementation order
 
 ```
-Phase 1 (docs) → Phase 2 (path resolver + CLI dir + MCP env) → Phase 3 (registry + default)
-       → Phase 4 (CRM extract) → Phase 5 (create prompt) → Phase 6 (handoff)
+Phase 1 → 2 → 3 → 4 (CRM example)
+       → 4.5 (integration testing) — gate before Phase 5
+       → [optional polish squirts from TODO]
+       → 5 (create prompt + ontology)
+       → 6 (distributed discovery + handoff)
 ```
 
 Phase 2 unlocks parallel MCP servers immediately (different `MYCELIUM_NETWORK_ROOT` per config entry).
