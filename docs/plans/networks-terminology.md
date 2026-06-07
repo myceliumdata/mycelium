@@ -1,6 +1,6 @@
 # Networks — Terminology, Namespaces & Packaging Plan
 
-**Status:** Draft for review (June 2026)  
+**Status:** Draft for review (June 2026) — Paul decisions incorporated below
 **Audience:** Paul + Grok (planning); Cursor (implementation slices after approval)  
 **Depends on:** `TODO.md` → Product vision — Networks → Terminology & bootstrap
 
@@ -27,24 +27,42 @@ README/architecture already say “networks of LangGraph agents” (the agent co
 
 A **network** is a **scoped Mycelium deployment** that owns:
 
-| Artifact | Today (prototype — CRM in repo) | Target (per named network) |
-|----------|----------------------------------|----------------------------|
-| Seed origin | `data/seed.json` *(committed CRM seed)* | `networks/<name>/seed.json` *(user data, gitignored)* |
-| Classification ontology | `data/categories.json` | `networks/<name>/categories.json` |
-| Specialist registry | `data/agent_registry.json` | `networks/<name>/agent_registry.json` |
-| Specialist storage | `data/agents/<category>/` | `networks/<name>/agents/<category>/` |
-| Generated specialists | `src/agents/specialists/*_specialist.py` | per-network generated modules or dynamic load path |
-| Checkpoints | `data/checkpoints.sqlite` | `networks/<name>/checkpoints.sqlite` |
-| SQLite legacy DB | `data/mycelium.db` | `networks/<name>/mycelium.db` (if retained) |
+| Artifact | Today (prototype — CRM in repo) | Target (under **network root**) |
+|----------|----------------------------------|--------------------------------|
+| Network manifest | — | `<network_root>/network.json` (name, metadata) |
+| Seed origin | `data/seed.json` *(committed CRM seed)* | `<network_root>/seed.json` |
+| Classification ontology | `data/categories.json` | `<network_root>/categories.json` |
+| Specialist registry | `data/agent_registry.json` | `<network_root>/agent_registry.json` |
+| Specialist storage | `data/agents/<category>/` | `<network_root>/agents/<category>/` |
+| Generated specialists | `src/agents/specialists/*_specialist.py` | TBD: per-network dir under root or shared framework cache (Phase 4) |
+| Checkpoints | `data/checkpoints.sqlite` | `<network_root>/checkpoints.sqlite` |
+| SQLite legacy DB | `data/mycelium.db` | `<network_root>/mycelium.db` (if retained) |
 | LangSmith project | `LANGCHAIN_PROJECT=mycelium` | `mycelium-<name>` or caller-configured |
+
+### Network root (primary selector)
+
+A network is identified by **`network_root`**: an absolute path to a directory the user chooses at create time. All runtime artifacts live under that directory using a **standard layout** (contract below). The path may be anywhere on disk — inside the repo, outside the clone, on Dropbox, etc.
 
 **Framework vs network data:**
 
-| Layer | Lives in repo | Examples |
-|-------|---------------|----------|
-| **Framework** | Yes (committed) | `src/`, `bin/`, docs, tests, empty `networks/` scaffold |
-| **Example network** | Optional `examples/` or `networks/_template/` | Tiny demo seed, not Paul's CRM |
-| **User networks** | No (gitignored) | `networks/prm_crm/`, `networks/car_fleet/` |
+| Layer | Lives where | Examples |
+|-------|-------------|----------|
+| **Framework** | Repo clone (committed) | `src/`, `bin/`, docs, tests |
+| **Example network** | `examples/networks/` (committed, tiny) | Demo seed for quick start |
+| **User networks** | User-chosen paths (never committed) | `~/mycelium-networks/prm_crm/`, `/data/mycelium/car_fleet/` |
+
+**Standard layout under `network_root`:**
+
+```
+<network_root>/
+  network.json          # name, display_name, created_at, …
+  seed.json
+  categories.json       # runtime; seeded on first use
+  agent_registry.json
+  agents/<category>/storage.json
+  checkpoints.sqlite
+  mycelium.db           # optional legacy
+```
 
 A network is **not** the same as:
 
@@ -66,7 +84,9 @@ A network is **not** the same as:
 | Term | Meaning | Use when | Avoid |
 |------|---------|----------|-------|
 | **Network** | Scoped deployment + ontology + data | Product, docs, MCP instructions, env naming | “Instance,” “deployment,” “tenant” (unless infra context) |
-| **Active network** | The named namespace currently selected for CLI/MCP | “Launch network `prm_crm`” | “Default” without explaining selection |
+| **Network root** | User-chosen directory holding all network data | CLI `--network-dir`, env `MYCELIUM_NETWORK_ROOT` | Fixed path under repo only |
+| **Default network** | Registered network used when no dir/name passed | `mycelium query` with no flags | Ambiguous “active” without config |
+| **Named network** | Logical name in `network.json` + optional registry | `mycelium query --network prm_crm` | Name without resolvable path |
 | **Framework** | Downloadable Mycelium project (code + tooling) | README quick start | Confusing with a network |
 | **Agent network** / **specialist graph** | LangGraph topology inside one network | Architecture (supervisor → specialists) | Bare “network” when domain profiles are meant |
 | **Supervisor** | Coordinator/router inside a network | Code and docs (unchanged) | “Orchestrator,” “god agent” |
@@ -102,77 +122,161 @@ Three distinct senses appear today:
 - Categories seeded from code (`_SEED_CATEGORIES`); six-ish default domains.
 - Inter-network handoff: not implemented.
 
-### Target (Paul’s model)
+### Target (Paul’s model — June 2026 decisions)
 
-1. Clone/download **framework** — no private CRM data in tree.
-2. **Create** a named network (creation prompt → ontology of specialists, not fixed six categories).
-3. **Launch** / select active network — all queries, MCP, checkpoints scoped to `networks/<name>/`.
-4. Multiple networks on one machine; optional inter-network handoff later.
+1. Clone/download **framework** — no private CRM data in default tree.
+2. **Create** a network: user picks **name** and **`network_root` path** (where data lives).
+3. **Query** via CLI with **`--network-dir`** (path) or **`--network`** (name → resolved via registry); if omitted, use **default network**.
+4. **MCP:** one **long-lived server process per network**; run several in parallel with different `MYCELIUM_NETWORK_ROOT` in each client config. Framework `cwd` stays the repo; data paths come from env.
+5. Optional inter-network handoff later (Phase 5).
 
-**Principle:** Docs and UX say **network** = named namespace. Until migration ships, call current behavior **legacy flat layout** or **pre-networks prototype**—not “multi-network ready.”
+**Principle:** **Network root path** is the runtime source of truth. Name is metadata + convenience alias. Until migration ships, legacy flat `data/` remains the implicit default network root for dev.
 
 ---
 
-## Naming conventions (future-proofing)
+## Selection model (CLI, env, MCP)
 
-Use these in docs now; code adopts when multi-network lands.
+### Resolution order (proposed)
 
-| Concept | Recommended id form | Display name | Notes |
-|---------|---------------------|--------------|-------|
-| Network name | `snake_case` slug | Title Case | e.g. `prm_crm`, `car_fleet` — user-chosen at create |
-| Active network | `MYCELIUM_NETWORK` env or CLI `--network` | — | Required once multi-network ships |
-| Namespace root | `networks/<name>/` | — | All runtime artifacts under here |
-| MCP | `cwd` = framework root; `MYCELIUM_NETWORK` selects namespace | — | Or per-network MCP config later |
+When a query runs, resolve `network_root` in this order:
+
+1. CLI **`--network-dir /absolute/path`** (explicit path; highest precedence)
+2. CLI **`--network prm_crm`** (lookup in network registry → path)
+3. Env **`MYCELIUM_NETWORK_ROOT`** (explicit path; used by MCP and scripts)
+4. Env **`MYCELIUM_NETWORK=prm_crm`** (name lookup)
+5. **Default network** from user config (see below)
+6. **Legacy shim:** repo `data/` if nothing else configured (prototype compat)
+
+### Default network
+
+Paul: a **default network** makes sense. Proposed:
+
+- User config file (e.g. `~/.config/mycelium/networks.json` or `.mycelium/networks.json` in home) maps **name → network_root** and marks one entry as `default: true`.
+- Env override: `MYCELIUM_DEFAULT_NETWORK` (name) or `MYCELIUM_DEFAULT_NETWORK_ROOT` (path).
+- `mycelium query` with no network flags uses the default.
+- First-time setup: `mycelium network init` or `network register` seeds config from an existing path.
+
+### CLI (target)
+
+```bash
+# Explicit path
+uv run mycelium query --network-dir ~/mycelium-networks/prm_crm --person-key "…"
+
+# By registered name
+uv run mycelium query --network prm_crm --person-key "…"
+
+# Default network (from config)
+uv run mycelium query --person-key "…"
+
+# Network management (later phases)
+uv run mycelium network create prm_crm --root ~/mycelium-networks/prm_crm
+uv run mycelium network list
+uv run mycelium network use prm_crm   # set default
+```
+
+### MCP — one server per network (parallel)
+
+Each MCP process binds to **one** `network_root` for its lifetime. Multiple networks = multiple MCP entries in the client (Claude Desktop, etc.):
+
+```json
+{
+  "mycelium-prm-crm": {
+    "command": "uv",
+    "args": ["run", "mycelium-mcp"],
+    "cwd": "/absolute/path/to/mycelium",
+    "env": {
+      "MYCELIUM_NETWORK_ROOT": "/Users/paul/mycelium-networks/prm_crm"
+    }
+  },
+  "mycelium-car-fleet": {
+    "command": "uv",
+    "args": ["run", "mycelium-mcp"],
+    "cwd": "/absolute/path/to/mycelium",
+    "env": {
+      "MYCELIUM_NETWORK_ROOT": "/Users/paul/mycelium-networks/car_fleet"
+    }
+  }
+}
+```
+
+- No network switching inside a single MCP process (keeps long-lived reload semantics simple).
+- `refresh_runtime_from_disk()` reloads **that** network’s files only.
+- MCP tool instructions should state which network name/path the server is bound to (from `network.json`).
+
+### Env vars (consolidation target)
+
+| Variable | Purpose |
+|----------|---------|
+| `MYCELIUM_NETWORK_ROOT` | Absolute path to network data directory (primary for MCP) |
+| `MYCELIUM_NETWORK` | Registered network name (alternative selector) |
+| `MYCELIUM_DEFAULT_NETWORK` | Default network name |
+| `MYCELIUM_DEFAULT_NETWORK_ROOT` | Default network path (bypass registry) |
+| `MYCELIUM_NETWORKS_CONFIG` | Path to name→root registry JSON (optional) |
+
+Per-artifact `MYCELIUM_SEED_PATH`, `MYCELIUM_AGENT_REGISTRY_PATH`, etc. become **derived** from `network_root` (still overridable in tests).
 
 Do **not** rename Python `isinstance`, factory singletons, or Cursor “instance” in `PARALLEL_EXECUTION_GUIDE.md`.
 
 ---
 
-## Phased work (revised scope)
+## Phased work (staged — Paul approved approach)
 
-Renaming/clarification spans multiple slices. **Do not lump namespace migration into a doc-only pass.**
+Large effort; ship in **independent slices** with legacy `data/` shim until each phase lands.
 
-### Phase 1 — Terminology docs (small, safe)
+### Phase 1 — Terminology + architecture docs (small)
 
-Doc + user-facing strings only; acknowledge prototype CRM-in-repo as debt.
+- Document framework vs network, **network root**, default network, MCP-per-network model.
+- `docs/architecture.md`, `README.md`, link to this plan.
+- No runtime changes.
 
-- `docs/architecture.md` — Networks section (framework vs network namespace).
-- `README.md` — “Download framework → create/launch named networks”; note current flat `data/` is transitional.
-- Disambiguate “social profiles” vs product “network” in category copy (optional).
-- MCP instructions: active network / namespace (wording only until Phase 2).
+**Cursor slice:** doc-only, ~1 session.
 
-### Phase 2 — Namespace layout + path resolver (medium)
+### Phase 2 — Network path resolver + CLI/MCP wiring (medium — core)
 
-Introduce `networks/<name>/` and central path resolution (replaces scattered `MYCELIUM_*_PATH` defaults).
+**Goal:** Any command can target any `network_root`; default network when omitted.
 
-- `MYCELIUM_NETWORK` (or `MYCELIUM_NETWORKS_ROOT` + active name).
-- Single helper, e.g. `network_paths.py`, used by seed, registry, factory, storage, checkpoints, MCP bootstrap.
-- **Migration shim:** if `MYCELIUM_NETWORK` unset, fall back to legacy `data/` (backward compat for dev).
-- Tests use temp `networks/test_net/`.
+- New module e.g. `src/network/paths.py` (or `src/storage/network_root.py`):
+  - `resolve_network_root(cli_dir=, cli_name=, env) -> Path`
+  - Derive seed, registry, agents, checkpoints, DB paths from root.
+- Wire into `main.py`, `mycelium_mcp/server.py` `_bootstrap()`, `reset-mycelium`.
+- CLI: `--network-dir`, `--network` on `query` (and global default resolution).
+- MCP: read `MYCELIUM_NETWORK_ROOT`; include network name in `health_check` / instructions.
+- **Legacy shim:** unset → `data/` under framework root (current behavior).
+- Smoke tests with `tmp_path` network roots.
 
-### Phase 3 — Extract CRM from repo (medium, user-visible)
+**Cursor slice:** bounded; no network registry file yet (path + env only).
 
-Move prototype CRM data out of committed tree.
+### Phase 3 — Default network registry + `network` CLI stubs (medium)
 
-| Current (committed) | Proposed |
-|-------------------|----------|
-| `data/seed.json` | `examples/networks/prm_crm/seed.json` or local-only after import |
-| `data/seed_crm.json`, `raw_data.json` | `examples/` or remove from default clone |
-| `data/prepare_seed.py` | `bin/` or `examples/scripts/` |
+- Config: `~/.config/mycelium/networks.json` (or similar) — `{ "networks": [{ "name", "root", "default" }] }`.
+- `mycelium network register`, `network list`, `network use` (set default).
+- `--network <name>` resolves through registry.
 
-- Gitignore `networks/*/` (keep `networks/.gitkeep` or `networks/_template/`).
-- README quick start: create network from template or minimal demo seed (3–5 people).
-- Paul's CRM: lives in `networks/prm_crm/` locally, not pushed.
+### Phase 4 — Extract CRM from repo + example network (medium, visible)
 
-### Phase 4 — Network launcher + creation prompt (larger)
+- Move committed CRM artifacts to `examples/networks/demo/` (tiny) and document importing Paul's CRM to a user path.
+- Remove `data/seed.json` from default clone; quick start uses example or `network create`.
+- `bin/import-network` or README steps to copy example → user `network_root`.
 
-- CLI: `mycelium network create <name>`, `mycelium network use <name>`, `mycelium network list`.
-- Creation prompt produces ontology (specialists/categories), not fixed six-category default.
-- Custom specialists per network (ties to agent factory).
+### Phase 5 — Network creation prompt + ontology (large)
 
-### Phase 5 — Inter-network handoff (future)
+- `mycelium network create <name> --root <path>` runs creation prompt → custom specialists/categories (not fixed six).
+- Generated specialist module strategy per network (design sub-task).
 
-Discovery and query routing across named namespaces.
+### Phase 6 — Inter-network handoff (future)
+
+Discovery and query routing across networks (separate protocol plan).
+
+---
+
+### Suggested implementation order
+
+```
+Phase 1 (docs) → Phase 2 (path resolver + CLI dir + MCP env) → Phase 3 (registry + default)
+       → Phase 4 (CRM extract) → Phase 5 (create prompt) → Phase 6 (handoff)
+```
+
+Phase 2 unlocks parallel MCP servers immediately (different `MYCELIUM_NETWORK_ROOT` per config entry).
 
 ---
 
@@ -187,13 +291,23 @@ Discovery and query routing across named namespaces.
 
 ---
 
-## Open questions for Paul
+## Decisions (Paul — locked)
 
-1. **Namespace root** — `networks/<name>/` at repo root (preferred?) vs `~/.mycelium/networks/<name>/` for user data outside clone?
-2. **CRM migration** — Move to `examples/networks/prm_crm/` in repo for docs, or entirely local/gitignored with import script?
-3. **Active network selection** — Env-only (`MYCELIUM_NETWORK`), CLI flag (`--network`), or both?
-4. **Non-person networks** — Same noun “network” for cars/airplanes, or always qualified (“vehicle network”)?
-5. **Phase order** — Phase 1 docs now, then Phase 2+3 together (paths + CRM extract), or paths before docs?
+| Topic | Decision |
+|-------|----------|
+| Where data lives | User chooses **`network_root` path** at create time |
+| CLI selection | **`--network-dir`** (path); **`--network`** (name via registry) in addition |
+| MCP | **One server per network**; multiple servers in parallel; env `MYCELIUM_NETWORK_ROOT` |
+| Default | **Yes** — default network when flags/env omit selection |
+| Delivery | **Staged phases** (this doc) |
+
+## Open questions (remaining)
+
+1. **Config file location** — `~/.config/mycelium/networks.json` vs project-local `.mycelium/networks.json`?
+2. **CRM in repo** — `examples/networks/demo/` only, or also document `examples/networks/prm_crm/` structure without private rows?
+3. **Non-person networks** — Same noun “network” for cars/airplanes?
+4. **Generated specialists** — Per-network directory under `network_root` vs shared `src/agents/specialists/` (Phase 5 design)?
+5. **Start Cursor work** — Queue Phase 1 docs slice now?
 
 ---
 
@@ -212,7 +326,8 @@ Discovery and query routing across named namespaces.
 
 - **Terminology:** “Network” = user-launched named namespace; “framework” = downloadable Mycelium project.
 - **Packaging:** Default clone is CRM-free; prototype data is example or user-local.
-- **Runtime:** Queries resolve paths under active `networks/<name>/` (after Phase 2+).
+- **Runtime:** Queries resolve paths under user-chosen **`network_root`** (after Phase 2+).
+- **MCP:** Parallel servers each bound to one root via env.
 - **Honesty:** Docs describe prototype flat `data/` as transitional until migration lands.
 
-**Last updated:** 2026-06-06 (revised per Paul — named namespaces + CRM extract)
+**Last updated:** 2026-06-06 (network root path, CLI dir flag, MCP-per-network, default network, staged phases)

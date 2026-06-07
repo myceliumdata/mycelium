@@ -27,13 +27,16 @@ Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture
 
 ## Product vision — Networks (roadmap)
 
-Plan in `docs/plans/` before Cursor slices.
+**Plan:** `docs/plans/networks-terminology.md` (staged phases). Network = user-chosen **`network_root`** path; CLI `--network-dir` / `--network`; default network; one MCP server per network (parallel via env).
 
 ### Terminology & bootstrap
 
-- [ ] Rename “instance” → **network** in docs and user-facing language.
-- [ ] **Network creation prompt** → ontology of specialist agents (not fixed six-category default).
-- [ ] **Custom specialists** per network.
+- [ ] **Networks terminology (Phase 1)** — docs: framework vs network root, default network, MCP-per-network.
+- [ ] **Network path resolver (Phase 2)** — `MYCELIUM_NETWORK_ROOT`, CLI flags, legacy `data/` shim.
+- [ ] **Network registry + default (Phase 3)** — `network list|register|use`, config file.
+- [ ] **CRM extract (Phase 4)** — remove committed seed from default clone; examples/.
+- [ ] **Network creation prompt (Phase 5)** — ontology of specialist agents (not fixed six-category default).
+- [ ] **Custom specialists** per network (Phase 5).
 
 ### Protocol & conversation
 
