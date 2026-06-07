@@ -1,6 +1,6 @@
 # Networks — Terminology, Namespaces & Packaging Plan
 
-**Status:** Draft for review (June 2026) — Paul decisions incorporated below
+**Status:** Approved (June 2026) — Paul decisions incorporated below. **Phase 1 (terminology docs)** delivered via Cursor slice `2026-06-07-1000`; Phases 2–4 queued in `prompts/cursor/next/`.
 **Audience:** Paul + Grok (planning); Cursor (implementation slices after approval)  
 **Depends on:** `TODO.md` → Product vision — Networks → Terminology & bootstrap
 
@@ -352,7 +352,7 @@ Phase 2 unlocks parallel MCP servers immediately (different `MYCELIUM_NETWORK_RO
 2. ~~**CRM in repo**~~ — **Decided:** `examples/networks/crm/` committed reference network (evolves over time).
 3. **Non-person networks** — Same noun “network” for cars/airplanes?
 4. **Generated specialists** — Per-network directory under `network_root` vs shared `src/agents/specialists/` (Phase 5 design)?
-5. ~~**Start Cursor work**~~ — Phases 1–4 queued in `prompts/cursor/next/2026-06-07-1000` … `1300`. Phase 5+ not queued yet.
+5. ~~**Start Cursor work**~~ — **Phase 1 done** (docs). Phases 2–4 in `prompts/cursor/next/` (`1100` … `1300`). Phase 5+ not queued yet.
 
 ---
 

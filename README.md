@@ -1,8 +1,10 @@
 # Mycelium
 
-**AI-managed people data** via networks of LangGraph specialist agents. External clients **query** records through the CLI or MCP; a **supervisor** resolves seed identity, classifies requested attributes, and coordinates specialists that own domain data (contact, social, demographic, etc.).
+**Download the framework** (this repo), then **run named networks** at paths you choose. Each **network** is an isolated data namespace (seed, ontology, specialist registry, storage, checkpoints). The **supervisor** and specialist agents operate inside one network at a time.
 
-Public repo: [github.com/myceliumdata/mycelium](https://github.com/myceliumdata/mycelium) · Architecture: [docs/architecture.md](docs/architecture.md) · License: MIT
+Today’s checkout still uses a flat **`data/`** tree as a **prototype / transitional** default network (CRM seed committed for dev). Phases 2–4 will add `MYCELIUM_NETWORK_ROOT`, a default-network registry, and `examples/networks/crm/` as the evolving reference layout. Pre-networks snapshot: git tag **`prototype`**.
+
+Public repo: [github.com/myceliumdata/mycelium](https://github.com/myceliumdata/mycelium) · Architecture: [docs/architecture.md](docs/architecture.md) · Networks plan: [docs/plans/networks-terminology.md](docs/plans/networks-terminology.md) · License: MIT
 
 ## Quick start
 
@@ -37,13 +39,34 @@ The CLI starts a **fresh process** each run and reloads registry/storage from di
 uv run mycelium-mcp
 ```
 
-MCP is a **long-lived stdio process**. Configure your client with the **repository as working directory** so `.env` and `data/` resolve correctly:
+MCP is a **long-lived stdio process** — **one server per network**. Configure your client with the **framework repo as `cwd`**; bind each server to a `network_root` via env (today: unset uses prototype `data/`; Phase 2: `MYCELIUM_NETWORK_ROOT`).
+
+Single network (prototype layout):
 
 ```json
 {
   "command": "uv",
   "args": ["run", "mycelium-mcp"],
   "cwd": "/absolute/path/to/mycelium"
+}
+```
+
+Two networks in parallel (after Phase 2 path resolver; paths are examples):
+
+```json
+{
+  "mycelium-crm": {
+    "command": "uv",
+    "args": ["run", "mycelium-mcp"],
+    "cwd": "/absolute/path/to/mycelium",
+    "env": { "MYCELIUM_NETWORK_ROOT": "/Users/you/mycelium-networks/prm_crm" }
+  },
+  "mycelium-fleet": {
+    "command": "uv",
+    "args": ["run", "mycelium-mcp"],
+    "cwd": "/absolute/path/to/mycelium",
+    "env": { "MYCELIUM_NETWORK_ROOT": "/Users/you/mycelium-networks/car_fleet" }
+  }
 }
 ```
 
@@ -187,4 +210,4 @@ mycelium/
 
 **Implemented (June 2026):** Query-only CLI/MCP, seed-data-context graph, classification engine, agent factory, Phase 1 **synchronous** specialist research (LLM + Tavily), public repo under [myceliumdata](https://github.com/myceliumdata).
 
-**Roadmap:** Networks terminology, query-as-seed, client clarification threads, inter-network handoff — see [TODO.md](TODO.md).
+**Roadmap:** Networks path resolver (Phase 2), default-network registry (Phase 3), `examples/networks/crm/` (Phase 4), query-as-seed, inter-network handoff — see [TODO.md](TODO.md) and [docs/plans/networks-terminology.md](docs/plans/networks-terminology.md).

@@ -11,7 +11,9 @@
 
 Mycelium is an AI-native data management system in which intelligent agents autonomously organize, evolve, and maintain data sources.
 
-The system uses networks of LangGraph agents to handle ingestion, schema evolution, validation, indexing, and continuous self-improvement — creating living, self-organizing information ecosystems.
+Mycelium organizes people data into **networks**—each network is a scoped ecosystem of specialist agents. Within a network, a **supervisor** coordinates a graph of specialists that classify, research, and persist attributes. (This is the **product network** sense; it is distinct from social/professional **profiles** such as LinkedIn or X handles.)
+
+The framework uses LangGraph agent collectives for ingestion, schema evolution, validation, indexing, and continuous self-improvement — creating living, self-organizing information ecosystems.
 
 **Long-term Vision:**  
 Create data infrastructure that is **100% managed by AI**, removing the structural and scalability limitations imposed by human-organized data systems.
@@ -125,6 +127,38 @@ Phase 1 adds a **Classification Engine** (cached lookup in `src/agents/classific
 - **SQLite:** `data/mycelium.db` (legacy `people` table; checkpoints/history only in this phase) and `data/checkpoints.sqlite` (LangGraph checkpointer).
 
 See `src/storage/core.py` (DB retained for checkpointer-era compatibility; people auto-seed disabled by default).
+
+---
+
+## Networks (product model — documented June 2026; runtime in Phases 2–4)
+
+Users download the **framework** (this repo: `src/`, `bin/`, docs, tests) and run **named networks** at user-chosen **`network_root`** paths. Network data never has to live inside the clone; it can be on Dropbox, another disk, etc.
+
+| Layer | Location | Notes |
+|-------|----------|-------|
+| **Framework** | Repo clone | Code, tooling, tests |
+| **Network root** | User-chosen directory | All runtime artifacts for one network |
+| **Example network** | `examples/networks/` (Phase 4) | Committed reference (e.g. CRM) |
+| **Prototype shim** | Flat `data/` today | Transitional default until path resolver lands |
+
+**Standard layout under `network_root`** (target contract):
+
+```
+<network_root>/
+  network.json
+  seed.json
+  categories.json
+  agent_registry.json
+  agents/<category>/storage.json
+  checkpoints.sqlite
+  mycelium.db          # optional legacy
+```
+
+**Selection (target resolution order):** CLI `--network-dir` → CLI `--network` (name via registry, Phase 3) → env `MYCELIUM_NETWORK_ROOT` → env `MYCELIUM_NETWORK` → **default network** from user config (Phase 3) → legacy repo `data/` shim (current prototype).
+
+**MCP:** One long-lived stdio process **per network**. Run several MCP servers in parallel by giving each client entry a different `MYCELIUM_NETWORK_ROOT` while `cwd` stays the framework repo. `refresh_runtime_from_disk()` reloads only that process’s network files. No network switching inside a single MCP process.
+
+**Terminology:** Product **network** ≠ LangGraph **agent collective** ≠ social **profiles** (attribute domain). Full map and phased delivery: [`docs/plans/networks-terminology.md`](plans/networks-terminology.md). Pre-networks baseline: git tag `prototype`.
 
 ---
 

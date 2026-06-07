@@ -4,6 +4,7 @@
 
 **Current reality (June 2026):**
 
+- **Networks (roadmap):** Product model is framework + user-chosen **network roots** (see `docs/plans/networks-terminology.md`). Runtime still uses flat `data/` as the prototype default until Phase 2 path resolver lands.
 - **Public API** = queries only (`PersonQuery`: `person_key`, `requested_attributes`). No CLI `ingest`, no MCP `submit_person_data`, no `provided_data`.
 - **`core_data_agent`** (`src/agents/core_data.py`) owns core lookups in the compiled graph: `supervisor` → `core_data` → END.
 - **enrich/validator/person_prep** remain on disk as unwired legacy; not in `agents.__init__` or the public graph.

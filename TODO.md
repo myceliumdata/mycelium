@@ -31,7 +31,7 @@ Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture
 
 ### Terminology & bootstrap
 
-- [ ] **Networks terminology (Phase 1)** — docs: framework vs network root, default network, MCP-per-network.
+- [x] **Networks terminology (Phase 1)** — docs: framework vs network root, default network, MCP-per-network (slice `2026-06-09-1000`).
 - [ ] **Network path resolver (Phase 2)** — `MYCELIUM_NETWORK_ROOT`, CLI flags, legacy `data/` shim.
 - [ ] **Network registry + default (Phase 3)** — `network list|register|use`, config file.
 - [ ] **CRM example network (Phase 4)** — `examples/networks/crm/` in repo (evolving reference); remove flat `data/` seed from default clone.

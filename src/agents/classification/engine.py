@@ -42,7 +42,7 @@ _SEED_CATEGORIES: dict[str, Any] = {
             "examples": ["email", "phone", "mobile", "address", "website"],
         },
         "social": {
-            "description": "Social and professional network profiles and handles.",
+            "description": "Social and professional profiles and handles.",
             "assigned_agent": "social_specialist",
             "examples": ["linkedin", "x_handle", "twitter", "facebook", "instagram"],
         },
