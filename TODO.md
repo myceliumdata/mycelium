@@ -27,7 +27,7 @@ Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture
 
 ## Product vision — Networks (roadmap)
 
-**Plan:** `docs/plans/networks-terminology.md` (staged phases). Network = user-chosen **`network_root`** path; CLI `--network-dir` / `--network`; default network; one MCP server per network (parallel via env).
+**Plan:** `docs/plans/networks-terminology.md` (staged phases). **Cursor queue:** `prompts/cursor/next/2026-06-07-1000` … `1300` (Phases 1–4). Network = user-chosen **`network_root`** path; CLI `--network-dir` / `--network`; default network; one MCP server per network (parallel via env).
 
 ### Terminology & bootstrap
 
@@ -40,12 +40,13 @@ Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture
 
 ### Protocol & conversation
 
-- [ ] **Inter-network discovery and handoff** — distributed find-each-other + routing (future; v1 = local `networks.json` registry).
 - [ ] **Long-running threads** — suspend and ask client for clarification (`thread_id` + checkpoints; bones exist).
 - [ ] **Query-as-seed** — unknown people created from queries; disambiguate before research (e.g. generic “Paul Murphy” + address).
 
 ## Future / deferred
 
+- [ ] **Distributed network discovery** — long-term; networks find each other without shared local config (prerequisite for inter-network handoff). v1 = local `~/.config/mycelium/networks.json` only.
+- [ ] **Inter-network handoff** — query routing across networks (e.g. car → airplane); after distributed discovery.
 - [ ] **Data addition (internal)** — design coordination for new core records without public `provided_data`; persist via specialists; validation and status taxonomy.
 - [ ] **Response builders** — optional refactor of `assemble_response` / specialist-specific message shaping.
 - [ ] **MCP packaging** — keep in-repo vs extract later.
@@ -72,4 +73,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-06 (LangSmith e2e + CI + README polish done)
+Last updated: 2026-06-07 (networks Phases 1–4 queued; distributed discovery → long-term)

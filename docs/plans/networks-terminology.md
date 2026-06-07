@@ -352,7 +352,7 @@ Phase 2 unlocks parallel MCP servers immediately (different `MYCELIUM_NETWORK_RO
 2. ~~**CRM in repo**~~ — **Decided:** `examples/networks/crm/` committed reference network (evolves over time).
 3. **Non-person networks** — Same noun “network” for cars/airplanes?
 4. **Generated specialists** — Per-network directory under `network_root` vs shared `src/agents/specialists/` (Phase 5 design)?
-5. **Start Cursor work** — Queue Phase 1 docs slice now?
+5. ~~**Start Cursor work**~~ — Phases 1–4 queued in `prompts/cursor/next/2026-06-07-1000` … `1300`. Phase 5+ not queued yet.
 
 ---
 
