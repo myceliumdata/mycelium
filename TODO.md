@@ -34,7 +34,7 @@ Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture
 - [ ] **Networks terminology (Phase 1)** — docs: framework vs network root, default network, MCP-per-network.
 - [ ] **Network path resolver (Phase 2)** — `MYCELIUM_NETWORK_ROOT`, CLI flags, legacy `data/` shim.
 - [ ] **Network registry + default (Phase 3)** — `network list|register|use`, config file.
-- [ ] **CRM extract (Phase 4)** — remove committed seed from default clone; examples/.
+- [ ] **CRM example network (Phase 4)** — `examples/networks/crm/` in repo (evolving reference); remove flat `data/` seed from default clone.
 - [ ] **Network creation prompt (Phase 5)** — ontology of specialist agents (not fixed six-category default).
 - [ ] **Custom specialists** per network (Phase 5).
 

@@ -156,6 +156,42 @@ Paul: a **default network** makes sense. Proposed:
 - `mycelium query` with no network flags uses the default.
 - First-time setup: `mycelium network init` or `network register` seeds config from an existing path.
 
+### What the config file is for (Phase 3)
+
+The **networks config** is a small user-local registry so you do not have to type full paths every time. It is **not** where network data lives — only **pointers**.
+
+**Problem it solves:** You chose `network_root` at create time (maybe `~/Dropbox/mycelium/prm_crm`). Without config, every CLI call needs `--network-dir ~/Dropbox/mycelium/prm_crm`. With config, you register once and use `--network prm_crm` or rely on the default.
+
+**Example `~/.config/mycelium/networks.json`:**
+
+```json
+{
+  "version": "1",
+  "networks": [
+    {
+      "name": "prm_crm",
+      "root": "/Users/paul/mycelium-networks/prm_crm",
+      "default": true
+    },
+    {
+      "name": "car_fleet",
+      "root": "/Users/paul/mycelium-networks/car_fleet",
+      "default": false
+    }
+  ]
+}
+```
+
+| Config stores | Config does **not** store |
+|---------------|---------------------------|
+| Network **name** (short alias) | `seed.json`, agents, registry |
+| **Absolute path** to `network_root` | Specialist generated code |
+| Which entry is **default** | Checkpoints or research cache |
+
+**MCP note:** Parallel MCP servers usually set `MYCELIUM_NETWORK_ROOT` directly in the client JSON (explicit per server). Config is optional for MCP; it shines for CLI convenience and `mycelium query` with no flags.
+
+**Phase 2 does not require config** — `--network-dir` and `MYCELIUM_NETWORK_ROOT` are enough. Config arrives in Phase 3 with `network register` / `network use`.
+
 ### CLI (target)
 
 ```bash
@@ -252,11 +288,15 @@ Large effort; ship in **independent slices** with legacy `data/` shim until each
 - `mycelium network register`, `network list`, `network use` (set default).
 - `--network <name>` resolves through registry.
 
-### Phase 4 — Extract CRM from repo + example network (medium, visible)
+### Phase 4 — CRM example network in repo + extract from `data/` (medium, visible)
 
-- Move committed CRM artifacts to `examples/networks/demo/` (tiny) and document importing Paul's CRM to a user path.
-- Remove `data/seed.json` from default clone; quick start uses example or `network create`.
-- `bin/import-network` or README steps to copy example → user `network_root`.
+Paul: **keep a CRM example in the repo** — it will evolve with the product.
+
+- Add **`examples/networks/crm/`** — full standard `network_root` layout (seed, manifest, optional starter categories). Committed, public-safe subset or synthetic rows; grows over time as the reference network.
+- Remove runtime CRM from flat **`data/`** in default clone (no private seed at repo root).
+- README quick start: copy or link example → user-chosen path, then `network register` / set default.
+- Optional `bin/copy-example-network` to bootstrap a local network from `examples/networks/crm/`.
+- Paul's live CRM stays at a user path (not necessarily committed).
 
 ### Phase 5 — Network creation prompt + ontology (large)
 
@@ -304,7 +344,7 @@ Phase 2 unlocks parallel MCP servers immediately (different `MYCELIUM_NETWORK_RO
 ## Open questions (remaining)
 
 1. **Config file location** — `~/.config/mycelium/networks.json` vs project-local `.mycelium/networks.json`?
-2. **CRM in repo** — `examples/networks/demo/` only, or also document `examples/networks/prm_crm/` structure without private rows?
+2. ~~**CRM in repo**~~ — **Decided:** `examples/networks/crm/` committed reference network (evolves over time).
 3. **Non-person networks** — Same noun “network” for cars/airplanes?
 4. **Generated specialists** — Per-network directory under `network_root` vs shared `src/agents/specialists/` (Phase 5 design)?
 5. **Start Cursor work** — Queue Phase 1 docs slice now?
