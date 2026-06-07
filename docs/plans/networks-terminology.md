@@ -303,9 +303,11 @@ Paul: **keep a CRM example in the repo** — it will evolve with the product.
 - `mycelium network create <name> --root <path>` runs creation prompt → custom specialists/categories (not fixed six).
 - Generated specialist module strategy per network (design sub-task).
 
-### Phase 6 — Inter-network handoff (future)
+### Phase 6 — Inter-network discovery & handoff (future)
 
-Discovery and query routing across networks (separate protocol plan).
+**v1 (Phase 3):** Local config file maps names → `network_root` paths on one machine.
+
+**Later (Paul):** Distributed discovery so networks can **find each other** without a shared local config — prerequisite for real inter-network handoff. Separate protocol plan; out of scope until path resolver + registry are stable.
 
 ---
 
@@ -339,11 +341,14 @@ Phase 2 unlocks parallel MCP servers immediately (different `MYCELIUM_NETWORK_RO
 | CLI selection | **`--network-dir`** (path); **`--network`** (name via registry) in addition |
 | MCP | **One server per network**; multiple servers in parallel; env `MYCELIUM_NETWORK_ROOT` |
 | Default | **Yes** — default network when flags/env omit selection |
+| Name→path registry | **Local config file** first (`~/.config/mycelium/networks.json` or equivalent) — good v1 |
+| Network discovery | **Future:** distributed way for networks to find each other (Phase 6+ / separate protocol); not in v1 |
+| CRM example | **`examples/networks/crm/`** in repo — evolving reference network |
 | Delivery | **Staged phases** (this doc) |
 
 ## Open questions (remaining)
 
-1. **Config file location** — `~/.config/mycelium/networks.json` vs project-local `.mycelium/networks.json`?
+1. **Config file location** — Default `~/.config/mycelium/networks.json` unless Paul prefers project-local; override via `MYCELIUM_NETWORKS_CONFIG`.
 2. ~~**CRM in repo**~~ — **Decided:** `examples/networks/crm/` committed reference network (evolves over time).
 3. **Non-person networks** — Same noun “network” for cars/airplanes?
 4. **Generated specialists** — Per-network directory under `network_root` vs shared `src/agents/specialists/` (Phase 5 design)?
@@ -357,7 +362,7 @@ Phase 2 unlocks parallel MCP servers immediately (different `MYCELIUM_NETWORK_RO
 |------|----------------|
 | Network creation prompt | This terminology + ontology design doc |
 | Custom specialists per network | Network creation + storage layout |
-| Inter-network handoff | Network id + discovery protocol |
+| Inter-network handoff | Distributed discovery + handoff protocol (post local config) |
 | Query-as-seed | Largely orthogonal; same default network |
 
 ---

@@ -40,7 +40,7 @@ Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture
 
 ### Protocol & conversation
 
-- [ ] **Inter-network discovery and handoff** (e.g. car network → airplane network).
+- [ ] **Inter-network discovery and handoff** — distributed find-each-other + routing (future; v1 = local `networks.json` registry).
 - [ ] **Long-running threads** — suspend and ask client for clarification (`thread_id` + checkpoints; bones exist).
 - [ ] **Query-as-seed** — unknown people created from queries; disambiguate before research (e.g. generic “Paul Murphy” + address).
 
