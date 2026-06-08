@@ -187,7 +187,16 @@ uv run mycelium network status --network crm --json | jq '.seed_people_count, .o
 
 Minimal browser client in `admin-ui/` — **API-only** (no direct reads of `seed.json` or MCP). Restart the daemon after a Python code deploy; rebuild the SPA after frontend changes.
 
-**Development** (Vite HMR + live API):
+**Development** (recommended — one command):
+
+```bash
+./bin/restart-admin              # default network crm
+./bin/restart-admin fleet        # MYCELIUM_NETWORK=fleet when unset
+```
+
+Kills anything on `:8741` and `:5173`, starts `mycelium-admin` in the background and Vite in the foreground. Ctrl-C stops both. Caller-exported `MYCELIUM_NETWORK` / `MYCELIUM_NETWORK_ROOT` win over script defaults.
+
+Manual two-terminal workflow:
 
 ```bash
 # Terminal A
@@ -202,8 +211,8 @@ Open the Vite URL (default `http://127.0.0.1:5173`). The dev server proxies `/he
 **Demo (single process)** — one URL for screen recordings:
 
 ```bash
-cd admin-ui && npm install && npm run build
-MYCELIUM_NETWORK=crm uv run mycelium-admin
+./bin/restart-admin --demo
+# or: cd admin-ui && npm run build && MYCELIUM_NETWORK=crm uv run mycelium-admin
 # → http://127.0.0.1:8741/
 ```
 

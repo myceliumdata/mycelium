@@ -1,0 +1,223 @@
+#!/usr/bin/env bash
+# ./bin/restart-admin
+# Restart the admin dev stack: background mycelium-admin + foreground Vite (admin-ui).
+#
+# Network binding precedence (caller env wins):
+#   1. MYCELIUM_NETWORK_ROOT — if set, no network name is applied by this script
+#   2. MYCELIUM_NETWORK — if set, positional/--network args are ignored
+#   3. Positional <name> or --network NAME — default name is crm
+#
+# Typical usage:
+#   ./bin/restart-admin              # MYCELIUM_NETWORK=crm (when unset)
+#   ./bin/restart-admin fleet        # MYCELIUM_NETWORK=fleet (when unset)
+#   ./bin/restart-admin --demo       # single-process: build SPA + foreground daemon on :8741
+#   ./bin/restart-admin --dry-run    # print kill/start plan only
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ADMIN_UI_DIR="${REPO_ROOT}/admin-ui"
+
+ADMIN_HOST="${MYCELIUM_ADMIN_HOST:-127.0.0.1}"
+ADMIN_PORT="${MYCELIUM_ADMIN_PORT:-8741}"
+VITE_PORT="${MYCELIUM_ADMIN_UI_PORT:-5173}"
+
+DEMO=false
+DRY_RUN=false
+NETWORK_ARG=""
+
+DAEMON_PID=""
+
+usage() {
+  cat <<'EOF'
+Usage: ./bin/restart-admin [OPTIONS] [NETWORK]
+
+Restart the admin dev stack (daemon + Vite) or single-process demo mode.
+
+Options:
+  --network NAME   Bind MYCELIUM_NETWORK=NAME when env is unset (default: crm)
+  --demo           Build admin-ui and run mycelium-admin only (http://127.0.0.1:8741/)
+  --dry-run        Print planned actions without executing
+  -h, --help       Show this help
+
+Environment (caller values take precedence over script defaults):
+  MYCELIUM_NETWORK_ROOT   Explicit network root — wins over MYCELIUM_NETWORK
+  MYCELIUM_NETWORK        Network name — wins over positional/--network
+  MYCELIUM_ADMIN_HOST     Admin bind host (default: 127.0.0.1)
+  MYCELIUM_ADMIN_PORT     Admin port (default: 8741)
+  MYCELIUM_ADMIN_UI_PORT  Vite dev port (default: 5173)
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --demo)
+      DEMO=true
+      shift
+      ;;
+    --dry-run)
+      DRY_RUN=true
+      shift
+      ;;
+    --network)
+      if [[ $# -lt 2 ]]; then
+        echo "Error: --network requires a value" >&2
+        exit 1
+      fi
+      NETWORK_ARG="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      echo "Error: unknown option: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+    *)
+      if [[ -n "$NETWORK_ARG" ]]; then
+        echo "Error: unexpected extra argument: $1" >&2
+        exit 1
+      fi
+      NETWORK_ARG="$1"
+      shift
+      ;;
+  esac
+done
+
+REFRESH_HINT="${MYCELIUM_NETWORK:-${NETWORK_ARG:-crm}}"
+
+if [[ -n "${MYCELIUM_NETWORK_ROOT:-}" ]]; then
+  DISPLAY_NETWORK="${MYCELIUM_NETWORK_ROOT}"
+elif [[ -n "${MYCELIUM_NETWORK:-}" ]]; then
+  DISPLAY_NETWORK="${MYCELIUM_NETWORK}"
+else
+  DISPLAY_NETWORK="${NETWORK_ARG:-crm}"
+  export MYCELIUM_NETWORK="${DISPLAY_NETWORK}"
+fi
+
+kill_port() {
+  local port="$1"
+  local pids
+  pids="$(lsof -ti:"${port}" 2>/dev/null || true)"
+  if [[ -z "$pids" ]]; then
+    return 0
+  fi
+  if [[ "$DRY_RUN" == true ]]; then
+    echo "Would stop processes on :${port}: ${pids//$'\n'/ }"
+    return 0
+  fi
+  echo "Stopping processes on :${port} ..."
+  # shellcheck disable=SC2086
+  kill ${pids} 2>/dev/null || true
+  sleep 0.4
+  pids="$(lsof -ti:"${port}" 2>/dev/null || true)"
+  if [[ -n "$pids" ]]; then
+    # shellcheck disable=SC2086
+    kill -9 ${pids} 2>/dev/null || true
+  fi
+}
+
+ensure_admin_ui_deps() {
+  if [[ -d "${ADMIN_UI_DIR}/node_modules" ]]; then
+    return 0
+  fi
+  if [[ "$DRY_RUN" == true ]]; then
+    echo "Would run: cd admin-ui && npm install"
+    return 0
+  fi
+  echo "Installing admin-ui dependencies (first run) ..."
+  (cd "${ADMIN_UI_DIR}" && npm install)
+}
+
+wait_for_admin() {
+  local url="http://${ADMIN_HOST}:${ADMIN_PORT}/health"
+  local attempt
+  for attempt in $(seq 1 40); do
+    if ! kill -0 "${DAEMON_PID}" 2>/dev/null; then
+      echo "Error: mycelium-admin exited during startup." >&2
+      echo "Try: ./bin/refresh-example-network ${REFRESH_HINT}" >&2
+      echo "Or set MYCELIUM_NETWORK / MYCELIUM_NETWORK_ROOT." >&2
+      return 1
+    fi
+    if curl -sf "${url}" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 0.25
+  done
+  if lsof -ti:"${ADMIN_PORT}" >/dev/null 2>&1; then
+    return 0
+  fi
+  echo "Error: admin API not reachable at ${url}" >&2
+  echo "Port ${ADMIN_PORT} may still be busy. Check: lsof -i :${ADMIN_PORT}" >&2
+  return 1
+}
+
+cleanup() {
+  if [[ -n "${DAEMON_PID}" ]] && kill -0 "${DAEMON_PID}" 2>/dev/null; then
+    kill "${DAEMON_PID}" 2>/dev/null || true
+    wait "${DAEMON_PID}" 2>/dev/null || true
+  fi
+}
+
+trap cleanup INT TERM
+
+cd "${REPO_ROOT}"
+
+if [[ "$DEMO" == true ]]; then
+  kill_port "${ADMIN_PORT}"
+  ensure_admin_ui_deps
+  if [[ "$DRY_RUN" == true ]]; then
+    echo "Would run: cd admin-ui && npm run build"
+    echo "Would run: MYCELIUM_NETWORK=${DISPLAY_NETWORK} uv run mycelium-admin (foreground)"
+    echo ""
+    echo "Admin API:  http://${ADMIN_HOST}:${ADMIN_PORT}/"
+    echo "Network:    ${DISPLAY_NETWORK}"
+    exit 0
+  fi
+  echo "Building admin-ui ..."
+  (cd "${ADMIN_UI_DIR}" && npm run build)
+  echo ""
+  echo "Admin API:  http://${ADMIN_HOST}:${ADMIN_PORT}/"
+  echo "Network:    ${DISPLAY_NETWORK}"
+  echo ""
+  trap - INT TERM EXIT
+  exec uv run mycelium-admin
+fi
+
+kill_port "${ADMIN_PORT}"
+kill_port "${VITE_PORT}"
+ensure_admin_ui_deps
+
+if [[ "$DRY_RUN" == true ]]; then
+  echo "Would run: MYCELIUM_NETWORK=${DISPLAY_NETWORK} uv run mycelium-admin (background)"
+  echo "Would run: cd admin-ui && npm run dev (foreground)"
+  echo ""
+  echo "Admin API:  http://${ADMIN_HOST}:${ADMIN_PORT}/health"
+  echo "Admin UI:   http://${ADMIN_HOST}:${VITE_PORT}/"
+  echo "Network:    ${DISPLAY_NETWORK}"
+  exit 0
+fi
+
+uv run mycelium-admin &
+DAEMON_PID=$!
+
+if ! wait_for_admin; then
+  cleanup
+  exit 1
+fi
+
+echo ""
+echo "Admin API:  http://${ADMIN_HOST}:${ADMIN_PORT}/health"
+echo "Admin UI:   http://${ADMIN_HOST}:${VITE_PORT}/"
+echo "Network:    ${DISPLAY_NETWORK}"
+echo ""
+
+cd "${ADMIN_UI_DIR}"
+npm run dev

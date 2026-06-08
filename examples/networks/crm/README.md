@@ -38,7 +38,7 @@ Before demos, run refresh with `--yes` to wipe stale specialist research, then *
 cd admin-ui && npm install && npm run build
 MYCELIUM_NETWORK=crm uv run mycelium-admin
 
-# Or dev mode: daemon in one terminal, `cd admin-ui && npm run dev` in another
+# Dev mode (recommended): `./bin/restart-admin` from repo root
 ```
 
 After demo queries populate storage, search **Andrea Kalmans** in the UI to see entity fields; overview cards mirror `mycelium network status` demo layout.
