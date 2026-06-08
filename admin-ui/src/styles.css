@@ -92,6 +92,49 @@ header.app-header h1 {
   font-weight: 600;
 }
 
+.status-line {
+  margin: 0.35rem 0;
+  font-weight: 500;
+}
+
+.poll-error {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin: 0.5rem 0;
+}
+
+.collapsible-card {
+  padding: 0;
+}
+
+.collapsible-card > .collapsible-summary {
+  padding: 1rem 1.1rem;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  list-style: none;
+  cursor: pointer;
+}
+
+.collapsible-card > .collapsible-summary::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible-card > .collapsible-summary::before {
+  content: "▸ ";
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.collapsible-card[open] > .collapsible-summary::before {
+  content: "▾ ";
+}
+
+.collapsible-card > :not(summary) {
+  padding: 0 1.1rem 1rem;
+}
+
 .card ul {
   margin: 0;
   padding-left: 1.2rem;

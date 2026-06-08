@@ -1,11 +1,13 @@
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { fetchCapabilities, fetchHealth, fetchStatus } from "./api";
-import { formatCategoryExamples, networkLabel } from "./format";
+import { networkLabel } from "./format";
 import type {
   CapabilitiesResponse,
   HealthResponse,
   StatusResponse,
 } from "./types";
+
+const POLL_MS = 3000;
 
 export default function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
@@ -13,54 +15,145 @@ export default function App() {
   const [capabilities, setCapabilities] = useState<CapabilitiesResponse | null>(
     null,
   );
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [pollError, setPollError] = useState<string | null>(null);
 
   const [entityCategoryLimit, setEntityCategoryLimit] = useState("");
   const [entityInput, setEntityInput] = useState("");
   const [entityKey, setEntityKey] = useState("");
 
-  const loadOverview = useCallback(
-    async (opts?: { category?: string; entity?: string }) => {
-      setLoading(true);
-      setError(null);
+  const [entityLookupOpen, setEntityLookupOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [ontologyOpen, setOntologyOpen] = useState(false);
+  const [specialistExpanded, setSpecialistExpanded] = useState<
+    Record<string, boolean>
+  >({});
+
+  const statusInFlight = useRef(false);
+
+  const statusQueryParams = useCallback(
+    () => ({
+      category: entityCategoryLimit || undefined,
+      entity: entityKey || undefined,
+    }),
+    [entityCategoryLimit, entityKey],
+  );
+
+  const loadFull = useCallback(async () => {
+    setFetchError(null);
+    try {
+      const params = statusQueryParams();
+      const [healthRes, statusRes, capsRes] = await Promise.all([
+        fetchHealth(),
+        fetchStatus(params),
+        fetchCapabilities(),
+      ]);
+      setHealth(healthRes);
+      setStatus(statusRes);
+      setCapabilities(capsRes);
+      setPollError(null);
+    } catch (err) {
+      setPollError(err instanceof Error ? err.message : String(err));
+    }
+  }, [statusQueryParams]);
+
+  const pollStatus = useCallback(async () => {
+    if (statusInFlight.current || document.hidden) {
+      return;
+    }
+    statusInFlight.current = true;
+    try {
+      const statusRes = await fetchStatus(statusQueryParams());
+      setStatus(statusRes);
+      setPollError(null);
+    } catch (err) {
+      setPollError(err instanceof Error ? err.message : String(err));
+    } finally {
+      statusInFlight.current = false;
+    }
+  }, [statusQueryParams]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      setInitialLoading(true);
+      setFetchError(null);
       try {
         const [healthRes, statusRes, capsRes] = await Promise.all([
           fetchHealth(),
-          fetchStatus({
-            category: opts?.category || undefined,
-            entity: opts?.entity || undefined,
-          }),
+          fetchStatus(),
           fetchCapabilities(),
         ]);
+        if (cancelled) {
+          return;
+        }
         setHealth(healthRes);
         setStatus(statusRes);
         setCapabilities(capsRes);
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) {
+          setFetchError(err instanceof Error ? err.message : String(err));
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setInitialLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const tick = () => {
+      void pollStatus();
+    };
+    tick();
+    const intervalId = window.setInterval(tick, POLL_MS);
+
+    const onVisibility = () => {
+      if (!document.hidden) {
+        void pollStatus();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [pollStatus]);
+
+  const onRefresh = () => {
+    void loadFull();
+  };
+
+  const fetchStatusNow = useCallback(
+    async (params: { category?: string; entity?: string }) => {
+      if (statusInFlight.current) {
+        return;
+      }
+      statusInFlight.current = true;
+      try {
+        const statusRes = await fetchStatus(params);
+        setStatus(statusRes);
+        setPollError(null);
+      } catch (err) {
+        setPollError(err instanceof Error ? err.message : String(err));
+      } finally {
+        statusInFlight.current = false;
       }
     },
     [],
   );
 
-  useEffect(() => {
-    void loadOverview();
-  }, [loadOverview]);
-
-  const onRefresh = () => {
-    void loadOverview({
-      category: entityCategoryLimit || undefined,
-      entity: entityKey || undefined,
-    });
-  };
-
   const onEntitySubmit = (event: FormEvent) => {
     event.preventDefault();
     const key = entityInput.trim();
     setEntityKey(key);
-    void loadOverview({
+    void fetchStatusNow({
       category: entityCategoryLimit || undefined,
       entity: key || undefined,
     });
@@ -94,109 +187,92 @@ export default function App() {
         <p className="muted">network_root: {health.network_root}</p>
       )}
 
-      {loading && <p className="muted">Loading…</p>}
-      {error && <p className="error">Error: {error}</p>}
+      {initialLoading && <p className="muted">Loading…</p>}
+      {fetchError && <p className="error">Error: {fetchError}</p>}
+      {pollError && !fetchError && (
+        <p className="poll-error">Background refresh failed: {pollError}</p>
+      )}
 
       {status && (
-        <>
-          <section className="card">
-            <h2>Overview</h2>
-            <p>
-              <strong>Seed:</strong> ✅ ({status.seed_people_count})
-            </p>
+        <section className="card">
+          <h2>Overview</h2>
+          <p className="status-line">✅ Seed ({status.seed_people_count})</p>
+          <p className="status-line">
+            {status.ontology_present ? "✅" : "❌"} Ontology
+          </p>
+          {storedSpecialists.length > 0 ? (
+            <>
+              <p className="status-line">✅ Specialists</p>
+              {storedSpecialists
+                .slice()
+                .sort((a, b) => a.category.localeCompare(b.category))
+                .map((spec) => {
+                  const hasStatusCounts =
+                    spec.found_count > 0 ||
+                    spec.pending_count > 0 ||
+                    spec.na_count > 0;
+                  return (
+                    <details
+                      key={spec.category}
+                      className="specialist-details"
+                      open={specialistExpanded[spec.category] ?? false}
+                      onToggle={(event) => {
+                        setSpecialistExpanded((prev) => ({
+                          ...prev,
+                          [spec.category]: event.currentTarget.open,
+                        }));
+                      }}
+                    >
+                      <summary>
+                        {spec.category} ({spec.record_count})
+                      </summary>
+                      {spec.fields_tracked.length > 0 ? (
+                        <p>
+                          <strong>Fields tracked:</strong>{" "}
+                          {spec.fields_tracked.join(", ")}
+                        </p>
+                      ) : (
+                        <p className="empty">No fields stored yet.</p>
+                      )}
+                      {hasStatusCounts && (
+                        <p className="muted">
+                          found {spec.found_count} · pending{" "}
+                          {spec.pending_count} · n/a {spec.na_count}
+                        </p>
+                      )}
+                    </details>
+                  );
+                })}
+            </>
+          ) : (
+            <p className="status-line">❌ Specialists</p>
+          )}
+        </section>
+      )}
 
-            {status.ontology_present && status.categories.length > 0 ? (
-              <>
-                <p>
-                  <strong>Current ontology:</strong> ✅
-                </p>
-                <ul>
-                  {status.categories.map((cat) => (
-                    <li key={cat.name}>
-                      {formatCategoryExamples(cat.name, cat.examples)}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : (
-              <p>
-                <strong>Current ontology:</strong> ❌
-              </p>
-            )}
-
-            {storedSpecialists.length > 0 ? (
-              <>
-                <p>
-                  <strong>Existing specialists:</strong>{" "}
-                  <span className="muted">(expand for storage detail)</span>
-                </p>
-                {storedSpecialists
-                  .slice()
-                  .sort((a, b) => a.category.localeCompare(b.category))
-                  .map((spec) => {
-                    const categoryMeta = status.categories.find(
-                      (cat) => cat.name === spec.category,
-                    );
-                    const hasStatusCounts =
-                      spec.found_count > 0 ||
-                      spec.pending_count > 0 ||
-                      spec.na_count > 0;
-                    return (
-                      <details key={spec.category} className="specialist-details">
-                        <summary>
-                          {spec.category} ({spec.record_count})
-                        </summary>
-                        {categoryMeta && (
-                          <p className="muted">
-                            {formatCategoryExamples(
-                              categoryMeta.name,
-                              categoryMeta.examples,
-                            )}
-                          </p>
-                        )}
-                        {spec.fields_tracked.length > 0 ? (
-                          <p>
-                            <strong>Fields tracked:</strong>{" "}
-                            {spec.fields_tracked.join(", ")}
-                          </p>
-                        ) : (
-                          <p className="empty">No fields stored yet.</p>
-                        )}
-                        {hasStatusCounts && (
-                          <p className="muted">
-                            found {spec.found_count} · pending{" "}
-                            {spec.pending_count} · n/a {spec.na_count}
-                          </p>
-                        )}
-                      </details>
-                    );
-                  })}
-              </>
-            ) : (
-              <p>
-                <strong>Existing specialists:</strong> ❌
-              </p>
-            )}
-          </section>
-
-          <section className="card">
-            <h2>Entity lookup</h2>
-            <form className="row-actions" onSubmit={onEntitySubmit}>
-              <input
-                type="search"
-                placeholder="Name or id"
-                value={entityInput}
-                onChange={(e) => setEntityInput(e.target.value)}
-                aria-label="Entity key"
-              />
-              <label className="field-inline">
-                <span className="muted">Category</span>
-                <select
-                  value={entityCategoryLimit}
-                  onChange={(e) => setEntityCategoryLimit(e.target.value)}
-                  aria-label="Limit entity lookup to category"
-                >
-                  <option value="">Any</option>
+      {status && (
+        <details
+          className="card collapsible-card"
+          open={entityLookupOpen}
+          onToggle={(event) => setEntityLookupOpen(event.currentTarget.open)}
+        >
+          <summary className="collapsible-summary">Entity lookup</summary>
+          <form className="row-actions" onSubmit={onEntitySubmit}>
+            <input
+              type="search"
+              placeholder="Name or id"
+              value={entityInput}
+              onChange={(e) => setEntityInput(e.target.value)}
+              aria-label="Entity key"
+            />
+            <label className="field-inline">
+              <span className="muted">Category</span>
+              <select
+                value={entityCategoryLimit}
+                onChange={(e) => setEntityCategoryLimit(e.target.value)}
+                aria-label="Limit entity lookup to category"
+              >
+                <option value="">All</option>
                 {(status.categories.length > 0
                   ? status.categories
                   : ontologyCategories.map((c) => ({ name: c.name }))
@@ -205,26 +281,27 @@ export default function App() {
                     {cat.name}
                   </option>
                 ))}
-                </select>
-              </label>
-              <button type="submit">Search</button>
-            </form>
+              </select>
+            </label>
+            <button type="submit">Search</button>
+          </form>
 
-            {entityKey && (
-              <div>
-                <p>
-                  Lookup: <code>{entityKey}</code> — {status.entity_matches}{" "}
-                  match(es)
+          {entityKey && (
+            <div>
+              <p>
+                Lookup: <code>{entityKey}</code> — {status.entity_matches}{" "}
+                match(es)
+              </p>
+              {status.entity_matches === 0 && (
+                <p className="empty">No seed match.</p>
+              )}
+              {status.entity_matches > 1 && (
+                <p className="empty">
+                  Multiple seed matches — narrow the key.
                 </p>
-                {status.entity_matches === 0 && (
-                  <p className="empty">No seed match.</p>
-                )}
-                {status.entity_matches > 1 && (
-                  <p className="empty">
-                    Multiple seed matches — narrow the key.
-                  </p>
-                )}
-                {status.entity_matches === 1 && status.entity_fields.length > 0 && (
+              )}
+              {status.entity_matches === 1 &&
+                status.entity_fields.length > 0 && (
                   <table>
                     <thead>
                       <tr>
@@ -246,24 +323,26 @@ export default function App() {
                     </tbody>
                   </table>
                 )}
-                {status.entity_matches === 1 &&
-                  status.entity_fields.length === 0 && (
-                    <p className="empty">
-                      No specialist storage for this record yet.
-                    </p>
-                  )}
-              </div>
-            )}
-          </section>
-        </>
+              {status.entity_matches === 1 &&
+                status.entity_fields.length === 0 && (
+                  <p className="empty">
+                    No specialist storage for this record yet.
+                  </p>
+                )}
+            </div>
+          )}
+        </details>
       )}
 
       {capabilities && (
         <section className="card">
           <h2>Network guide &amp; ontology</h2>
           {capabilities.guide_present && capabilities.guide ? (
-            <details>
-              <summary>Author guide (guide.md)</summary>
+            <details
+              open={guideOpen}
+              onToggle={(event) => setGuideOpen(event.currentTarget.open)}
+            >
+              <summary>Author guide</summary>
               <pre className="guide">{capabilities.guide}</pre>
             </details>
           ) : (
@@ -274,8 +353,11 @@ export default function App() {
 
           {capabilities.ontology.present &&
           capabilities.ontology.categories.length > 0 ? (
-            <details open>
-              <summary>Category descriptions</summary>
+            <details
+              open={ontologyOpen}
+              onToggle={(event) => setOntologyOpen(event.currentTarget.open)}
+            >
+              <summary>Ontology</summary>
               <ul>
                 {capabilities.ontology.categories.map((cat) => (
                   <li key={cat.name}>
