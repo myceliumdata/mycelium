@@ -39,6 +39,12 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 
 - [ ] **Scannable overview** — ✅/❌ Seed, Ontology, Specialists; ontology in guide card; collapsed secondary panels; 3s silent `/status` poll.
 
+### `bin/restart-admin` — **queued**
+
+**Prompt:** `prompts/cursor/next/2026-06-08-2100-bin-restart-admin.md`
+
+- [ ] **Dev stack restart** — kill :8741 + :5173; background `mycelium-admin` + foreground `npm run dev`; default network `crm`.
+
 ### Slice 5 — demo polish — **done** (`2026-06-08-1150`)
 
 - [x] **`network status --json` plain stdout** — `jq`-friendly; `test_status_cli_json` parses JSON.
