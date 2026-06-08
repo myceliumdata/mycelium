@@ -23,6 +23,8 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 2 
 
 ### Slice 3 — admin daemon (after 1–2)
 
+**Prompt:** `prompts/cursor/next/2026-06-08-1700-demo-slice3-admin-daemon.md`
+
 - [ ] **`mycelium-admin` (or `uv run mycelium-admin`)** — long-lived **HTTP** admin API on localhost (one process per network, like MCP). env: `MYCELIUM_NETWORK` / `MYCELIUM_NETWORK_ROOT`.
   - **v0 read-only:** same introspection as slice 2 (`GET /status`, ontology, specialists, storage summaries).
   - **Later write ops:** refresh example, register (slice 4+); remote + auth deferred.
@@ -145,4 +147,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-08 (MCP onboarding slices 1–4 complete)
+Last updated: 2026-06-08 (MCP complete; demo slice 3 prompt queued)
