@@ -7,7 +7,7 @@ Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture
 
 ## Demo (phase)
 
-Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 2 → 5 → 1200 + hands-on test: done** (June 2026). **Next:** MCP slice 4 polish (`1600`), then admin daemon (demo slice 3) → UI (demo slice 4).
+Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 2 → 5 → 1200 + hands-on test: done** (June 2026). **MCP onboarding slices 1–4 done** (June 2026). **Next:** admin daemon (demo slice 3) → UI (demo slice 4).
 
 ### Slice 1 — `refresh-example-network` — **done** (`2026-06-08-1000`)
 
@@ -99,8 +99,7 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 2 
 ### Protocol & conversation
 
 - [x] **Remove `list_specialist_routing` from MCP** — dropped public tool; `_routing_payload()` retained for `health_check` only (`2026-06-08-1400`).
-- [x] **MCP onboarding for visiting agents** — **slices 1–3 done** (`1300` entity rename, `1350` specialist fixup, `1400` `guide.md` + `describe_network`, `1500` classification-aware query messages). **Paul MCP live verify done** (June 2026). **Slice 4 polish** queued: `prompts/cursor/next/2026-06-08-1600-mcp-slice4-polish.md`.
-- [ ] **MCP onboarding polish (slice 4)** — Cursor prompt `2026-06-08-1600-mcp-slice4-polish.md`. **Slice 1:** **slice 1:** sweep stale `PersonQuery`/`person_key` in `TODO.md` + open items; stabilize or document `test_langsmith_utils` env flake; optional `test_specialist_entity_vocab` direct import of framework `*_specialist.py` on disk; decide whether to commit `examples/networks/crm/specialists/` reference copies (refresh skips `specialists/`); scrub stray runtime artifacts under `examples/networks/crm/` if committed; optional rename internal `find_by_key(person_key)` param; deepen `_neutral_json_schema` descriptions if any “person” leaks remain; regenerate or ignore stale `src/mycelium.egg-info/PKG-INFO` (`query_person` / `list_specialist_routing`). **Slice 3:** add positive assert for unavailable copy (`not found for this record`) in `test_run_query_email_na_in_same_response_when_research_mocked`; optional explicit `found=[...]` debug assert when mocked research returns a value; align specialist Jinja template + framework `*_specialist.py` `model_copy` message overrides with `build_query_message` copy (or drop overrides — graph `assemble_response` is authoritative for CLI/MCP). **Ops:** Paul MCP restart verify (`query_entity` with in-scope + garbage attr).
+- [x] **MCP onboarding for visiting agents** — **complete** (slices `1300`–`1600`: entity rename, specialist fixup, `guide.md` + `describe_network`, classification-aware messages, polish). Paul MCP live verify done (June 2026).
 - [ ] **Fuzzy entity_key matching** — today `find_by_key` resolves by exact UUID or case-insensitive name equality only (`src/agents/seed.py`); typos and near-misses return not-found. Allow fuzzy matches on name (and later other seed fields): normalization (strip punctuation, collapse whitespace), optional phonetic/edit-distance threshold, rank candidates, return multiple close matches with disambiguation guidance in `message` (align with multi-match policy). Paul + Grok: spec match strategy, confidence floor, and whether fuzzy is opt-in (`entity_key` vs new field) before queuing.
 - [ ] **Per-record query messages (multi-match)** — v1 keeps collective `message` when `entity_key` matches multiple seed records (e.g. two Kevin Zhangs); agent disambiguates via `results`. Revisit when non-person or other domains need per-record status in `message` (different attrs per match, async research diverging per id).
 - [x] **Thread checkpoint: new query on same `thread_id`** — fixed (`run_query` clears stale `response`; removed `assemble_response` short-circuit; smoke test `test_same_thread_new_query_rebuilds_response`). **Follow-up:** multi-turn merge semantics (reuse specialist cache across attributes on one thread without redundant research) still open.
@@ -133,10 +132,10 @@ Major landed work (no action):
 
 - Seed-data-context redesign (`data/seed.json`, graph: supervisor → build_context → invoke_specialists → assemble_response; no `core_data`).
 - Phase 1 sync specialist research (LLM + Tavily, slices 1100–1400).
-- Query-only public API (CLI/MCP `PersonQuery`).
+- Query-only public API (CLI/MCP `EntityQuery` / `query_entity`).
 - Classification engine + Agent Factory + dynamic dispatch.
 - Runtime data gitignored (`data/agents/`, registry, generated `*_specialist.py`, `categories.json`).
-- `PersonResponse`: `results`, `message`, `debug`, `trace_id`, `thread_id`.
+- `QueryResponse`: `results`, `message`, `debug`, `trace_id`, `thread_id`.
 - Smoke/full test split; initial CRM seed (`data/seed_crm.json` → `data/seed.json`).
 - Pre-redesign cleanup (derivative datasets, orchestrator→supervisor, ingestion handshake removed).
 
@@ -146,4 +145,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-08 (MCP slices 1–3 done + live verify; slice 4 polish prompt queued)
+Last updated: 2026-06-08 (MCP onboarding slices 1–4 complete)

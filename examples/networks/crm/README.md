@@ -2,7 +2,7 @@
 
 Committed **reference network** for the Mycelium framework. Refresh it to a path you own, register it, and query.
 
-This example ships **`seed.json`**, **`network.json`**, and **`guide.md`** (plus this README and maintainer `prepare_seed.py`). Runtime artifacts — `categories.json`, `agent_registry.json`, `agents/`, `specialists/`, DB, checkpoints — are created under your `network_root` on first query.
+This example ships **`seed.json`**, **`network.json`**, **`guide.md`**, and an optional reference **`specialists/contact_specialist.py`** (plus this README and maintainer `prepare_seed.py`). Runtime artifacts — `categories.json`, `agent_registry.json`, `agents/`, additional `specialists/*.py`, DB, checkpoints — are created under your `network_root` on first query. `refresh-example-network` copies seed, network metadata, and guide; it does not copy `specialists/` (the committed reference is for inspection only).
 
 Edit **`guide.md`** at your network root to tell visiting agents what this network is for (MCP `describe_network` returns it verbatim).
 

@@ -11,7 +11,7 @@
 
 Mycelium specialists implement three storage scenarios (found / pending / N/A). **Before Phase 1**, research was a stub (`_stub_background_research` daemon thread, no persistence). **Phase 1 (implemented)** adds a bounded **LLM + tools** loop that discovers attribute values on the web, validates them, and persists into per-category `data/agents/<category>/storage.json`.
 
-This plan is **research only** — not classification (Phase 1 intelligence), not Agent Factory creation, not changes to `PersonQuery` / MCP / CLI contracts.
+This plan is **research only** — not classification (Phase 1 intelligence), not Agent Factory creation, not changes to `EntityQuery` / MCP / CLI contracts.
 
 ### Agreed principles (from design discussion)
 
@@ -321,7 +321,7 @@ docs/architecture.md         # pointer under Next phases (after implementation)
 
 **Dependencies (after approval):** `langchain-tavily` in `pyproject.toml`.
 
-**Explicitly untouched:** `PersonQuery`, MCP tool list, graph topology, `categories.json` schema, supervisor routing logic.
+**Explicitly untouched:** `EntityQuery` public shape, MCP tool list, graph topology, `categories.json` schema, supervisor routing logic.
 
 ---
 

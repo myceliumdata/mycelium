@@ -12,7 +12,7 @@ The supervisor treats committed `data/seed.json` as read-only origin data, assig
 |-------|--------|
 | 1500 | `data/seed.json` + `agents/seed.py` |
 | 1510 | `matched_persons`, `context`, `current_id`, `target_fields` on graph state |
-| 1520 | Unified `PersonResponse` builders (no "core record" language) |
+| 1520 | Unified `QueryResponse` builders (no "core record" language) |
 | 1530 | Remove `core_data` agent and registry entry |
 | 1540 | Specialist Jinja template (3 scenarios, `specialist_contrib`) |
 | 1550 | `context.py` + graph nodes `build_context` / `invoke_specialists` / `assemble_response` |

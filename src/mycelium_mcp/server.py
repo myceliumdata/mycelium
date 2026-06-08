@@ -93,9 +93,18 @@ def _serialize_response(response: QueryResponse) -> str:
 
 
 def _neutral_json_schema(model: type[EntityQuery] | type[QueryResponse] | type[SeedRecord]) -> dict[str, Any]:
-    """Export JSON Schema with network-neutral titles (no legacy person-centric labels)."""
+    """Export JSON Schema with network-neutral titles for MCP schema resources."""
     schema = model.model_json_schema()
     schema["title"] = model.__name__
+    if model is EntityQuery:
+        schema.setdefault("description", "Lookup request: entity_key plus optional requested_attributes.")
+    elif model is QueryResponse:
+        schema.setdefault(
+            "description",
+            "Query outcome: results (attribute values), message (status narrative), debug, trace_id, thread_id.",
+        )
+    elif model is SeedRecord:
+        schema.setdefault("description", "Seed identity record (id, name, employer).")
     return schema
 
 

@@ -95,3 +95,24 @@ def test_framework_specialist_uses_entity_vocab(
     assert "matched_persons" not in result
     if "matched_records" in result:
         assert isinstance(result["matched_records"], list)
+
+
+@pytest.mark.smoke
+def test_crm_reference_contact_specialist_uses_entity_vocab() -> None:
+    """Committed CRM example specialist is a reference copy aligned with the factory template."""
+    from pathlib import Path
+
+    ref_path = (
+        Path(__file__).resolve().parent.parent
+        / "examples"
+        / "networks"
+        / "crm"
+        / "specialists"
+        / "contact_specialist.py"
+    )
+    text = ref_path.read_text(encoding="utf-8")
+    assert "entity_key" in text
+    assert "person_key" not in text
+    assert "matched_persons" not in text
+    assert "not currently available but may be in the future" not in text
+    assert "model_copy" not in text

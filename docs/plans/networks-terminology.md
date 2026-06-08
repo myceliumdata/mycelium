@@ -304,7 +304,7 @@ Paul: **keep a CRM example in the repo** — it will evolve with the product.
 ### Phase 4.5 — Integration testing — **delivered** (`2026-06-09-1400`)
 
 - Multi-network CLI isolation (`--network-dir`, `--network`, default).
-- Parallel MCP: two roots, `health_check` + `query_person` parity.
+- Parallel MCP: two roots, `health_check` + `query_entity` parity.
 - Example-network copy → register → query happy path.
 - Checkpoint/thread hygiene (unique `thread_id` per scenario; document stale-thread gotcha).
 - `tests/test_network_integration.py`; MCP path preservation fix in `refresh_runtime_from_disk`.

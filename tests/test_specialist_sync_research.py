@@ -279,11 +279,15 @@ def test_contact_mixed_found_and_na_message(
     result = fn(state)
 
     assert not research_called
-    assert result["specialist_contrib"]["status"] == "mixed"
+    contrib = result["specialist_contrib"]
+    assert contrib["status"] == "mixed"
+    assert contrib["values"]["email"] == "mix@example.com"
+    assert contrib["values"]["phone"] == "N/A"
     msg = result["response"].message
-    assert "Found email" in msg or "mix@example.com" in msg
-    assert "phone marked N/A" in msg or "N/A" in msg
+    assert "Found record for Jane" in msg
+    assert "mix@example.com" not in msg
     assert "not currently available" not in msg
+    assert "(via contact_specialist)" not in msg
 
 
 @pytest.mark.smoke

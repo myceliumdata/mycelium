@@ -93,13 +93,13 @@ class CoreStorage:
         ).fetchone()
         return self._row_to_person(row) if row else None
 
-    def find_persons(self, person_key: str) -> list[SeedRecord]:
+    def find_persons(self, entity_key: str) -> list[SeedRecord]:
         """Resolve by id or exact name (case-insensitive).
 
         Id match returns zero or one person. Name match may return multiple records
         when the same name appears with different employers.
         """
-        key = person_key.strip()
+        key = entity_key.strip()
         by_id = self.get_person_by_id(key)
         if by_id:
             return [by_id]

@@ -102,6 +102,10 @@ def test_api_resolve_failure_falls_back_to_short_url(
 @pytest.mark.smoke
 def test_custom_ui_base(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LANGSMITH_UI_BASE_URL", "https://smith.example.com/")
+    monkeypatch.delenv("LANGSMITH_ORG_ID", raising=False)
+    monkeypatch.delenv("LANGSMITH_PROJECT_ID", raising=False)
+    monkeypatch.delenv("LANGCHAIN_API_KEY", raising=False)
+    monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
     url = get_langsmith_trace_url("t1")
     assert url == "https://smith.example.com/r/t1"
 

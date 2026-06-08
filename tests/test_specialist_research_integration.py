@@ -149,8 +149,10 @@ def test_run_query_email_returns_found_in_same_response_when_research_mocked(
 
     row = _assert_single_person_assembled(response)
     assert row["email"] == "test.user@example.com"
+    assert "test.user@" not in response.message
     assert "not currently available" not in response.message
     assert "may be in the future" not in response.message
+    assert "found=['email']" in response.debug
     assert captured.get("person_id") == row["id"]
 
 
@@ -200,6 +202,8 @@ def test_run_query_email_na_in_same_response_when_research_mocked(
     assert row.get("email") == "N/A"
     assert "test.user@" not in response.message
     assert "not currently available" not in response.message
+    assert "not found for this record" in response.message
+    assert "unavailable=['email']" in response.debug
 
 
 @pytest.mark.smoke

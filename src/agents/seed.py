@@ -80,13 +80,13 @@ def reset_seed_data() -> None:
     _seed_data = None
 
 
-def find_by_key(person_key: str) -> list[dict[str, Any]]:
+def find_by_key(entity_key: str) -> list[dict[str, Any]]:
     """Resolve by ``id`` UUID or exact name (case-insensitive).
 
     UUID match returns zero or one record. Name match may return multiple
     records when the same name appears with different employers.
     """
-    key = person_key.strip()
+    key = entity_key.strip()
     if not key:
         return []
 

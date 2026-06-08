@@ -2,6 +2,8 @@
 
 **Status:** Approved (2026-06-03). This is the published version of the working plan developed in the Grok session. Cursor tasks must follow the scope, steps, and design exactly (with the lightweight priority note from approval).
 
+> **Historical note (June 2026):** The "Current state" section below reflects the codebase at plan time. The live public API uses `EntityQuery` / `entity_key` / `query_entity` / `QueryResponse`; `core_data` and `PersonQuery` were removed in later redesigns. See `docs/architecture.md`.
+
 > **Lightweight priority (from approval):** Keep implementation as lightweight as possible in early steps. Prioritize getting `classify()` + supervisor injection working cleanly before polishing `refresh_from_llm` and atomic saves. Err on the side of simplicity for Phase 1. (E.g. start with plain `.write_text` for save; add tempfile atomic in a later polish step only if it fits small changes.)
 
 ## Context

@@ -58,7 +58,8 @@ def test_create_specialist_writes_files_and_registers(
     assert "_resolve_id" in text
     assert "current_id" in text
     assert "specialist_contrib" in text
-    assert "not currently available but may be in the future" in text
+    assert "assemble_response builds the public message" in text
+    assert "not currently available but may be in the future" not in text
 
     registry = get_agent_registry()
     assert registry.has_agent("contact_specialist")
@@ -92,7 +93,8 @@ def test_create_specialist_writes_files_and_registers(
     result_pending = fn(state_pending)
     assert result_pending["specialist_contrib"]["status"] == "pending"
     assert result_pending["specialist_contrib"]["id"] == test_id
-    assert "not currently available but may be in the future" in result_pending["response"].message
+    assert "Classified email as contact" in result_pending["response"].message
+    assert "not currently available but may be in the future" not in result_pending["response"].message
     stored = json.loads(storage_path.read_text(encoding="utf-8"))
     assert stored["records"][test_id]["email"]["status"] == "pending"
 

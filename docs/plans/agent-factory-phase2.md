@@ -2,6 +2,8 @@
 
 **Status:** Draft for review/approval. This is the comprehensive implementation plan produced in the Grok session (Plan Mode). It builds directly on the approved high-level at `docs/plans/agent-factory-phase2.md` and follows the exact style, structure, depth, and slice approach of the published `docs/plans/classification-engine-phase1.md`.
 
+> **Historical note (June 2026):** The "Current state" section below reflects the codebase at plan time. The live public API uses `EntityQuery` / `entity_key` / `query_entity` / `QueryResponse`; `core_data` was removed in the seed-data-context redesign. See `docs/architecture.md`.
+
 > **Lightweight priority (from high-level + Phase 1 precedent):** Keep every slice small, explicit, and reviewable. Prioritize end-to-end creation trigger + template render + file write + registry update + dynamic in-process load + git commit + dispatch routing before any polish (LLM refine, extra docs, mcp enhancements). Use `auto_commit=False`, env var overrides (`MYCELIUM_*_PATH`), and file-based loading for all tests — never pollute src/ or run real git commits inside pytest. Generated agents **must** be committed to git on real runs (this is a core requirement). Supervisor must stay thin. All artifacts (py + registry.json + data/agents/<cat>/*) are first-class committed source. Clear hooks for future storage self-evolution from day one. Reference `docs/plans/agent-factory-phase2.md`, `docs/plans/supervisor-intelligence-v1.md`, `docs/architecture.md`, and `prompts/system/CORE_PROMPT.md` in all work.
 
 ## Context
