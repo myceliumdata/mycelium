@@ -10,27 +10,27 @@ import pytest
 from agents.core_identity import CoreIdentity
 from agents.routing import evaluate_supervisor_turn
 from agents.supervisor import supervisor_agent
-from models.state import MyceliumGraphState, Person, PersonQuery
+from models.state import EntityQuery, MyceliumGraphState, SeedRecord
 
 
 class _StubCoreIdentity(CoreIdentity):
-    def __init__(self, person: Person | None) -> None:
+    def __init__(self, person: SeedRecord | None) -> None:
         super().__init__(storage=None)
         self._person = person
-        self.persisted: list[Person] = []
+        self.persisted: list[SeedRecord] = []
 
-    def find_by_key(self, person_key: str) -> list[Person]:
+    def find_by_key(self, entity_key: str) -> list[SeedRecord]:
         return [self._person] if self._person is not None else []
 
-    def persist(self, person: Person) -> None:
+    def persist(self, person: SeedRecord) -> None:
         self.persisted.append(person)
 
 
 @pytest.mark.smoke
 def test_routing_delegates_lookup_to_core_identity() -> None:
-    person = Person(id="p1", name="Ada", employer="Lab")
-    core_identity = _StubCoreIdentity(person)
-    state = MyceliumGraphState(query=PersonQuery(person_key="Ada"))
+    record = SeedRecord(id="p1", name="Ada", employer="Lab")
+    core_identity = _StubCoreIdentity(record)
+    state = MyceliumGraphState(query=EntityQuery(entity_key="Ada"))
 
     decision = evaluate_supervisor_turn(state, core_identity=core_identity)
 
@@ -43,7 +43,7 @@ def test_routing_delegates_lookup_to_core_identity() -> None:
 @pytest.mark.smoke
 def test_routing_not_found_when_missing() -> None:
     core_identity = _StubCoreIdentity(None)
-    state = MyceliumGraphState(query=PersonQuery(person_key="Missing"))
+    state = MyceliumGraphState(query=EntityQuery(entity_key="Missing"))
 
     decision = evaluate_supervisor_turn(state, core_identity=core_identity)
 
@@ -57,10 +57,10 @@ def test_routing_not_found_when_missing() -> None:
 
 @pytest.mark.smoke
 def test_routing_non_core_attributes() -> None:
-    person = Person(id="p1", name="Ada", employer="Lab")
-    core_identity = _StubCoreIdentity(person)
+    record = SeedRecord(id="p1", name="Ada", employer="Lab")
+    core_identity = _StubCoreIdentity(record)
     state = MyceliumGraphState(
-        query=PersonQuery(person_key="Ada", requested_attributes=["age"]),
+        query=EntityQuery(entity_key="Ada", requested_attributes=["age"]),
     )
 
     decision = evaluate_supervisor_turn(state, core_identity=core_identity)
@@ -94,7 +94,7 @@ def test_supervisor_agent_plans_no_specialists_without_attrs(
     monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
     reset_seed_data()
 
-    state = MyceliumGraphState(query=PersonQuery(person_key="any-key"))
+    state = MyceliumGraphState(query=EntityQuery(entity_key="any-key"))
     result = supervisor_agent(state)
 
     assert result.get("route") is None
@@ -158,8 +158,8 @@ def test_supervisor_agent_classifies_requested_attributes(
     )
 
     state = MyceliumGraphState(
-        query=PersonQuery(
-            person_key="any-key",
+        query=EntityQuery(
+            entity_key="any-key",
             requested_attributes=["email", "foo_unknown"],
         ),
     )
@@ -246,7 +246,7 @@ def test_supervisor_triggers_creation_for_unregistered_specialist(
     monkeypatch.setattr(AgentFactory, "create_specialist", _fake_create)
 
     state = MyceliumGraphState(
-        query=PersonQuery(person_key="any-key", requested_attributes=["email"]),
+        query=EntityQuery(entity_key="any-key", requested_attributes=["email"]),
     )
     result = supervisor_agent(state)
 

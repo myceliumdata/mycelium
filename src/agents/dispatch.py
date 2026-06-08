@@ -1,4 +1,4 @@
-"""Graph nodes: build context, invoke specialists, assemble PersonResponse."""
+"""Graph nodes: build context, invoke specialists, assemble QueryResponse."""
 
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ def build_context_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, 
     builder = get_context_builder()
     full_ctx = builder.build_full_context(
         ids,
-        seed_records=current.matched_persons or None,
+        seed_records=current.matched_records or None,
     )
     meta = dict(meta)
     meta.setdefault("specialists_to_invoke", [])
@@ -109,7 +109,7 @@ def invoke_specialists_node(state: MyceliumGraphState | dict[str, Any]) -> dict[
 
 
 def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
-    """Produce final PersonResponse from seed matches and specialist contributions."""
+    """Produce final QueryResponse from seed matches and specialist contributions."""
     current = _coerce(state)
     if current.response is not None:
         return {}
@@ -125,7 +125,7 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
     )
     meta = _meta(current)
     contributions = meta.get("contributions") or []
-    matched = current.matched_persons or []
+    matched = current.matched_records or []
 
     if not matched:
         return {

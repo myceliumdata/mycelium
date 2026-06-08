@@ -20,7 +20,7 @@ from graphs.core import (
     reset_core_graph,
     run_query,
 )
-from models.state import PersonQuery
+from models.state import EntityQuery
 from storage.core import reset_storage
 
 
@@ -71,7 +71,7 @@ def test_run_query_clears_trace_id_when_tracing_disabled(
     get_storage()
     reset_seed_data()
     response = run_query(
-        PersonQuery(person_key="Test User"),
+        EntityQuery(entity_key="Test User"),
         thread_id="trace-test-thread",
     )
 
@@ -160,7 +160,7 @@ def test_run_query_sets_trace_id_on_response_when_captured(
         patch("graphs.core._invoke_sync_graph", _mock_sync_invoke),
     ):
         response = run_query(
-            PersonQuery(person_key="Test User"),
+            EntityQuery(entity_key="Test User"),
             thread_id="traced-thread",
         )
 

@@ -15,8 +15,8 @@ From the framework repo root:
 ./bin/refresh-example-network crm
 
 # Query via registered name or default
-uv run mycelium query --network crm --person-key "Nichanan Kesonpat"
-uv run mycelium query --person-key "Andrea Kalmans"
+uv run mycelium query --network crm --entity-key "Nichanan Kesonpat"
+uv run mycelium query --entity-key "Andrea Kalmans"
 ```
 
 Custom live root:
@@ -32,7 +32,7 @@ Check network state before and after demo queries:
 ```bash
 uv run mycelium network status --network crm
 uv run mycelium network status --network crm --verbose   # debug layout
-uv run mycelium network status --network crm --person "Andrea Kalmans"
+uv run mycelium network status --network crm --entity "Andrea Kalmans"
 ```
 
 ## Layout

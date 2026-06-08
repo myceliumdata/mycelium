@@ -1,4 +1,4 @@
-"""PersonResponse builders for supervisor query outcomes.
+"""QueryResponse builders for supervisor query outcomes.
 
 Unified in seed-data-context redesign. No more special 'core' layer.
 results come from seed + specialist overrides (specialist wins).
@@ -9,7 +9,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from models.state import Person, PersonQuery, PersonResponse, normalized_requested_attributes
+from models.state import (
+    EntityQuery,
+    QueryResponse,
+    SeedRecord,
+    normalized_requested_attributes,
+)
 
 _IDENTITY_SUMMARY_KEYS = ("id", "name", "employer")
 
@@ -19,9 +24,9 @@ def _debug_extra_value(value: Any) -> str:
     return repr(value)
 
 
-def debug_for_query(query: PersonQuery, **extra: Any) -> str:
+def debug_for_query(query: EntityQuery, **extra: Any) -> str:
     parts = [
-        f"person_key={query.person_key!r}",
+        f"entity_key={query.entity_key!r}",
         f"requested_attributes={query.requested_attributes!r}",
     ]
     parts.extend(
@@ -54,7 +59,7 @@ def merge_requested_record(
     contributions: list[dict[str, Any]],
     requested: list[str],
 ) -> tuple[dict[str, Any], list[str], list[str]]:
-    """Merge seed + specialist values for one person.
+    """Merge seed + specialist values for one record.
 
     Returns (merged record, provisional attribute names, unavailable names).
     Specialist non-pending values override seed; seed fills gaps while specialist is pending.
@@ -104,7 +109,7 @@ def shape_results(
 
 
 def message_for_assembled(
-    query: PersonQuery,
+    query: EntityQuery,
     records: list[dict[str, Any]],
     *,
     provisional: list[str],
@@ -114,15 +119,15 @@ def message_for_assembled(
     """Build user-facing message for assemble_response outcomes."""
     if not records:
         return (
-            f"No record found for {query.person_key!r}. "
-            "This lookup did not match anyone."
+            f"No record found for {query.entity_key!r}. "
+            "This lookup did not match any record."
         )
 
     if len(records) == 1:
-        name = records[0].get("name") or query.person_key
+        name = records[0].get("name") or query.entity_key
         prefix = f"Found record for {name}"
     else:
-        prefix = f"Found {len(records)} records for {query.person_key!r}"
+        prefix = f"Found {len(records)} records for {query.entity_key!r}"
 
     parts: list[str] = [prefix]
     via = f" (via {specialist_label})" if specialist_label else ""
@@ -147,15 +152,15 @@ def message_for_assembled(
 
 
 def _build_identity_results(
-    persons: list[Person] | None = None,
+    seed_records: list[SeedRecord] | None = None,
     *,
     base_records: list[dict[str, Any]] | None = None,
     requested: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     if base_records is not None:
         records = list(base_records)
-    elif persons:
-        records = [p.core_dict() for p in persons]
+    elif seed_records:
+        records = [record.core_dict() for record in seed_records]
     else:
         records = []
     return shape_results(records, requested)
@@ -168,8 +173,8 @@ def _make_response(
     debug: str,
     trace_id: str | None = None,
     thread_id: str | None = None,
-) -> PersonResponse:
-    return PersonResponse(
+) -> QueryResponse:
+    return QueryResponse(
         results=results,
         message=message,
         debug=debug,
@@ -179,26 +184,26 @@ def _make_response(
 
 
 def response_found(
-    query: PersonQuery,
-    persons: list[Person] | None = None,
+    query: EntityQuery,
+    seed_records: list[SeedRecord] | None = None,
     *,
     base_records: list[dict[str, Any]] | None = None,
     classifications: list[dict[str, Any]] | None = None,
     specialist: str | None = None,
     trace_id: str | None = None,
     thread_id: str | None = None,
-) -> PersonResponse:
+) -> QueryResponse:
     records = _build_identity_results(
-        persons,
+        seed_records,
         base_records=base_records,
         requested=query.requested_attributes,
     )
     n = len(records)
     if n == 1:
-        name = records[0].get("name") or query.person_key
+        name = records[0].get("name") or query.entity_key
         message = f"Found record for {name}."
     else:
-        message = f"Found {n} records for {query.person_key!r}."
+        message = f"Found {n} records for {query.entity_key!r}."
     return _make_response(
         results=records,
         message=message,
@@ -215,18 +220,18 @@ def response_found(
 
 
 def response_not_found(
-    query: PersonQuery,
+    query: EntityQuery,
     *,
     classifications: list[dict[str, Any]] | None = None,
     specialist: str | None = None,
     trace_id: str | None = None,
     thread_id: str | None = None,
-) -> PersonResponse:
+) -> QueryResponse:
     return _make_response(
         results=[],
         message=(
-            f"No record found for {query.person_key!r}. "
-            "This lookup did not match anyone."
+            f"No record found for {query.entity_key!r}. "
+            "This lookup did not match any record."
         ),
         debug=debug_for_query(
             query,
@@ -240,8 +245,8 @@ def response_not_found(
 
 
 def response_non_core(
-    query: PersonQuery,
-    persons: list[Person] | None = None,
+    query: EntityQuery,
+    seed_records: list[SeedRecord] | None = None,
     attributes: list[str] | None = None,
     *,
     base_records: list[dict[str, Any]] | None = None,
@@ -249,11 +254,11 @@ def response_non_core(
     specialist: str | None = None,
     trace_id: str | None = None,
     thread_id: str | None = None,
-) -> PersonResponse:
+) -> QueryResponse:
     attrs = attributes or []
     attr_list = ", ".join(attrs)
     records = _build_identity_results(
-        persons,
+        seed_records,
         base_records=base_records,
         requested=attrs or query.requested_attributes,
     )
@@ -264,14 +269,14 @@ def response_non_core(
         else ""
     )
     if n == 1:
-        name = records[0].get("name") or query.person_key
+        name = records[0].get("name") or query.entity_key
         message = (
             f"Found record for {name}. We're still researching "
             f"{attr_list}{via_suffix}."
         )
     else:
         message = (
-            f"Found {n} records for {query.person_key!r}. We're still researching "
+            f"Found {n} records for {query.entity_key!r}. We're still researching "
             f"{attr_list}{via_suffix}."
         )
     return _make_response(
@@ -291,7 +296,7 @@ def response_non_core(
 
 
 def response_assembled(
-    query: PersonQuery,
+    query: EntityQuery,
     *,
     merged_records: list[dict[str, Any]],
     provisional: list[str],
@@ -301,7 +306,7 @@ def response_assembled(
     trace_id: str | None = None,
     thread_id: str | None = None,
     debug_extra: dict[str, Any] | None = None,
-) -> PersonResponse:
+) -> QueryResponse:
     """Final response after specialist contributions merged in assemble_response."""
     requested = normalized_requested_attributes(query.requested_attributes)
     records = shape_results(merged_records, requested)

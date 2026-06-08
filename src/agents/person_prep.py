@@ -7,12 +7,12 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from models.state import Person
+from models.state import SeedRecord
 
 
-def ensure_id(person: Person) -> Person:
+def ensure_id(record: SeedRecord) -> SeedRecord:
     """Assign a stable id when preparing a new core record (legacy addition path)."""
-    if person.id:
-        return person
-    slug = person.name.lower().replace(" ", "-")
-    return person.model_copy(update={"id": f"person-{slug}-{uuid4().hex[:6]}"})
+    if record.id:
+        return record
+    slug = record.name.lower().replace(" ", "-")
+    return record.model_copy(update={"id": f"record-{slug}-{uuid4().hex[:6]}"})

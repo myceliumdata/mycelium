@@ -18,8 +18,9 @@ os.environ["MYCELIUM_USE_SYNC_CHECKPOINTER"] = "1"
 
 from agents.runtime import refresh_runtime_from_disk
 from graphs.core import run_query
-from models.state import Person, PersonQuery, PersonResponse
+from models.state import EntityQuery, QueryResponse, SeedRecord
 from storage.core import get_storage
+
 
 def _build_mcp_instructions(
     *,
@@ -27,8 +28,8 @@ def _build_mcp_instructions(
     network_display_name: str | None = None,
 ) -> str:
     text = (
-        "Mycelium manages AI-native CRM person data (core fields: id, name, employer). "
-        "Use query_person for lookups. Responses are PersonResponse JSON with results, "
+        "Mycelium manages AI-native network entity data (core fields: id, name, employer). "
+        "Use query_entity for lookups. Responses are QueryResponse JSON with results, "
         "message, debug, trace_id (LangSmith when tracing is on), and thread_id. "
         "Optional thread_id in the request JSON is echoed in the response. "
         "Non-core attribute requests return seed identity in results plus specialist status in message. "
@@ -56,8 +57,8 @@ def _build_mcp_instructions(
 
 mcp = FastMCP("Mycelium", instructions=_build_mcp_instructions())
 
-# Seed person used for optional internal ping in health_check (no caller input).
-_HEALTH_PING_PERSON_KEY = "Nichanan Kesonpat"
+# Seed record used for optional internal ping in health_check (no caller input).
+_HEALTH_PING_ENTITY_KEY = "Nichanan Kesonpat"
 
 
 def _network_health_info() -> dict[str, str | None]:
@@ -98,11 +99,11 @@ def _bootstrap() -> None:
     )
 
 
-def _parse_query_payload(query_json: str) -> tuple[PersonQuery, str]:
+def _parse_query_payload(query_json: str) -> tuple[EntityQuery, str]:
     """
-    Parse MCP query JSON into a PersonQuery and thread id.
+    Parse MCP query JSON into an EntityQuery and thread id.
 
-    Accepts an optional top-level ``thread_id`` (not part of PersonQuery). When omitted,
+    Accepts an optional top-level ``thread_id`` (not part of EntityQuery). When omitted,
     a new UUID is generated for this invocation.
     """
     data: Any = json.loads(query_json)
@@ -111,18 +112,25 @@ def _parse_query_payload(query_json: str) -> tuple[PersonQuery, str]:
         raise ValueError(msg)
 
     thread_id = data.pop("thread_id", None)
-    query = PersonQuery.model_validate(data)
+    query = EntityQuery.model_validate(data)
     resolved_thread = thread_id if isinstance(thread_id, str) and thread_id else str(uuid.uuid4())
     return query, resolved_thread
 
 
-def _serialize_response(response: PersonResponse) -> str:
-    """Return PersonResponse JSON including trace_id and thread_id."""
+def _serialize_response(response: QueryResponse) -> str:
+    """Return QueryResponse JSON including trace_id and thread_id."""
     return response.model_dump_json(indent=2)
 
 
+def _neutral_json_schema(model: type[EntityQuery] | type[QueryResponse] | type[SeedRecord]) -> dict[str, Any]:
+    """Export JSON Schema with network-neutral titles (no legacy person-centric labels)."""
+    schema = model.model_json_schema()
+    schema["title"] = model.__name__
+    return schema
+
+
 def _execute_mcp_query(query_json: str) -> str:
-    """Run a query and serialize PersonResponse JSON (no bootstrap or runtime refresh)."""
+    """Run a query and serialize QueryResponse JSON (no bootstrap or runtime refresh)."""
     query, thread_id = _parse_query_payload(query_json)
     try:
         response = run_query(query, thread_id=thread_id)
@@ -137,13 +145,13 @@ def _execute_mcp_query(query_json: str) -> str:
             reset_core_graph()
         except Exception:
             pass
-        # Return a valid PersonResponse-shaped JSON so the MCP protocol
+        # Return a valid QueryResponse-shaped JSON so the MCP protocol
         # doesn't see a hard tool failure.
         return json.dumps(
             {
                 "results": [],
                 "message": f"Query failed internally: {exc}",
-                "debug": f"error_type={type(exc).__name__}; person_key={query.person_key!r}",
+                "debug": f"error_type={type(exc).__name__}; entity_key={query.entity_key!r}",
                 "trace_id": None,
                 "thread_id": thread_id,
             },
@@ -181,13 +189,13 @@ def _routing_payload() -> dict[str, Any]:
 
 
 @mcp.tool
-def query_person(query_json: str) -> str:
+def query_entity(query_json: str) -> str:
     """
-    Query a person by id or name.
+    Query a seed record by id or name.
 
-    Request JSON (PersonQuery fields plus optional thread_id):
+    Request JSON (EntityQuery fields plus optional thread_id):
     {
-      "person_key": "Nichanan Kesonpat",
+      "entity_key": "Nichanan Kesonpat",
       "requested_attributes": ["email"],
       "thread_id": "optional-conversation-id"
     }
@@ -249,7 +257,7 @@ def health_check() -> str:
 
         try:
             ping_raw = _execute_mcp_query(
-                json.dumps({"person_key": _HEALTH_PING_PERSON_KEY}),
+                json.dumps({"entity_key": _HEALTH_PING_ENTITY_KEY}),
             )
             ping = json.loads(ping_raw)
             if ping.get("results"):
@@ -315,16 +323,22 @@ def health_check() -> str:
         )
 
 
-@mcp.resource("mycelium://schema/person")
-def person_schema() -> str:
-    """JSON schema for core Person records."""
-    return json.dumps(Person.model_json_schema(), indent=2)
+@mcp.resource("mycelium://schema/seed-record")
+def seed_record_schema() -> str:
+    """JSON schema for core SeedRecord identity fields."""
+    return json.dumps(_neutral_json_schema(SeedRecord), indent=2)
 
 
-@mcp.resource("mycelium://schema/person-response")
-def person_response_schema() -> str:
-    """JSON schema for PersonResponse (includes trace_id and thread_id)."""
-    return json.dumps(PersonResponse.model_json_schema(), indent=2)
+@mcp.resource("mycelium://schema/entity-query")
+def entity_query_schema() -> str:
+    """JSON schema for EntityQuery (public lookup request)."""
+    return json.dumps(_neutral_json_schema(EntityQuery), indent=2)
+
+
+@mcp.resource("mycelium://schema/query-response")
+def query_response_schema() -> str:
+    """JSON schema for QueryResponse (includes trace_id and thread_id)."""
+    return json.dumps(_neutral_json_schema(QueryResponse), indent=2)
 
 
 def run_server() -> None:

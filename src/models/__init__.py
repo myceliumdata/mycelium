@@ -1,17 +1,17 @@
 """Pydantic models and shared types."""
 
 from models.state import (
+    EntityQuery,
     MyceliumGraphState,
-    Person,
-    PersonQuery,
-    PersonResponse,
+    QueryResponse,
+    SeedRecord,
     normalized_requested_attributes,
 )
 
 __all__ = [
+    "EntityQuery",
     "MyceliumGraphState",
-    "Person",
-    "PersonQuery",
-    "PersonResponse",
+    "QueryResponse",
+    "SeedRecord",
     "normalized_requested_attributes",
 ]

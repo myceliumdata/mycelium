@@ -32,7 +32,7 @@ from agents.dispatch import (
     invoke_specialists_node,
 )
 from agents.supervisor import supervisor_agent
-from models.state import MyceliumGraphState, PersonQuery, PersonResponse
+from models.state import EntityQuery, MyceliumGraphState, QueryResponse
 
 DEFAULT_CHECKPOINT_PATH = Path("data/checkpoints.sqlite")
 
@@ -40,9 +40,9 @@ DEFAULT_CHECKPOINT_PATH = Path("data/checkpoints.sqlite")
 # type models.state.*" warnings when resuming threads).
 _CHECKPOINT_MSGPACK_ALLOWLIST: tuple[tuple[str, str], ...] = (
     ("models.state", "MyceliumGraphState"),
-    ("models.state", "Person"),
-    ("models.state", "PersonQuery"),
-    ("models.state", "PersonResponse"),
+    ("models.state", "SeedRecord"),
+    ("models.state", "EntityQuery"),
+    ("models.state", "QueryResponse"),
 )
 
 AfterSupervisor = Literal["build_context", "assemble_response"]
@@ -332,11 +332,11 @@ def _invoke_sync_graph(
 
 
 def _finalize_response(
-    response: PersonResponse,
+    response: QueryResponse,
     *,
     thread_id: str,
     trace_id: str | None,
-) -> PersonResponse:
+) -> QueryResponse:
     """Ensure caller thread_id and captured trace_id are on the outbound response."""
     if response.thread_id == thread_id and response.trace_id == trace_id:
         return response
@@ -349,14 +349,14 @@ def _finalize_response(
 
 
 def run_query(
-    query: PersonQuery,
+    query: EntityQuery,
     *,
     thread_id: str = "default",
-) -> PersonResponse:
+) -> QueryResponse:
     """Invoke the core graph and return a JSON-serializable response.
 
     The LangSmith trace Input always contains a ``query`` section (a query-only
-    ``PersonQuery``). Supervisor plans specialists; graph nodes build context, invoke, assemble.
+    ``EntityQuery``). Supervisor plans specialists; graph nodes build context, invoke, assemble.
     """
     graph = get_core_graph()
     initial = MyceliumGraphState(
@@ -383,7 +383,7 @@ def run_query(
             trace_id=captured_trace_id,
         )
 
-    return PersonResponse(
+    return QueryResponse(
         results=[],
         message="Graph finished without a response payload.",
         debug="No response set by assemble_response.",

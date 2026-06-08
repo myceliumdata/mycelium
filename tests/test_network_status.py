@@ -307,8 +307,8 @@ def test_status_person_drill_down(
         encoding="utf-8",
     )
 
-    summary = build_network_status(person_key="Andrea Kalmans", category_filter="contact")
+    summary = build_network_status(entity_key="Andrea Kalmans", category_filter="contact")
     demo = format_status_demo(summary)
-    assert "Person lookup:" in demo
+    assert "Entity lookup:" in demo
     assert "email (contact/contact_specialist): pending" in demo
-    assert summary.person_matches == 1
+    assert summary.entity_matches == 1

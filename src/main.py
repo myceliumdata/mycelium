@@ -19,7 +19,7 @@ from rich.json import JSON
 os.environ["MYCELIUM_USE_SYNC_CHECKPOINTER"] = "1"
 
 from graphs.core import reset_core_graph, run_query
-from models.state import PersonQuery, PersonResponse
+from models.state import EntityQuery, QueryResponse
 from network.create import create_network
 from network.ontology import OntologyGenerationError
 from network.introspection import (
@@ -61,8 +61,8 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Mycelium core graph CLI")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    query_cmd = sub.add_parser("query", help="Query a person (JSON response)")
-    query_cmd.add_argument("--person-key", required=True, help="Id, email, or name")
+    query_cmd = sub.add_parser("query", help="Query a seed record (JSON response)")
+    query_cmd.add_argument("--entity-key", required=True, help="Id, email, or name")
     query_cmd.add_argument(
         "--attributes",
         nargs="*",
@@ -141,10 +141,10 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Filter to one ontology category",
     )
     status_cmd.add_argument(
-        "--person",
+        "--entity",
         default=None,
         metavar="KEY",
-        help="Drill down to one seed person (name or id)",
+        help="Drill down to one seed record (name or id)",
     )
     status_cmd.add_argument(
         "--verbose",
@@ -248,8 +248,8 @@ def _resolve_thread_id(cli_thread_id: str | None) -> str:
     return cli_thread_id if cli_thread_id else str(uuid.uuid4())
 
 
-def _print_response(response: PersonResponse) -> None:
-    """Print full PersonResponse JSON including trace_id and thread_id.
+def _print_response(response: QueryResponse) -> None:
+    """Print full QueryResponse JSON including trace_id and thread_id.
     If trace_id is present, also print a direct LangSmith trace URL using the helper.
     """
     console.print(JSON(response.model_dump_json(indent=2)))
@@ -314,7 +314,7 @@ def _run_network_command(args: argparse.Namespace) -> int:
                 )
                 summary = build_network_status(
                     category_filter=args.category,
-                    person_key=args.person,
+                    entity_key=args.entity,
                 )
             except (ValueError, FileNotFoundError) as exc:
                 console.print(f"[red]Error:[/red] {exc}")
@@ -404,8 +404,8 @@ def main(argv: list[str] | None = None) -> int:
 
         thread_id = _resolve_thread_id(args.thread_id)
 
-        query = PersonQuery(
-            person_key=args.person_key,
+        query = EntityQuery(
+            entity_key=args.entity_key,
             requested_attributes=list(args.attributes),
         )
         response = run_query(query, thread_id=thread_id)

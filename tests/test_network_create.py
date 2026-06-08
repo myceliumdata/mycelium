@@ -11,7 +11,7 @@ import pytest
 from agents.classification.models import Category, CategoryTreeData
 from agents.registry import RegisteredAgent
 from graphs.core import reset_core_graph, run_query
-from models.state import PersonQuery
+from models.state import EntityQuery
 from network.create import create_network
 from network.ontology import SkeletonOntologyResult
 from network.paths import NetworkPaths, apply_network_paths
@@ -368,8 +368,8 @@ def test_create_network_query_uses_custom_ontology_not_crm_fallback(
     assert set(categories_on_disk["categories"].keys()).isdisjoint(_CRM_SIX)
 
     response = run_query(
-        PersonQuery(
-            person_key="Query Person",
+        EntityQuery(
+            entity_key="Query Person",
             requested_attributes=["signal_strength"],
         ),
         thread_id="network-create-integration",

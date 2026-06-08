@@ -5,7 +5,7 @@
 **Current reality (June 2026):**
 
 - **Networks:** Framework repo + user-chosen **`network_root`** paths. Committed CRM example at `examples/networks/crm/`; bootstrap with `./bin/refresh-example-network crm`. See `docs/plans/networks-terminology.md`.
-- **Public API** = queries only (`PersonQuery`: `person_key`, `requested_attributes`). No CLI `ingest`, no MCP `submit_person_data`, no `provided_data`.
+- **Public API** = queries only (`EntityQuery`: `entity_key`, `requested_attributes`). No CLI `ingest`, no MCP `submit_person_data`, no `provided_data`.
 - **Graph:** `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` (or direct assemble for name-only / not found). Identity from `agents.seed` + specialist storage.
 - **Legacy on disk:** `core_data`, `core_identity`, `enrich`/`validator`/`person_prep` — unwired; not in the public graph.
 - See `docs/architecture.md` for the authoritative architecture; this doc is a walkthrough.
@@ -33,10 +33,10 @@ From `docs/architecture.md` and `prompts/system/CORE_PROMPT.md`:
 
 ## 3. Data model & contracts (`src/models/state.py`)
 
-- **`Person`**: `id`, `name`, `employer` only.
-- **`PersonQuery`** (query-only): `person_key`, `requested_attributes`. No `provided_data`.
-- **`PersonResponse`**: `results`, `message`, `debug`, `trace_id`, `thread_id`.
-- **`MyceliumGraphState`**: `query` required at input; internal fields (`route`, `person`, `response`, `audit_log`, classifications, etc.).
+- **`SeedRecord`**: `id`, `name`, `employer` only.
+- **`EntityQuery`** (query-only): `entity_key`, `requested_attributes`. No `provided_data`.
+- **`QueryResponse`**: `results`, `message`, `debug`, `trace_id`, `thread_id`.
+- **`MyceliumGraphState`**: `query` required at input; internal fields (`route`, `seed_record`, `response`, `audit_log`, classifications, etc.).
 
 ---
 
@@ -45,7 +45,7 @@ From `docs/architecture.md` and `prompts/system/CORE_PROMPT.md`:
 | Surface | Commands / tools |
 |---------|------------------|
 | **CLI** | `mycelium query`, `mycelium network …`, `mycelium seed` (legacy SQLite load) |
-| **MCP** | `query_person`, `list_specialist_routing`, `health_check`; schemas via resources |
+| **MCP** | `query_entity`, `list_specialist_routing`, `health_check`; schemas via resources |
 | **Studio** | `langgraph dev` via `./bin/run-studio` + optional ngrok |
 
 Both CLI and MCP call `graphs.core.run_query` after resolving `network_root` (CLI per invocation; MCP at bootstrap + reload).
@@ -62,7 +62,7 @@ Package: `mycelium_mcp` (renamed from `mcp` to avoid SDK collision).
 - **Supervisor** resolves seed matches, classifies attributes, plans specialist invocations.
 - **build_context** unions seed + specialist storage for matched person id(s).
 - **invoke_specialists** runs generated specialists (sync research on cache miss when keys set).
-- **assemble_response** builds unified `PersonResponse`.
+- **assemble_response** builds unified `QueryResponse`.
 - **Checkpointer:** async path (Studio); sync path forced for MCP/CLI (`MYCELIUM_USE_SYNC_CHECKPOINTER`).
 
 ---
@@ -71,7 +71,7 @@ Package: `mycelium_mcp` (renamed from `mcp` to avoid SDK collision).
 
 - Reads `<network_root>/seed.json` (env `MYCELIUM_SEED_PATH` after path resolver runs).
 - Assigns stable UUID per row (uuid5 from name|employer); file holds name + employer only.
-- `find_by_key(person_key)` — by UUID or exact name (0..N for ambiguous names).
+- `find_by_key(entity_key)` — by UUID or exact name (0..N for ambiguous names).
 
 Committed example: `examples/networks/crm/seed.json`.
 
@@ -105,12 +105,12 @@ Paths resolve under active `network_root` via `src/network/paths.py`.
 ## 10. Query flow (end-to-end)
 
 ```
-CLI/MCP → resolve network_root → PersonQuery → run_query → graph.ainvoke
+CLI/MCP → resolve network_root → EntityQuery → run_query → graph.ainvoke
   → supervisor
   → build_context (if specialists needed)
   → invoke_specialists
   → assemble_response
-  → PersonResponse (+ thread_id, trace_id)
+  → QueryResponse (+ thread_id, trace_id)
 ```
 
 ---
@@ -136,7 +136,7 @@ From `TODO.md`:
 ## Mental model
 
 ```
-External (CLI/MCP) → network_root → PersonQuery → run_query → LangGraph
+External (CLI/MCP) → network_root → EntityQuery → run_query → LangGraph
   → supervisor → specialists → assemble_response
 Seed (seed.json) + Specialist storage (agents/<category>/) under network_root
 ```

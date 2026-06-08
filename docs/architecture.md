@@ -53,7 +53,7 @@ This is a deliberate departure from earlier thinking that treated the core CRM t
 
 ### Public interface: query-only (June 2026)
 
-The **CLI** (`query`, `seed`) and **MCP** (`query_person`, `list_specialist_routing`) expose **lookups only**. `PersonQuery` has `person_key` and optional `requested_attributes` — no `provided_data` on the public model.
+The **CLI** (`query`, `seed`) and **MCP** (`query_entity`, `list_specialist_routing`) expose **lookups only**. `EntityQuery` has `entity_key` and optional `requested_attributes` — no `provided_data` on the public model.
 
 Data addition via the public API was removed in the June 2026 refactor (tasks 1000–1050). It will return later as **internal agent coordination**, not as a direct caller-supplied payload.
 
@@ -77,7 +77,7 @@ START → supervisor → build_context → invoke_specialists → assemble_respo
 
 - **build_context** (`src/agents/context.py`) — union of seed + all specialist storage for the matched `id`(s).
 - **invoke_specialists** — each required specialist receives full `context`, `current_id`, and `target_fields` (owned attributes only).
-- **assemble_response** — unified `PersonResponse` from seed identity + specialist contributions.
+- **assemble_response** — unified `QueryResponse` from seed identity + specialist contributions.
 
 Generated specialists (`src/agents/specialists/*_specialist.py`, Agent Factory template) implement three scenarios: has data, **synchronous** field research on cache miss (when `OPENAI_API_KEY` + `TAVILY_API_KEY` are set), or pending / N/A. Research runs via `tools.research.run_field_research` and Tavily `web_search` (`src/tools/tavily.py`). See `docs/plans/seed-data-context-architecture.md`, `docs/plans/specialist-research-phase1.md`, and Cursor slices `2026-06-09-1100`–`1400`.
 
@@ -87,10 +87,10 @@ Legacy **enrich**, **validator**, **person_prep**, and **core_identity** remain 
 
 ## Current Data Model (Phase 1 — Strictly Minimal Core)
 
-The core `Person` record is deliberately tiny:
+The core `SeedRecord` record is deliberately tiny:
 
 ```python
-class Person(BaseModel):
+class SeedRecord(BaseModel):
     id: str
     name: str
     employer: str | None = None
@@ -99,7 +99,7 @@ class Person(BaseModel):
 **Identity rules:**
 - Seed file provides `name`, `employer` only; runtime and public `results["id"]` use the stable UUID from the seed loader (`agents/seed.py`).
 - `name` and `employer` are specialist-owned like any other attribute when requested (no privileged core filter).
-- There is no `extra` field on `Person`.
+- There is no `extra` field on `SeedRecord`.
 
 ---
 
@@ -175,7 +175,7 @@ Users download the **framework** (this repo: `src/`, `bin/`, docs, tests) and ru
 
 CLI and MCP call `load_dotenv()` at startup from the **framework** working directory. **`MYCELIUM_NETWORK_ROOT`** / **`MYCELIUM_NETWORK`** select which data directory to use; they do not hold secrets. Launching or registering a network does **not** copy or create a `.env` inside `network_root`.
 
-**MCP:** `cwd` = framework repo; per-server `env` sets only network selection (plus the same shared API keys as other servers on that host). Person lookups use **`person_key`** against that network’s seed and specialist storage — not env vars.
+**MCP:** `cwd` = framework repo; per-server `env` sets only network selection (plus the same shared API keys as other servers on that host). Person lookups use **`entity_key`** against that network’s seed and specialist storage — not env vars.
 
 Future (not v1): per-network LangSmith project names, optional credential profiles — see `TODO.md`.
 
@@ -183,23 +183,23 @@ Future (not v1): per-network LangSmith project names, optional credential profil
 
 ## Public query flow (current)
 
-Core storage holds only `id`, `name`, and `employer`. Callers send a query-only **`PersonQuery`** (`person_key`, optional `requested_attributes`). The graph state always includes `MyceliumGraphState.query`; LangSmith trace input therefore always shows a `query` section even for internal-only operations.
+Core storage holds only `id`, `name`, and `employer`. Callers send a query-only **`EntityQuery`** (`entity_key`, optional `requested_attributes`). The graph state always includes `MyceliumGraphState.query`; LangSmith trace input therefore always shows a `query` section even for internal-only operations.
 
 ### Flow summary
 
 | Intent | What the caller sends | Graph path (current / target) | What comes back |
 |--------|----------------------|-------------------------------|-----------------|
-| **Lookup (found)** | `person_key` only | `supervisor` → `assemble_response` (seed) | `results`: identity dict(s) from seed; `message`: "Found record for …" |
-| **Lookup (miss)** | unknown `person_key` | `supervisor` → `assemble_response` | `results`: `[]`; not-found `message` |
-| **Non-core attrs** | `person_key` + attrs | `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` | `results`: `id` + requested attrs (merged); `message`: provisional seed / specialist status |
+| **Lookup (found)** | `entity_key` only | `supervisor` → `assemble_response` (seed) | `results`: identity dict(s) from seed; `message`: "Found record for …" |
+| **Lookup (miss)** | unknown `entity_key` | `supervisor` → `assemble_response` | `results`: `[]`; not-found `message` |
+| **Non-core attrs** | `entity_key` + attrs | `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` | `results`: `id` + requested attrs (merged); `message`: provisional seed / specialist status |
 
 ### Response fields (query outcomes)
 
-All external responses use the minimalist **`PersonResponse`** (`results`, `message`, `debug`, `trace_id`, `thread_id`):
+All external responses use the minimalist **`QueryResponse`** (`results`, `message`, `debug`, `trace_id`, `thread_id`):
 
 - **`results`** — One dict per match. Always includes `"id"` (stable UUID). With no `requested_attributes`: `id`, `name`, `employer`. With `requested_attributes`: `id` plus only those keys after specialist-first merge (specialist value wins; seed provisional while pending). No `person_id` field.
 - **`message`** — Primary channel: found / not-found / specialist attribute status (no "core record" wording).
-- **`debug`** — Internal context (original `person_key`, `requested_attributes`, outcome tags). Callers should not depend on it.
+- **`debug`** — Internal context (original `entity_key`, `requested_attributes`, outcome tags). Callers should not depend on it.
 - **`trace_id`** — LangSmith trace identifier for this graph invocation when `LANGCHAIN_TRACING_V2` is enabled; otherwise `null`. Lets operators and developers jump from a JSON response to the matching trace in LangSmith for debugging. When creating your LangSmith API key, select **Personal Access Token (PAT)** (prefix `lsv2_pt_`). `LANGCHAIN_PROJECT` (default "mycelium") names the tracing project in the LangSmith UI — it will be created automatically on first use; no manual pre-creation required. See README.md for full setup steps.
 - **`thread_id`** — Conversation/session identifier for this request. CLI and MCP callers may pass a stable `thread_id` to tie follow-up queries to the same LangGraph checkpoint thread; when omitted, the runtime generates one per invocation.
 
@@ -209,7 +209,7 @@ There is no separate `DataRequest` model or `status` enum — outcome is conveye
 
 ### Future work: re-adding core data addition
 
-Public ingest (CLI `ingest`, MCP `submit_person_data`, `PersonQuery.provided_data`, enrich/validator loop) was removed June 2026. Planned return:
+Public ingest (CLI `ingest`, MCP `submit_person_data`, `EntityQuery.provided_data`, enrich/validator loop) was removed June 2026. Planned return:
 
 - Internal coordination via specialist agents (including seed/specialist persist paths).
 - No restoration of the old single-step public `provided_data` handshake without a new design review.

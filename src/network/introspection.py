@@ -35,7 +35,7 @@ class SpecialistSummary:
 
 
 @dataclass(frozen=True)
-class PersonFieldStatus:
+class EntityFieldStatus:
     field: str
     category: str
     agent: str
@@ -53,9 +53,9 @@ class NetworkStatusSummary:
     ontology_message: str
     categories: list[CategorySummary] = field(default_factory=list)
     specialists: list[SpecialistSummary] = field(default_factory=list)
-    person_key: str | None = None
-    person_matches: int = 0
-    person_fields: list[PersonFieldStatus] = field(default_factory=list)
+    entity_key: str | None = None
+    entity_matches: int = 0
+    entity_fields: list[EntityFieldStatus] = field(default_factory=list)
 
 
 def _paths() -> NetworkPaths:
@@ -238,14 +238,14 @@ def _specialist_summaries(
     return summaries
 
 
-def _person_field_statuses(
+def _entity_field_statuses(
     paths: NetworkPaths,
-    person_id: str,
+    record_id: str,
     agent_map: dict[str, str],
     *,
     category_filter: str | None,
-) -> list[PersonFieldStatus]:
-    statuses: list[PersonFieldStatus] = []
+) -> list[EntityFieldStatus]:
+    statuses: list[EntityFieldStatus] = []
     seen_categories: set[str] = set()
     for agent_name, category in sorted(agent_map.items(), key=lambda item: item[1]):
         if category_filter and category != category_filter:
@@ -263,7 +263,7 @@ def _person_field_statuses(
         records = payload.get("records", {}) if isinstance(payload, dict) else {}
         if not isinstance(records, dict):
             continue
-        record = records.get(person_id)
+        record = records.get(record_id)
         if not isinstance(record, dict):
             continue
         for field_name, value in sorted(record.items()):
@@ -278,7 +278,7 @@ def _person_field_statuses(
                 status = "found"
                 display_value = str(value)
             statuses.append(
-                PersonFieldStatus(
+                EntityFieldStatus(
                     field=field_name,
                     category=category,
                     agent=agent_name,
@@ -292,7 +292,7 @@ def _person_field_statuses(
 def build_network_status(
     *,
     category_filter: str | None = None,
-    person_key: str | None = None,
+    entity_key: str | None = None,
 ) -> NetworkStatusSummary:
     """Build a read-only snapshot of the active network."""
     paths = _paths()
@@ -309,13 +309,13 @@ def build_network_status(
     registry_agents = _read_registry_agents(paths)
     agent_map = _agent_category_map(categories_doc, registry_agents)
 
-    person_fields: list[PersonFieldStatus] = []
-    person_matches = 0
-    if person_key:
-        matches = find_by_key(person_key)
-        person_matches = len(matches)
+    entity_fields: list[EntityFieldStatus] = []
+    entity_matches = 0
+    if entity_key:
+        matches = find_by_key(entity_key)
+        entity_matches = len(matches)
         if len(matches) == 1:
-            person_fields = _person_field_statuses(
+            entity_fields = _entity_field_statuses(
                 paths,
                 matches[0]["id"],
                 agent_map,
@@ -335,9 +335,9 @@ def build_network_status(
             agent_map,
             category_filter=category_filter,
         ),
-        person_key=person_key,
-        person_matches=person_matches,
-        person_fields=person_fields,
+        entity_key=entity_key,
+        entity_matches=entity_matches,
+        entity_fields=entity_fields,
     )
 
 
@@ -377,26 +377,26 @@ def format_category_examples(category_name: str, examples: list[str] | tuple[str
     return f"{category_name} (e.g., {items[0]}, {items[1]}, …)"
 
 
-def _format_person_drill_down(summary: NetworkStatusSummary) -> list[str]:
-    if not summary.person_key:
+def _format_entity_drill_down(summary: NetworkStatusSummary) -> list[str]:
+    if not summary.entity_key:
         return []
     lines = [
-        f"Person lookup: {summary.person_key!r} ({summary.person_matches} match(es))",
+        f"Entity lookup: {summary.entity_key!r} ({summary.entity_matches} match(es))",
     ]
-    if summary.person_matches == 0:
+    if summary.entity_matches == 0:
         lines.append("  No seed match.")
-    elif summary.person_matches > 1:
+    elif summary.entity_matches > 1:
         lines.append("  Multiple seed matches — narrow the key.")
-    elif summary.person_fields:
+    elif summary.entity_fields:
         lines.append("  Fields:")
-        for item in summary.person_fields:
+        for item in summary.entity_fields:
             value = f" value={item.value!r}" if item.value else ""
             lines.append(
                 f"    {item.field} ({item.category}/{item.agent}): "
                 f"{item.status}{value}",
             )
     else:
-        lines.append("  No specialist storage for this person yet.")
+        lines.append("  No specialist storage for this record yet.")
     return lines
 
 
@@ -424,8 +424,8 @@ def format_status_demo(summary: NetworkStatusSummary) -> str:
     else:
         lines.append("Existing specialists: ❌")
 
-    if summary.person_key:
-        lines.extend(_format_person_drill_down(summary))
+    if summary.entity_key:
+        lines.extend(_format_entity_drill_down(summary))
     return "\n".join(lines)
 
 
@@ -466,7 +466,7 @@ def format_status_verbose(summary: NetworkStatusSummary) -> str:
     else:
         lines.append("Specialists: none registered")
 
-    lines.extend(_format_person_drill_down(summary))
+    lines.extend(_format_entity_drill_down(summary))
     return "\n".join(lines)
 
 

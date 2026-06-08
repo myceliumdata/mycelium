@@ -16,7 +16,7 @@ import sqlite3
 from pathlib import Path
 
 from agents.seed import _assign_id
-from models.state import Person
+from models.state import SeedRecord
 
 DEFAULT_DB_PATH = Path("data/mycelium.db")
 DEFAULT_SEED_PATH = Path("data/seed.json")
@@ -56,7 +56,7 @@ class CoreStorage:
         inserted = 0
         for row in people:
             pid = row.get("id") or _assign_id(row)
-            person = Person.model_validate(
+            person = SeedRecord.model_validate(
                 {
                     "id": pid,
                     "name": row["name"],
@@ -67,7 +67,7 @@ class CoreStorage:
                 inserted += 1
         return inserted
 
-    def upsert_person(self, person: Person, *, on_conflict: str = "replace") -> bool:
+    def upsert_person(self, person: SeedRecord, *, on_conflict: str = "replace") -> bool:
         """Insert or update a person. Returns False if ignored on conflict."""
         existing = self.get_person_by_id(person.id)
         if existing and on_conflict == "ignore":
@@ -86,14 +86,14 @@ class CoreStorage:
         self._conn.commit()
         return True
 
-    def get_person_by_id(self, record_id: str) -> Person | None:
+    def get_person_by_id(self, record_id: str) -> SeedRecord | None:
         row = self._conn.execute(
             "SELECT * FROM people WHERE id = ?",
             (record_id,),
         ).fetchone()
         return self._row_to_person(row) if row else None
 
-    def find_persons(self, person_key: str) -> list[Person]:
+    def find_persons(self, person_key: str) -> list[SeedRecord]:
         """Resolve by id or exact name (case-insensitive).
 
         Id match returns zero or one person. Name match may return multiple records
@@ -111,8 +111,8 @@ class CoreStorage:
         return [self._row_to_person(row) for row in rows]
 
     @staticmethod
-    def _row_to_person(row: sqlite3.Row) -> Person:
-        return Person(
+    def _row_to_person(row: sqlite3.Row) -> SeedRecord:
+        return SeedRecord(
             id=row["id"],
             name=row["name"],
             employer=row["employer"],

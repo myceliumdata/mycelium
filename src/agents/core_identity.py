@@ -7,7 +7,7 @@ logic fully lives in the specialist node.
 
 from __future__ import annotations
 
-from models.state import Person
+from models.state import SeedRecord
 from storage.core import CoreStorage, get_storage
 
 
@@ -20,13 +20,13 @@ class CoreIdentity:
     def _resolve_storage(self) -> CoreStorage:
         return self._storage if self._storage is not None else get_storage()
 
-    def find_by_key(self, person_key: str) -> list[Person]:
-        """Resolve zero or more persons by id or name (case-insensitive name match)."""
-        return self._resolve_storage().find_persons(person_key)
+    def find_by_key(self, entity_key: str) -> list[SeedRecord]:
+        """Resolve zero or more seed records by id or name (case-insensitive name match)."""
+        return self._resolve_storage().find_persons(entity_key)
 
-    def persist(self, person: Person) -> None:
-        """Upsert a validated core person record."""
-        self._resolve_storage().upsert_person(person)
+    def persist(self, record: SeedRecord) -> None:
+        """Upsert a validated core seed record."""
+        self._resolve_storage().upsert_person(record)
 
 
 _core_identity: CoreIdentity | None = None

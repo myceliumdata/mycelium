@@ -50,7 +50,7 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 2 
 ### Hands-on verification — **done** (June 2026)
 
 - [x] **CLI demo runbook** — `refresh-example-network crm`, `network status`, query regression.
-- [x] **MCP** — `mycelium-crm` config, `health_check`, `query_person` (MCP visiting-agent surface queued separately).
+- [x] **MCP** — `mycelium-crm` config, `health_check`, `query_entity` (MCP visiting-agent surface queued separately).
 
 ---
 
@@ -99,7 +99,8 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 2 
 ### Protocol & conversation
 
 - [ ] **Remove `list_specialist_routing` from MCP** — ontology/specialist introspection lives in CLI `network status`, admin daemon (slice 3), filesystem, and graphical UI (slice 4); drop the public `@mcp.tool`, keep `_routing_payload()` for `health_check` only; update README, architecture docs, and tests.
-- [ ] **MCP onboarding for visiting agents** — `describe_network` composes **guide.md** (author) + **ontology** (auto) + **policy** (framework). **Schema neutralization (locked):** full rename (option B) — `SeedRecord`, `EntityQuery`, `entity_key`, `QueryResponse`, MCP `query_entity`; resources `seed-record`, `entity-query`, `query-response`; no backward-compat aliases (Paul only client). `SeedRecord` transitional until generic seed. Generic seed file shape stays in **Non-person seed schemas**. **Query-time messages (locked):** partition attrs into found / researching / unavailable / out_of_scope; verbose category + specialist spin-up in `message`; values in `results` only; v1 collective message when multiple seed matches (see revisit item below).
+- [ ] **MCP onboarding for visiting agents** — slices **2** (`1400` guide + `describe_network`), **3** (`1500` query messages), then **4 polish** (below). **Slice 1 committed** (`1300` entity rename, `1350` specialist fixup): `SeedRecord`, `EntityQuery`, `entity_key`, `QueryResponse`, `query_entity`.
+- [ ] **MCP onboarding polish (slice 4, after 2–3)** — nits from slice 1 reviews: sweep stale `PersonQuery`/`person_key` in `TODO.md` + open items; stabilize or document `test_langsmith_utils` env flake; optional `test_specialist_entity_vocab` direct import of framework `*_specialist.py` on disk; decide whether to commit `examples/networks/crm/specialists/` reference copies (refresh skips `specialists/`); scrub stray runtime artifacts under `examples/networks/crm/` if committed; optional rename internal `find_by_key(person_key)` param; deepen `_neutral_json_schema` descriptions if any “person” leaks remain.
 - [ ] **Per-record query messages (multi-match)** — v1 keeps collective `message` when `entity_key` matches multiple seed records (e.g. two Kevin Zhangs); agent disambiguates via `results`. Revisit when non-person or other domains need per-record status in `message` (different attrs per match, async research diverging per id).
 - [ ] **Thread checkpoint: new query on same `thread_id`** — reusing a `thread_id` with different `requested_attributes` can replay the prior `PersonResponse` (stale `response` in LangGraph checkpoint; `assemble_response` short-circuits). Awkward for multi-turn: new attributes on the same thread should re-run the graph and merge fresh results while reusing specialist cache. Clear or rebuild `response` when `PersonQuery` changes; add regression test (email then address, same thread).
 - [ ] **Long-running threads** — suspend and ask client for clarification (`thread_id` + checkpoints; bones exist).
@@ -144,4 +145,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-08 (MCP onboarding: 3 Cursor prompts in `prompts/cursor/next/` 1300→1400→1500)
+Last updated: 2026-06-08 (MCP slice 1+fixup committed; slices 2–3 + polish queued)

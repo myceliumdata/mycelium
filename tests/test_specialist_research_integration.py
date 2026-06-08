@@ -14,13 +14,13 @@ from agents.context import reset_context_builder
 from agents.core_identity import reset_core_identity
 from agents.seed import get_seed_data, reset_seed_data
 from graphs.core import reset_core_graph, run_query
-from models.state import PersonQuery, PersonResponse
+from models.state import EntityQuery, QueryResponse
 from storage.core import CoreStorage, get_storage, reset_storage
 from tools.research import ResearchRunResult
 
 
 def _assert_single_person_assembled(
-    response: PersonResponse,
+    response: QueryResponse,
     *,
     person_name: str = "Test User",
     min_contributions: int = 1,
@@ -144,7 +144,7 @@ def test_run_query_email_returns_found_in_same_response_when_research_mocked(
     monkeypatch.setattr("tools.research.run_field_research", _fake_run_field_research)
 
     response = run_query(
-        PersonQuery(person_key="Test User", requested_attributes=["email"]),
+        EntityQuery(entity_key="Test User", requested_attributes=["email"]),
     )
 
     row = _assert_single_person_assembled(response)
@@ -193,7 +193,7 @@ def test_run_query_email_na_in_same_response_when_research_mocked(
     monkeypatch.setattr("tools.research.run_field_research", _fake_run_field_research)
 
     response = run_query(
-        PersonQuery(person_key="Test User", requested_attributes=["email"]),
+        EntityQuery(entity_key="Test User", requested_attributes=["email"]),
     )
 
     row = _assert_single_person_assembled(response)
@@ -212,7 +212,7 @@ def test_run_query_email_pending_when_research_unavailable_no_crash(
     monkeypatch.setattr("tools.research.is_research_available", lambda: False)
 
     response = run_query(
-        PersonQuery(person_key="Test User", requested_attributes=["email"]),
+        EntityQuery(entity_key="Test User", requested_attributes=["email"]),
     )
 
     row = _assert_single_person_assembled(response)

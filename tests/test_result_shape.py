@@ -1,4 +1,4 @@
-"""Smoke tests for attribute-scoped PersonResponse results (slice 1400)."""
+"""Smoke tests for attribute-scoped QueryResponse results (slice 1400)."""
 
 from __future__ import annotations
 

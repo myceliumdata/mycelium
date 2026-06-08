@@ -11,7 +11,7 @@ import pytest
 
 from agents.factory.agent_factory import get_agent_factory, reset_agent_factory
 from agents.registry import get_agent_registry, reset_agent_registry
-from models.state import MyceliumGraphState, PersonQuery
+from models.state import MyceliumGraphState, EntityQuery
 from tools.research import ResearchRunResult
 
 
@@ -80,7 +80,7 @@ def test_contact_email_sync_research_persists_found_not_pending(
     monkeypatch.setattr("tools.research.run_field_research", _fake_run_field_research)
 
     state = MyceliumGraphState(
-        query=PersonQuery(person_key="Jane Doe", requested_attributes=["email"]),
+        query=EntityQuery(entity_key="Jane Doe", requested_attributes=["email"]),
         current_id=test_id,
         context={
             "seed": {"id": test_id, "name": "Jane Doe", "employer": "Acme"},
@@ -142,7 +142,7 @@ def test_contact_pre_marks_pending_before_research_runs(
     monkeypatch.setattr("tools.research.run_field_research", _fake_run_field_research)
 
     state = MyceliumGraphState(
-        query=PersonQuery(person_key="Jane", requested_attributes=["email"]),
+        query=EntityQuery(entity_key="Jane", requested_attributes=["email"]),
         current_id=test_id,
         context={"seed": {"id": test_id, "name": "Jane", "employer": "Co"}},
         target_fields=["email"],
@@ -210,7 +210,7 @@ def test_contact_retries_pending_with_last_error(
     )
 
     state = MyceliumGraphState(
-        query=PersonQuery(person_key="Jane", requested_attributes=["email"]),
+        query=EntityQuery(entity_key="Jane", requested_attributes=["email"]),
         current_id=test_id,
         context={"seed": {"id": test_id, "name": "Jane", "employer": "Co"}},
         target_fields=["email"],
@@ -268,8 +268,8 @@ def test_contact_mixed_found_and_na_message(
     monkeypatch.setattr("tools.research.run_field_research", _no_research)
 
     state = MyceliumGraphState(
-        query=PersonQuery(
-            person_key="Jane",
+        query=EntityQuery(
+            entity_key="Jane",
             requested_attributes=["email", "phone"],
         ),
         current_id=test_id,

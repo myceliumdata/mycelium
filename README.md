@@ -19,7 +19,7 @@ cp .env.example .env
 ./bin/refresh-example-network crm
 
 # Query (uses default registered network)
-uv run mycelium query --person-key "Nichanan Kesonpat"
+uv run mycelium query --entity-key "Nichanan Kesonpat"
 ```
 
 **When to use which:**
@@ -48,19 +48,19 @@ uv run mycelium network create wheat_farm \
 
 ```bash
 # Seed identity only (name + employer from your network's seed.json)
-uv run mycelium query --person-key "Nichanan Kesonpat"
+uv run mycelium query --entity-key "Nichanan Kesonpat"
 
 # Request non-core attributes (merged into results when specialists have data)
-uv run mycelium query --person-key "Andrea Kalmans" --attributes email
+uv run mycelium query --entity-key "Andrea Kalmans" --attributes email
 
 # Stable conversation thread (echoed as thread_id in JSON)
-uv run mycelium query --person-key "Nichanan Kesonpat" --thread-id "session-abc"
+uv run mycelium query --entity-key "Nichanan Kesonpat" --thread-id "session-abc"
 
 # Explicit example path (no registry required)
-uv run mycelium query --network-dir examples/networks/crm --person-key "Nichanan Kesonpat"
+uv run mycelium query --network-dir examples/networks/crm --entity-key "Nichanan Kesonpat"
 
 # Registered network name (from ~/.config/mycelium/networks.json)
-uv run mycelium query --network crm --person-key "Andrea Kalmans"
+uv run mycelium query --network crm --entity-key "Andrea Kalmans"
 
 # Network management
 uv run mycelium network create my_net --root ~/mycelium-networks/my_net --seed ./seed.json --prompt "..."
@@ -140,11 +140,11 @@ Two networks in parallel (paths are examples):
 }
 ```
 
-**`query_person`** accepts JSON (`PersonQuery` fields plus optional top-level `thread_id`):
+**`query_entity`** accepts JSON (`EntityQuery` fields plus optional top-level `thread_id`):
 
 ```json
 {
-  "person_key": "Andrea Kalmans",
+  "entity_key": "Andrea Kalmans",
   "requested_attributes": ["email"],
   "thread_id": "optional-session-id"
 }
@@ -177,7 +177,7 @@ To drop a network entirely, remove its directory and edit `~/.config/mycelium/ne
 
 ## Response shape
 
-CLI and MCP return **`PersonResponse`** JSON:
+CLI and MCP return **`QueryResponse`** JSON:
 
 ```json
 {
@@ -204,7 +204,7 @@ CLI and MCP return **`PersonResponse`** JSON:
 ## How it works (summary)
 
 1. **Seed** — `<network_root>/seed.json` is the static origin (CRM example: 15 public-safe people). Runtime assigns stable UUIDs (`agents/seed.py`).
-2. **Supervisor** — Resolves `person_key`, classifies attributes (`categories.json` under network root — runtime only; sample shape in [`docs/examples/sample-categories.json`](docs/examples/sample-categories.json)).
+2. **Supervisor** — Resolves `entity_key`, classifies attributes (`categories.json` under network root — runtime only; sample shape in [`docs/examples/sample-categories.json`](docs/examples/sample-categories.json)).
 3. **Agent factory** — Creates specialist modules on demand (`<network_root>/specialists/*_specialist.py`; CRM reference modules also live under `src/agents/specialists/`).
 4. **Graph** — `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` (or direct assemble for name-only / not found).
 5. **Research** — Specialists run sync LLM + Tavily on cache miss when keys are set; persist to `<network_root>/agents/<category>/storage.json`.
@@ -219,7 +219,7 @@ flowchart TD
     BC --> INV[invoke_specialists]
     INV --> ASM[assemble_response]
     S -->|name only / not found| ASM
-    ASM --> RES[PersonResponse JSON]
+    ASM --> RES[QueryResponse JSON]
     Graph --> CP[(checkpoints.sqlite)]
     Seed[(network_root/seed.json)] --> S
     Store[(network_root/agents/)] --> BC
@@ -228,7 +228,7 @@ flowchart TD
 
 | Layer | Path | Role |
 |-------|------|------|
-| Models | `src/models/state.py` | `Person`, `PersonQuery`, `PersonResponse`, graph state |
+| Models | `src/models/state.py` | `SeedRecord`, `EntityQuery`, `QueryResponse`, graph state |
 | Seed | `src/agents/seed.py`, `<network_root>/seed.json` | Static origin + stable UUID assignment |
 | Example | `examples/networks/crm/` | Committed CRM reference network |
 | Supervisor | `src/agents/supervisor.py` | Seed resolution, classification, specialist planning |
@@ -236,7 +236,7 @@ flowchart TD
 | Factory | `src/agents/factory/` | Jinja template → generated specialists |
 | Research | `src/tools/research.py`, `src/tools/tavily.py` | Sync LLM + web search, persist fields |
 | Graph | `src/graphs/core.py` | LangGraph; async checkpointer (Studio), sync path (MCP) |
-| MCP | `src/mycelium_mcp/server.py` | `query_person`, `list_specialist_routing`, `health_check` |
+| MCP | `src/mycelium_mcp/server.py` | `query_entity`, `list_specialist_routing`, `health_check` |
 | CLI | `src/main.py` | `mycelium query`, `mycelium network`, `mycelium seed` |
 
 Full detail: [docs/architecture.md](docs/architecture.md). Phase 1 research plan: [docs/plans/specialist-research-phase1.md](docs/plans/specialist-research-phase1.md).

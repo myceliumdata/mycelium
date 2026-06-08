@@ -8,7 +8,7 @@ from agents.classification import get_category_tree
 from agents.factory.agent_factory import get_agent_factory
 from agents.registry import get_agent_registry
 from agents.seed import find_by_key
-from models.state import MyceliumGraphState, Person
+from models.state import MyceliumGraphState, SeedRecord
 
 # Context pull + specialist calls run in graph nodes (build_context, invoke_specialists).
 # TODO: peer retrieval replaces supervisor-provided full context union.
@@ -35,9 +35,9 @@ def _identity_records_from_seed(matched: list[dict[str, Any]]) -> list[dict[str,
     return records
 
 
-def _persons_from_seed(matched: list[dict[str, Any]]) -> list[Person]:
+def _seed_records_from_seed(matched: list[dict[str, Any]]) -> list[SeedRecord]:
     return [
-        Person(
+        SeedRecord(
             id=rec.get("id", ""),
             name=rec.get("name", ""),
             employer=rec.get("employer"),
@@ -94,7 +94,7 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
     """
     Resolve from seed, classify requested attributes, plan specialist invocations.
 
-    Does not build the full cross-specialist context or final PersonResponse —
+    Does not build the full cross-specialist context or final QueryResponse —
     graph nodes ``build_context``, ``invoke_specialists``, and ``assemble_response``
     handle those steps.
     """
@@ -102,17 +102,17 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
     query = current.query
     audit_log = ["Supervisor: evaluating query."]
 
-    matched = find_by_key(query.person_key)
-    persons = _persons_from_seed(matched)
+    matched = find_by_key(query.entity_key)
+    seed_records = _seed_records_from_seed(matched)
     ids = [m["id"] for m in matched if m.get("id")]
 
     if matched:
         audit_log.append(
             f"Supervisor: resolved via seed, match count={len(matched)} "
-            f"for {query.person_key!r}.",
+            f"for {query.entity_key!r}.",
         )
     else:
-        audit_log.append(f"Supervisor: no seed match for {query.person_key!r}.")
+        audit_log.append(f"Supervisor: no seed match for {query.entity_key!r}.")
 
     classifications: list[dict[str, Any]] = []
     if query.requested_attributes:
@@ -143,7 +143,7 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
     }
 
     result: dict[str, Any] = {
-        "matched_persons": matched,
+        "matched_records": matched,
         "context": context,
         "audit_log": audit_log,
         "route": None,
@@ -152,9 +152,9 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
         result["classifications"] = classifications
     if len(matched) == 1:
         result["current_id"] = matched[0]["id"]
-    if persons:
-        result["persons"] = persons
-        if len(persons) == 1:
-            result["person"] = persons[0]
+    if seed_records:
+        result["seed_records"] = seed_records
+        if len(seed_records) == 1:
+            result["seed_record"] = seed_records[0]
 
     return result

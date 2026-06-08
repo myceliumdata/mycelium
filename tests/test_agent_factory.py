@@ -9,7 +9,7 @@ import pytest
 
 from agents.factory.agent_factory import AgentFactory, get_agent_factory, reset_agent_factory
 from agents.registry import get_agent_registry, reset_agent_registry
-from models.state import MyceliumGraphState, PersonQuery
+from models.state import MyceliumGraphState, EntityQuery
 
 
 def _setup_factory_env(
@@ -70,7 +70,7 @@ def test_create_specialist_writes_files_and_registers(
     assert strategy_path.exists()
     assert storage_path.exists()
 
-    state = MyceliumGraphState(query=PersonQuery(person_key="__no_such_person__"))
+    state = MyceliumGraphState(query=EntityQuery(entity_key="__no_such_person__"))
     result = fn(state)
     assert "response" in result
     assert result["response"].results == []
@@ -78,7 +78,7 @@ def test_create_specialist_writes_files_and_registers(
 
     test_id = "test-person-uuid-1540"
     state_pending = MyceliumGraphState(
-        query=PersonQuery(person_key="Test User", requested_attributes=["email"]),
+        query=EntityQuery(entity_key="Test User", requested_attributes=["email"]),
         current_id=test_id,
         context={
             "seed": {

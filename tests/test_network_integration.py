@@ -15,7 +15,7 @@ import pytest
 
 from network_helpers import NETWORK_PATH_ENV_KEYS, clear_network_path_env
 from graphs.core import reset_core_graph, run_query
-from models.state import PersonQuery
+from models.state import EntityQuery
 from network.paths import NetworkPaths, apply_network_paths, resolve_network_root
 from network.registry import register_network
 
@@ -207,7 +207,7 @@ def test_network_dir_overrides_registry_default_query(
     _reset_runtime_singletons()
 
     response = run_query(
-        PersonQuery(person_key="Override Only"),
+        EntityQuery(entity_key="Override Only"),
         thread_id=_unique_thread_id("override"),
     )
     assert len(response.results) == 1
@@ -232,7 +232,7 @@ def test_query_via_registered_network_name(
     _reset_runtime_singletons()
 
     response = run_query(
-        PersonQuery(person_key="Registry Person"),
+        EntityQuery(entity_key="Registry Person"),
         thread_id=_unique_thread_id("named"),
     )
     assert response.results[0]["employer"] == "Reg Co"
@@ -256,7 +256,7 @@ def test_plain_query_uses_default_network(
     _reset_runtime_singletons()
 
     response = run_query(
-        PersonQuery(person_key="Default Person"),
+        EntityQuery(entity_key="Default Person"),
         thread_id=_unique_thread_id("default"),
     )
     assert len(response.results) == 1
@@ -308,7 +308,7 @@ def test_cli_network_register_list_use_and_query(
 
     query = _run_mycelium_cli(
         "query",
-        "--person-key",
+        "--entity-key",
         "Beta Person",
         "--thread-id",
         _unique_thread_id("cli-default"),
@@ -322,7 +322,7 @@ def test_cli_network_register_list_use_and_query(
         "query",
         "--network",
         "alpha",
-        "--person-key",
+        "--entity-key",
         "Alpha Person",
         "--thread-id",
         _unique_thread_id("cli-named"),
@@ -349,16 +349,16 @@ def test_two_network_roots_isolated_query_results(
 
     apply_network_paths(NetworkPaths.from_root(net_a))
     _reset_runtime_singletons()
-    resp_a = run_query(PersonQuery(person_key="Iso A"), thread_id=_unique_thread_id("iso-a"))
+    resp_a = run_query(EntityQuery(entity_key="Iso A"), thread_id=_unique_thread_id("iso-a"))
     assert resp_a.results[0]["employer"] == "Co A"
-    assert run_query(PersonQuery(person_key="Iso B"), thread_id=_unique_thread_id("iso-a-miss")).results == []
+    assert run_query(EntityQuery(entity_key="Iso B"), thread_id=_unique_thread_id("iso-a-miss")).results == []
 
     apply_network_paths(NetworkPaths.from_root(net_b))
     _reset_runtime_singletons()
     reset_core_graph()
-    resp_b = run_query(PersonQuery(person_key="Iso B"), thread_id=_unique_thread_id("iso-b"))
+    resp_b = run_query(EntityQuery(entity_key="Iso B"), thread_id=_unique_thread_id("iso-b"))
     assert resp_b.results[0]["employer"] == "Co B"
-    assert run_query(PersonQuery(person_key="Iso A"), thread_id=_unique_thread_id("iso-b-miss")).results == []
+    assert run_query(EntityQuery(entity_key="Iso A"), thread_id=_unique_thread_id("iso-b-miss")).results == []
 
 
 # --- 4. Example network bootstrap ---
@@ -397,7 +397,7 @@ def test_refresh_example_register_and_query_nichanan(
         "query",
         "--network",
         "crm",
-        "--person-key",
+        "--entity-key",
         "Nichanan Kesonpat",
         "--thread-id",
         _unique_thread_id("example"),
@@ -433,7 +433,7 @@ def test_health_check_reports_network_metadata_for_root(
 
 
 @pytest.mark.full
-def test_mcp_query_person_reads_active_network_root(
+def test_mcp_query_entity_reads_active_network_root(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -442,12 +442,12 @@ def test_mcp_query_person_reads_active_network_root(
     _isolated_network_env(monkeypatch, tmp_path, network_root=net)
     _reset_runtime_singletons()
 
-    from mycelium_mcp.server import query_person
+    from mycelium_mcp.server import query_entity
 
-    raw = query_person(
+    raw = query_entity(
         json.dumps(
             {
-                "person_key": "MCP Query Person",
+                "entity_key": "MCP Query Person",
                 "thread_id": _unique_thread_id("mcp-query"),
             },
         ),

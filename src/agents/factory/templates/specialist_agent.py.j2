@@ -65,8 +65,8 @@ def _resolve_id(state: MyceliumGraphState) -> str | None:
         return seed.get("id")
     if isinstance(seed, list) and len(seed) == 1 and isinstance(seed[0], dict):
         return seed[0].get("id")
-    if state.matched_persons and len(state.matched_persons) == 1:
-        return state.matched_persons[0].get("id")
+    if state.matched_records and len(state.matched_records) == 1:
+        return state.matched_records[0].get("id")
     return None
 
 
@@ -332,10 +332,10 @@ def {{ agent_name }}(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
             "response": resp,
             "route": None,
             "audit_log": [
-                f"{{ agent_name }}: no id in state for {current.query.person_key!r}.",
+                f"{{ agent_name }}: no id in state for {current.query.entity_key!r}.",
             ],
             "specialist_contrib": contrib,
-            "matched_persons": current.matched_persons or [],
+            "matched_records": current.matched_records or [],
             "classifications": current.classifications or [],
             **({"invocation_thread_id": thread_id} if thread_id else {}),
             **({"invocation_trace_id": trace_id} if trace_id else {}),
@@ -383,7 +383,7 @@ def {{ agent_name }}(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
         resp = resp.model_copy(
             update={
                 "message": (
-                    f"Found record for {identity_records[0]['name'] if identity_records else current.query.person_key}. "
+                    f"Found record for {identity_records[0]['name'] if identity_records else current.query.entity_key}. "
                     f"{na_list} marked N/A (via {{ agent_name }})."
                 ),
             },
@@ -393,7 +393,7 @@ def {{ agent_name }}(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
         person_name = (
             identity_records[0]["name"]
             if identity_records
-            else current.query.person_key
+            else current.query.entity_key
         )
         detail_parts: list[str] = []
         for field in owned:
@@ -433,7 +433,7 @@ def {{ agent_name }}(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
         resp = resp.model_copy(
             update={
                 "message": (
-                    f"Found record for {identity_records[0]['name'] if identity_records else current.query.person_key}. "
+                    f"Found record for {identity_records[0]['name'] if identity_records else current.query.entity_key}. "
                     f"{attr_list} not currently available but may be in the future "
                     f"(via {{ agent_name }})."
                 ),
@@ -455,17 +455,17 @@ def {{ agent_name }}(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
         "route": None,
         "audit_log": logs,
         "specialist_contrib": contrib,
-        "matched_persons": current.matched_persons or [],
+        "matched_records": current.matched_records or [],
         "classifications": current.classifications or [],
         "context": ctx,
         "current_id": pid,
         "target_fields": owned,
     }
     if identity_records and len(identity_records) == 1:
-        from models.state import Person
+        from models.state import SeedRecord
 
         ir = identity_records[0]
-        payload["person"] = Person(
+        payload["seed_record"] = SeedRecord(
             id=ir.get("id", ""),
             name=ir.get("name", ""),
             employer=ir.get("employer"),

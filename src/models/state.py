@@ -1,4 +1,4 @@
-"""Pydantic models for graph state, people queries, and JSON responses."""
+"""Pydantic models for graph state, entity queries, and JSON responses."""
 
 from __future__ import annotations
 
@@ -7,7 +7,8 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 
-class Person(BaseModel):
+
+class SeedRecord(BaseModel):
     """Identity record from seed (``<network_root>/seed.json``).
 
     ``id`` is the stable UUID from the seed loader.
@@ -22,35 +23,35 @@ class Person(BaseModel):
         return self.model_dump(exclude_none=True)
 
 
-class PersonQuery(BaseModel):
-    """Inbound JSON query for looking up a person (public interface).
+class EntityQuery(BaseModel):
+    """Inbound JSON query for looking up a seed record (public interface).
 
     This model is query-only for the public interface (CLI, MCP, Studio).
     Data addition support will be re-introduced later via internal agent coordination.
 
     When using LangGraph Studio's visual input editor:
     - Provide a full ``MyceliumGraphState`` dict with a ``query`` key.
-    - Set ``person_key`` (id or name) and optional ``requested_attributes``.
-    - Set ``thread_id`` in Studio's Thread/Config panel, not in ``PersonQuery``.
+    - Set ``entity_key`` (id or name) and optional ``requested_attributes``.
+    - Set ``thread_id`` in Studio's Thread/Config panel, not in ``EntityQuery``.
     """
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
-                    "person_key": "Nichanan Kesonpat",
+                    "entity_key": "Nichanan Kesonpat",
                     "requested_attributes": [],
                 },
                 {
-                    "person_key": "Nichanan Kesonpat",
+                    "entity_key": "Nichanan Kesonpat",
                     "requested_attributes": ["email", "x_handle"],
                 },
             ]
         }
     }
 
-    person_key: str = Field(
-        description="Person UUID (``id``) or name used for seed lookup.",
+    entity_key: str = Field(
+        description="Seed record UUID (``id``) or display name used for lookup.",
     )
     requested_attributes: list[str] = Field(
         default_factory=list,
@@ -61,13 +62,13 @@ class PersonQuery(BaseModel):
     )
 
 
-class PersonResponse(BaseModel):
+class QueryResponse(BaseModel):
     """Lightweight response for external consumers (CLI + MCP agents)."""
 
     results: list[dict[str, Any]] = Field(
         default_factory=list,
         description=(
-            "Plain dicts per matched person. Always includes id (stable UUID). "
+            "Plain dicts per matched seed record. Always includes id (stable UUID). "
             "With no requested_attributes: id, name, employer. "
             "With requested_attributes: id plus only those keys after merge."
         ),
@@ -103,20 +104,20 @@ class MyceliumGraphState(BaseModel):
     """LangGraph state for supervisor + specialist agents.
 
     In LangGraph Studio (visual editor or JSON input):
-    - You must provide at least the top-level "query" key (a PersonQuery).
-    - Everything else (route, person, persons, response, etc.) is internal state
+    - You must provide at least the top-level "query" key (an EntityQuery).
+    - Everything else (route, seed_record, seed_records, response, etc.) is internal state
       produced by the graph — do not set them in the initial input.
-    - ``persons`` holds all matches for a lookup; ``person`` is set only when
-      exactly one match exists (name ambiguity may yield multiple ``persons``).
-    - ``matched_persons``, ``context``, ``current_id``, and ``target_fields``
+    - ``seed_records`` holds all matches for a lookup; ``seed_record`` is set only when
+      exactly one match exists (name ambiguity may yield multiple ``seed_records``).
+    - ``matched_records``, ``context``, ``current_id``, and ``target_fields``
       are internal bags for the seed-data-context redesign (visible in Studio/LangSmith
       for debugging; populated by supervisor/context logic in later slices).
-    - Use the examples in PersonQuery (they will appear in Studio).
+    - Use the examples in EntityQuery (they will appear in Studio).
     - For thread persistence in Studio, set the thread ID in the
       Studio UI's Thread/Config panel (it flows into invocation_thread_id).
     """
 
-    query: PersonQuery
+    query: EntityQuery
     route: str | None = Field(
         default=None,
         description=(
@@ -125,9 +126,9 @@ class MyceliumGraphState(BaseModel):
             "Phase 2+ dynamic."
         ),
     )
-    response: PersonResponse | None = None
-    person: Person | None = None
-    persons: list[Person] = Field(default_factory=list)
+    response: QueryResponse | None = None
+    seed_record: SeedRecord | None = None
+    seed_records: list[SeedRecord] = Field(default_factory=list)
     classifications: list[dict[str, Any]] = Field(
         default_factory=list,
         description=(
@@ -141,17 +142,17 @@ class MyceliumGraphState(BaseModel):
     # data to specialists.
     # TODO (future): specialists retrieve needed context from peers instead of
     # supervisor providing the full union.
-    matched_persons: list[dict[str, Any]] = Field(
+    matched_records: list[dict[str, Any]] = Field(
         default_factory=list,
         description=(
-            "Enriched seed records for matched person(s), including id "
+            "Enriched seed records for matched entity lookup, including id "
             "from the seed loader."
         ),
     )
     context: dict[str, Any] = Field(
         default_factory=dict,
         description=(
-            "Supervisor-built context for matched person(s): "
+            "Supervisor-built context for matched record(s): "
             "{'seed': {...}, 'specialists': {'contact': {...}, ...}}. "
             "Specialist values override seed."
         ),
@@ -169,11 +170,11 @@ class MyceliumGraphState(BaseModel):
     audit_log: Annotated[list[str], operator.add] = Field(default_factory=list)
     invocation_thread_id: str | None = Field(
         default=None,
-        description="Conversation thread id propagated into PersonResponse (set by run_query).",
+        description="Conversation thread id propagated into QueryResponse (set by run_query).",
     )
     invocation_trace_id: str | None = Field(
         default=None,
-        description="LangSmith trace id propagated into PersonResponse (set by run_query).",
+        description="LangSmith trace id propagated into QueryResponse (set by run_query).",
     )
 
 
