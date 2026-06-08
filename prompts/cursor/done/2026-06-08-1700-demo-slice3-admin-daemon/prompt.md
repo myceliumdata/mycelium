@@ -15,12 +15,20 @@
 
 ---
 
+## Governance (mandatory)
+
+- **Do not edit `TODO.md`.** Roadmap updates are for Grok + Paul after review.
+- In `output.md`, add **"For Grok + Paul"**: mark Demo slice 3 done when appropriate.
+- Cursor delivers: code, tests, task-scoped docs, and `output.md` only.
+
+---
+
 ## Workflow (mandatory)
 
 1. **Claim:** move this file from `prompts/cursor/next/` to `prompts/cursor/in-progress/` before any edits.
 2. **Deliver:** `prompts/cursor/done/2026-06-08-1700-demo-slice3-admin-daemon/` with `prompt.md`, `output.md`.
 3. **Tests:** smoke by default (`uv run pytest -m smoke -q`); mark new HTTP tests `@pytest.mark.smoke`.
-4. **Commit & push** when complete; update `TODO.md` slice 3 checkbox + prompt reference.
+4. **Commit & push** when complete (code + docs in scope; not `TODO.md`).
 
 ---
 
@@ -197,7 +205,7 @@ Reuse `_seed_only_root`, `_configure_root` patterns from `tests/test_network_sta
 
 **`examples/networks/crm/README.md`** — one line: start admin daemon for browser demo (slice 4).
 
-**`TODO.md`** — mark Demo slice 3 done when complete; note prompt path.
+**For Grok + Paul (`output.md` only)** — note Demo slice 3 done + prompt path for `TODO.md` after review.
 
 No architecture.md rewrite.
 
@@ -226,12 +234,13 @@ Compare daemon `/status` output to `uv run mycelium network status --network crm
 - `src/mycelium_admin/` (new)
 - `pyproject.toml` (scripts + fastapi/uvicorn deps; lockfile if needed)
 - `tests/test_admin_daemon.py` (new)
-- `README.md`, `examples/networks/crm/README.md`, `TODO.md`
+- `README.md`, `examples/networks/crm/README.md`
 
 **May touch lightly:**
 - `src/network/__init__.py` — only if exporting a shared helper is cleaner than inline `reset_seed_data()` in admin (prefer admin-local helper)
 
 **Out of scope (do not implement):**
+- `TODO.md` (Grok + Paul only)
 - Changes to `build_network_status()` read logic or dataclasses (unless bug found — document, do not fix silently)
 - Write endpoints (refresh, register, `query_entity`)
 - Admin UI / static files

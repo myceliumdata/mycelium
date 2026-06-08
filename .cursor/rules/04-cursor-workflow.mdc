@@ -38,18 +38,19 @@ If the user says any of the following (or similar):
 
 ## Important Rules
 
+- **Never edit `TODO.md`.** It is owned by Grok + Paul only. Read it for context; record roadmap follow-ups in `output.md` under **"For Grok + Paul"** (what to check off, notes for the roadmap). Do not check off slices, add prompt paths, or change "Last updated" yourself.
 - Never start working on a file while it is still in `prompts/cursor/next/`. Always claim it first by moving it to `in-progress/`.
 - The move to `in-progress/` is the "lock" that prevents duplicate work (especially important for parallel Cursor sessions).
 - If `prompts/cursor/next/` is empty, clearly tell the user there are no pending tasks.
 - **Scope discipline is mandatory.** When a prompt defines explicit scope boundaries, you must stay inside them. If you believe changes outside the stated scope are necessary, stop and escalate rather than making the changes yourself (see "Preventing Scope Creep" section in `prompts/WORKFLOW.md`).
 - **Test execution policy (from WORKFLOW.md)**: Default to `pytest -m smoke -q` only. If adding a test, Grok determines the category for any new test (smoke vs full); if full, run the full test (or `pytest -m full -k "your-test"`) immediately. Mark with the correct decorator. See the "Test Execution Policy" section in `prompts/WORKFLOW.md`.
 - Always follow the specific instructions inside each prompt file (especially output requirements).
-- The full workflow is documented in `prompts/WORKFLOW.md`. Treat this as the source of truth when in doubt.
+- The full workflow is documented in `prompts/cursor/WORKFLOW.md`. Treat this as the source of truth when in doubt (including roadmap ownership).
 
 ## Related Files
 
-- `prompts/WORKFLOW.md` — Full protocol and conventions
+- `prompts/cursor/WORKFLOW.md` — Full protocol and conventions
 - `docs/phase-1-direction.md` — Current architectural direction (always align with this)
-- `TODO.md` — Long-term task list between the human and Grok
+- `TODO.md` — Long-term task list between Paul and Grok (**read-only for Cursor**)
 
 Do not bypass this system. When the user wants you to work on the next task, use the process above.

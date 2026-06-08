@@ -36,6 +36,19 @@ A simple test task currently exists in `prompts/cursor/next/` (`2025-06-01-1650-
 - **Cursor** (the AI in the IDE) acts as the senior developer that executes the work.
 - We want low-friction, reviewable handoffs without constant copy-pasting of long prompts.
 
+## Roadmap ownership — `TODO.md` (Grok + Paul only)
+
+**Cursor must never edit `TODO.md`.** Not to check off items, not to add prompt paths, not to update "Last updated", not for vocabulary sweeps unless a prompt explicitly lists it under *may modify* (legacy prompts may be wrong — this section wins).
+
+| Owner | Role |
+|-------|------|
+| **Grok + Paul** | `TODO.md` — roadmap, slice status, priorities, prompt queue references |
+| **Cursor** | Code, tests, task-scoped docs (`README.md`, example READMEs when prompted); report in `output.md` |
+
+After completing work, Cursor documents what Grok + Paul should update in **`output.md`** under a **"For Grok + Paul"** section (e.g. "Mark Demo slice 4 done", "Add fuzzy matching note"). Grok or Paul applies `TODO.md` changes after review.
+
+**If Cursor already changed `TODO.md` in a branch:** revert those edits; put the same notes in `output.md` instead.
+
 ## Directory Structure
 
 ```
@@ -93,7 +106,7 @@ When Cursor finishes:
 1. It creates a directory under `prompts/cursor/done/` with the same base name as the prompt.
 2. It moves/copies the prompt file into that directory as `prompt.md`.
 3. It produces at minimum:
-   - `output.md` — A clear summary of what was changed, decisions made, and open questions.
+   - `output.md` — A clear summary of what was changed, decisions made, and open questions. Include **"For Grok + Paul"** with any `TODO.md` updates needed (Cursor does not apply them).
    - Any relevant diffs, new files, or notes.
 4. **It must remove only the specific file it claimed** from `prompts/cursor/in-progress/`.
    - Do **not** delete, move, or touch any other files that may be present in `in-progress/` at the time of completion.
@@ -136,10 +149,21 @@ You should no longer need to specify filenames when starting work.
 Every prompt in `prompts/cursor/next/` **must** contain:
 
 - A clear title and objective
-- References to `docs/architecture.md` and `TODO.md` where relevant
+- References to `docs/architecture.md` and `TODO.md` (read-only context for Cursor)
 - Explicit instructions on **output location** and **required artifacts**
 - Clear instructions telling Cursor to **move the prompt file to `in-progress/`** before starting work
-- Guidance on commit hygiene and updating `TODO.md`
+- The **Governance** block below (mandatory — do not tell Cursor to edit `TODO.md`)
+- Guidance on commit hygiene (code + `output.md`; not `TODO.md`)
+
+### Governance block (copy into every new prompt)
+
+```markdown
+## Governance (mandatory)
+
+- **Do not edit `TODO.md`.** Roadmap updates are for Grok + Paul after review.
+- In `output.md`, add **"For Grok + Paul"**: what to check off, any roadmap notes.
+- Cursor delivers: code, tests, task-scoped docs, and `output.md` only.
+```
 
 ## History & Auditability
 
@@ -191,6 +215,7 @@ You may only modify files under the following paths:
 
 **Out of Scope (Do Not Touch)**
 
+- `TODO.md` (Grok + Paul only — see Roadmap ownership)
 - `src/agents/`
 - `src/storage/`
 - `src/mcp/`

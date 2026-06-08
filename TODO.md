@@ -1,13 +1,14 @@
 # Mycelium — TODO
 
-Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture.md`.  
+Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does not edit; see `prompts/cursor/WORKFLOW.md`).  
+**Source of truth for architecture:** `docs/architecture.md`.  
 **Implementation handoffs:** `prompts/cursor/next/` per `prompts/cursor/WORKFLOW.md`.
 
 ---
 
 ## Demo (phase)
 
-Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 2 → 3 → 5 → 1200 + hands-on test: done** (June 2026). **MCP onboarding slices 1–4 done** (June 2026). **Next:** admin UI (demo slice 4).
+Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 → 5 → 1200 + hands-on test: done** (June 2026). **MCP onboarding slices 1–4 done** (June 2026).
 
 ### Slice 1 — `refresh-example-network` — **done** (`2026-06-08-1000`)
 
@@ -27,11 +28,9 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 2 
   - **v0 read-only:** `GET /health`, `GET /status` (mirrors `network status --json`), `GET /capabilities` via `src/network/introspection.py`.
   - **Later write ops:** refresh, register (slice 4+); remote + auth deferred.
 
-### Slice 4 — admin UI (after 3)
+### Slice 4 — admin UI — **done** (`2026-06-08-1800`)
 
-**Prompt:** `prompts/cursor/next/2026-06-08-1800-demo-slice4-admin-ui.md`
-
-- [ ] **`mycelium-admin-ui`** (`admin-ui/`) — Vite + React SPA against admin daemon. Drill-down: network → specialists → entity → fields. Dev: `npm run dev`; demo: build + serve from `mycelium-admin`.
+- [x] **`mycelium-admin-ui`** (`admin-ui/`) — Vite + React SPA against admin daemon. Drill-down: network → specialists → entity → fields. Dev: `npm run dev`; demo: build + serve from `mycelium-admin`.
   - Local demos first; same API supports future remote deployments.
 
 ### Slice 5 — demo polish — **done** (`2026-06-08-1150`)
@@ -146,4 +145,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-08 (demo slice 3 done; slice 4 UI prompt queued)
+Last updated: 2026-06-08 (demo slice 4 admin UI done)
