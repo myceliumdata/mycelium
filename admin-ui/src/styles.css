@@ -180,21 +180,6 @@ button {
   cursor: pointer;
 }
 
-button.secondary {
-  background: transparent;
-  color: var(--text);
-  border: 1px solid var(--border);
-}
-
-button.linkish {
-  background: transparent;
-  color: var(--accent);
-  border: none;
-  padding: 0;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
 input,
 select {
   border: 1px solid var(--border);

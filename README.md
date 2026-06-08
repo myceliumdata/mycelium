@@ -28,6 +28,7 @@ uv run mycelium query --entity-key "Nichanan Kesonpat"
 |------|---------|
 | **CRM example** (committed reference; wipe stale research before demos) | `./bin/refresh-example-network crm` |
 | **Custom domain** (your categories + specialists) | `uv run mycelium network create <name> --root <path> --seed <file> --prompt "..."` |
+| **Live demo UI** (network state while you query) | `./bin/restart-admin` → open `http://127.0.0.1:5173` |
 
 **Demo runbook:** Before a demo, run `./bin/refresh-example-network crm --yes` to restore a clean seed and drop cached specialist research. **Restart your MCP server** (e.g. Claude Desktop) after refresh so it reloads the wiped network. Use a **fresh `thread_id`** per query attribute when demonstrating research (avoids stale checkpoint state).
 
@@ -166,7 +167,7 @@ MYCELIUM_NETWORK=crm uv run mycelium-admin
 MYCELIUM_NETWORK_ROOT=~/mycelium-networks/crm uv run mycelium-admin
 ```
 
-Long-lived **HTTP on localhost** (default `http://127.0.0.1:8741`) — one process per network for operator demos and a future browser UI. **v0 is read-only**; all snapshot fields come from `src/network/introspection.py` (same as `mycelium network status --json`).
+Long-lived **HTTP on localhost** (default `http://127.0.0.1:8741`) — one process per network for operator demos and the **admin UI** (`admin-ui/`). **v0 is read-only**; all snapshot fields come from `src/network/introspection.py` (same as `mycelium network status --json`).
 
 | Endpoint | Purpose |
 |----------|---------|
@@ -185,13 +186,16 @@ uv run mycelium network status --network crm --json | jq '.seed_people_count, .o
 
 #### Admin UI
 
-Minimal browser client in `admin-ui/` — **API-only** (no direct reads of `seed.json` or MCP). Restart the daemon after a Python code deploy; rebuild the SPA after frontend changes.
+Browser client in `admin-ui/` (`mycelium-admin-ui`) — **API-only** (no direct reads of `seed.json` or MCP). Restart the daemon after a Python code deploy; rebuild the SPA after frontend changes.
+
+**Default view** is scannable for demos: **Overview** shows ✅/❌ for seed count, categories, and specialists; specialist rows expand for storage detail. **Entity lookup** and **Network guide & ontology** start collapsed. The UI polls `/status` every 3s (silent) so specialists appear as MCP/CLI queries populate storage — no manual refresh button.
 
 **Development** (recommended — one command):
 
 ```bash
 ./bin/restart-admin              # default network crm
 ./bin/restart-admin fleet        # MYCELIUM_NETWORK=fleet when unset
+./bin/restart-admin --dry-run    # print kill/start plan only
 ```
 
 Kills anything on `:8741` and `:5173`, starts `mycelium-admin` in the background and Vite in the foreground. Ctrl-C stops both. Caller-exported `MYCELIUM_NETWORK` / `MYCELIUM_NETWORK_ROOT` win over script defaults.
