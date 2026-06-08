@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -96,16 +97,56 @@ class NetworkPaths:
         )
 
 
+_RUNTIME_ENV_FIELDS: dict[str, str] = {
+    "MYCELIUM_SEED_PATH": "seed_path",
+    "MYCELIUM_AGENT_REGISTRY_PATH": "registry_path",
+    "MYCELIUM_CATEGORIES_PATH": "categories_path",
+    "MYCELIUM_AGENT_DATA_DIR": "agents_dir",
+    "MYCELIUM_SPECIALISTS_DIR": "specialists_dir",
+    "MYCELIUM_CHECKPOINT_PATH": "checkpoint_path",
+    "MYCELIUM_DB_PATH": "db_path",
+}
+
+
+def _paths_for_runtime() -> NetworkPaths:
+    """Derive ``NetworkPaths`` from ``MYCELIUM_NETWORK_ROOT`` or registry resolution."""
+    env_root = os.getenv("MYCELIUM_NETWORK_ROOT", "").strip()
+    if env_root:
+        return NetworkPaths.from_root(Path(env_root))
+    return NetworkPaths.from_root(resolve_network_root())
+
+
+def runtime_path(env_var: str) -> Path:
+    """Resolve a runtime artifact path (never repo-root ``data/``).
+
+    Precedence: explicit ``env_var`` → ``MYCELIUM_NETWORK_ROOT`` derivation →
+    ``resolve_network_root()`` derivation. Raises ``ValueError`` when unconfigured.
+    """
+    field = _RUNTIME_ENV_FIELDS.get(env_var)
+    if field is None:
+        raise ValueError(f"Unknown runtime path env var: {env_var}")
+    explicit = os.getenv(env_var, "").strip()
+    if explicit:
+        return Path(explicit).expanduser().resolve()
+    paths = _paths_for_runtime()
+    return getattr(paths, field)
+
+
+def shell_export_network_paths() -> str:
+    """Return bash ``export`` lines for all ``MYCELIUM_*`` path vars (Studio bootstrap)."""
+    paths = NetworkPaths.from_root(resolve_network_root())
+    lines = [f"export MYCELIUM_NETWORK_ROOT={shlex.quote(str(paths.root))}"]
+    for env_var, field in _RUNTIME_ENV_FIELDS.items():
+        value = getattr(paths, field)
+        lines.append(f"export {env_var}={shlex.quote(str(value))}")
+    return "\n".join(lines)
+
+
 def apply_network_paths(paths: NetworkPaths) -> None:
     """Set MYCELIUM_* env vars consumed by seed, registry, storage, and graphs."""
     os.environ["MYCELIUM_NETWORK_ROOT"] = str(paths.root)
-    os.environ["MYCELIUM_SEED_PATH"] = str(paths.seed_path)
-    os.environ["MYCELIUM_AGENT_REGISTRY_PATH"] = str(paths.registry_path)
-    os.environ["MYCELIUM_CATEGORIES_PATH"] = str(paths.categories_path)
-    os.environ["MYCELIUM_AGENT_DATA_DIR"] = str(paths.agents_dir)
-    os.environ["MYCELIUM_SPECIALISTS_DIR"] = str(paths.specialists_dir)
-    os.environ["MYCELIUM_CHECKPOINT_PATH"] = str(paths.checkpoint_path)
-    os.environ["MYCELIUM_DB_PATH"] = str(paths.db_path)
+    for env_var, field in _RUNTIME_ENV_FIELDS.items():
+        os.environ[env_var] = str(getattr(paths, field))
 
 
 def network_metadata(*, root: Path | None = None) -> dict[str, str | None]:

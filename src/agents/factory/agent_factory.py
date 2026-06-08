@@ -26,7 +26,9 @@ _AGENT_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*_specialist$")
 
 
 def _default_specialists_dir() -> Path:
-    return Path(os.getenv("MYCELIUM_SPECIALISTS_DIR", "src/agents/specialists"))
+    from network.paths import runtime_path
+
+    return runtime_path("MYCELIUM_SPECIALISTS_DIR")
 
 
 class AgentFactory:
@@ -151,12 +153,10 @@ class AgentFactory:
         categories_path: Path | None = None,
     ) -> list[Path]:
         """Re-render all registered generated specialists from the Jinja template."""
-        reg_path = registry_path or Path(
-            os.getenv("MYCELIUM_AGENT_REGISTRY_PATH", "data/agent_registry.json"),
-        )
-        cat_path = categories_path or Path(
-            os.getenv("MYCELIUM_CATEGORIES_PATH", "data/categories.json"),
-        )
+        from network.paths import runtime_path
+
+        reg_path = registry_path or runtime_path("MYCELIUM_AGENT_REGISTRY_PATH")
+        cat_path = categories_path or runtime_path("MYCELIUM_CATEGORIES_PATH")
         reg = json.loads(reg_path.read_text(encoding="utf-8"))
         categories: dict[str, Any] = {}
         if cat_path.is_file():

@@ -322,14 +322,15 @@ Disable with `LANGCHAIN_TRACING_V2=false` or unset; `trace_id` will be `null`.
 
 ## LangGraph Studio (optional)
 
-Visual debugging via local dev server + tunnel:
+Visual debugging via local dev server + tunnel. Studio requires a **configured network** (same as CLI/MCP) — repo-root `data/` is **retired** and gitignored; runtime artifacts live only under `<network_root>/`.
 
 ```bash
+./bin/refresh-example-network crm   # once, if not already registered
 ./bin/run-studio
 # separate terminal: ngrok http 2024
 ```
 
-Connect from [smith.langchain.com/studio](https://smith.langchain.com/studio/) using the **current** ngrok URL (tunnels are ephemeral). Restart `./bin/run-studio` after graph or schema changes. See `.env.example` and `langgraph.json`.
+`run-studio` resolves the active network and exports `MYCELIUM_*` path vars before starting LangGraph dev (checkpoints and registry write under your `network_root`, not repo `data/`). Connect from [smith.langchain.com/studio](https://smith.langchain.com/studio/) using the **current** ngrok URL (tunnels are ephemeral). Restart `./bin/run-studio` after graph or schema changes. See `.env.example` and `langgraph.json`.
 
 ## Development
 

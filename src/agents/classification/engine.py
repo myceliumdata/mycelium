@@ -26,11 +26,12 @@ _UNKNOWN_MAP_SENTINEL = "unknown"
 
 
 def _default_categories_path() -> Path:
-    """Follow storage/core.py + graphs/core.py env convention."""
-    return Path(os.getenv("MYCELIUM_CATEGORIES_PATH", "data/categories.json"))
+    from network.paths import runtime_path
+
+    return runtime_path("MYCELIUM_CATEGORIES_PATH")
 
 
-# Embedded canonical taxonomy (written to data/categories.json on first use; file is gitignored).
+# Embedded canonical taxonomy (written to <network_root>/categories.json on first use).
 _SEED_CATEGORIES: dict[str, Any] = {
     "version": "1.0",
     "last_updated": "2026-06-03T00:00:00+00:00",

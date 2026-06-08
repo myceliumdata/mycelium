@@ -1,4 +1,4 @@
-"""Agent Registry (data/agent_registry.json + in-memory).
+"""Agent Registry (<network_root>/agent_registry.json + in-memory).
 
 See approved plan 'Agent Registry' design (docs/plans/agent-factory-phase2.md).
 Generated specialists are loaded from MYCELIUM_SPECIALISTS_DIR (factory tests).
@@ -51,7 +51,9 @@ class AgentRegistryData(BaseModel):
 
 
 def _default_registry_path() -> Path:
-    return Path(os.getenv("MYCELIUM_AGENT_REGISTRY_PATH", "data/agent_registry.json"))
+    from network.paths import runtime_path
+
+    return runtime_path("MYCELIUM_AGENT_REGISTRY_PATH")
 
 
 class AgentRegistry:
@@ -106,9 +108,9 @@ class AgentRegistry:
         self,
         entry: RegisteredAgent,
     ) -> Callable[[Any], dict[str, Any]] | None:
-        specialists_dir = Path(
-            os.getenv("MYCELIUM_SPECIALISTS_DIR", "src/agents/specialists"),
-        )
+        from network.paths import runtime_path
+
+        specialists_dir = runtime_path("MYCELIUM_SPECIALISTS_DIR")
         py_file = specialists_dir / f"{entry.name}.py"
         if py_file.exists():
             spec = importlib.util.spec_from_file_location(

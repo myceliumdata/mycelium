@@ -14,7 +14,6 @@ checkpoints/history only in this phase.
 from __future__ import annotations
 
 import json
-import os
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -24,13 +23,14 @@ from typing import Any
 # support for seed file with pre-assigned UUIDs, cross-specialist peer retrieval
 # instead of supervisor context fan-out.
 
-DEFAULT_SEED_PATH = Path("data/seed.json")
 _ID_NAMESPACE = uuid.NAMESPACE_DNS
 _ID_PREFIX = "mycelium-seed-v1:"
 
 
 def _default_seed_path() -> Path:
-    return Path(os.getenv("MYCELIUM_SEED_PATH", str(DEFAULT_SEED_PATH)))
+    from network.paths import runtime_path
+
+    return runtime_path("MYCELIUM_SEED_PATH")
 
 
 def _assign_id(record: dict[str, Any]) -> str:

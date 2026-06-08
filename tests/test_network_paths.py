@@ -15,6 +15,8 @@ from network.paths import (
     framework_root,
     network_display_name,
     resolve_network_root,
+    runtime_path,
+    shell_export_network_paths,
 )
 
 
@@ -108,6 +110,67 @@ def test_network_display_name_from_json(tmp_path: Path) -> None:
     )
     paths = NetworkPaths.from_root(root)
     assert network_display_name(paths) == "PRM CRM"
+
+
+@pytest.mark.smoke
+def test_runtime_path_fails_when_unconfigured(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    clear_network_path_env(monkeypatch)
+    monkeypatch.delenv("MYCELIUM_NETWORK", raising=False)
+    monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(tmp_path / "missing-networks.json"))
+    monkeypatch.setenv("MYCELIUM_FRAMEWORK_ROOT", str(tmp_path / "framework"))
+
+    with pytest.raises(ValueError, match="refresh-example-network"):
+        runtime_path("MYCELIUM_CHECKPOINT_PATH")
+
+
+@pytest.mark.smoke
+def test_runtime_path_derives_from_network_root(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    clear_network_path_env(monkeypatch)
+    root = tmp_path / "net"
+    root.mkdir()
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(root))
+
+    assert runtime_path("MYCELIUM_CHECKPOINT_PATH") == root / "checkpoints.sqlite"
+    assert runtime_path("MYCELIUM_AGENT_REGISTRY_PATH") == root / "agent_registry.json"
+    assert runtime_path("MYCELIUM_SEED_PATH") == root / "seed.json"
+    assert runtime_path("MYCELIUM_AGENT_DATA_DIR") == root / "agents"
+    assert runtime_path("MYCELIUM_SPECIALISTS_DIR") == root / "specialists"
+
+
+@pytest.mark.smoke
+def test_runtime_path_respects_explicit_env_override(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "net"
+    root.mkdir()
+    custom = tmp_path / "custom_categories.json"
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(root))
+    monkeypatch.setenv("MYCELIUM_CATEGORIES_PATH", str(custom))
+
+    assert runtime_path("MYCELIUM_CATEGORIES_PATH") == custom.resolve()
+
+
+@pytest.mark.smoke
+def test_shell_export_network_paths(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "exported_net"
+    root.mkdir()
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(root))
+
+    exports = shell_export_network_paths()
+
+    assert "export MYCELIUM_NETWORK_ROOT=" in exports
+    assert "export MYCELIUM_CHECKPOINT_PATH=" in exports
+    assert str(root / "checkpoints.sqlite") in exports
 
 
 @pytest.mark.smoke

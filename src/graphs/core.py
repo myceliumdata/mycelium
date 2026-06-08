@@ -34,8 +34,6 @@ from agents.dispatch import (
 from agents.supervisor import supervisor_agent
 from models.state import EntityQuery, MyceliumGraphState, QueryResponse
 
-DEFAULT_CHECKPOINT_PATH = Path("data/checkpoints.sqlite")
-
 # Pydantic types stored in LangGraph checkpoints (avoids "Deserializing unregistered
 # type models.state.*" warnings when resuming threads).
 _CHECKPOINT_MSGPACK_ALLOWLIST: tuple[tuple[str, str], ...] = (
@@ -191,8 +189,12 @@ def build_core_graph(
     checkpointer: AsyncSqliteSaver | SqliteSaver | None = None
     if setup_checkpointer:
         global _checkpointer_ctx, _is_async_checkpointer
-        resolved = Path(
-            os.getenv("MYCELIUM_CHECKPOINT_PATH", str(checkpoint_path or DEFAULT_CHECKPOINT_PATH)),
+        from network.paths import runtime_path
+
+        resolved = (
+            checkpoint_path
+            if checkpoint_path is not None
+            else runtime_path("MYCELIUM_CHECKPOINT_PATH")
         )
 
         # Determine saver type. Default = async (Studio friendly).

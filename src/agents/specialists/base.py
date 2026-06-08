@@ -21,7 +21,9 @@ def registry_storage_paths(category: str) -> tuple[str, str]:
     Does not create directories — safe for ontology/bootstrap paths only.
     """
     slug = category_slug(category)
-    agents_base = Path(os.getenv("MYCELIUM_AGENT_DATA_DIR", "data/agents"))
+    from network.paths import runtime_path
+
+    agents_base = runtime_path("MYCELIUM_AGENT_DATA_DIR")
     storage_file = agents_base / slug / "storage.json"
     strategy_file = agents_base / slug / "storage_strategy.json"
 
@@ -40,7 +42,7 @@ def registry_storage_paths(category: str) -> tuple[str, str]:
 class SpecialistStorage:
     """Per-specialist flat-JSON storage with explicit strategy metadata for future self-evolution.
 
-    Each generated specialist gets its own directory under data/agents/<category>/.
+    Each generated specialist gets its own directory under <network_root>/agents/<category>/.
     The specialist code (committed) can later contain intelligence that decides when
     to call .migrate_to(...) based on its own data volume, query patterns, etc.
     Implemented per approved plan Step 3.
@@ -48,9 +50,11 @@ class SpecialistStorage:
 
     def __init__(self, category: str, base_dir: Path | None = None) -> None:
         self.category = category
-        self.base_dir = (
-            base_dir or Path(os.getenv("MYCELIUM_AGENT_DATA_DIR", "data/agents"))
-        ) / self._slug(category)
+        if base_dir is None:
+            from network.paths import runtime_path
+
+            base_dir = runtime_path("MYCELIUM_AGENT_DATA_DIR")
+        self.base_dir = base_dir / self._slug(category)
         self.storage_file = self.base_dir / "storage.json"
         self.strategy_file = self.base_dir / "storage_strategy.json"
         self._ensure_initialized()

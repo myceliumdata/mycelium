@@ -8,6 +8,8 @@ from network.paths import (
     network_display_name,
     network_metadata,
     resolve_network_root,
+    runtime_path,
+    shell_export_network_paths,
 )
 from network.create import CreateNetworkResult, create_network
 from network.introspection import (
@@ -60,5 +62,7 @@ __all__ = [
     "network_metadata",
     "register_network",
     "resolve_network_root",
+    "runtime_path",
     "set_default_network",
+    "shell_export_network_paths",
 ]

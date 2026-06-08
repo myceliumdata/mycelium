@@ -4,22 +4,18 @@ People seeding moved to agents.seed (direct JSON). This module retained for
 checkpoints/history only; the people table and seed_from_file remain for
 compatibility but are no longer auto-populated on get_storage().
 
-Schema: people(id, name, employer) only. If you have an older data/mycelium.db
-with extra columns or derivative_* tables, see docs/database-notes.md.
+Schema: people(id, name, employer) only. Legacy DBs with extra columns are
+documented in docs/database-notes.md.
 """
 
 from __future__ import annotations
 
 import json
-import os
 import sqlite3
 from pathlib import Path
 
 from agents.seed import _assign_id
 from models.state import SeedRecord
-
-DEFAULT_DB_PATH = Path("data/mycelium.db")
-DEFAULT_SEED_PATH = Path("data/seed.json")
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS people (
@@ -131,11 +127,13 @@ def get_storage(
     """Return process-wide storage (no automatic CRM people seeding)."""
     global _storage
     if _storage is None:
-        resolved_db = Path(os.getenv("MYCELIUM_DB_PATH", str(db_path or DEFAULT_DB_PATH)))
+        from network.paths import runtime_path
+
+        resolved_db = db_path if db_path is not None else runtime_path("MYCELIUM_DB_PATH")
         _storage = CoreStorage(resolved_db)
         if auto_seed:
-            resolved_seed = Path(
-                os.getenv("MYCELIUM_SEED_PATH", str(seed_path or DEFAULT_SEED_PATH)),
+            resolved_seed = (
+                seed_path if seed_path is not None else runtime_path("MYCELIUM_SEED_PATH")
             )
             if resolved_seed.exists():
                 _storage.seed_from_file(resolved_seed)
