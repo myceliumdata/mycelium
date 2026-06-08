@@ -22,6 +22,8 @@ dependencies = [
     "email-validator>=2.0.0",
     "jinja2>=3.1.6",
     "langchain-tavily>=0.2.18",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.32.0",
 ]
 
 [project.optional-dependencies]
@@ -36,6 +38,7 @@ dev = [
 [project.scripts]
 mycelium = "main:main"
 mycelium-mcp = "mycelium_mcp.server:run_server"
+mycelium-admin = "mycelium_admin.server:run_server"
 
 [build-system]
 requires = ["setuptools>=61"]
@@ -69,6 +72,9 @@ disallow_untyped_defs = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::starlette.exceptions.StarletteDeprecationWarning",
+]
 markers = [
     "smoke: fast smoke tests for frequent runs during development and quick verification",
     "full: heavier integration tests (real DB, graph, checkpoints) run at end of major changesets",

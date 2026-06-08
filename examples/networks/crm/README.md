@@ -27,7 +27,7 @@ Custom live root:
 ./bin/refresh-example-network crm --root ~/mycelium-networks/crm --yes
 ```
 
-Before demos, run refresh with `--yes` to wipe stale specialist research, then **restart MCP** and use fresh `thread_id` values per attribute.
+Before demos, run refresh with `--yes` to wipe stale specialist research, then **restart MCP** and use fresh `thread_id` values per attribute. For the browser demo UI (slice 4), start the admin daemon: `MYCELIUM_NETWORK=crm uv run mycelium-admin`.
 
 Check network state before and after demo queries:
 

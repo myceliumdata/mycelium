@@ -156,6 +156,33 @@ You must include **`requested_attributes`** for non-core fields. Without it, res
 
 The MCP server reloads registry, categories, seed, and specialist modules from disk before each query; **restart MCP only after a code deploy or if reload fails** and results still disagree with a fresh CLI query. MCP returns the same `trace_id` as the CLI when LangSmith tracing is on (verify in the LangSmith UI under project `mycelium`). Call **`describe_network`** at connect time for the author `guide.md`, ontology, and usage policy. Other tools: `health_check`.
 
+### Admin daemon
+
+```bash
+# Bind via registered network name (same env model as MCP)
+MYCELIUM_NETWORK=crm uv run mycelium-admin
+
+# Or explicit root
+MYCELIUM_NETWORK_ROOT=~/mycelium-networks/crm uv run mycelium-admin
+```
+
+Long-lived **HTTP on localhost** (default `http://127.0.0.1:8741`) — one process per network for operator demos and a future browser UI. **v0 is read-only**; all snapshot fields come from `src/network/introspection.py` (same as `mycelium network status --json`).
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /health` | Liveness + bound network metadata |
+| `GET /status` | Full status JSON (`?category=`, `?entity=` mirror CLI flags) |
+| `GET /capabilities` | Guide, ontology, policy (same payload as MCP `describe_network`) |
+
+After `./bin/refresh-example-network`, the daemon picks up wiped seed on the next `GET /status` (seed cache is reset per request). **Restart the daemon after a code deploy** or if specialist module counts look stale.
+
+Compare daemon output to CLI:
+
+```bash
+curl -s http://127.0.0.1:8741/status | jq '.seed_people_count, .ontology_present'
+uv run mycelium network status --network crm --json | jq '.seed_people_count, .ontology_present'
+```
+
 See [docs/database-notes.md](docs/database-notes.md) if you have an older `data/mycelium.db` from before the schema simplification.
 
 ### Rebuild or start fresh
