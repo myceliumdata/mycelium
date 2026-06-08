@@ -24,11 +24,7 @@ export default function App() {
   const [entityKey, setEntityKey] = useState("");
 
   const [entityLookupOpen, setEntityLookupOpen] = useState(false);
-  const [guideOpen, setGuideOpen] = useState(false);
-  const [ontologyOpen, setOntologyOpen] = useState(false);
-  const [specialistExpanded, setSpecialistExpanded] = useState<
-    Record<string, boolean>
-  >({});
+  const [guideCardOpen, setGuideCardOpen] = useState(false);
 
   const statusInFlight = useRef(false);
 
@@ -198,7 +194,7 @@ export default function App() {
           <h2>Overview</h2>
           <p className="status-line">✅ Seed ({status.seed_people_count})</p>
           <p className="status-line">
-            {status.ontology_present ? "✅" : "❌"} Ontology
+            {status.ontology_present ? "✅" : "❌"} Categories
           </p>
           {storedSpecialists.length > 0 ? (
             <>
@@ -215,15 +211,8 @@ export default function App() {
                     <details
                       key={spec.category}
                       className="specialist-details"
-                      open={specialistExpanded[spec.category] ?? false}
-                      onToggle={(event) => {
-                        setSpecialistExpanded((prev) => ({
-                          ...prev,
-                          [spec.category]: event.currentTarget.open,
-                        }));
-                      }}
                     >
-                      <summary>
+                      <summary className="disclosure-summary">
                         {spec.category} ({spec.record_count})
                       </summary>
                       {spec.fields_tracked.length > 0 ? (
@@ -256,7 +245,9 @@ export default function App() {
           open={entityLookupOpen}
           onToggle={(event) => setEntityLookupOpen(event.currentTarget.open)}
         >
-          <summary className="collapsible-summary">Entity lookup</summary>
+          <summary className="collapsible-summary disclosure-summary">
+            Entity lookup
+          </summary>
           <form className="row-actions" onSubmit={onEntitySubmit}>
             <input
               type="search"
@@ -335,14 +326,17 @@ export default function App() {
       )}
 
       {capabilities && (
-        <section className="card">
-          <h2>Network guide &amp; ontology</h2>
+        <details
+          className="card collapsible-card"
+          open={guideCardOpen}
+          onToggle={(event) => setGuideCardOpen(event.currentTarget.open)}
+        >
+          <summary className="collapsible-summary disclosure-summary">
+            Network guide &amp; ontology
+          </summary>
           {capabilities.guide_present && capabilities.guide ? (
-            <details
-              open={guideOpen}
-              onToggle={(event) => setGuideOpen(event.currentTarget.open)}
-            >
-              <summary>Author guide</summary>
+            <details className="nested-details">
+              <summary className="disclosure-summary">Author guide</summary>
               <pre className="guide">{capabilities.guide}</pre>
             </details>
           ) : (
@@ -353,11 +347,8 @@ export default function App() {
 
           {capabilities.ontology.present &&
           capabilities.ontology.categories.length > 0 ? (
-            <details
-              open={ontologyOpen}
-              onToggle={(event) => setOntologyOpen(event.currentTarget.open)}
-            >
-              <summary>Ontology</summary>
+            <details className="nested-details">
+              <summary className="disclosure-summary">Categories</summary>
               <ul>
                 {capabilities.ontology.categories.map((cat) => (
                   <li key={cat.name}>
@@ -377,7 +368,7 @@ export default function App() {
           ) : (
             <p className="muted">{capabilities.ontology.message}</p>
           )}
-        </section>
+        </details>
       )}
     </div>
   );

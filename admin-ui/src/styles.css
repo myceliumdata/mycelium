@@ -103,6 +103,26 @@ header.app-header h1 {
   margin: 0.5rem 0;
 }
 
+.disclosure-summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.disclosure-summary::-webkit-details-marker {
+  display: none;
+}
+
+.disclosure-summary::before {
+  content: "▸ ";
+  color: var(--muted);
+  font-size: 1.1em;
+  font-weight: 400;
+}
+
+details[open] > .disclosure-summary::before {
+  content: "▾ ";
+}
+
 .collapsible-card {
   padding: 0;
 }
@@ -113,26 +133,19 @@ header.app-header h1 {
   font-size: 1rem;
   font-weight: 600;
   color: var(--text);
-  list-style: none;
-  cursor: pointer;
-}
-
-.collapsible-card > .collapsible-summary::-webkit-details-marker {
-  display: none;
-}
-
-.collapsible-card > .collapsible-summary::before {
-  content: "▸ ";
-  color: var(--muted);
-  font-weight: 400;
-}
-
-.collapsible-card[open] > .collapsible-summary::before {
-  content: "▾ ";
 }
 
 .collapsible-card > :not(summary) {
   padding: 0 1.1rem 1rem;
+}
+
+.nested-details {
+  margin-top: 0.5rem;
+}
+
+.nested-details > .disclosure-summary {
+  color: var(--accent);
+  font-weight: 500;
 }
 
 .card ul {
@@ -219,23 +232,9 @@ th {
   border-bottom: none;
 }
 
-.specialist-details summary {
-  cursor: pointer;
+.specialist-details > .disclosure-summary {
   font-weight: 500;
-  list-style: none;
-}
-
-.specialist-details summary::-webkit-details-marker {
-  display: none;
-}
-
-.specialist-details summary::before {
-  content: "▸ ";
-  color: var(--muted);
-}
-
-.specialist-details[open] summary::before {
-  content: "▾ ";
+  color: var(--text);
 }
 
 .specialist-details > p {
@@ -247,16 +246,6 @@ th {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-}
-
-details {
-  margin-top: 0.5rem;
-}
-
-details summary {
-  cursor: pointer;
-  color: var(--accent);
-  font-weight: 500;
 }
 
 pre.guide {
