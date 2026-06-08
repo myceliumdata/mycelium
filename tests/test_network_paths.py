@@ -37,18 +37,17 @@ def test_network_paths_from_root(tmp_path: Path) -> None:
 
 
 @pytest.mark.smoke
-def test_resolve_legacy_fallback(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    framework = tmp_path / "framework"
-    framework.mkdir()
-    legacy_data = framework / "data"
-    legacy_data.mkdir()
-
+def test_resolve_raises_when_unconfigured(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
     monkeypatch.delenv("MYCELIUM_NETWORK_ROOT", raising=False)
     monkeypatch.delenv("MYCELIUM_NETWORK", raising=False)
     monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(tmp_path / "missing-networks.json"))
-    monkeypatch.setenv("MYCELIUM_FRAMEWORK_ROOT", str(framework))
+    monkeypatch.setenv("MYCELIUM_FRAMEWORK_ROOT", str(tmp_path / "framework"))
 
-    assert resolve_network_root() == legacy_data.resolve()
+    with pytest.raises(ValueError, match="refresh-example-network"):
+        resolve_network_root()
 
 
 @pytest.mark.smoke

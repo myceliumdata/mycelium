@@ -40,7 +40,8 @@ def _build_mcp_instructions(
         "restart the MCP server only after code deploy or if reload fails. "
         "Each MCP process is bound to one network via MYCELIUM_NETWORK_ROOT, "
         "MYCELIUM_NETWORK (registered name), or the default from "
-        "~/.config/mycelium/networks.json (unset uses legacy <framework>/data/). "
+        "~/.config/mycelium/networks.json. Unconfigured installs should run "
+        "./bin/refresh-example-network crm first. "
         "To get a direct link to the trace in LangSmith, use the get_langsmith_trace_url helper "
         "from the mycelium package (or implement equivalent from utils.langsmith) with the trace_id."
     )
@@ -60,19 +61,17 @@ _HEALTH_PING_PERSON_KEY = "Nichanan Kesonpat"
 
 
 def _network_health_info() -> dict[str, str | None]:
-    from network.paths import legacy_network_root, network_metadata
+    from network.paths import NO_NETWORK_CONFIGURED_MSG, network_metadata
 
     try:
         return network_metadata()
     except Exception:
-        root = os.environ.get("MYCELIUM_NETWORK_ROOT", "").strip()
-        if not root:
-            root = str(legacy_network_root())
         env_name = os.environ.get("MYCELIUM_NETWORK", "").strip()
         return {
-            "network_root": root,
+            "network_root": None,
             "network_name": env_name or None,
             "network_display_name": None,
+            "network_configure_hint": NO_NETWORK_CONFIGURED_MSG,
         }
 
 
@@ -266,21 +265,24 @@ def health_check() -> str:
         sync_forced = os.environ.get("MYCELIUM_USE_SYNC_CHECKPOINTER") == "1"
 
         network_info = _network_health_info()
+        info = {
+            "checkpointer": (
+                "sync (forced for MCP)"
+                if sync_forced
+                else f"env={os.environ.get('MYCELIUM_USE_SYNC_CHECKPOINTER', 'unset')!r}"
+            ),
+            "network_root": network_info["network_root"],
+            "network_name": network_info["network_name"],
+            "network_display_name": network_info["network_display_name"],
+            "recovery_wrapper": "active",
+            "server": "mycelium-mcp",
+        }
+        if network_info.get("network_configure_hint"):
+            info["network_configure_hint"] = network_info["network_configure_hint"]
         payload = {
             "status": "ok" if all_ok else "degraded",
             "checks": checks,
-            "info": {
-                "checkpointer": (
-                    "sync (forced for MCP)"
-                    if sync_forced
-                    else f"env={os.environ.get('MYCELIUM_USE_SYNC_CHECKPOINTER', 'unset')!r}"
-                ),
-                "network_root": network_info["network_root"],
-                "network_name": network_info["network_name"],
-                "network_display_name": network_info["network_display_name"],
-                "recovery_wrapper": "active",
-                "server": "mycelium-mcp",
-            },
+            "info": info,
             "message": (
                 "Mycelium MCP server is responsive."
                 if all_ok
@@ -290,20 +292,23 @@ def health_check() -> str:
         return json.dumps(payload, indent=2)
     except Exception as exc:
         network_info = _network_health_info()
+        info = {
+            "checkpointer": "sync (forced for MCP)"
+            if os.environ.get("MYCELIUM_USE_SYNC_CHECKPOINTER") == "1"
+            else "unknown",
+            "network_root": network_info["network_root"],
+            "network_name": network_info["network_name"],
+            "network_display_name": network_info["network_display_name"],
+            "recovery_wrapper": "active",
+            "server": "mycelium-mcp",
+        }
+        if network_info.get("network_configure_hint"):
+            info["network_configure_hint"] = network_info["network_configure_hint"]
         return json.dumps(
             {
                 "status": "degraded",
                 "checks": {},
-                "info": {
-                    "checkpointer": "sync (forced for MCP)"
-                    if os.environ.get("MYCELIUM_USE_SYNC_CHECKPOINTER") == "1"
-                    else "unknown",
-                    "network_root": network_info["network_root"],
-                    "network_name": network_info["network_name"],
-                    "network_display_name": network_info["network_display_name"],
-                    "recovery_wrapper": "active",
-                    "server": "mycelium-mcp",
-                },
+                "info": info,
                 "message": f"health_check encountered an error: {exc}",
             },
             indent=2,

@@ -1,0 +1,475 @@
+"""Read-only network snapshot for CLI status and future admin daemon."""
+
+from __future__ import annotations
+
+import json
+import os
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Any
+
+from agents.seed import find_by_key, get_seed_data
+from agents.specialists.base import category_slug
+from network.paths import NetworkPaths, network_metadata, resolve_network_root
+
+
+@dataclass(frozen=True)
+class CategorySummary:
+    name: str
+    assigned_agent: str | None
+    example_count: int
+    examples: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class SpecialistSummary:
+    name: str
+    category: str
+    module_on_disk: bool
+    storage_strategy: str | None
+    record_count: int
+    fields_tracked: list[str]
+    pending_count: int = 0
+    na_count: int = 0
+    found_count: int = 0
+
+
+@dataclass(frozen=True)
+class PersonFieldStatus:
+    field: str
+    category: str
+    agent: str
+    status: str
+    value: str | None = None
+
+
+@dataclass(frozen=True)
+class NetworkStatusSummary:
+    network_name: str | None
+    network_root: str
+    display_name: str | None
+    seed_people_count: int
+    ontology_present: bool
+    ontology_message: str
+    categories: list[CategorySummary] = field(default_factory=list)
+    specialists: list[SpecialistSummary] = field(default_factory=list)
+    person_key: str | None = None
+    person_matches: int = 0
+    person_fields: list[PersonFieldStatus] = field(default_factory=list)
+
+
+def _paths() -> NetworkPaths:
+    root = resolve_network_root()
+    return NetworkPaths.from_root(root)
+
+
+def _read_categories(paths: NetworkPaths) -> dict[str, Any] | None:
+    if not paths.categories_path.is_file():
+        return None
+    try:
+        data = json.loads(paths.categories_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _read_registry_agents(paths: NetworkPaths) -> list[dict[str, Any]]:
+    """List registered agents (read ``agent_registry.json`` only; no bootstrap write)."""
+    if not paths.registry_path.is_file():
+        return []
+    try:
+        raw = json.loads(paths.registry_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    agents = raw.get("agents")
+    if not isinstance(agents, dict):
+        return []
+    return [value for value in agents.values() if isinstance(value, dict)]
+
+
+def _specialists_dir() -> Path:
+    return Path(os.getenv("MYCELIUM_SPECIALISTS_DIR", "src/agents/specialists"))
+
+
+def _storage_file(paths: NetworkPaths, category: str) -> Path:
+    return paths.agents_dir / category_slug(category) / "storage.json"
+
+
+def _strategy_file(paths: NetworkPaths, category: str) -> Path:
+    return paths.agents_dir / category_slug(category) / "storage_strategy.json"
+
+
+def _analyze_storage(paths: NetworkPaths, category: str) -> SpecialistSummary:
+    storage_path = _storage_file(paths, category)
+    strategy_path = _strategy_file(paths, category)
+    strategy_name: str | None = None
+    if strategy_path.is_file():
+        try:
+            strategy_payload = json.loads(strategy_path.read_text(encoding="utf-8"))
+            if isinstance(strategy_payload, dict):
+                raw = strategy_payload.get("strategy")
+                strategy_name = raw if isinstance(raw, str) else None
+        except (OSError, json.JSONDecodeError):
+            strategy_name = None
+
+    record_count = 0
+    fields_tracked: set[str] = set()
+    pending = na = found = 0
+
+    if storage_path.is_file():
+        try:
+            payload = json.loads(storage_path.read_text(encoding="utf-8"))
+            records = payload.get("records", {}) if isinstance(payload, dict) else {}
+            if isinstance(records, dict):
+                record_count = len(records)
+                for record in records.values():
+                    if not isinstance(record, dict):
+                        continue
+                    for field_name, value in record.items():
+                        fields_tracked.add(field_name)
+                        if isinstance(value, dict) and "status" in value:
+                            status = str(value.get("status", "")).lower()
+                            if status == "pending":
+                                pending += 1
+                            elif status == "na":
+                                na += 1
+                            elif status == "found" or value.get("value"):
+                                found += 1
+                        elif value not in (None, ""):
+                            found += 1
+        except (OSError, json.JSONDecodeError):
+            pass
+
+    return SpecialistSummary(
+        name="",
+        category=category,
+        module_on_disk=False,
+        storage_strategy=strategy_name,
+        record_count=record_count,
+        fields_tracked=sorted(fields_tracked),
+        pending_count=pending,
+        na_count=na,
+        found_count=found,
+    )
+
+
+def _agent_category_map(
+    categories_doc: dict[str, Any] | None,
+    registry_agents: list[dict[str, Any]],
+) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for agent in registry_agents:
+        name = agent.get("name")
+        category = agent.get("category")
+        if isinstance(name, str) and name.strip():
+            mapping[name.strip()] = str(category) if category else ""
+    if categories_doc:
+        raw_categories = categories_doc.get("categories")
+        if isinstance(raw_categories, dict):
+            for category_name, meta in raw_categories.items():
+                if not isinstance(meta, dict):
+                    continue
+                assigned = meta.get("assigned_agent")
+                if isinstance(assigned, str) and assigned.strip():
+                    mapping.setdefault(assigned.strip(), str(category_name))
+    return mapping
+
+
+def _category_summaries(
+    categories_doc: dict[str, Any] | None,
+    *,
+    category_filter: str | None,
+) -> list[CategorySummary]:
+    if not categories_doc:
+        return []
+    raw_categories = categories_doc.get("categories")
+    if not isinstance(raw_categories, dict):
+        return []
+    summaries: list[CategorySummary] = []
+    for name, meta in sorted(raw_categories.items()):
+        if category_filter and name != category_filter:
+            continue
+        if not isinstance(meta, dict):
+            continue
+        raw_examples = meta.get("examples")
+        example_list = (
+            [str(item) for item in raw_examples]
+            if isinstance(raw_examples, list)
+            else []
+        )
+        assigned = meta.get("assigned_agent")
+        summaries.append(
+            CategorySummary(
+                name=str(name),
+                assigned_agent=assigned if isinstance(assigned, str) else None,
+                example_count=len(example_list),
+                examples=tuple(example_list),
+            ),
+        )
+    return summaries
+
+
+def _specialist_summaries(
+    paths: NetworkPaths,
+    agent_map: dict[str, str],
+    *,
+    category_filter: str | None,
+) -> list[SpecialistSummary]:
+    specialists_dir = _specialists_dir()
+    summaries: list[SpecialistSummary] = []
+    for agent_name in sorted(agent_map):
+        category = agent_map[agent_name]
+        if category_filter and category != category_filter:
+            continue
+        storage = _analyze_storage(paths, category)
+        summaries.append(
+            SpecialistSummary(
+                name=agent_name,
+                category=category,
+                module_on_disk=(specialists_dir / f"{agent_name}.py").is_file(),
+                storage_strategy=storage.storage_strategy,
+                record_count=storage.record_count,
+                fields_tracked=storage.fields_tracked,
+                pending_count=storage.pending_count,
+                na_count=storage.na_count,
+                found_count=storage.found_count,
+            ),
+        )
+    return summaries
+
+
+def _person_field_statuses(
+    paths: NetworkPaths,
+    person_id: str,
+    agent_map: dict[str, str],
+    *,
+    category_filter: str | None,
+) -> list[PersonFieldStatus]:
+    statuses: list[PersonFieldStatus] = []
+    seen_categories: set[str] = set()
+    for agent_name, category in sorted(agent_map.items(), key=lambda item: item[1]):
+        if category_filter and category != category_filter:
+            continue
+        if category in seen_categories:
+            continue
+        seen_categories.add(category)
+        storage_path = _storage_file(paths, category)
+        if not storage_path.is_file():
+            continue
+        try:
+            payload = json.loads(storage_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        records = payload.get("records", {}) if isinstance(payload, dict) else {}
+        if not isinstance(records, dict):
+            continue
+        record = records.get(person_id)
+        if not isinstance(record, dict):
+            continue
+        for field_name, value in sorted(record.items()):
+            status = "empty"
+            display_value: str | None = None
+            if isinstance(value, dict):
+                raw_status = value.get("status")
+                status = str(raw_status) if raw_status else "empty"
+                raw_value = value.get("value")
+                display_value = str(raw_value) if raw_value is not None else None
+            elif value not in (None, ""):
+                status = "found"
+                display_value = str(value)
+            statuses.append(
+                PersonFieldStatus(
+                    field=field_name,
+                    category=category,
+                    agent=agent_name,
+                    status=status,
+                    value=display_value,
+                ),
+            )
+    return statuses
+
+
+def build_network_status(
+    *,
+    category_filter: str | None = None,
+    person_key: str | None = None,
+) -> NetworkStatusSummary:
+    """Build a read-only snapshot of the active network."""
+    paths = _paths()
+    meta = network_metadata(root=paths.root)
+    categories_doc = _read_categories(paths)
+    ontology_present = categories_doc is not None
+    ontology_message = (
+        "present"
+        if ontology_present
+        else "not created yet — run a query to bootstrap categories.json"
+    )
+
+    seed_count = len(get_seed_data().people)
+    registry_agents = _read_registry_agents(paths)
+    agent_map = _agent_category_map(categories_doc, registry_agents)
+
+    person_fields: list[PersonFieldStatus] = []
+    person_matches = 0
+    if person_key:
+        matches = find_by_key(person_key)
+        person_matches = len(matches)
+        if len(matches) == 1:
+            person_fields = _person_field_statuses(
+                paths,
+                matches[0]["id"],
+                agent_map,
+                category_filter=category_filter,
+            )
+
+    return NetworkStatusSummary(
+        network_name=meta.get("network_name"),
+        network_root=str(paths.root),
+        display_name=meta.get("network_display_name"),
+        seed_people_count=seed_count,
+        ontology_present=ontology_present,
+        ontology_message=ontology_message,
+        categories=_category_summaries(categories_doc, category_filter=category_filter),
+        specialists=_specialist_summaries(
+            paths,
+            agent_map,
+            category_filter=category_filter,
+        ),
+        person_key=person_key,
+        person_matches=person_matches,
+        person_fields=person_fields,
+    )
+
+
+def status_to_dict(summary: NetworkStatusSummary) -> dict[str, Any]:
+    """Serialize a status summary for ``--json`` output."""
+    return asdict(summary)
+
+
+def _specialists_have_storage(specialists: list[SpecialistSummary]) -> bool:
+    """True when any specialist has persisted records or field activity."""
+    return any(
+        spec.record_count > 0
+        or spec.fields_tracked
+        or spec.pending_count
+        or spec.na_count
+        or spec.found_count
+        for spec in specialists
+    )
+
+
+def _format_network_header(summary: NetworkStatusSummary) -> str:
+    label = summary.network_name or "network"
+    if summary.display_name and summary.display_name != summary.network_name:
+        return f"Network: {label} ({summary.display_name})"
+    return f"Network: {label}"
+
+
+def format_category_examples(category_name: str, examples: list[str] | tuple[str, ...]) -> str:
+    """Format one ontology category line for demo output."""
+    items = list(examples)
+    if not items:
+        return category_name
+    if len(items) == 1:
+        return f"{category_name} (e.g., {items[0]})"
+    if len(items) == 2:
+        return f"{category_name} (e.g., {items[0]}, {items[1]})"
+    return f"{category_name} (e.g., {items[0]}, {items[1]}, …)"
+
+
+def _format_person_drill_down(summary: NetworkStatusSummary) -> list[str]:
+    if not summary.person_key:
+        return []
+    lines = [
+        f"Person lookup: {summary.person_key!r} ({summary.person_matches} match(es))",
+    ]
+    if summary.person_matches == 0:
+        lines.append("  No seed match.")
+    elif summary.person_matches > 1:
+        lines.append("  Multiple seed matches — narrow the key.")
+    elif summary.person_fields:
+        lines.append("  Fields:")
+        for item in summary.person_fields:
+            value = f" value={item.value!r}" if item.value else ""
+            lines.append(
+                f"    {item.field} ({item.category}/{item.agent}): "
+                f"{item.status}{value}",
+            )
+    else:
+        lines.append("  No specialist storage for this person yet.")
+    return lines
+
+
+def format_status_demo(summary: NetworkStatusSummary) -> str:
+    """Render a scannable demo-oriented status report (default CLI layout)."""
+    lines = [_format_network_header(summary)]
+    lines.append(f"Seed: ✅ ({summary.seed_people_count})")
+
+    if summary.ontology_present and summary.categories:
+        lines.append("Current ontology:")
+        for category in summary.categories:
+            lines.append(
+                f"  {format_category_examples(category.name, category.examples)}",
+            )
+    else:
+        lines.append("Current ontology: ❌")
+
+    stored = [
+        spec for spec in summary.specialists if spec.record_count > 0
+    ]
+    if stored:
+        lines.append("Existing specialists:")
+        for spec in sorted(stored, key=lambda item: item.category):
+            lines.append(f"  {spec.category} ({spec.record_count})")
+    else:
+        lines.append("Existing specialists: ❌")
+
+    if summary.person_key:
+        lines.extend(_format_person_drill_down(summary))
+    return "\n".join(lines)
+
+
+def format_status_verbose(summary: NetworkStatusSummary) -> str:
+    """Render a debug-oriented status report (``--verbose``)."""
+    lines = [_format_network_header(summary)]
+    lines.append(f"Root: {summary.network_root}")
+    lines.append(f"Seed: {summary.seed_people_count} records")
+    if summary.ontology_present:
+        lines.append(f"Ontology: {len(summary.categories)} categories")
+        for category in summary.categories:
+            agent = category.assigned_agent or "—"
+            lines.append(
+                f"  {category.name}: agent={agent} examples={category.example_count}",
+            )
+    else:
+        lines.append(f"Ontology: {summary.ontology_message}")
+
+    if summary.specialists and _specialists_have_storage(summary.specialists):
+        lines.append("Specialists:")
+        for spec in summary.specialists:
+            module = "yes" if spec.module_on_disk else "no"
+            fields = ", ".join(spec.fields_tracked) if spec.fields_tracked else "—"
+            lines.append(
+                f"  {spec.name}  category={spec.category}  module={module}  "
+                f"records={spec.record_count}  fields={fields}",
+            )
+            if spec.pending_count or spec.na_count or spec.found_count:
+                lines.append(
+                    f"    status counts: found={spec.found_count} "
+                    f"pending={spec.pending_count} na={spec.na_count}",
+                )
+    elif summary.ontology_present and summary.categories:
+        lines.append(
+            "Specialists: none with storage yet "
+            f"(ontology defines {len(summary.categories)} categories)",
+        )
+    else:
+        lines.append("Specialists: none registered")
+
+    lines.extend(_format_person_drill_down(summary))
+    return "\n".join(lines)
+
+
+def format_status_human(summary: NetworkStatusSummary) -> str:
+    """Alias for verbose layout (backward compatibility)."""
+    return format_status_verbose(summary)

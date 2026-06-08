@@ -4,7 +4,7 @@
 
 **Current reality (June 2026):**
 
-- **Networks:** Framework repo + user-chosen **`network_root`** paths. Committed CRM example at `examples/networks/crm/`; legacy repo `data/` is an empty shim until bootstrap (`bin/copy-example-network`). See `docs/plans/networks-terminology.md`.
+- **Networks:** Framework repo + user-chosen **`network_root`** paths. Committed CRM example at `examples/networks/crm/`; bootstrap with `./bin/refresh-example-network crm`. See `docs/plans/networks-terminology.md`.
 - **Public API** = queries only (`PersonQuery`: `person_key`, `requested_attributes`). No CLI `ingest`, no MCP `submit_person_data`, no `provided_data`.
 - **Graph:** `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` (or direct assemble for name-only / not found). Identity from `agents.seed` + specialist storage.
 - **Legacy on disk:** `core_data`, `core_identity`, `enrich`/`validator`/`person_prep` — unwired; not in the public graph.

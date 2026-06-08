@@ -16,7 +16,7 @@ import pytest
 from network_helpers import NETWORK_PATH_ENV_KEYS, clear_network_path_env
 from graphs.core import reset_core_graph, run_query
 from models.state import PersonQuery
-from network.paths import NetworkPaths, apply_network_paths, legacy_network_root, resolve_network_root
+from network.paths import NetworkPaths, apply_network_paths, resolve_network_root
 from network.registry import register_network
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -154,30 +154,18 @@ def _parse_cli_json(stdout: str) -> dict[str, Any]:
         return json.loads(compact)
 
 
-@pytest.fixture
-def framework_tmp(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
-    framework = tmp_path / "framework"
-    framework.mkdir()
-    (framework / "data").mkdir()
-    monkeypatch.setenv("MYCELIUM_FRAMEWORK_ROOT", str(framework))
-    _isolated_registry(monkeypatch, tmp_path)
-    return framework
-
-
-# --- 1. Path resolver + legacy ---
+# --- 1. Path resolver ---
 
 
 @pytest.mark.smoke
-def test_legacy_shim_without_committed_data_seed(
-    framework_tmp: Path,
+def test_no_network_configured_raises_clear_error(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     _isolated_registry(monkeypatch, tmp_path)
-    root = resolve_network_root()
-    assert root == legacy_network_root()
-    assert root == (framework_tmp / "data").resolve()
-    assert not (root / "seed.json").exists()
+    monkeypatch.setenv("MYCELIUM_FRAMEWORK_ROOT", str(tmp_path / "framework"))
+    with pytest.raises(ValueError, match="refresh-example-network"):
+        resolve_network_root()
 
 
 @pytest.mark.smoke
@@ -377,29 +365,26 @@ def test_two_network_roots_isolated_query_results(
 
 
 @pytest.mark.full
-def test_copy_example_register_and_query_nichanan(
+def test_refresh_example_register_and_query_nichanan(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     config = _isolated_registry(monkeypatch, tmp_path)
     target = tmp_path / "crm_copy"
-    copy_script = REPO_ROOT / "bin" / "copy-example-network"
-    copy_env = os.environ.copy()
-    copy_env["MYCELIUM_NETWORKS_CONFIG"] = str(config)
+    refresh_script = REPO_ROOT / "bin" / "refresh-example-network"
+    refresh_env = os.environ.copy()
+    refresh_env["MYCELIUM_NETWORKS_CONFIG"] = str(config)
     copy = subprocess.run(
         [
             sys.executable,
-            str(copy_script),
+            str(refresh_script),
             "crm",
             "--root",
             str(target),
-            "--register",
-            "--default",
-            "--name",
-            "crm",
+            "--yes",
         ],
         cwd=REPO_ROOT,
-        env=copy_env,
+        env=refresh_env,
         capture_output=True,
         text=True,
         check=False,

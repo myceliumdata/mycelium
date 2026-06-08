@@ -53,10 +53,8 @@ def _validate_registry(data: NetworksRegistryData) -> None:
         _normalize_root(entry.root)
         if entry.default:
             defaults += 1
-    if data.networks and defaults != 1:
-        raise ValueError(
-            "Exactly one network must be marked default when any are registered",
-        )
+    if defaults > 1:
+        raise ValueError("At most one network may be marked default")
 
 
 def _load_registry_data() -> NetworksRegistryData:
@@ -113,7 +111,13 @@ def default_network_root() -> Path | None:
     return None
 
 
-def register_network(name: str, root: str | Path, *, default: bool = False) -> NetworkEntry:
+def register_network(
+    name: str,
+    root: str | Path,
+    *,
+    default: bool = False,
+    allow_no_default: bool = False,
+) -> NetworkEntry:
     """Add or update a network entry in the user config."""
     clean_name = name.strip()
     if not clean_name:
@@ -125,7 +129,10 @@ def register_network(name: str, root: str | Path, *, default: bool = False) -> N
         None,
     )
     networks = [entry for entry in data.networks if entry.name != clean_name]
-    make_default = default or not networks or (existing.default if existing else False)
+    if allow_no_default and not default:
+        make_default = existing.default if existing else False
+    else:
+        make_default = default or not networks or (existing.default if existing else False)
     if make_default:
         networks = [
             NetworkEntry(name=entry.name, root=entry.root, default=False)

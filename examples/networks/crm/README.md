@@ -1,8 +1,8 @@
 # CRM example network
 
-Committed **reference network** for the Mycelium framework. Copy it to a path you own, register it, and query.
+Committed **reference network** for the Mycelium framework. Refresh it to a path you own, register it, and query.
 
-This example ships **`seed.json`** and **`network.json`** only (plus this README and maintainer `prepare_seed.py`). Runtime artifacts — `categories.json`, `agent_registry.json`, `agents/`, DB, checkpoints — are created under your `network_root` on first query.
+This example ships **`seed.json`** and **`network.json`** only (plus this README and maintainer `prepare_seed.py`). Runtime artifacts — `categories.json`, `agent_registry.json`, `agents/`, `specialists/`, DB, checkpoints — are created under your `network_root` on first query.
 
 The current `seed.json` is a small public-safe subset (15 people) including demo names used in docs and tests (`Nichanan Kesonpat`, `Andrea Kalmans`, ambiguous `Kevin Zhang` pairs).
 
@@ -11,20 +11,28 @@ The current `seed.json` is a small public-safe subset (15 people) including demo
 From the framework repo root:
 
 ```bash
-# Copy to your network_root (creates directory if needed)
-./bin/copy-example-network crm --root ~/mycelium-networks/crm --register --default
+# Bootstrap or reset live CRM (default ~/mycelium-networks/crm; registers as default)
+./bin/refresh-example-network crm
 
 # Query via registered name or default
 uv run mycelium query --network crm --person-key "Nichanan Kesonpat"
 uv run mycelium query --person-key "Andrea Kalmans"
 ```
 
-Or copy manually:
+Custom live root:
 
 ```bash
-mkdir -p ~/mycelium-networks/crm
-cp examples/networks/crm/seed.json examples/networks/crm/network.json ~/mycelium-networks/crm/
-uv run mycelium network register crm --root ~/mycelium-networks/crm --default
+./bin/refresh-example-network crm --root ~/mycelium-networks/crm --yes
+```
+
+Before demos, run refresh with `--yes` to wipe stale specialist research, then **restart MCP** and use fresh `thread_id` values per attribute.
+
+Check network state before and after demo queries:
+
+```bash
+uv run mycelium network status --network crm
+uv run mycelium network status --network crm --verbose   # debug layout
+uv run mycelium network status --network crm --person "Andrea Kalmans"
 ```
 
 ## Layout
@@ -35,6 +43,7 @@ uv run mycelium network register crm --root ~/mycelium-networks/crm --default
   seed.json         # people array (name + employer only)
   categories.json   # runtime — created on first query (see docs/examples/sample-categories.json)
   agent_registry.json
+  specialists/      # generated *_specialist.py
   agents/<category>/
   checkpoints.sqlite
   mycelium.db

@@ -2,7 +2,7 @@
 
 **Download the framework** (this repo), then **run named networks** at paths you choose. Each **network** is an isolated data namespace (seed, ontology, specialist registry, storage, checkpoints). The **supervisor** and specialist agents operate inside one network at a time.
 
-A fresh clone has **no committed CRM seed** in `data/` — bootstrap from **`examples/networks/crm/`**, register a network, then query. Register named networks in **`~/.config/mycelium/networks.json`** (override with **`MYCELIUM_NETWORKS_CONFIG`**) so you can use **`--network <name>`** or rely on a **default** without repeating paths. Pre-networks snapshot: git tag **`prototype`**.
+A fresh clone has **no live network** until you bootstrap. Run **`./bin/refresh-example-network crm`** (copies the committed CRM example to `~/mycelium-networks/crm` and registers it as default). Register named networks in **`~/.config/mycelium/networks.json`** (override with **`MYCELIUM_NETWORKS_CONFIG`**) so you can use **`--network <name>`** without repeating paths. Pre-networks snapshot: git tag **`prototype`**.
 
 Public repo: [github.com/myceliumdata/mycelium](https://github.com/myceliumdata/mycelium) · Architecture: [docs/architecture.md](docs/architecture.md) · Networks plan: [docs/plans/networks-terminology.md](docs/plans/networks-terminology.md) · License: MIT
 
@@ -15,8 +15,8 @@ uv sync --all-extras
 cp .env.example .env
 # Add OPENAI_API_KEY and TAVILY_API_KEY to .env for synchronous field research on cache miss.
 
-# Bootstrap the CRM example into a network_root and register it
-./bin/copy-example-network crm --root ~/mycelium-networks/crm --register --default
+# Bootstrap or reset the CRM example (default: ~/mycelium-networks/crm)
+./bin/refresh-example-network crm
 
 # Query (uses default registered network)
 uv run mycelium query --person-key "Nichanan Kesonpat"
@@ -26,8 +26,10 @@ uv run mycelium query --person-key "Nichanan Kesonpat"
 
 | Goal | Command |
 |------|---------|
-| **CRM example** (committed reference ontology) | `./bin/copy-example-network crm --root <path> --register` |
+| **CRM example** (committed reference; wipe stale research before demos) | `./bin/refresh-example-network crm` |
 | **Custom domain** (your categories + specialists) | `uv run mycelium network create <name> --root <path> --seed <file> --prompt "..."` |
+
+**Demo runbook:** Before a demo, run `./bin/refresh-example-network crm --yes` to restore a clean seed and drop cached specialist research. **Restart your MCP server** (e.g. Claude Desktop) after refresh so it reloads the wiped network. Use a **fresh `thread_id`** per query attribute when demonstrating research (avoids stale checkpoint state).
 
 Custom network example (fake paths):
 
@@ -65,9 +67,23 @@ uv run mycelium network create my_net --root ~/mycelium-networks/my_net --seed .
 uv run mycelium network register crm --root ~/mycelium-networks/crm --default
 uv run mycelium network list
 uv run mycelium network use crm
+uv run mycelium network status
+uv run mycelium network status --network crm --verbose
+uv run mycelium network status --network crm --json
 ```
 
-The CLI starts a **fresh process** each run and reloads registry/storage from disk. Network selection order: **`--network-dir`** → **`--network`** → **`MYCELIUM_NETWORK_ROOT`** → **`MYCELIUM_NETWORK`** → default from config → **`data/`** under the framework repo (empty until you bootstrap).
+**`network status`** is a read-only demo/ops snapshot (scannable default layout with ✅/❌). Use **`--verbose`** for root path, agent modules, and field-level debug detail. **`--json`** pipes full data to `jq`.
+
+Example (fresh network):
+
+```text
+Network: crm (CRM example)
+Seed: ✅ (15)
+Current ontology: ❌
+Existing specialists: ❌
+```
+
+The CLI starts a **fresh process** each run and reloads registry/storage from disk. Network selection order: **`--network-dir`** → **`--network`** → **`MYCELIUM_NETWORK_ROOT`** → **`MYCELIUM_NETWORK`** → default from config. With no network configured, commands fail with a pointer to `./bin/refresh-example-network crm`.
 
 ### Credentials vs network data
 
@@ -81,7 +97,7 @@ The CLI starts a **fresh process** each run and reloads registry/storage from di
 uv run mycelium-mcp
 ```
 
-MCP is a **long-lived stdio process** — **one server per network**. Configure your client with the **framework repo as `cwd`**; bind each server to a `network_root` via **`MYCELIUM_NETWORK_ROOT`** or **`MYCELIUM_NETWORK`** (unset with no config uses empty legacy `data/`).
+MCP is a **long-lived stdio process** — **one server per network**. Configure your client with the **framework repo as `cwd`**; bind each server to a `network_root` via **`MYCELIUM_NETWORK_ROOT`** or **`MYCELIUM_NETWORK`**. Restart MCP after `./bin/refresh-example-network` so the server picks up wiped artifacts.
 
 Single network (after bootstrap) — by path or registered name:
 
@@ -153,8 +169,8 @@ uv run mycelium network create my_net --root /abs/path --seed ./seed.json --prom
 # Rebuild same root (overwrites ontology artifacts; does not touch seed.json)
 uv run mycelium network create my_net --root /abs/path --seed ./seed.json --prompt "..." --force
 
-# CRM example
-./bin/copy-example-network crm --root ~/mycelium-networks/crm --register --default
+# CRM example (reset live root)
+./bin/refresh-example-network crm --yes
 ```
 
 To drop a network entirely, remove its directory and edit `~/.config/mycelium/networks.json` (or set `MYCELIUM_NETWORKS_CONFIG`).
@@ -193,7 +209,7 @@ CLI and MCP return **`PersonResponse`** JSON:
 4. **Graph** — `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` (or direct assemble for name-only / not found).
 5. **Research** — Specialists run sync LLM + Tavily on cache miss when keys are set; persist to `<network_root>/agents/<category>/storage.json`.
 
-Runtime agent data under your `network_root` (`agents/`, `agent_registry.json`, generated specialists, `categories.json`) is **gitignored** when using the legacy `data/` shim.
+Runtime agent data under your `network_root` (`agents/`, `specialists/`, `agent_registry.json`, `categories.json`) is local-only and never committed.
 
 ```mermaid
 flowchart TD
@@ -260,12 +276,11 @@ Smoke vs full: `@pytest.mark.smoke` vs `@pytest.mark.full` in `tests/`. CI runs 
 ```
 mycelium/
 ├── examples/networks/crm/      # committed CRM example (seed.json, network.json)
-├── data/                       # legacy shim network_root (runtime; see data/README.md)
 ├── src/agents/                 # supervisor, classification, factory, dispatch
 ├── src/graphs/core.py
 ├── src/mycelium_mcp/server.py
 ├── src/main.py
-├── bin/copy-example-network
+├── bin/refresh-example-network
 ├── docs/architecture.md
 └── prompts/
 ```

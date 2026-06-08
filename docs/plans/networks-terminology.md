@@ -8,7 +8,7 @@
 
 ## Why this doc exists
 
-**Product model (Paul, June 2026):** Users download the **Mycelium framework** (this repo) and **launch named networks**. Each network lives in its **own namespace** (isolated seed, ontology, registry, specialist storage, checkpoints). **Phase 4 complete:** CRM seed no longer ships in repo-root `data/` — bootstrap from committed **`examples/networks/crm/`** via `bin/copy-example-network`. Legacy `data/` is an empty runtime shim until populated.
+**Product model (Paul, June 2026):** Users download the **Mycelium framework** (this repo) and **launch named networks**. Each network lives in its **own namespace** (isolated seed, ontology, registry, specialist storage, checkpoints). **Phase 4 complete:** CRM seed no longer ships in repo-root `data/` — bootstrap from committed **`examples/networks/crm/`** via `bin/refresh-example-network crm` into a user-chosen `network_root`.
 
 The TODO item “rename instance → network” is therefore **not** a mechanical find-and-replace (the word *instance* barely appears). It is:
 
@@ -298,7 +298,7 @@ Paul: **keep a CRM example in the repo** — it will evolve with the product.
 - Add **`examples/networks/crm/`** — full standard `network_root` layout (seed, manifest, optional starter categories). Committed, public-safe subset or synthetic rows; grows over time as the reference network.
 - Remove runtime CRM from flat **`data/`** in default clone (no private seed at repo root).
 - README quick start: copy or link example → user-chosen path, then `network register` / set default.
-- Optional `bin/copy-example-network` to bootstrap a local network from `examples/networks/crm/`.
+- Optional `bin/refresh-example-network crm` to bootstrap a local network from `examples/networks/crm/`.
 - Paul's live CRM stays at a user path (not necessarily committed).
 
 ### Phase 4.5 — Integration testing — **delivered** (`2026-06-09-1400`)
@@ -321,7 +321,7 @@ See [`docs/plans/networks-phase5.md`](networks-phase5.md) for full design.
 - **Skeleton ontology** at create: LLM maps creation prompt → `categories.json` + `agent_registry.json` + minimal `attribute_map` (examples only).
 - **Per-network specialists:** `<network_root>/specialists/` via `MYCELIUM_SPECIALISTS_DIR`; isolated from other networks on the same machine.
 - **Classification unchanged:** unknown attributes still classify lazily at query time; supervisor can create specialists on demand.
-- **CRM path unchanged:** `bin/copy-example-network` for committed reference; `network create` for custom domains.
+- **CRM path unchanged:** `bin/refresh-example-network crm` for committed reference; `network create` for custom domains.
 - **Cleanup:** `bin/reset-mycelium` removed (`1760`) — start a new `--root` or `network create --force` instead.
 
 ### Phase 6 — Inter-network discovery & handoff (future)

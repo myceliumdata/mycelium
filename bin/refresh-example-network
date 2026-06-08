@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+"""Bootstrap or reset a live network from a committed example under examples/networks/."""
+
+from __future__ import annotations
+
+import argparse
+import os
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+_SRC_ROOT = REPO_ROOT / "src"
+_VENV_PYTHON = REPO_ROOT / ".venv" / "bin" / "python3"
+
+
+def _bootstrap() -> None:
+    if _VENV_PYTHON.is_file():
+        try:
+            if Path(sys.executable).resolve() != _VENV_PYTHON.resolve():
+                os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON), *sys.argv])
+        except OSError:
+            pass
+    src = str(_SRC_ROOT)
+    if src not in sys.path:
+        sys.path.insert(0, src)
+
+
+_bootstrap()
+
+from network.example import refresh_example_network  # noqa: E402
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="bin/refresh-example-network",
+        description=(
+            "Copy examples/networks/<name>/ into a live network_root, "
+            "wiping any existing runtime artifacts first."
+        ),
+    )
+    parser.add_argument(
+        "name",
+        help="Example network name (e.g. crm)",
+    )
+    parser.add_argument(
+        "--root",
+        default=None,
+        metavar="PATH",
+        help="Live network_root (default: ~/mycelium-networks/<name>)",
+    )
+    parser.add_argument(
+        "--register",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Register the network in networks.json (default: on)",
+    )
+    parser.add_argument(
+        "--default",
+        action="store_true",
+        help="Mark registered network as default",
+    )
+    parser.add_argument(
+        "--no-default",
+        action="store_true",
+        help="Do not auto-mark crm as default",
+    )
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Skip confirmation when replacing an existing live root",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print planned actions without writing",
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _build_parser().parse_args(argv)
+    root = Path(args.root).expanduser().resolve() if args.root else None
+    default = True if args.default else None
+    try:
+        result = refresh_example_network(
+            args.name,
+            root=root,
+            register=args.register,
+            default=default,
+            no_default=args.no_default,
+            yes=args.yes,
+            dry_run=args.dry_run,
+        )
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+
+    if result.declined:
+        print(f"Skipped refresh for {args.name} at {result.root}")
+        return 0
+
+    prefix = "Would refresh" if result.dry_run else "Refreshed"
+    print(f"{prefix} {args.name} → {result.root}")
+    print(f"  source: {result.source}")
+    if result.wiped:
+        action = "Would wipe" if result.dry_run else "Wiped"
+        print(f"  {action} existing live root")
+    for entry in result.copied:
+        print(f"  copy: {entry}")
+    if result.registered and result.registry_name:
+        suffix = " (default)" if result.is_default else ""
+        action = "Would register" if result.dry_run else "Registered"
+        print(f"  {action} {result.registry_name} → {result.root}{suffix}")
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

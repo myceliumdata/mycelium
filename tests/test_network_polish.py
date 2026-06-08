@@ -34,7 +34,7 @@ def test_legacy_network_root_uses_framework_root(
 
 
 @pytest.mark.smoke
-def test_network_health_info_legacy_fallback(
+def test_network_health_info_unconfigured_hint(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     framework = tmp_path / "framework"
@@ -47,8 +47,29 @@ def test_network_health_info_legacy_fallback(
     from mycelium_mcp.server import _network_health_info
 
     info = _network_health_info()
-    assert info["network_root"] == str((framework / "data").resolve())
+    assert info["network_root"] is None
     assert info["network_display_name"] is None
+    assert "refresh-example-network" in (info.get("network_configure_hint") or "")
+
+
+@pytest.mark.smoke
+def test_health_check_includes_configure_hint_when_unconfigured(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    framework = tmp_path / "framework"
+    framework.mkdir()
+    monkeypatch.delenv("MYCELIUM_NETWORK_ROOT", raising=False)
+    monkeypatch.delenv("MYCELIUM_NETWORK", raising=False)
+    monkeypatch.setenv("MYCELIUM_FRAMEWORK_ROOT", str(framework))
+    monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(tmp_path / "missing.json"))
+
+    from mycelium_mcp.server import health_check
+
+    payload = json.loads(health_check())
+    hint = payload["info"].get("network_configure_hint") or ""
+    assert payload["info"]["network_root"] is None
+    assert "refresh-example-network" in hint
 
 
 @pytest.mark.smoke

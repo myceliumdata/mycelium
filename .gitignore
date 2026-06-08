@@ -12,19 +12,10 @@ build/
 .pytest_cache/
 .coverage
 htmlcov/
-data/*.db
-data/*.sqlite
-data/*.sqlite-shm
-data/*.sqlite-wal
-data/checkpoints.sqlite
 .langgraph_api/
 
-# Runtime classification cache (canonical taxonomy: _SEED_CATEGORIES in classification/engine.py)
-data/categories.json
-
-# Runtime agent factory / specialist data
-data/agent_registry.json
-data/agents/
+# Retired legacy prototype shim — ignore leftover local runtime artifacts
+data/
 
 # AUTO-GENERATED specialists (recreated by AgentFactory on demand)
 src/agents/specialists/*_specialist.py

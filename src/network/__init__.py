@@ -10,6 +10,15 @@ from network.paths import (
     resolve_network_root,
 )
 from network.create import CreateNetworkResult, create_network
+from network.introspection import (
+    NetworkStatusSummary,
+    build_network_status,
+    format_category_examples,
+    format_status_demo,
+    format_status_human,
+    format_status_verbose,
+    status_to_dict,
+)
 from network.ontology import (
     OntologyGenerationError,
     SkeletonOntologyResult,
@@ -31,6 +40,13 @@ __all__ = [
     "apply_network_paths",
     "OntologyGenerationError",
     "SkeletonOntologyResult",
+    "NetworkStatusSummary",
+    "build_network_status",
+    "format_category_examples",
+    "format_status_demo",
+    "format_status_human",
+    "format_status_verbose",
+    "status_to_dict",
     "framework_root",
     "generate_skeleton_ontology",
     "legacy_network_root",

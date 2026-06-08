@@ -1,8 +1,10 @@
-"""Smoke tests for the committed CRM example network."""
+"""Smoke tests for the committed CRM example network and refresh script."""
 
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -10,16 +12,36 @@ from pathlib import Path
 import pytest
 
 from agents.seed import find_by_key, get_seed_data, reset_seed_data
+from network.example import refresh_example_network
 from network.paths import NetworkPaths, apply_network_paths, resolve_network_root
+from network.registry import list_networks
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
+_REFRESH_SCRIPT = REPO_ROOT / "bin" / "refresh-example-network"
 _RUNTIME_ARTIFACTS = (
     "categories.json",
     "checkpoints.sqlite",
     "mycelium.db",
     "agent_registry.json",
 )
+
+
+def _run_refresh(
+    *args: str,
+    env: dict[str, str] | None = None,
+    input_text: str | None = None,
+) -> subprocess.CompletedProcess[str]:
+    run_env = {**os.environ, "PYTHONPATH": str(REPO_ROOT / "src"), **(env or {})}
+    return subprocess.run(
+        [sys.executable, str(_REFRESH_SCRIPT), *args],
+        cwd=REPO_ROOT,
+        env=run_env,
+        capture_output=True,
+        text=True,
+        input=input_text,
+        check=False,
+    )
 
 
 @pytest.mark.smoke
@@ -68,11 +90,18 @@ def test_example_crm_seed_loads_via_network_paths(
 
 
 @pytest.mark.smoke
-def test_copy_example_network_script(tmp_path: Path) -> None:
+def test_refresh_example_network_empty_root(tmp_path: Path) -> None:
     target = tmp_path / "my-crm"
-    script = REPO_ROOT / "bin" / "copy-example-network"
     result = subprocess.run(
-        [sys.executable, str(script), "crm", "--root", str(target)],
+        [
+            sys.executable,
+            str(_REFRESH_SCRIPT),
+            "crm",
+            "--root",
+            str(target),
+            "--no-register",
+            "--yes",
+        ],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
@@ -85,3 +114,156 @@ def test_copy_example_network_script(tmp_path: Path) -> None:
     assert not (target / "prepare_seed.py").exists()
     for runtime_artifact in _RUNTIME_ARTIFACTS:
         assert not (target / runtime_artifact).exists()
+
+
+@pytest.mark.smoke
+def test_refresh_replaces_existing_root(tmp_path: Path) -> None:
+    target = tmp_path / "crm-live"
+    target.mkdir()
+    (target / "categories.json").write_text('{"stale": true}', encoding="utf-8")
+    (target / "agents").mkdir()
+    (target / "agents" / "junk.json").write_text("{}", encoding="utf-8")
+    (target / "specialists").mkdir()
+    (target / "specialists" / "stale_specialist.py").write_text("# stale", encoding="utf-8")
+
+    result = refresh_example_network("crm", root=target, register=False, yes=True)
+    assert result.wiped is True
+    assert (target / "seed.json").is_file()
+    assert not (target / "categories.json").exists()
+    assert not (target / "agents").exists()
+    assert not (target / "specialists").exists()
+
+
+@pytest.mark.smoke
+def test_refresh_decline_without_yes(tmp_path: Path) -> None:
+    target = tmp_path / "crm-live"
+    target.mkdir()
+    marker = target / "keep-me.txt"
+    marker.write_text("stay", encoding="utf-8")
+
+    result = refresh_example_network(
+        "crm",
+        root=target,
+        register=False,
+        input_fn=lambda _prompt: "n",
+    )
+    assert result.declined is True
+    assert marker.read_text(encoding="utf-8") == "stay"
+    assert not (target / "seed.json").exists()
+
+
+@pytest.mark.smoke
+def test_refresh_decline_via_subprocess(tmp_path: Path) -> None:
+    target = tmp_path / "crm-live"
+    target.mkdir()
+    marker = target / "keep-me.txt"
+    marker.write_text("stay", encoding="utf-8")
+
+    result = _run_refresh(
+        "crm",
+        "--root",
+        str(target),
+        "--no-register",
+        input_text="n\n",
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+    assert marker.read_text(encoding="utf-8") == "stay"
+    assert "Skipped refresh" in result.stdout
+
+
+@pytest.mark.smoke
+def test_refresh_crm_registers_as_default(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "networks.json"
+    monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(config))
+    target = tmp_path / "crm-live"
+
+    result = refresh_example_network("crm", root=target, yes=True)
+    assert result.registered is True
+    assert result.is_default is True
+    entries = list_networks()
+    assert len(entries) == 1
+    assert entries[0].name == "crm"
+    assert entries[0].default is True
+
+
+@pytest.mark.smoke
+def test_refresh_dry_run_without_yes_leaves_root_unchanged(tmp_path: Path) -> None:
+    target = tmp_path / "crm-live"
+    target.mkdir()
+    sentinel = target / "stale.json"
+    sentinel.write_text("{}", encoding="utf-8")
+
+    def _must_not_prompt(_prompt: str) -> str:
+        raise AssertionError("should not prompt")
+
+    result = refresh_example_network(
+        "crm",
+        root=target,
+        register=False,
+        dry_run=True,
+        input_fn=_must_not_prompt,
+    )
+    assert result.declined is False
+    assert result.dry_run is True
+    assert sentinel.read_text(encoding="utf-8") == "{}"
+    assert not (target / "seed.json").exists()
+
+
+@pytest.mark.smoke
+def test_refresh_dry_run(tmp_path: Path) -> None:
+    target = tmp_path / "crm-live"
+    target.mkdir()
+    (target / "stale.json").write_text("{}", encoding="utf-8")
+
+    result = _run_refresh("crm", "--root", str(target), "--dry-run", "--yes")
+    assert result.returncode == 0, result.stderr or result.stdout
+    assert "Would refresh" in result.stdout
+    assert "Would wipe" in result.stdout
+    assert (target / "stale.json").is_file()
+    assert not (target / "seed.json").exists()
+
+
+@pytest.mark.smoke
+def test_refresh_crm_no_default_on_empty_registry(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "networks.json"
+    monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(config))
+    target = tmp_path / "crm-live"
+
+    result = refresh_example_network("crm", root=target, yes=True, no_default=True)
+    assert result.registered is True
+    assert result.is_default is False
+    entries = list_networks()
+    assert len(entries) == 1
+    assert entries[0].default is False
+
+
+@pytest.mark.smoke
+def test_refresh_non_crm_example_auto_defaults(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    framework = tmp_path / "framework"
+    example = framework / "examples" / "networks" / "fleet"
+    example.mkdir(parents=True)
+    shutil.copy(EXAMPLE_CRM / "seed.json", example / "seed.json")
+    (example / "network.json").write_text(
+        json.dumps({"name": "fleet", "display_name": "Fleet example"}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("MYCELIUM_FRAMEWORK_ROOT", str(framework))
+    config = tmp_path / "networks.json"
+    monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(config))
+    target = tmp_path / "fleet-live"
+
+    result = refresh_example_network("fleet", root=target, yes=True)
+    assert result.registered is True
+    assert result.is_default is True
+    entries = list_networks()
+    assert entries[0].name == "fleet"
+    assert entries[0].default is True

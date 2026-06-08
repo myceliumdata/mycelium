@@ -5,6 +5,55 @@ Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture
 
 ---
 
+## Demo (phase)
+
+Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 2 → 5 → 1200 + hands-on test: done** (June 2026). **Next:** MCP onboarding (`prompts/cursor/next/` 1300→1500), then admin daemon (slice 3) → UI (slice 4).
+
+### Slice 1 — `refresh-example-network` — **done** (`2026-06-08-1000`)
+
+- [x] **`bin/refresh-example-network <name>`** — shared logic in `src/network/example.py`; wipe + recopy; `--root`, `--register`, `--default`/`--no-default`, `--yes`, `--dry-run`.
+- [x] **Removed `bin/copy-example-network`** — README, `examples/networks/crm/README`, integration tests updated.
+- [x] **Retired legacy `data/` shim** — `resolve_network_root()` fails loud when unconfigured.
+- [x] **Demo runbook** (README) — refresh before demos; restart MCP; fresh `thread_id` per attribute.
+
+### Slice 2 — network status (CLI) — **done** (`2026-06-08-1100`)
+
+- [x] **`mycelium network status`** — `src/network/introspection.py`; seed, ontology, specialists, storage stats; `--json`, `--category`, `--person`.
+- [x] **Tests** — `tests/test_network_status.py` (empty + populated + JSON CLI + person drill-down).
+
+### Slice 3 — admin daemon (after 1–2)
+
+- [ ] **`mycelium-admin` (or `uv run mycelium-admin`)** — long-lived **HTTP** admin API on localhost (one process per network, like MCP). env: `MYCELIUM_NETWORK` / `MYCELIUM_NETWORK_ROOT`.
+  - **v0 read-only:** same introspection as slice 2 (`GET /status`, ontology, specialists, storage summaries).
+  - **Later write ops:** refresh example, register (slice 4+); remote + auth deferred.
+  - Reuse introspection module — do not duplicate read logic for UI.
+
+### Slice 4 — admin UI (after 3)
+
+- [ ] **Minimal demo UI** — browser client against admin daemon (static SPA or simple server-rendered). Drill-down: network → specialists → person → fields.
+  - Local demos first; same API supports future remote deployments.
+
+### Slice 5 — demo polish — **done** (`2026-06-08-1150`)
+
+- [x] **`network status --json` plain stdout** — `jq`-friendly; `test_status_cli_json` parses JSON.
+- [x] **Specialists empty-state copy** — ontology-without-storage message.
+- [x] **`health_check` bootstrap hint** — `network_configure_hint` in `info` when unconfigured.
+- [x] **Refresh `allow_no_default` wiring** — only on `--no-default`; non-`crm` first refresh auto-defaults.
+- [x] **Stale plan docs** — `refresh-example-network` in terminology + phase5 plans.
+
+### Status demo format — **done** (`2026-06-08-1200`)
+
+- [x] **Default human output** — `Seed: ✅ (N)`, `Current ontology: ✅/❌` with `category (e.g., a, b, …)`, `Existing specialists: category (count)`; no `Root:`.
+- [x] **`--verbose`** — preserves today’s debug layout (agents, modules, status counts).
+- [x] **`--person`** — append verbose person block only (demo person UX deferred).
+
+### Hands-on verification — **done** (June 2026)
+
+- [x] **CLI demo runbook** — `refresh-example-network crm`, `network status`, query regression.
+- [x] **MCP** — `mycelium-crm` config, `health_check`, `query_person` (MCP visiting-agent surface queued separately).
+
+---
+
 ## Brand & launch
 
 - [x] **Logo** — done (June 2026).
@@ -45,10 +94,13 @@ Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture
 - [x] **Categories sample + alignment** — runtime-only `categories.json`; doc sample + polish nits (slice `2026-06-09-1380`).
 - [x] **Phase 5 polish** (`2026-06-09-1750`) — test env dedupe; public storage paths + slug helper; ontology API-key skip when `llm=`; create polish; duplicate/>8 ontology tests.
 - [x] **Remove reset-mycelium** (`2026-06-09-1760`) — script + tests removed; replacements documented for `1800`.
-- [x] **Paul hands-on test (Phase 5)** — CRM `copy-example-network`, CLI regression, MCP (`mycelium-crm`); June 2026.
+- [x] **Paul hands-on test (Phase 5)** — CRM `refresh-example-network`, CLI regression, MCP (`mycelium-crm`); June 2026.
 
 ### Protocol & conversation
 
+- [ ] **Remove `list_specialist_routing` from MCP** — ontology/specialist introspection lives in CLI `network status`, admin daemon (slice 3), filesystem, and graphical UI (slice 4); drop the public `@mcp.tool`, keep `_routing_payload()` for `health_check` only; update README, architecture docs, and tests.
+- [ ] **MCP onboarding for visiting agents** — `describe_network` composes **guide.md** (author) + **ontology** (auto) + **policy** (framework). **Schema neutralization (locked):** full rename (option B) — `SeedRecord`, `EntityQuery`, `entity_key`, `QueryResponse`, MCP `query_entity`; resources `seed-record`, `entity-query`, `query-response`; no backward-compat aliases (Paul only client). `SeedRecord` transitional until generic seed. Generic seed file shape stays in **Non-person seed schemas**. **Query-time messages (locked):** partition attrs into found / researching / unavailable / out_of_scope; verbose category + specialist spin-up in `message`; values in `results` only; v1 collective message when multiple seed matches (see revisit item below).
+- [ ] **Per-record query messages (multi-match)** — v1 keeps collective `message` when `entity_key` matches multiple seed records (e.g. two Kevin Zhangs); agent disambiguates via `results`. Revisit when non-person or other domains need per-record status in `message` (different attrs per match, async research diverging per id).
 - [ ] **Thread checkpoint: new query on same `thread_id`** — reusing a `thread_id` with different `requested_attributes` can replay the prior `PersonResponse` (stale `response` in LangGraph checkpoint; `assemble_response` short-circuits). Awkward for multi-turn: new attributes on the same thread should re-run the graph and merge fresh results while reusing specialist cache. Clear or rebuild `response` when `PersonQuery` changes; add regression test (email then address, same thread).
 - [ ] **Long-running threads** — suspend and ask client for clarification (`thread_id` + checkpoints; bones exist).
 - [ ] **Seed data vs specialists** — today the supervisor resolves `seed.json` (`find_by_key`), then `build_context` passes a seed slice into every specialist; generated specialists re-derive `id` from `context.seed` and research prompts include that seed. Awkward overlap: specialists effectively “check” seed for identity and research hints though seed is meant to be supervisor-owned origin data. Paul + Grok: lock boundaries — seed lookup/ambiguity only in supervisor; specialists receive resolved `current_id` + `target_fields` (and minimal research context, not full seed re-validation); clarify name/employer (seed vs specialist storage after 1710); align with **Seed from Queries** write path and **Data addition**. Update Jinja template + `context.py` peer-retrieval TODO when spec’d.
@@ -92,4 +144,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-08 (Phase 5 hands-on verified; README banner removed)
+Last updated: 2026-06-08 (MCP onboarding: 3 Cursor prompts in `prompts/cursor/next/` 1300→1400→1500)

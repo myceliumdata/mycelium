@@ -12,6 +12,6 @@ Shows the typical shape of **`<network_root>/categories.json`** after the classi
 | `attribute_map` | Known attribute → category lookups |
 | `last_updated` | Fixed in this sample; runtime file updates on classification changes |
 
-**Runtime policy:** `categories.json` lives under your active `network_root`, is **gitignored**, and is created on first classification use. It is **not** shipped in `examples/networks/crm/` and is **not** copied by `bin/copy-example-network`.
+**Runtime policy:** `categories.json` lives under your active `network_root`, is **gitignored**, and is created on first classification use. It is **not** shipped in `examples/networks/crm/` and is **not** copied by `bin/refresh-example-network`.
 
 See also: [architecture.md](../architecture.md) (classification + network layout).

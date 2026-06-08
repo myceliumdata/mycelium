@@ -21,8 +21,13 @@ def framework_root() -> Path:
 
 
 def legacy_network_root() -> Path:
-    """Return the legacy prototype shim path ``<framework>/data``."""
+    """Return the retired prototype shim path ``<framework>/data`` (tests only)."""
     return (framework_root() / "data").resolve()
+
+
+NO_NETWORK_CONFIGURED_MSG = (
+    "No network configured. Run: ./bin/refresh-example-network crm"
+)
 
 
 def resolve_network_root(
@@ -34,7 +39,7 @@ def resolve_network_root(
 
     Precedence: CLI ``--network-dir`` → CLI ``--network`` (registry name) → env
     ``MYCELIUM_NETWORK_ROOT`` → env ``MYCELIUM_NETWORK`` (name) → default from
-    registry → legacy ``<framework>/data``.
+    registry. Raises ``ValueError`` when nothing is configured.
     """
     from network.registry import default_network_root, resolve_root_by_name
 
@@ -57,7 +62,7 @@ def resolve_network_root(
     default_root = default_network_root()
     if default_root is not None:
         return default_root
-    return legacy_network_root()
+    raise ValueError(NO_NETWORK_CONFIGURED_MSG)
 
 
 @dataclass(frozen=True)

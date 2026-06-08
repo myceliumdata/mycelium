@@ -24,8 +24,8 @@ def test_sample_categories_json_parses() -> None:
 
 
 @pytest.mark.smoke
-def test_copy_example_network_skips_categories_json(tmp_path: Path) -> None:
-    """Even if a stray categories.json exists in the example dir, copy must skip it."""
+def test_refresh_example_network_skips_categories_json(tmp_path: Path) -> None:
+    """Even if a stray categories.json exists in the example dir, refresh must skip it."""
     import subprocess
     import sys
 
@@ -36,9 +36,17 @@ def test_copy_example_network_skips_categories_json(tmp_path: Path) -> None:
         created_stray = True
     try:
         target = tmp_path / "out"
-        script = REPO_ROOT / "bin" / "copy-example-network"
+        script = REPO_ROOT / "bin" / "refresh-example-network"
         result = subprocess.run(
-            [sys.executable, str(script), "crm", "--root", str(target)],
+            [
+                sys.executable,
+                str(script),
+                "crm",
+                "--root",
+                str(target),
+                "--no-register",
+                "--yes",
+            ],
             cwd=REPO_ROOT,
             capture_output=True,
             text=True,

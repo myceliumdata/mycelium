@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import atexit
+import json
 import os
 import sys
 import uuid
@@ -21,6 +22,12 @@ from graphs.core import reset_core_graph, run_query
 from models.state import PersonQuery, PersonResponse
 from network.create import create_network
 from network.ontology import OntologyGenerationError
+from network.introspection import (
+    build_network_status,
+    format_status_demo,
+    format_status_verbose,
+    status_to_dict,
+)
 from network.paths import NetworkPaths, apply_network_paths, resolve_network_root
 from network.registry import list_networks, register_network, set_default_network
 from storage.core import get_storage, reset_storage
@@ -106,6 +113,45 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     network_sub.add_parser("list", help="List registered networks")
 
+    status_cmd = network_sub.add_parser(
+        "status",
+        help="Read-only snapshot of seed, ontology, specialists, and storage",
+    )
+    status_cmd.add_argument(
+        "--network-dir",
+        default=None,
+        metavar="DIR",
+        help="Network data root (highest precedence)",
+    )
+    status_cmd.add_argument(
+        "--network",
+        default=None,
+        metavar="NAME",
+        help="Registered network name",
+    )
+    status_cmd.add_argument(
+        "--json",
+        action="store_true",
+        help="Machine-readable JSON output",
+    )
+    status_cmd.add_argument(
+        "--category",
+        default=None,
+        metavar="NAME",
+        help="Filter to one ontology category",
+    )
+    status_cmd.add_argument(
+        "--person",
+        default=None,
+        metavar="KEY",
+        help="Drill down to one seed person (name or id)",
+    )
+    status_cmd.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Debug-oriented status layout (includes root path and agent details)",
+    )
+
     use_cmd = network_sub.add_parser("use", help="Set the default network")
     use_cmd.add_argument("name", help="Registered network name")
 
@@ -169,7 +215,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Legacy: load a JSON people file into SQLite at the resolved network_root DB. "
             "Uses the same network selection as query "
-            "(--network-dir, --network, env, registry default, or legacy data/). "
+            "(--network-dir, --network, env, or registry default). "
             "Queries read seed.json via agents.seed, not SQLite."
         ),
     )
@@ -258,6 +304,27 @@ def _run_network_command(args: argparse.Namespace) -> int:
         if args.network_command == "use":
             entry = set_default_network(args.name)
             console.print(f"Default network: [bold]{entry.name}[/bold] → {entry.root}")
+            return 0
+
+        if args.network_command == "status":
+            try:
+                _configure_network_paths(
+                    cli_network_dir=args.network_dir,
+                    cli_network_name=args.network,
+                )
+                summary = build_network_status(
+                    category_filter=args.category,
+                    person_key=args.person,
+                )
+            except (ValueError, FileNotFoundError) as exc:
+                console.print(f"[red]Error:[/red] {exc}")
+                return 2
+            if args.json:
+                print(json.dumps(status_to_dict(summary), indent=2))
+            elif args.verbose:
+                console.print(format_status_verbose(summary))
+            else:
+                console.print(format_status_demo(summary))
             return 0
 
         if args.network_command == "create":
