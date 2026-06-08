@@ -27,7 +27,21 @@ Custom live root:
 ./bin/refresh-example-network crm --root ~/mycelium-networks/crm --yes
 ```
 
-Before demos, run refresh with `--yes` to wipe stale specialist research, then **restart MCP** and use fresh `thread_id` values per attribute. For the browser demo UI (slice 4), start the admin daemon: `MYCELIUM_NETWORK=crm uv run mycelium-admin`.
+Before demos, run refresh with `--yes` to wipe stale specialist research, then **restart MCP** and use fresh `thread_id` values per attribute.
+
+### Browser admin UI
+
+```bash
+./bin/refresh-example-network crm --yes
+
+# Single-process demo (built SPA at http://127.0.0.1:8741/)
+cd admin-ui && npm install && npm run build
+MYCELIUM_NETWORK=crm uv run mycelium-admin
+
+# Or dev mode: daemon in one terminal, `cd admin-ui && npm run dev` in another
+```
+
+After demo queries populate storage, search **Andrea Kalmans** in the UI to see entity fields; overview cards mirror `mycelium network status` demo layout.
 
 Check network state before and after demo queries:
 

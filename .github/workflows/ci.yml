@@ -30,6 +30,13 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build admin UI
+        run: cd admin-ui && npm ci && npm run build
+
       - name: Ruff
         run: uv run ruff check src tests bin/
 

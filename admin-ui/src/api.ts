@@ -1,0 +1,40 @@
+import type { CapabilitiesResponse, HealthResponse, StatusResponse } from "./types";
+
+/** Empty string → same-origin relative paths (dev proxy or daemon-served SPA). */
+export function apiBase(): string {
+  const raw = import.meta.env.VITE_ADMIN_API_URL?.trim();
+  return raw ? raw.replace(/\/$/, "") : "";
+}
+
+async function fetchJson<T>(path: string): Promise<T> {
+  const url = `${apiBase()}${path}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`${response.status} ${response.statusText}: ${text}`);
+  }
+  return response.json() as Promise<T>;
+}
+
+export function fetchHealth(): Promise<HealthResponse> {
+  return fetchJson<HealthResponse>("/health");
+}
+
+export function fetchStatus(params?: {
+  category?: string;
+  entity?: string;
+}): Promise<StatusResponse> {
+  const search = new URLSearchParams();
+  if (params?.category) {
+    search.set("category", params.category);
+  }
+  if (params?.entity) {
+    search.set("entity", params.entity);
+  }
+  const query = search.toString();
+  return fetchJson<StatusResponse>(query ? `/status?${query}` : "/status");
+}
+
+export function fetchCapabilities(): Promise<CapabilitiesResponse> {
+  return fetchJson<CapabilitiesResponse>("/capabilities");
+}

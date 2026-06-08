@@ -103,7 +103,21 @@ def create_app() -> FastAPI:
         _refresh_read_cache()
         return build_network_capabilities()
 
+    _mount_admin_ui(app)
     return app
+
+
+def _mount_admin_ui(app: FastAPI) -> None:
+    """Serve built SPA from ``admin-ui/dist`` when present (demo single-process mode)."""
+    from fastapi.staticfiles import StaticFiles
+    from network.paths import framework_root
+
+    dist = framework_root() / "admin-ui" / "dist"
+    index = dist / "index.html"
+    if index.is_file():
+        app.mount("/", StaticFiles(directory=str(dist), html=True), name="admin-ui")
+    else:
+        print("admin UI: cd admin-ui && npm run build")
 
 
 def run_server() -> None:

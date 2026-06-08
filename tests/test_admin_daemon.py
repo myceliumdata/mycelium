@@ -231,6 +231,32 @@ def test_bootstrap_fails_when_unconfigured(
 
 
 @pytest.mark.smoke
+def test_serves_admin_ui_when_dist_present(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    framework = tmp_path / "framework"
+    dist = framework / "admin-ui" / "dist"
+    dist.mkdir(parents=True)
+    (dist / "index.html").write_text(
+        "<!DOCTYPE html><html><body>admin ui</body></html>",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("network.paths.framework_root", lambda: framework)
+
+    root = _populated_root(tmp_path)
+    client = _client_for_root(monkeypatch, tmp_path, root)
+
+    html = client.get("/")
+    assert html.status_code == 200
+    assert "admin ui" in html.text
+
+    status = client.get("/status")
+    assert status.status_code == 200
+    assert status.json()["seed_people_count"] == 15
+
+
+@pytest.mark.smoke
 def test_health_503_when_not_bootstrapped() -> None:
     import mycelium_admin.server as admin_server
 

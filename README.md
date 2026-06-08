@@ -183,6 +183,36 @@ curl -s http://127.0.0.1:8741/status | jq '.seed_people_count, .ontology_present
 uv run mycelium network status --network crm --json | jq '.seed_people_count, .ontology_present'
 ```
 
+#### Admin UI
+
+Minimal browser client in `admin-ui/` — **API-only** (no direct reads of `seed.json` or MCP). Restart the daemon after a Python code deploy; rebuild the SPA after frontend changes.
+
+**Development** (Vite HMR + live API):
+
+```bash
+# Terminal A
+MYCELIUM_NETWORK=crm uv run mycelium-admin
+
+# Terminal B
+cd admin-ui && npm install && npm run dev
+```
+
+Open the Vite URL (default `http://127.0.0.1:5173`). The dev server proxies `/health`, `/status`, and `/capabilities` to the admin daemon.
+
+**Demo (single process)** — one URL for screen recordings:
+
+```bash
+cd admin-ui && npm install && npm run build
+MYCELIUM_NETWORK=crm uv run mycelium-admin
+# → http://127.0.0.1:8741/
+```
+
+Override the API base when the UI is not same-origin (unusual for local demos):
+
+```bash
+VITE_ADMIN_API_URL=http://127.0.0.1:8741 npm run dev
+```
+
 See [docs/database-notes.md](docs/database-notes.md) if you have an older `data/mycelium.db` from before the schema simplification.
 
 ### Rebuild or start fresh

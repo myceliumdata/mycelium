@@ -30,3 +30,5 @@ examples/networks/**/agents/
 
 # User scratch/dump area for files to share with the AI (e.g. logs, outputs, traces)
 tmp/
+
+admin-ui/node_modules/
