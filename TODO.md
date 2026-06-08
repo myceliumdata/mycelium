@@ -8,7 +8,7 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 ## Demo (phase)
 
-Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 → 5 → 1200 + hands-on test: done** (June 2026). **MCP onboarding slices 1–4 done** (June 2026). **Next:** `bin/restart-admin`.
+Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 → 5 → 1200 + admin UI polish + `restart-admin`: done** (June 2026). **MCP onboarding slices 1–4 done** (June 2026).
 
 ### Slice 1 — `refresh-example-network` — **done** (`2026-06-08-1000`)
 
@@ -37,11 +37,9 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 
 - [x] **Scannable overview** — ✅/❌ Seed, Ontology, Specialists; ontology in guide card; collapsed secondary panels; 3s silent `/status` poll.
 
-### `bin/restart-admin` — **queued**
+### `bin/restart-admin` — **done** (`2026-06-08-2100`, `df32d09`)
 
-**Prompt:** `prompts/cursor/next/2026-06-08-2100-bin-restart-admin.md`
-
-- [ ] **Dev stack restart** — kill :8741 + :5173; background `mycelium-admin` + foreground `npm run dev`; default network `crm`.
+- [x] **Dev stack restart** — `./bin/restart-admin`; kill :8741 + :5173; background daemon + foreground Vite; `--demo` optional.
 
 ### Slice 5 — demo polish — **done** (`2026-06-08-1150`)
 
