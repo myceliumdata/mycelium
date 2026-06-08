@@ -110,9 +110,6 @@ def invoke_specialists_node(state: MyceliumGraphState | dict[str, Any]) -> dict[
 def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     """Produce final QueryResponse from seed matches and specialist contributions."""
     current = _coerce(state)
-    if current.response is not None:
-        return {}
-
     query = current.query
     thread_id = current.invocation_thread_id
     trace_id = current.invocation_trace_id

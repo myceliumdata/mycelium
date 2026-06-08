@@ -359,9 +359,13 @@ def run_query(
     ``EntityQuery``). Supervisor plans specialists; graph nodes build context, invoke, assemble.
     """
     graph = get_core_graph()
+    # Checkpointed threads may still hold ``response`` from a prior query on the
+    # same ``thread_id``. Clear it so ``assemble_response`` rebuilds for this
+    # ``EntityQuery`` (see tests/test_query_messages.py thread reuse test).
     initial = MyceliumGraphState(
         query=query,
         invocation_thread_id=thread_id,
+        response=None,
     )
     config = {"configurable": {"thread_id": thread_id}}
 

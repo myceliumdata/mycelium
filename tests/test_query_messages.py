@@ -205,6 +205,34 @@ def test_multi_match_collective_prefix(
 
 
 @pytest.mark.smoke
+def test_same_thread_new_query_rebuilds_response(
+    query_message_env: CoreStorage,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Reusing thread_id with a different EntityQuery must not replay stale message."""
+    _ = query_message_env
+    monkeypatch.setenv("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
+    reset_core_graph()
+    thread_id = "reuse-thread-checkpoint-bug"
+
+    first = run_query(
+        EntityQuery(entity_key="Test User", requested_attributes=["xyzzy_garbage"]),
+        thread_id=thread_id,
+    )
+    assert "does not appear related" in first.message
+    assert "xyzzy_garbage" in first.message
+
+    second = run_query(
+        EntityQuery(entity_key="Test User", requested_attributes=["email"]),
+        thread_id=thread_id,
+    )
+    assert "does not appear related" not in second.message
+    assert "xyzzy_garbage" not in second.message
+    assert "Classified email as contact" in second.message
+    assert "requested_attributes=['email']" in second.debug
+
+
+@pytest.mark.smoke
 def test_not_found_neutral_entity_key_wording(
     query_message_env: CoreStorage,
 ) -> None:
