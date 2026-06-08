@@ -8,7 +8,7 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 ## Demo (phase)
 
-Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 → 5 → 1200 + hands-on test: done** (June 2026). **MCP onboarding slices 1–4 done** (June 2026). **Next:** admin UI polish.
+Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 → 5 → 1200 + hands-on test: done** (June 2026). **MCP onboarding slices 1–4 done** (June 2026). **Next:** `bin/restart-admin`.
 
 ### Slice 1 — `refresh-example-network` — **done** (`2026-06-08-1000`)
 
@@ -33,11 +33,9 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 - [x] **`mycelium-admin-ui`** (`admin-ui/`) — Vite + React SPA against admin daemon. Drill-down: network → specialists → entity → fields. Dev: `npm run dev`; demo: build + serve from `mycelium-admin`.
   - Local demos first; same API supports future remote deployments.
 
-### Admin UI polish — **queued**
+### Admin UI polish — **done** (`2026-06-08-2000`, `3b36a4e`)
 
-**Prompt:** `prompts/cursor/next/2026-06-08-2000-demo-admin-ui-polish.md`
-
-- [ ] **Scannable overview** — ✅/❌ Seed, Ontology, Specialists; ontology in guide card; collapsed secondary panels; 3s silent `/status` poll.
+- [x] **Scannable overview** — ✅/❌ Seed, Ontology, Specialists; ontology in guide card; collapsed secondary panels; 3s silent `/status` poll.
 
 ### `bin/restart-admin` — **queued**
 
