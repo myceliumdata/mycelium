@@ -15,6 +15,7 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 - [x] **`bin/refresh-example-network <name>`** — shared logic in `src/network/example.py`; wipe + recopy; `--root`, `--register`, `--default`/`--no-default`, `--yes`, `--dry-run`.
 - [x] **Removed `bin/copy-example-network`** — README, `examples/networks/crm/README`, integration tests updated.
 - [x] **Retired legacy `data/` shim** — `resolve_network_root()` fails loud when unconfigured.
+- [x] **`runtime_path()` hardening** — no `data/...` fallbacks; Studio bootstrap via `shell_export_network_paths()` (`a57804d`, `2026-06-08-2400`).
 - [x] **Demo runbook** (README) — refresh before demos; restart MCP; fresh `thread_id` per attribute.
 
 ### Slice 2 — network status (CLI) — **done** (`2026-06-08-1100`)
