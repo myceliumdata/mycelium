@@ -66,7 +66,8 @@ def test_routing_non_core_attributes() -> None:
     decision = evaluate_supervisor_turn(state, core_identity=core_identity)
 
     assert len(decision.response.results) == 1
-    assert "still researching" in decision.response.message
+    assert "Classified age as demographic" in decision.response.message
+    assert "researching" in decision.response.message.lower()
     assert "age" in decision.response.message
 
 

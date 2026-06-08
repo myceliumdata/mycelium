@@ -10,7 +10,6 @@ from agents.responses import (
     merge_requested_record,
     response_assembled,
     response_found,
-    response_non_core,
     response_not_found,
 )
 from agents.supervisor import _identity_records_from_seed, _target_fields_for_agent
@@ -148,50 +147,35 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
         }
 
     merged_records: list[dict[str, Any]] = []
-    all_provisional: list[str] = []
-    all_unavailable: list[str] = []
     for seed_rec in matched:
-        merged, provisional, unavailable = merge_requested_record(
+        merged, _provisional, _unavailable = merge_requested_record(
             seed_rec,
             contributions,
             requested,
         )
         merged_records.append(merged)
-        all_provisional.extend(provisional)
-        all_unavailable.extend(unavailable)
 
-    specialists_named = [c["agent"] for c in contributions if c.get("agent")]
-    specialist_label = (
-        ", ".join(specialists_named) if specialists_named else None
+    debug_extra: dict[str, Any] = {
+        "context_specialist_categories": list(
+            (current.context or {}).get("specialists", {}).keys(),
+        ),
+        "contributions": len(contributions),
+    }
+    if current.classifications:
+        debug_extra["classifications"] = current.classifications
+
+    resp = response_assembled(
+        query,
+        merged_records=merged_records,
+        classifications=current.classifications or [],
+        contributions=contributions,
+        audit_log=current.audit_log,
+        debug_extra=debug_extra,
+        **id_kwargs,
     )
-
     if contributions:
-        debug_extra = {
-            "context_specialist_categories": list(
-                (current.context or {}).get("specialists", {}).keys(),
-            ),
-            "contributions": len(contributions),
-            **({"classifications": current.classifications} if current.classifications else {}),
-        }
-        resp = response_assembled(
-            query,
-            merged_records=merged_records,
-            provisional=sorted(set(all_provisional)),
-            unavailable=sorted(set(all_unavailable)),
-            specialist_label=specialist_label,
-            debug_extra=debug_extra,
-            **id_kwargs,
-        )
         audit = "assemble_response: merged specialist contributions."
     else:
-        resp = response_non_core(
-            query,
-            base_records=merged_records,
-            attributes=requested,
-            specialist=specialist_label,
-            **id_kwargs,
-            **clf_kwargs,
-        )
         audit = "assemble_response: requested attrs, no contributions."
 
     return {"response": resp, "audit_log": [audit]}

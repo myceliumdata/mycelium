@@ -217,7 +217,8 @@ def test_run_query_email_pending_when_research_unavailable_no_crash(
 
     row = _assert_single_person_assembled(response)
     assert "email" not in row
+    assert "Classified email as contact" in response.message
     assert (
-        "not currently available" in response.message
-        or "still researching" in response.message
+        "researching" in response.message.lower()
+        or "setting up a contact specialist" in response.message.lower()
     )

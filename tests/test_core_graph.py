@@ -91,9 +91,8 @@ def test_query_missing_person(temp_storage: CoreStorage) -> None:
     _ = temp_storage
     response = run_query(EntityQuery(entity_key="Missing Person"))
     assert response.results == []
-    assert "No record found" in response.message
+    assert response.message == "No record found for 'Missing Person'."
     assert "core record" not in response.message.lower()
-    assert "did not match" in response.message.lower()
     assert "outcome='not_found'" in response.debug
 
 
@@ -110,12 +109,10 @@ def test_query_non_core_attributes(temp_storage: CoreStorage) -> None:
     assert "name" not in response.results[0]
     assert "employer" not in response.results[0]
     assert response.results[0]["id"]
-    assert (
-        "not currently available" in response.message
-        or "still researching" in response.message
-    )
-    assert "age" in response.message
-    assert "x_handle" in response.message or "x_handle" in response.debug
+    assert "Classified age as demographic" in response.message
+    assert "researching" in response.message.lower()
+    assert "Classified x_handle as social" in response.message
+    assert "x_handle" in response.message
     assert "contributions=2" in response.debug
     assert "outcome='assembled'" in response.debug
 

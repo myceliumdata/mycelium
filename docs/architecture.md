@@ -191,14 +191,14 @@ Core storage holds only `id`, `name`, and `employer`. Callers send a query-only 
 |--------|----------------------|-------------------------------|-----------------|
 | **Lookup (found)** | `entity_key` only | `supervisor` → `assemble_response` (seed) | `results`: identity dict(s) from seed; `message`: "Found record for …" |
 | **Lookup (miss)** | unknown `entity_key` | `supervisor` → `assemble_response` | `results`: `[]`; not-found `message` |
-| **Non-core attrs** | `entity_key` + attrs | `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` | `results`: `id` + requested attrs (merged); `message`: provisional seed / specialist status |
+| **Non-core attrs** | `entity_key` + attrs | `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` | `results`: `id` + requested attrs (merged); `message`: classification-aware per-attribute status (found values omitted; researching / unavailable / out-of-scope sentences) |
 
 ### Response fields (query outcomes)
 
 All external responses use the minimalist **`QueryResponse`** (`results`, `message`, `debug`, `trace_id`, `thread_id`):
 
 - **`results`** — One dict per match. Always includes `"id"` (stable UUID). With no `requested_attributes`: `id`, `name`, `employer`. With `requested_attributes`: `id` plus only those keys after specialist-first merge (specialist value wins; seed provisional while pending). No `person_id` field.
-- **`message`** — Primary channel: found / not-found / specialist attribute status (no "core record" wording).
+- **`message`** — Primary channel: found / not-found / per-attribute status. Visiting agents read natural-language sentences built from supervisor classifications: **researching** (in-scope, pending), **unavailable** (researched, no value), **out_of_scope** (`category == "unknown"` — never "researching" wording). Found attribute values appear only in `results`, not repeated in `message`. Multi-match uses a collective prefix (`Found N records for 'key'.`).
 - **`debug`** — Internal context (original `entity_key`, `requested_attributes`, outcome tags). Callers should not depend on it.
 - **`trace_id`** — LangSmith trace identifier for this graph invocation when `LANGCHAIN_TRACING_V2` is enabled; otherwise `null`. Lets operators and developers jump from a JSON response to the matching trace in LangSmith for debugging. When creating your LangSmith API key, select **Personal Access Token (PAT)** (prefix `lsv2_pt_`). `LANGCHAIN_PROJECT` (default "mycelium") names the tracing project in the LangSmith UI — it will be created automatically on first use; no manual pre-creation required. See README.md for full setup steps.
 - **`thread_id`** — Conversation/session identifier for this request. CLI and MCP callers may pass a stable `thread_id` to tie follow-up queries to the same LangGraph checkpoint thread; when omitted, the runtime generates one per invocation.
