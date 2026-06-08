@@ -41,14 +41,20 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 
 - [x] **Dev stack restart** — `./bin/restart-admin`; kill :8741 + :5173; background daemon + foreground Vite; `--demo` optional.
 
-### Admin UI polish v2 — **queued**
+### Admin UI polish v2 — **done** (`2026-06-08-2200`, `c025558`)
 
-**Prompt:** `prompts/cursor/next/2026-06-08-2200-demo-admin-ui-polish-v2.md`
+- [x] **Categories rename** — Overview + guide inner summary; card title unchanged.
+- [x] **Collapse guide card** — outer `<details>` like Entity lookup.
+- [x] **Unified disclosure arrows** — `.disclosure-summary` on all summaries.
+- [x] **Specialist expand fix** — uncontrolled `<details>`; `fetchJson` HTML guard.
 
-- [ ] **Rename Ontology → Categories** — Overview status line; inner `<summary>Categories</summary>` in guide card (not entity-lookup filter).
-- [ ] **Collapse “Network guide & ontology” card** — outer `<details>` like Entity lookup; collapsed on load; inner Author guide + Categories collapsed too.
-- [ ] **Unified disclosure arrows** — same visible arrow size on outer cards and inner summaries.
-- [ ] **Fix specialist expand bug** — uncontrolled specialist `<details>`; `fetchJson` HTML guard; no raw `index.html` on click.
+### Admin UI polish v3 — **queued**
+
+**Prompt:** `prompts/cursor/next/2026-06-08-2300-demo-admin-ui-polish-v3.md`
+
+- [ ] **Remove Refresh button** — 3s poll + visibility refresh replace manual reload.
+- [ ] **Remove `network_root` line** — debug path not shown in default UI.
+- [ ] **Capabilities without Refresh** — refetch on tab visible + when `ontology_present` flips false→true.
 
 ### Admin v2 (deferred — Paul + Grok)
 
