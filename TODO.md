@@ -31,7 +31,7 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 2 
 
 **Prompt:** `prompts/cursor/next/2026-06-08-1800-demo-slice4-admin-ui.md`
 
-- [ ] **`mycelium-admin-frontend`** (`admin-ui/`) — Vite + React SPA against admin daemon. Drill-down: network → specialists → entity → fields. Dev: `npm run dev`; demo: build + serve from `mycelium-admin`.
+- [ ] **`mycelium-admin-ui`** (`admin-ui/`) — Vite + React SPA against admin daemon. Drill-down: network → specialists → entity → fields. Dev: `npm run dev`; demo: build + serve from `mycelium-admin`.
   - Local demos first; same API supports future remote deployments.
 
 ### Slice 5 — demo polish — **done** (`2026-06-08-1150`)

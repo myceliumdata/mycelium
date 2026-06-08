@@ -1,4 +1,4 @@
-# Task: Demo slice 4 — `mycelium-admin-frontend` minimal browser UI
+# Task: Demo slice 4 — `mycelium-admin-ui` minimal browser UI
 
 **Read these first (mandatory):**
 - `prompts/cursor/WORKFLOW.md`
@@ -45,7 +45,7 @@ New top-level directory (not under `src/`):
 
 ```
 admin-ui/
-  package.json          # "name": "mycelium-admin-frontend"
+  package.json          # "name": "mycelium-admin-ui"
   vite.config.ts
   tsconfig.json
   index.html
