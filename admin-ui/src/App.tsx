@@ -27,6 +27,8 @@ export default function App() {
   const [guideCardOpen, setGuideCardOpen] = useState(false);
 
   const statusInFlight = useRef(false);
+  const capsInFlight = useRef(false);
+  const prevOntologyPresent = useRef<boolean | null>(null);
 
   const statusQueryParams = useCallback(
     () => ({
@@ -36,23 +38,21 @@ export default function App() {
     [entityCategoryLimit, entityKey],
   );
 
-  const loadFull = useCallback(async () => {
-    setFetchError(null);
-    setPollError(null);
-    try {
-      const params = statusQueryParams();
-      const [healthRes, statusRes, capsRes] = await Promise.all([
-        fetchHealth(),
-        fetchStatus(params),
-        fetchCapabilities(),
-      ]);
-      setHealth(healthRes);
-      setStatus(statusRes);
-      setCapabilities(capsRes);
-    } catch (err) {
-      setFetchError(err instanceof Error ? err.message : String(err));
+  const fetchCapabilitiesSilent = useCallback(async () => {
+    if (capsInFlight.current) {
+      return;
     }
-  }, [statusQueryParams]);
+    capsInFlight.current = true;
+    try {
+      const capsRes = await fetchCapabilities();
+      setCapabilities(capsRes);
+      setPollError(null);
+    } catch (err) {
+      setPollError(err instanceof Error ? err.message : String(err));
+    } finally {
+      capsInFlight.current = false;
+    }
+  }, []);
 
   const pollStatus = useCallback(async () => {
     if (statusInFlight.current || document.hidden) {
@@ -63,6 +63,37 @@ export default function App() {
       const statusRes = await fetchStatus(statusQueryParams());
       setStatus(statusRes);
       setPollError(null);
+      if (
+        prevOntologyPresent.current === false &&
+        statusRes.ontology_present
+      ) {
+        void fetchCapabilitiesSilent();
+      }
+      prevOntologyPresent.current = statusRes.ontology_present;
+    } catch (err) {
+      setPollError(err instanceof Error ? err.message : String(err));
+    } finally {
+      statusInFlight.current = false;
+    }
+  }, [fetchCapabilitiesSilent, statusQueryParams]);
+
+  const refreshOnVisible = useCallback(async () => {
+    if (statusInFlight.current || document.hidden) {
+      return;
+    }
+    statusInFlight.current = true;
+    try {
+      const params = statusQueryParams();
+      const [healthRes, statusRes, capsRes] = await Promise.all([
+        fetchHealth(),
+        fetchStatus(params),
+        fetchCapabilities(),
+      ]);
+      setHealth(healthRes);
+      setStatus(statusRes);
+      setCapabilities(capsRes);
+      setPollError(null);
+      prevOntologyPresent.current = statusRes.ontology_present;
     } catch (err) {
       setPollError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -87,6 +118,7 @@ export default function App() {
         setHealth(healthRes);
         setStatus(statusRes);
         setCapabilities(capsRes);
+        prevOntologyPresent.current = statusRes.ontology_present;
       } catch (err) {
         if (!cancelled) {
           setFetchError(err instanceof Error ? err.message : String(err));
@@ -111,7 +143,7 @@ export default function App() {
 
     const onVisibility = () => {
       if (!document.hidden) {
-        void pollStatus();
+        void refreshOnVisible();
       }
     };
     document.addEventListener("visibilitychange", onVisibility);
@@ -120,11 +152,7 @@ export default function App() {
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [pollStatus]);
-
-  const onRefresh = () => {
-    void loadFull();
-  };
+  }, [pollStatus, refreshOnVisible]);
 
   const fetchStatusNow = useCallback(
     async (params: { category?: string; entity?: string }) => {
@@ -136,13 +164,20 @@ export default function App() {
         const statusRes = await fetchStatus(params);
         setStatus(statusRes);
         setPollError(null);
+        if (
+          prevOntologyPresent.current === false &&
+          statusRes.ontology_present
+        ) {
+          void fetchCapabilitiesSilent();
+        }
+        prevOntologyPresent.current = statusRes.ontology_present;
       } catch (err) {
         setPollError(err instanceof Error ? err.message : String(err));
       } finally {
         statusInFlight.current = false;
       }
     },
-    [],
+    [fetchCapabilitiesSilent],
   );
 
   const onEntitySubmit = (event: FormEvent) => {
@@ -174,14 +209,7 @@ export default function App() {
             <span>{networkLabel(health.network_name, health.display_name)}</span>
           </>
         )}
-        <button type="button" className="secondary" onClick={onRefresh}>
-          Refresh
-        </button>
       </header>
-
-      {health?.network_root && (
-        <p className="muted">network_root: {health.network_root}</p>
-      )}
 
       {initialLoading && <p className="muted">Loading…</p>}
       {fetchError && <p className="error">Error: {fetchError}</p>}
