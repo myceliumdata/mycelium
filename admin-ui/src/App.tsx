@@ -42,6 +42,7 @@ export default function App() {
 
   const loadFull = useCallback(async () => {
     setFetchError(null);
+    setPollError(null);
     try {
       const params = statusQueryParams();
       const [healthRes, statusRes, capsRes] = await Promise.all([
@@ -52,9 +53,8 @@ export default function App() {
       setHealth(healthRes);
       setStatus(statusRes);
       setCapabilities(capsRes);
-      setPollError(null);
     } catch (err) {
-      setPollError(err instanceof Error ? err.message : String(err));
+      setFetchError(err instanceof Error ? err.message : String(err));
     }
   }, [statusQueryParams]);
 
