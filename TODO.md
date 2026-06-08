@@ -41,6 +41,11 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 
 - [x] **Dev stack restart** — `./bin/restart-admin`; kill :8741 + :5173; background daemon + foreground Vite; `--demo` optional.
 
+### Admin v2 (deferred — Paul + Grok)
+
+- [ ] **Admin auth** — today localhost-only, no credentials; design session/token or operator login before remote admin.
+- [ ] **Port / bind robustness** — wire `MYCELIUM_ADMIN_UI_PORT` through Vite + `restart-admin`; less hardcoded demo assumptions.
+
 ### Slice 5 — demo polish — **done** (`2026-06-08-1150`)
 
 - [x] **`network status --json` plain stdout** — `jq`-friendly; `test_status_cli_json` parses JSON.
