@@ -8,7 +8,7 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 ## Demo (phase)
 
-Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 → 5 → 1200 + admin UI polish + `restart-admin`: done** (June 2026). **MCP onboarding slices 1–4 done** (June 2026).
+Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 → 5 → 1200 + admin UI polish (v1–v3) + `restart-admin`: done** (June 2026). **MCP onboarding slices 1–4 done** (June 2026).
 
 ### Slice 1 — `refresh-example-network` — **done** (`2026-06-08-1000`)
 
@@ -48,13 +48,11 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 - [x] **Unified disclosure arrows** — `.disclosure-summary` on all summaries.
 - [x] **Specialist expand fix** — uncontrolled `<details>`; `fetchJson` HTML guard.
 
-### Admin UI polish v3 — **queued**
+### Admin UI polish v3 — **done** (`2026-06-08-2300`, `7097142`)
 
-**Prompt:** `prompts/cursor/next/2026-06-08-2300-demo-admin-ui-polish-v3.md`
-
-- [ ] **Remove Refresh button** — 3s poll + visibility refresh replace manual reload.
-- [ ] **Remove `network_root` line** — debug path not shown in default UI.
-- [ ] **Capabilities without Refresh** — refetch on tab visible + when `ontology_present` flips false→true.
+- [x] **Remove Refresh button** — 3s poll + visibility refresh replace manual reload.
+- [x] **Remove `network_root` line** — debug path not shown in default UI.
+- [x] **Capabilities without Refresh** — refetch on tab visible + when `ontology_present` flips false→true.
 
 ### Admin v2 (deferred — Paul + Grok)
 
