@@ -54,7 +54,7 @@ class AgentFactory:
         examples: list[str] | None = None,
         *,
         llm_refine: bool = False,
-        auto_commit: bool = True,
+        auto_commit: bool = False,
     ) -> dict[str, Any]:
         if not _AGENT_NAME_RE.match(agent_name):
             raise ValueError(
@@ -95,7 +95,7 @@ class AgentFactory:
         if (
             auto_commit
             and "pytest" not in sys.modules
-            and os.getenv("MYCELIUM_FACTORY_AUTO_COMMIT", "1") == "1"
+            and os.getenv("MYCELIUM_FACTORY_AUTO_COMMIT", "0") == "1"
         ):
             committed = self._commit_artifacts(py_path, agent_name, category)
 
@@ -223,7 +223,7 @@ class AgentFactory:
     ) -> bool:
         root = self._find_repo_root(py_path)
         if root is None:
-            logger.warning("AgentFactory: no git root found; skipping commit")
+            logger.debug("AgentFactory: no git root found; skipping commit")
             return False
 
         try:

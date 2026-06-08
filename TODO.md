@@ -5,12 +5,6 @@ Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture
 
 ---
 
-## Top priority
-
-- [ ] **Paul hands-on test (Phase 5)** — Phase 5 code + docs reviewed (`1500`–`1800`); CI green but README banner still up. With Paul + Grok: run manual checklist in `prompts/cursor/done/2026-06-09-1700-networks-phase5c-network-create-cli/output.md` (real `OPENAI_API_KEY` + `TAVILY_API_KEY`, `network create` + query, CRM `copy-example-network` path, optional MCP snippet, `--dry-run`). Remove README **"Not yet tested by Paul"** notice when satisfied → treat `main` as verified and ship.
-
----
-
 ## Brand & launch
 
 - [x] **Logo** — done (June 2026).
@@ -33,7 +27,7 @@ Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture
 
 ## Product vision — Networks (roadmap)
 
-**Plan:** `docs/plans/networks-terminology.md` + `docs/plans/networks-phase5.md`. **Phase 5 complete** (slices `1500`–`1800`). **Next:** Paul hands-on test (see **Top priority** above).
+**Plan:** `docs/plans/networks-terminology.md` + `docs/plans/networks-phase5.md`. **Phase 5 complete** (slices `1500`–`1800`); Paul hands-on verified (June 2026).
 
 ### Terminology & bootstrap
 
@@ -51,14 +45,17 @@ Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture
 - [x] **Categories sample + alignment** — runtime-only `categories.json`; doc sample + polish nits (slice `2026-06-09-1380`).
 - [x] **Phase 5 polish** (`2026-06-09-1750`) — test env dedupe; public storage paths + slug helper; ontology API-key skip when `llm=`; create polish; duplicate/>8 ontology tests.
 - [x] **Remove reset-mycelium** (`2026-06-09-1760`) — script + tests removed; replacements documented for `1800`.
+- [x] **Paul hands-on test (Phase 5)** — CRM `copy-example-network`, CLI regression, MCP (`mycelium-crm`); June 2026.
 
 ### Protocol & conversation
 
+- [ ] **Thread checkpoint: new query on same `thread_id`** — reusing a `thread_id` with different `requested_attributes` can replay the prior `PersonResponse` (stale `response` in LangGraph checkpoint; `assemble_response` short-circuits). Awkward for multi-turn: new attributes on the same thread should re-run the graph and merge fresh results while reusing specialist cache. Clear or rebuild `response` when `PersonQuery` changes; add regression test (email then address, same thread).
 - [ ] **Long-running threads** — suspend and ask client for clarification (`thread_id` + checkpoints; bones exist).
+- [ ] **Seed data vs specialists** — today the supervisor resolves `seed.json` (`find_by_key`), then `build_context` passes a seed slice into every specialist; generated specialists re-derive `id` from `context.seed` and research prompts include that seed. Awkward overlap: specialists effectively “check” seed for identity and research hints though seed is meant to be supervisor-owned origin data. Paul + Grok: lock boundaries — seed lookup/ambiguity only in supervisor; specialists receive resolved `current_id` + `target_fields` (and minimal research context, not full seed re-validation); clarify name/employer (seed vs specialist storage after 1710); align with **Seed from Queries** write path and **Data addition**. Update Jinja template + `context.py` peer-retrieval TODO when spec’d.
 
 ### Network launch v2 (design — Paul + Grok)
 
-- [ ] **Query-as-seed network launch (v2)** — discuss and spec: launch a network **without** an initial seed file; first queries create seed records (disambiguate before research, e.g. generic “Paul Murphy” + address). Replaces `--seed` in v1 launch. Depends on query-as-seed protocol. *v1 launch shipped; align on semantics before queuing.*
+- [ ] **Seed from Queries** — queries can **create or enrich** seed records (not only read static `seed.json`). Includes **network launch v2** (no initial `--seed`; first queries establish origin records — disambiguate before research, e.g. generic “Paul Murphy” + address) and ongoing growth of the `people` array from validated query results. Paul + Grok: spec semantics, disambiguation, and write path before queuing. *v1 `network create` still requires `--seed`.*
 
 ## Future / deferred
 
@@ -95,4 +92,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-07 (Paul hands-on test → top priority)
+Last updated: 2026-06-08 (Phase 5 hands-on verified; README banner removed)

@@ -69,6 +69,7 @@ def _collect_specialists_to_invoke(
                 description=cl.get("description") or f"Data related to {cat}.",
                 examples=[],
                 llm_refine=False,
+                auto_commit=False,
             )
             audit_log.append(
                 f"Supervisor: created new specialist {ag} for category {cat}.",

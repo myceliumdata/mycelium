@@ -1,7 +1,5 @@
 # Mycelium
 
-> **⚠️ Not yet tested by Paul (maintainer).** Networks Phase 5 (`network create`, per-network `specialists/`, skeleton ontology) shipped via Cursor slices `1500`–`1800`. Automated tests run in CI; **hands-on verification by Paul is pending** and will happen after this docs slice + review. Treat `main` as **implement-but-unverified** until this notice is removed.
-
 **Download the framework** (this repo), then **run named networks** at paths you choose. Each **network** is an isolated data namespace (seed, ontology, specialist registry, storage, checkpoints). The **supervisor** and specialist agents operate inside one network at a time.
 
 A fresh clone has **no committed CRM seed** in `data/` — bootstrap from **`examples/networks/crm/`**, register a network, then query. Register named networks in **`~/.config/mycelium/networks.json`** (override with **`MYCELIUM_NETWORKS_CONFIG`**) so you can use **`--network <name>`** or rely on a **default** without repeating paths. Pre-networks snapshot: git tag **`prototype`**.
