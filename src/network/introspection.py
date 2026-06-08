@@ -346,6 +346,133 @@ def status_to_dict(summary: NetworkStatusSummary) -> dict[str, Any]:
     return asdict(summary)
 
 
+_POLICY_EXTENSIBILITY = (
+    "You may request attributes that fit this network's domain. Each request is "
+    "classified against the ontology. In-scope attributes are researched by "
+    "specialist agents; a specialist is created automatically when one does not "
+    "exist yet."
+)
+_POLICY_OUT_OF_SCOPE = (
+    "If an attribute cannot be classified into this network's ontology, the query "
+    "response will say it does not appear related to this network. Such attributes "
+    "are not researched."
+)
+_POLICY_MULTI_MATCH = (
+    "When entity_key matches multiple seed records, results contains every match. "
+    "Disambiguate using fields in each record (for example id and employer on CRM "
+    "networks). The message summarizes status collectively unless per-record "
+    "messaging is added later."
+)
+_GUIDE_MISSING_NOTE = "Network author has not provided guide.md yet."
+
+
+def _read_guide(paths: NetworkPaths) -> tuple[bool, str | None]:
+    guide_path = paths.root / "guide.md"
+    if not guide_path.is_file():
+        return False, None
+    try:
+        return True, guide_path.read_text(encoding="utf-8")
+    except OSError:
+        return False, None
+
+
+def _ontology_capabilities(categories_doc: dict[str, Any] | None) -> dict[str, Any]:
+    if not categories_doc:
+        return {
+            "present": False,
+            "message": "not created yet — run a query to bootstrap categories.json",
+            "categories": [],
+        }
+    raw_categories = categories_doc.get("categories")
+    if not isinstance(raw_categories, dict):
+        return {
+            "present": False,
+            "message": "categories.json present but invalid",
+            "categories": [],
+        }
+    categories: list[dict[str, Any]] = []
+    for name, meta in sorted(raw_categories.items()):
+        if not isinstance(meta, dict):
+            continue
+        description = meta.get("description")
+        raw_examples = meta.get("examples")
+        categories.append(
+            {
+                "name": str(name),
+                "description": description if isinstance(description, str) else "",
+                "examples": (
+                    [str(item) for item in raw_examples]
+                    if isinstance(raw_examples, list)
+                    else []
+                ),
+            },
+        )
+    return {
+        "present": True,
+        "message": None,
+        "categories": categories,
+    }
+
+
+def build_network_capabilities() -> dict[str, Any]:
+    """Build connect-time MCP onboarding payload (guide, ontology, policy)."""
+    paths = _paths()
+    meta = network_metadata(root=paths.root)
+    categories_doc = _read_categories(paths)
+    guide_present, guide_text = _read_guide(paths)
+
+    payload: dict[str, Any] = {
+        "network_name": meta.get("network_name"),
+        "display_name": meta.get("network_display_name"),
+        "guide_present": guide_present,
+        "guide": guide_text,
+        "ontology": _ontology_capabilities(categories_doc),
+        "policy": {
+            "extensibility": _POLICY_EXTENSIBILITY,
+            "out_of_scope": _POLICY_OUT_OF_SCOPE,
+            "multi_match": _POLICY_MULTI_MATCH,
+            "query": {
+                "tool": "query_entity",
+                "request_schema": "mycelium://schema/entity-query",
+                "response_schema": "mycelium://schema/query-response",
+                "key_field": "entity_key",
+                "optional_fields": ["requested_attributes", "thread_id"],
+            },
+        },
+    }
+    if not guide_present:
+        payload["guide_note"] = _GUIDE_MISSING_NOTE
+    return payload
+
+
+def format_mcp_instructions(capabilities: dict[str, Any]) -> str:
+    """Render MCP server instructions from network capabilities."""
+    display_name = capabilities.get("display_name") or capabilities.get("network_name") or "network"
+    network_name = capabilities.get("network_name") or "network"
+    text = (
+        f"Mycelium network **{display_name}** (`{network_name}`). "
+        "Call **`describe_network`** for the author guide, ontology, and usage policy. "
+        "Use **`query_entity`** with JSON: `entity_key`, optional `requested_attributes`, "
+        "optional `thread_id`. Responses are **`QueryResponse`** "
+        "(`results`, `message`, `debug`, `trace_id`, `thread_id`); "
+        "read **`message`** for per-attribute status and classification. "
+        "Use **`health_check`** for server liveness and network binding. "
+        "Registry, categories, seed, and specialists reload from disk before each query — "
+        "restart MCP only after code deploy or if reload fails."
+    )
+    if capabilities.get("display_name") or capabilities.get("network_name"):
+        if (
+            capabilities.get("display_name")
+            and capabilities.get("network_name")
+            and capabilities["display_name"] != capabilities["network_name"]
+        ):
+            label = f"{capabilities['display_name']} ({capabilities['network_name']})"
+        else:
+            label = capabilities.get("display_name") or capabilities.get("network_name")
+        text += f" Active network: {label}."
+    return text
+
+
 def _specialists_have_storage(specialists: list[SpecialistSummary]) -> bool:
     """True when any specialist has persisted records or field activity."""
     return any(

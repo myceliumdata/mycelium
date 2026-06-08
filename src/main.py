@@ -344,6 +344,9 @@ def _run_network_command(args: argparse.Namespace) -> int:
             )
             if result.dry_run:
                 console.print("[yellow]Dry run[/yellow] — no files written.")
+                console.print(
+                    "[dim]On create, guide.md will be scaffolded at the network root.[/dim]",
+                )
             else:
                 console.print(
                     f"Created network [bold]{result.name}[/bold] at {result.root}",

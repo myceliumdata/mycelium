@@ -2,7 +2,9 @@
 
 Committed **reference network** for the Mycelium framework. Refresh it to a path you own, register it, and query.
 
-This example ships **`seed.json`** and **`network.json`** only (plus this README and maintainer `prepare_seed.py`). Runtime artifacts — `categories.json`, `agent_registry.json`, `agents/`, `specialists/`, DB, checkpoints — are created under your `network_root` on first query.
+This example ships **`seed.json`**, **`network.json`**, and **`guide.md`** (plus this README and maintainer `prepare_seed.py`). Runtime artifacts — `categories.json`, `agent_registry.json`, `agents/`, `specialists/`, DB, checkpoints — are created under your `network_root` on first query.
+
+Edit **`guide.md`** at your network root to tell visiting agents what this network is for (MCP `describe_network` returns it verbatim).
 
 The current `seed.json` is a small public-safe subset (15 people) including demo names used in docs and tests (`Nichanan Kesonpat`, `Andrea Kalmans`, ambiguous `Kevin Zhang` pairs).
 
@@ -40,6 +42,7 @@ uv run mycelium network status --network crm --entity "Andrea Kalmans"
 ```
 <your-network_root>/
   network.json      # optional metadata (copied from this example)
+  guide.md          # author prose for visiting agents (edit freely)
   seed.json         # people array (name + employer only)
   categories.json   # runtime — created on first query (see docs/examples/sample-categories.json)
   agent_registry.json

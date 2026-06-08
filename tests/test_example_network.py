@@ -48,6 +48,7 @@ def _run_refresh(
 def test_example_crm_layout() -> None:
     assert (EXAMPLE_CRM / "seed.json").is_file()
     assert (EXAMPLE_CRM / "network.json").is_file()
+    assert (EXAMPLE_CRM / "guide.md").is_file()
     assert (EXAMPLE_CRM / "README.md").is_file()
     for runtime_artifact in _RUNTIME_ARTIFACTS:
         assert not (EXAMPLE_CRM / runtime_artifact).exists()

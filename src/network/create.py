@@ -134,6 +134,24 @@ def _prune_orphan_specialists(paths: NetworkPaths, keep_names: set[str]) -> None
             py_file.unlink(missing_ok=True)
 
 
+def scaffold_guide_md(*, title: str, creation_prompt: str) -> str:
+    """Scaffold ``guide.md`` for a new network (option B — no LLM)."""
+    return (
+        f"# {title}\n\n"
+        "## About this network (draft — edit freely)\n\n"
+        f"{creation_prompt.strip()}\n\n"
+        "## Usage\n\n"
+        "Edit this file freely. Visiting agents read it via MCP `describe_network`.\n"
+    )
+
+
+def _write_guide(paths: NetworkPaths, *, title: str, creation_prompt: str) -> None:
+    _atomic_write_text(
+        paths.root / "guide.md",
+        scaffold_guide_md(title=title, creation_prompt=creation_prompt),
+    )
+
+
 def _write_network_manifest(
     paths: NetworkPaths,
     *,
@@ -249,6 +267,11 @@ def create_network(
         display_name=display_name,
         creation_prompt=prompt,
         ontology_model=ontology.model_used,
+    )
+    _write_guide(
+        paths,
+        title=display_name or clean_name,
+        creation_prompt=prompt,
     )
     register_network(clean_name, resolved_root, default=default)
 

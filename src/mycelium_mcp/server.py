@@ -19,43 +19,10 @@ os.environ["MYCELIUM_USE_SYNC_CHECKPOINTER"] = "1"
 from agents.runtime import refresh_runtime_from_disk
 from graphs.core import run_query
 from models.state import EntityQuery, QueryResponse, SeedRecord
+from network.introspection import build_network_capabilities, format_mcp_instructions
 from storage.core import get_storage
 
-
-def _build_mcp_instructions(
-    *,
-    network_name: str | None = None,
-    network_display_name: str | None = None,
-) -> str:
-    text = (
-        "Mycelium manages AI-native network entity data (core fields: id, name, employer). "
-        "Use query_entity for lookups. Responses are QueryResponse JSON with results, "
-        "message, debug, trace_id (LangSmith when tracing is on), and thread_id. "
-        "Optional thread_id in the request JSON is echoed in the response. "
-        "Non-core attribute requests return seed identity in results plus specialist status in message. "
-        "All payloads are JSON. "
-        "Use health_check() to verify the server is responsive and to inspect network_root, "
-        "network_name, and network_display_name plus internal stabilization "
-        "(sync checkpointer, automatic recovery after query issues). "
-        "Registry, categories, seed, and specialist modules reload from disk before each query — "
-        "restart the MCP server only after code deploy or if reload fails. "
-        "Each MCP process is bound to one network via MYCELIUM_NETWORK_ROOT, "
-        "MYCELIUM_NETWORK (registered name), or the default from "
-        "~/.config/mycelium/networks.json. Unconfigured installs should run "
-        "./bin/refresh-example-network crm first. "
-        "To get a direct link to the trace in LangSmith, use the get_langsmith_trace_url helper "
-        "from the mycelium package (or implement equivalent from utils.langsmith) with the trace_id."
-    )
-    if network_name or network_display_name:
-        if network_display_name and network_name and network_display_name != network_name:
-            label = f"{network_display_name} ({network_name})"
-        else:
-            label = network_display_name or network_name
-        text += f" Active network: {label}."
-    return text
-
-
-mcp = FastMCP("Mycelium", instructions=_build_mcp_instructions())
+mcp = FastMCP("Mycelium", instructions="")
 
 # Seed record used for optional internal ping in health_check (no caller input).
 _HEALTH_PING_ENTITY_KEY = "Nichanan Kesonpat"
@@ -77,11 +44,14 @@ def _network_health_info() -> dict[str, str | None]:
 
 
 def _apply_mcp_instructions() -> None:
-    meta = _network_health_info()
-    instructions = _build_mcp_instructions(
-        network_name=meta.get("network_name"),
-        network_display_name=meta.get("network_display_name"),
-    )
+    try:
+        capabilities = build_network_capabilities()
+    except Exception:
+        capabilities = {
+            "display_name": None,
+            "network_name": None,
+        }
+    instructions = format_mcp_instructions(capabilities)
     if getattr(mcp, "instructions", None) != instructions:
         mcp.instructions = instructions
 
@@ -166,7 +136,7 @@ def _run_mcp_query(query_json: str) -> str:
 
 
 def _routing_payload() -> dict[str, Any]:
-    """Build specialist routing dict (no bootstrap or runtime refresh)."""
+    """Build specialist routing dict (internal; health_check only)."""
     from agents.registry import get_agent_registry
 
     reg = get_agent_registry()
@@ -206,11 +176,17 @@ def query_entity(query_json: str) -> str:
 
 
 @mcp.tool
-def list_specialist_routing() -> str:
-    """List registered specialist agents from the Agent Registry (Phase 2)."""
+def describe_network() -> str:
+    """
+    Return the author guide, ontology summary, and usage policy for this network.
+
+    Call at connect time before querying. Includes full ``guide.md`` text when
+    present, category descriptions/examples from ``categories.json``, and
+    framework policy strings for extensibility and out-of-scope handling.
+    """
     _bootstrap()
     refresh_runtime_from_disk()
-    return json.dumps(_routing_payload(), indent=2)
+    return json.dumps(build_network_capabilities(), indent=2)
 
 
 def _health_check_status(check_result: str) -> bool:
@@ -223,7 +199,7 @@ def health_check() -> str:
     """
     Lightweight diagnostics for the long-running MCP server.
 
-    Verifies storage bootstrap, graph singleton, list_specialist_routing, and an
+    Verifies storage bootstrap, graph singleton, internal routing payload, and an
     internal ping query against seed data. Always returns parseable JSON (never
     raises to the MCP client).
     """

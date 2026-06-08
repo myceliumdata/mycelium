@@ -45,7 +45,7 @@ From `docs/architecture.md` and `prompts/system/CORE_PROMPT.md`:
 | Surface | Commands / tools |
 |---------|------------------|
 | **CLI** | `mycelium query`, `mycelium network …`, `mycelium seed` (legacy SQLite load) |
-| **MCP** | `query_entity`, `list_specialist_routing`, `health_check`; schemas via resources |
+| **MCP** | `describe_network`, `query_entity`, `health_check`; schemas via resources |
 | **Studio** | `langgraph dev` via `./bin/run-studio` + optional ngrok |
 
 Both CLI and MCP call `graphs.core.run_query` after resolving `network_root` (CLI per invocation; MCP at bootstrap + reload).

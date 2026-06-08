@@ -12,8 +12,10 @@ from network.paths import (
 from network.create import CreateNetworkResult, create_network
 from network.introspection import (
     NetworkStatusSummary,
+    build_network_capabilities,
     build_network_status,
     format_category_examples,
+    format_mcp_instructions,
     format_status_demo,
     format_status_human,
     format_status_verbose,
@@ -41,7 +43,9 @@ __all__ = [
     "OntologyGenerationError",
     "SkeletonOntologyResult",
     "NetworkStatusSummary",
+    "build_network_capabilities",
     "build_network_status",
+    "format_mcp_instructions",
     "format_category_examples",
     "format_status_demo",
     "format_status_human",

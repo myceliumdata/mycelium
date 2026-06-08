@@ -11,6 +11,8 @@ import pytest
 from agents.registry import get_agent_registry, reset_agent_registry
 from agents.runtime import evict_cached_specialist_modules, refresh_runtime_from_disk
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
 
 @pytest.fixture
 def runtime_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
@@ -104,10 +106,11 @@ def test_health_check_refreshes_runtime_once(
 
 
 @pytest.mark.smoke
-def test_list_specialist_routing_refreshes_runtime_once(
+def test_describe_network_refreshes_runtime_once(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
-    """Standalone list_specialist_routing still refreshes exactly once."""
+    """describe_network refreshes disk state exactly once."""
     call_count = 0
 
     def _count_refresh(*, reload_dotenv: bool = True) -> None:
@@ -116,10 +119,13 @@ def test_list_specialist_routing_refreshes_runtime_once(
         call_count += 1
 
     monkeypatch.setattr("mycelium_mcp.server.refresh_runtime_from_disk", _count_refresh)
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(REPO_ROOT / "examples" / "networks" / "crm"))
+    monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(tmp_path / "missing.json"))
+    monkeypatch.setenv("LANGCHAIN_TRACING_V2", "false")
 
-    from mycelium_mcp.server import list_specialist_routing
+    from mycelium_mcp.server import describe_network
 
-    payload = json.loads(list_specialist_routing())
-    assert payload.get("message")
-    assert "specialists" in payload
+    payload = json.loads(describe_network())
+    assert "policy" in payload
+    assert "ontology" in payload
     assert call_count == 1

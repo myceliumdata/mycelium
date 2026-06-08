@@ -53,7 +53,7 @@ This is a deliberate departure from earlier thinking that treated the core CRM t
 
 ### Public interface: query-only (June 2026)
 
-The **CLI** (`query`, `seed`) and **MCP** (`query_entity`, `list_specialist_routing`) expose **lookups only**. `EntityQuery` has `entity_key` and optional `requested_attributes` — no `provided_data` on the public model.
+The **CLI** (`query`, `seed`) and **MCP** (`describe_network`, `query_entity`, `health_check`) expose **lookups only**. `EntityQuery` has `entity_key` and optional `requested_attributes` — no `provided_data` on the public model. MCP **`describe_network`** returns author `guide.md`, ontology categories, and framework policy (connect-time onboarding).
 
 Data addition via the public API was removed in the June 2026 refactor (tasks 1000–1050). It will return later as **internal agent coordination**, not as a direct caller-supplied payload.
 

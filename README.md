@@ -154,7 +154,7 @@ You must include **`requested_attributes`** for non-core fields. Without it, res
 
 **Attribute fan-out:** Each requested attribute is classified to a category (contact, social, professional, etc.) and routed to the matching specialist. Multiple attributes may invoke **multiple specialists** in one query (e.g. `["email", "linkedin"]` → contact + social). Core fields (`name`, `employer`) come from seed; everything else is specialist-owned.
 
-The MCP server reloads registry, categories, seed, and specialist modules from disk before each query; **restart MCP only after a code deploy or if reload fails** and results still disagree with a fresh CLI query. MCP returns the same `trace_id` as the CLI when LangSmith tracing is on (verify in the LangSmith UI under project `mycelium`). Other tools: `list_specialist_routing`, `health_check`.
+The MCP server reloads registry, categories, seed, and specialist modules from disk before each query; **restart MCP only after a code deploy or if reload fails** and results still disagree with a fresh CLI query. MCP returns the same `trace_id` as the CLI when LangSmith tracing is on (verify in the LangSmith UI under project `mycelium`). Call **`describe_network`** at connect time for the author `guide.md`, ontology, and usage policy. Other tools: `health_check`.
 
 See [docs/database-notes.md](docs/database-notes.md) if you have an older `data/mycelium.db` from before the schema simplification.
 
@@ -236,7 +236,7 @@ flowchart TD
 | Factory | `src/agents/factory/` | Jinja template → generated specialists |
 | Research | `src/tools/research.py`, `src/tools/tavily.py` | Sync LLM + web search, persist fields |
 | Graph | `src/graphs/core.py` | LangGraph; async checkpointer (Studio), sync path (MCP) |
-| MCP | `src/mycelium_mcp/server.py` | `query_entity`, `list_specialist_routing`, `health_check` |
+| MCP | `src/mycelium_mcp/server.py` | `describe_network`, `query_entity`, `health_check` |
 | CLI | `src/main.py` | `mycelium query`, `mycelium network`, `mycelium seed` |
 
 Full detail: [docs/architecture.md](docs/architecture.md). Phase 1 research plan: [docs/plans/specialist-research-phase1.md](docs/plans/specialist-research-phase1.md).
