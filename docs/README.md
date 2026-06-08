@@ -23,6 +23,7 @@ Detailed information about how we direct Cursor agents lives in:
 ## Other Notes
 
 - `TODO.md` (in the project root) tracks long-term tasks and decisions between Paul and Grok.
+- **Paul + Grok design conversations** (full context beyond TODO bullets): [`plans/conversations/`](plans/conversations/README.md)
 - Historical task artifacts from the Cursor prompting system are stored in `prompts/cursor/done/`.
 
 ---
