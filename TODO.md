@@ -7,7 +7,7 @@ Open tasks and roadmap. **Source of truth for architecture:** `docs/architecture
 
 ## Demo (phase)
 
-Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 2 → 5 → 1200 + hands-on test: done** (June 2026). **MCP onboarding slices 1–4 done** (June 2026). **Next:** admin daemon (demo slice 3) → UI (demo slice 4).
+Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 2 → 3 → 5 → 1200 + hands-on test: done** (June 2026). **MCP onboarding slices 1–4 done** (June 2026). **Next:** admin UI (demo slice 4).
 
 ### Slice 1 — `refresh-example-network` — **done** (`2026-06-08-1000`)
 
@@ -21,18 +21,17 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 2 
 - [x] **`mycelium network status`** — `src/network/introspection.py`; seed, ontology, specialists, storage stats; `--json`, `--category`, `--person`.
 - [x] **Tests** — `tests/test_network_status.py` (empty + populated + JSON CLI + person drill-down).
 
-### Slice 3 — admin daemon (after 1–2)
+### Slice 3 — admin daemon — **done** (`2026-06-08-1700`)
 
-**Prompt:** `prompts/cursor/next/2026-06-08-1700-demo-slice3-admin-daemon.md`
-
-- [ ] **`mycelium-admin` (or `uv run mycelium-admin`)** — long-lived **HTTP** admin API on localhost (one process per network, like MCP). env: `MYCELIUM_NETWORK` / `MYCELIUM_NETWORK_ROOT`.
-  - **v0 read-only:** same introspection as slice 2 (`GET /status`, ontology, specialists, storage summaries).
-  - **Later write ops:** refresh example, register (slice 4+); remote + auth deferred.
-  - Reuse introspection module — do not duplicate read logic for UI.
+- [x] **`mycelium-admin` (`uv run mycelium-admin`)** — long-lived **HTTP** admin API on localhost (one process per network, like MCP). env: `MYCELIUM_NETWORK` / `MYCELIUM_NETWORK_ROOT`; default `127.0.0.1:8741`.
+  - **v0 read-only:** `GET /health`, `GET /status` (mirrors `network status --json`), `GET /capabilities` via `src/network/introspection.py`.
+  - **Later write ops:** refresh, register (slice 4+); remote + auth deferred.
 
 ### Slice 4 — admin UI (after 3)
 
-- [ ] **Minimal demo UI** — browser client against admin daemon (static SPA or simple server-rendered). Drill-down: network → specialists → person → fields.
+**Prompt:** `prompts/cursor/next/2026-06-08-1800-demo-slice4-admin-ui.md`
+
+- [ ] **`mycelium-admin-frontend`** (`admin-ui/`) — Vite + React SPA against admin daemon. Drill-down: network → specialists → entity → fields. Dev: `npm run dev`; demo: build + serve from `mycelium-admin`.
   - Local demos first; same API supports future remote deployments.
 
 ### Slice 5 — demo polish — **done** (`2026-06-08-1150`)
@@ -147,4 +146,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-08 (MCP complete; demo slice 3 prompt queued)
+Last updated: 2026-06-08 (demo slice 3 done; slice 4 UI prompt queued)
