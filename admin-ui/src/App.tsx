@@ -16,7 +16,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [categoryFilter, setCategoryFilter] = useState("");
+  const [entityCategoryLimit, setEntityCategoryLimit] = useState("");
   const [entityInput, setEntityInput] = useState("");
   const [entityKey, setEntityKey] = useState("");
 
@@ -51,15 +51,7 @@ export default function App() {
 
   const onRefresh = () => {
     void loadOverview({
-      category: categoryFilter || undefined,
-      entity: entityKey || undefined,
-    });
-  };
-
-  const onCategorySelect = (category: string) => {
-    setCategoryFilter(category);
-    void loadOverview({
-      category: category || undefined,
+      category: entityCategoryLimit || undefined,
       entity: entityKey || undefined,
     });
   };
@@ -69,7 +61,7 @@ export default function App() {
     const key = entityInput.trim();
     setEntityKey(key);
     void loadOverview({
-      category: categoryFilter || undefined,
+      category: entityCategoryLimit || undefined,
       entity: key || undefined,
     });
   };
@@ -135,25 +127,50 @@ export default function App() {
             {storedSpecialists.length > 0 ? (
               <>
                 <p>
-                  <strong>Existing specialists:</strong>
+                  <strong>Existing specialists:</strong>{" "}
+                  <span className="muted">(expand for storage detail)</span>
                 </p>
                 {storedSpecialists
                   .slice()
                   .sort((a, b) => a.category.localeCompare(b.category))
-                  .map((spec) => (
-                    <div className="specialist-row" key={spec.category}>
-                      <span>
-                        {spec.category} ({spec.record_count})
-                      </span>
-                      <button
-                        type="button"
-                        className="linkish"
-                        onClick={() => onCategorySelect(spec.category)}
-                      >
-                        Filter
-                      </button>
-                    </div>
-                  ))}
+                  .map((spec) => {
+                    const categoryMeta = status.categories.find(
+                      (cat) => cat.name === spec.category,
+                    );
+                    const hasStatusCounts =
+                      spec.found_count > 0 ||
+                      spec.pending_count > 0 ||
+                      spec.na_count > 0;
+                    return (
+                      <details key={spec.category} className="specialist-details">
+                        <summary>
+                          {spec.category} ({spec.record_count})
+                        </summary>
+                        {categoryMeta && (
+                          <p className="muted">
+                            {formatCategoryExamples(
+                              categoryMeta.name,
+                              categoryMeta.examples,
+                            )}
+                          </p>
+                        )}
+                        {spec.fields_tracked.length > 0 ? (
+                          <p>
+                            <strong>Fields tracked:</strong>{" "}
+                            {spec.fields_tracked.join(", ")}
+                          </p>
+                        ) : (
+                          <p className="empty">No fields stored yet.</p>
+                        )}
+                        {hasStatusCounts && (
+                          <p className="muted">
+                            found {spec.found_count} · pending{" "}
+                            {spec.pending_count} · n/a {spec.na_count}
+                          </p>
+                        )}
+                      </details>
+                    );
+                  })}
               </>
             ) : (
               <p>
@@ -161,52 +178,6 @@ export default function App() {
               </p>
             )}
           </section>
-
-          {categoryFilter && (
-            <section className="card">
-              <h2>Category filter: {categoryFilter}</h2>
-              <button
-                type="button"
-                className="linkish"
-                onClick={() => onCategorySelect("")}
-              >
-                Clear filter
-              </button>
-              {status.categories.length > 0 && (
-                <>
-                  <p className="muted">Ontology slice</p>
-                  <ul>
-                    {status.categories.map((cat) => (
-                      <li key={cat.name}>
-                        {formatCategoryExamples(cat.name, cat.examples)}
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-              {status.specialists.length > 0 && (
-                <>
-                  <p className="muted">Specialists</p>
-                  <ul>
-                    {status.specialists
-                      .slice()
-                      .sort((a, b) => a.category.localeCompare(b.category))
-                      .map((spec) => (
-                        <li key={spec.category}>
-                          {spec.category} ({spec.record_count})
-                          {spec.fields_tracked.length > 0 && (
-                            <span className="muted">
-                              {" "}
-                              — {spec.fields_tracked.length} field(s) tracked
-                            </span>
-                          )}
-                        </li>
-                      ))}
-                  </ul>
-                </>
-              )}
-            </section>
-          )}
 
           <section className="card">
             <h2>Entity lookup</h2>
@@ -218,12 +189,14 @@ export default function App() {
                 onChange={(e) => setEntityInput(e.target.value)}
                 aria-label="Entity key"
               />
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                aria-label="Category filter"
-              >
-                <option value="">All categories</option>
+              <label className="field-inline">
+                <span className="muted">Category</span>
+                <select
+                  value={entityCategoryLimit}
+                  onChange={(e) => setEntityCategoryLimit(e.target.value)}
+                  aria-label="Limit entity lookup to category"
+                >
+                  <option value="">Any</option>
                 {(status.categories.length > 0
                   ? status.categories
                   : ontologyCategories.map((c) => ({ name: c.name }))
@@ -232,7 +205,8 @@ export default function App() {
                     {cat.name}
                   </option>
                 ))}
-              </select>
+                </select>
+              </label>
               <button type="submit">Search</button>
             </form>
 

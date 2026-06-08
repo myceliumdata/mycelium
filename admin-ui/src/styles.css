@@ -166,16 +166,44 @@ th {
   font-weight: 500;
 }
 
-.specialist-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.specialist-details {
+  margin: 0.35rem 0;
   padding: 0.35rem 0;
   border-bottom: 1px solid var(--border);
 }
 
-.specialist-row:last-child {
+.specialist-details:last-child {
   border-bottom: none;
+}
+
+.specialist-details summary {
+  cursor: pointer;
+  font-weight: 500;
+  list-style: none;
+}
+
+.specialist-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.specialist-details summary::before {
+  content: "▸ ";
+  color: var(--muted);
+}
+
+.specialist-details[open] summary::before {
+  content: "▾ ";
+}
+
+.specialist-details > p {
+  margin: 0.4rem 0 0 1rem;
+  font-size: 0.92rem;
+}
+
+.field-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 details {
