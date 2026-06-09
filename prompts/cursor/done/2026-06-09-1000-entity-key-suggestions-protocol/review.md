@@ -2,7 +2,7 @@
 
 **Reviewer:** Grok  
 **Date:** 2026-06-09  
-**Verdict:** **Approved with fix slice** — do not queue Slice 2 until `1005` is reviewed.
+**Verdict:** **Approved** (fix `1005` also approved 2026-06-09).
 
 ---
 
@@ -16,22 +16,13 @@ One **blocking** gap: checkpoint serde for multi-turn agent retry on the same `t
 
 ## Blocking
 
-### B1 — `EntityKeySuggestion` missing from checkpoint allowlist
+### B1 — `EntityKeySuggestion` missing from checkpoint allowlist — **fixed** (`1005`)
 
 **Spec:** Confirmation contract allows same `thread_id`; caller re-queries with `suggestions[].entity_key`.
 
-**Found:** `_CHECKPOINT_MSGPACK_ALLOWLIST` in `src/graphs/core.py` lists `EntityQuery`, `QueryResponse`, `SeedRecord`, `MyceliumGraphState` but not `EntityKeySuggestion`. After an unresolved query, checkpoint write/read logs:
+**Was:** `_CHECKPOINT_MSGPACK_ALLOWLIST` omitted `EntityKeySuggestion` → checkpoint serde warnings on thread resume.
 
-```text
-Blocked deserialization of models.state.EntityKeySuggestion - not in allowed_msgpack_modules.
-```
-
-**Risk:** Thread resume may drop or fail to restore suggestion state; primary visiting-agent loop is undertested.
-
-**Fix slice:** `prompts/cursor/next/2026-06-09-1005-entity-key-suggestions-fix-checkpoint-serde.md`
-
-- Add `("models.state", "EntityKeySuggestion")` to allowlist (both async and sync checkpointer paths).
-- Add smoke test: same `thread_id`, `Andrea Kalman` → `entity_key_unresolved`, then `Andrea Kalmans` → not unresolved (no serde warning; assert via caplog or stderr-free run).
+**Fixed:** `1005` added `EntityKeySuggestion` to allowlist; smoke test `test_same_thread_retry_after_unresolved_no_serde_warning`.
 
 ---
 
@@ -41,7 +32,7 @@ Blocked deserialization of models.state.EntityKeySuggestion - not in allowed_msg
 |---|-----|----------|
 | P1 | `output.md` says `entity_unknown` deferred to "slice 2" — should be Slice 3 | done/output.md |
 | P2 | Specialist short-circuit test asserts `"invoke_specialists" not in response.debug` — weak; prefer audit_log or explicit `specialists_to_invoke` empty in graph state | tests/test_entity_key_suggestions.py |
-| P3 | Supervisor does not clear `entity_suggestions` on exact/none paths (rely on `entity_resolution_kind` in assemble) — harmless today; clear on non-suggest returns for checkpoint hygiene | supervisor.py |
+| ~~P3~~ | ~~Clear `entity_suggestions` on non-suggest paths~~ — **fixed in `1005`** | — |
 
 ---
 
@@ -63,5 +54,5 @@ Updated in `prompts/cursor/WORKFLOW.md` §3 and §4.
 | Kalmans + email → normal path | Pass |
 | Unknown / UUID / Kevin Zhang cases | Pass |
 | MCP policy + docstrings | Pass |
-| Same-thread retry serde | **Fail** → fix `1005` |
-| Slice 2 (`1100`) | **Hold** until `1005` approved |
+| Same-thread retry serde | **Fixed** (`1005`) |
+| Slice 2 (`1100`) | **Unblocked** after `1005` review |

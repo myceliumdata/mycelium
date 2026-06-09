@@ -41,6 +41,7 @@ _CHECKPOINT_MSGPACK_ALLOWLIST: tuple[tuple[str, str], ...] = (
     ("models.state", "SeedRecord"),
     ("models.state", "EntityQuery"),
     ("models.state", "QueryResponse"),
+    ("models.state", "EntityKeySuggestion"),
 )
 
 AfterSupervisor = Literal["build_context", "assemble_response"]

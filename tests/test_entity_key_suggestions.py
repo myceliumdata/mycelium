@@ -147,6 +147,42 @@ def test_uuid_miss_no_suggestions(crm_seed_env: CoreStorage) -> None:
 
 
 @pytest.mark.smoke
+def test_same_thread_retry_after_unresolved_no_serde_warning(
+    crm_seed_env: CoreStorage,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Same thread_id: unresolved then exact retry must not break checkpoint serde."""
+    _ = crm_seed_env
+    monkeypatch.setenv("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
+    reset_core_graph()
+    caplog.set_level("WARNING")
+    thread_id = "entity-suggest-retry-thread"
+
+    first = run_query(
+        EntityQuery(entity_key="Andrea Kalman", requested_attributes=["email"]),
+        thread_id=thread_id,
+    )
+    assert first.outcome == "entity_key_unresolved"
+    assert len(first.suggestions) == 1
+
+    second = run_query(
+        EntityQuery(entity_key="Andrea Kalmans", requested_attributes=["email"]),
+        thread_id=thread_id,
+    )
+    assert second.outcome != "entity_key_unresolved"
+    assert second.suggestions == []
+
+    serde_warnings = [
+        record.message
+        for record in caplog.records
+        if "EntityKeySuggestion" in record.message
+        or "Blocked deserialization" in record.message
+    ]
+    assert serde_warnings == []
+
+
+@pytest.mark.smoke
 def test_kevin_zhang_multiple_exact_not_suggest(crm_seed_env: CoreStorage) -> None:
     resolution = resolve_entity_key("Kevin Zhang")
     assert resolution.kind == "multiple"

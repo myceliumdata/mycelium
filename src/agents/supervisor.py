@@ -169,6 +169,7 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
     result: dict[str, Any] = {
         "matched_records": matched,
         "entity_resolution_kind": resolution.kind if matched else "none",
+        "entity_suggestions": [],
         "context": context,
         "audit_log": audit_log,
         "route": None,

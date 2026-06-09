@@ -129,9 +129,8 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 
 | Slice | Spec | Cursor prompt | Status |
 |-------|------|---------------|--------|
-| 1 | [`entity-key-suggestions-phase1.md`](docs/plans/entity-key-suggestions-phase1.md) | `1000` | Reviewed — fix `1005` |
-| 1f | — | `1005` checkpoint serde | **Ready** (blocks `1100`) |
-| 2 | [`entity-outcome-infrastructure-phase2.md`](docs/plans/entity-outcome-infrastructure-phase2.md) | `1100` | Queued |
+| 1 | [`entity-key-suggestions-phase1.md`](docs/plans/entity-key-suggestions-phase1.md) | `1000` + `1005` | **Done** |
+| 2 | [`entity-outcome-infrastructure-phase2.md`](docs/plans/entity-outcome-infrastructure-phase2.md) | `1100` | **Ready** |
 | 3 | [`entity-unknown-mvr-phase3.md`](docs/plans/entity-unknown-mvr-phase3.md) | `1200` | Queued |
 | 4 | [`entity-registry-bind-phase4.md`](docs/plans/entity-registry-bind-phase4.md) | `1300` | Queued |
 | 5 | [`entity-validation-phase5.md`](docs/plans/entity-validation-phase5.md) | `1400` | Queued |
@@ -142,7 +141,7 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 
 - [x] **Remove `list_specialist_routing` from MCP** — dropped public tool; `_routing_payload()` retained for `health_check` only (`2026-06-08-1400`).
 - [x] **MCP onboarding for visiting agents** — **complete** (slices `1300`–`1600`: entity rename, specialist fixup, `guide.md` + `describe_network`, classification-aware messages, polish). Paul MCP live verify done (June 2026).
-- [ ] **Entity key suggestions (Slice 1)** — spec locked; Cursor prompt `1000` **ready**. Kalman → suggest Kalmans, never silent resolve. Context: [`2026-06-08-entity-key-negotiation.md`](docs/plans/conversations/2026-06-08-entity-key-negotiation.md).
+- [x] **Entity key suggestions (Slice 1 + fix `1005`)** — reviewed and approved (June 2026). Kalman → suggest Kalmans; same-thread retry serde fixed. Context: [`2026-06-08-entity-key-negotiation.md`](docs/plans/conversations/2026-06-08-entity-key-negotiation.md).
 - [ ] **Entity registry, validation & growth (Slices 2–8)** — specs locked in program doc. Paul Murphy arc: bind → validate → gate → attribution. Context: [`2026-06-08-entity-registry-validation-growth.md`](docs/plans/conversations/2026-06-08-entity-registry-validation-growth.md).
 - [ ] **Seed data vs specialists (Slice 7)** — [`entity-boundary-cleanup-phase7.md`](docs/plans/entity-boundary-cleanup-phase7.md); delete `core_identity.py`.
 - [ ] **Negotiation & metering (Slices 9–10 — deferred)** — Paul (June 2026): complete Slices 1–8 first; payment decisions premature. Core validation **free for now**. Drafts: [`entity-metering-design-phase9.md`](docs/plans/entity-metering-design-phase9.md), [`entity-metering-hooks-phase10.md`](docs/plans/entity-metering-hooks-phase10.md).
