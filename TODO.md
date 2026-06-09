@@ -55,10 +55,31 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 - [x] **Remove `network_root` line** — debug path not shown in default UI.
 - [x] **Capabilities without Refresh** — refetch on tab visible + when `ontology_present` flips false→true.
 
-### Admin v2 (deferred — Paul + Grok)
+### Admin UI v2 — entity protocol surfaces (deferred — Paul + Grok)
+
+Backend shipped in entity protocol Slices 1–8; operator-facing admin work deferred while protocol landed. Former backlog: `docs/plans/admin-ui-backlog.md` (cleared June 2026).
+
+**Infrastructure**
 
 - [ ] **Admin auth** — today localhost-only, no credentials; design session/token or operator login before remote admin.
 - [ ] **Port / bind robustness** — wire `MYCELIUM_ADMIN_UI_PORT` through Vite + `restart-admin`; less hardcoded demo assumptions.
+
+**Read-only protocol surfaces** (entity protocol Slices 1–8)
+
+- [ ] **Outcome badges** — show `outcome` on query/status surfaces (entity drill-down, network overview when status reflects last query).
+- [ ] **Key suggestions** — show `suggestions[]` when outcome is `entity_key_unresolved` (debug visiting-agent loops).
+- [ ] **Required fields** — show `required_fields` when outcome is `entity_unknown` (negotiation state).
+- [ ] **Registry-backed entities** — distinguish bootstrap seed rows from `entities.json` grown rows (provisional vs seed).
+- [ ] **Binding context** — display `binding` when status API exposes negotiation metadata (likely blocked on API).
+- [ ] **Validation state** — per-field `provisional` / `validated` on entity drill-down.
+- [ ] **Research gate indicator** — show when research is gated vs allowed (operator debugging for Tavily spend).
+- [ ] **Bind vs extended fields** — registry vs specialist-owned fields separately on entity drill-down.
+- [ ] **Attribution per attribute** — `attr_sources` + `last_researched_at` (data attribution USP).
+
+**Operator write actions** (see also Entity program deferred follow-ups)
+
+- [ ] **Edit / correct attribute values** — entity field drill-down; see **Operator attribute correction**.
+- [ ] **Force re-research** — “try again” + optional operator context on entity field drill-down; see **Operator force re-research**.
 
 ### Slice 5 — demo polish — **done** (`2026-06-08-1150`)
 
@@ -158,8 +179,9 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 
 ### Entity program — deferred follow-ups (Paul + Grok)
 
-- [ ] **Operator attribute correction** — *deferred until entity protocol v1 manual sign-off (§2 in test plan).* Research can return wrong values (e.g. Paul Murphy @ Ormi Labs → LinkedIn `paul-murphy-003360` is not Paul). Operators need to **view and update** extended attributes in specialist storage (LinkedIn, email, etc.): correct value, mark source as operator override, prevent naive re-research from overwriting without policy. Surfaces: admin UI edit on entity field drill-down (primary); optional CLI/MCP operator tool later. Ties to attribution (`attr_sources` / provenance) and re-research/staleness policy.
-- [ ] **Data attribution (product — USP)** — core registry fields shipped in Slice 8; follow-on: MCP/`describe_network` surfacing, admin UI (#9 in `admin-ui-backlog.md`), staleness/re-research policy. Broader provenance story not yet designed.
+- [ ] **Operator attribute correction** — Research can return wrong values (e.g. Paul Murphy @ Ormi Labs → LinkedIn `paul-murphy-003360` is not Paul). Operators need to **view and update** extended attributes in specialist storage (LinkedIn, email, etc.): correct value, mark source as operator override, prevent naive re-research from overwriting without policy. Surfaces: admin UI edit on entity field drill-down (primary); optional CLI/MCP operator tool later. Ties to attribution (`attr_sources` / provenance) and re-research/staleness policy.
+- [ ] **Operator force re-research** — Mechanism to **retry** a specialist lookup for a specific entity + attribute (not only edit the stored value). Today retries are automatic for `pending` / `last_error` (env-gated age); operators need an explicit **“try again”** that clears or supersedes a stuck/failed/wrong result and re-invokes research. Optional **operator context** on retry (hint text, known URL, disambiguation notes) passed into the research prompt / `_research_context` so the agent has more to work with. Distinct from attribute correction (manual override) and from naive re-query (same thread may hit cache). Surfaces: admin UI action on entity field drill-down (primary); optional CLI/MCP operator tool. Policy: how hints merge with bind + storage; provenance marks forced retry vs automatic.
+- [ ] **Data attribution (product — USP)** — core registry fields shipped in Slice 8; follow-on: MCP/`describe_network` surfacing, admin UI (**Attribution per attribute** in Admin UI v2), staleness/re-research policy. Broader provenance story not yet designed.
 - [ ] **Empty-seed network demo (launch v2)** — deferred from Slice 8 (Q8b). `examples/networks/empty-crm/` or similar after Slices 1–7 land.
 - [ ] **Seed export tooling (`export-growth-seed`)** — deferred from Slice 8 (Q8c). Operator script: validated `entities.json` → `seed.json` fragment.
 - [ ] **Seed vs grown entity linking** — deferred from Slice 8 (Q8d). Network-type-specific rules (CRM ≠ car parts) before merge/override UX.
@@ -203,4 +225,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-09 (entity protocol 1–8 + polish done; operator attr correction on backlog)
+Last updated: 2026-06-09 (admin UI backlog cleared → Admin UI v2 in TODO; operator correction + force re-research)
