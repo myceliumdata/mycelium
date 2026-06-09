@@ -126,7 +126,51 @@ def test_build_research_prompts_whitespace_bind_value_treated_as_absent() -> Non
 
 
 @pytest.mark.smoke
-def test_build_research_prompts_includes_peer_specialists() -> None:
+def test_build_research_prompts_flattened_peer_context_renders_header() -> None:
+    """Production _research_context shape: specialists[cat] is field dict, not nested by entity_id."""
+    _system, user = build_research_prompts(
+        category="relationships",
+        specialist_name="relationships_specialist",
+        person_id="uuid-angela",
+        target_fields=["spouse"],
+        context={
+            "entity_id": "uuid-angela",
+            "bind": {"name": "Angela Murphy", "employer": "TalentCare"},
+            "storage": {"spouse": {"status": "pending", "started_at": "2026-06-09T00:00:00+00:00"}},
+            "specialists": {
+                "contact": {
+                    "email": {
+                        "status": "found",
+                        "value": "a@talentcare.us",
+                        "sources": ["https://rocketreach.co/angela"],
+                    },
+                    "address": {
+                        "status": "na",
+                        "reason": "No public address",
+                    },
+                },
+                "demographic": {
+                    "city": {
+                        "status": "found",
+                        "value": "Austin, TX",
+                        "sources": ["https://example.com/profile"],
+                    },
+                },
+            },
+        },
+    )
+    peer_section = user.split("Research the following person", 1)[0]
+    assert peer_section.startswith("DISAMBIGUATION (mandatory):")
+    assert "PEER SPECIALIST FINDINGS" in peer_section
+    assert "contact:" in peer_section
+    assert "a@talentcare.us" in peer_section
+    assert "Austin, TX" in peer_section
+    assert "address" not in peer_section
+    assert peer_section.index("DISAMBIGUATION") < peer_section.index("PEER SPECIALIST FINDINGS")
+
+
+@pytest.mark.smoke
+def test_build_research_prompts_nested_peer_shape_still_works() -> None:
     _system, user = build_research_prompts(
         category="relationships",
         specialist_name="relationships_specialist",
@@ -148,9 +192,35 @@ def test_build_research_prompts_includes_peer_specialists() -> None:
             },
         },
     )
-    assert "PEER SPECIALIST FINDINGS" in user
-    assert "professional" in user
-    assert "VP Sales" in user
+    peer_section = user.split("Research the following person", 1)[0]
+    assert "PEER SPECIALIST FINDINGS" in peer_section
+    assert "professional:" in peer_section
+    assert "VP Sales" in peer_section
+    assert "tojson" not in peer_section.lower()
+
+
+@pytest.mark.smoke
+def test_build_research_prompts_omits_na_peer_fields_from_header() -> None:
+    _system, user = build_research_prompts(
+        category="relationships",
+        specialist_name="relationships_specialist",
+        person_id="uuid-peer",
+        target_fields=["spouse"],
+        context={
+            "entity_id": "uuid-peer",
+            "bind": {"name": "Jane"},
+            "storage": {},
+            "specialists": {
+                "contact": {
+                    "email": {"status": "found", "value": "jane@example.com", "sources": ["https://x.com"]},
+                    "phone": {"status": "na", "reason": "not listed"},
+                },
+            },
+        },
+    )
+    peer_section = user.split("Research the following person", 1)[0]
+    assert "jane@example.com" in peer_section
+    assert "phone" not in peer_section
 
 
 @pytest.mark.smoke

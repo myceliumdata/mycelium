@@ -144,13 +144,42 @@ def has_extra_bind_disambiguators(disambiguators: dict[str, str]) -> bool:
     return any(key != "name" for key in disambiguators)
 
 
+def _looks_like_field_record_map(records: dict[str, Any]) -> bool:
+    """True when dict keys are field names mapping to specialist storage records."""
+    if not records:
+        return False
+    for value in records.values():
+        if not isinstance(value, dict) or "status" not in value:
+            return False
+    return True
+
+
+def _peer_category_row(records: dict[str, Any], entity_id: str) -> dict[str, Any] | None:
+    """Field records for entity_id, or a flattened row already scoped to one entity."""
+    nested = records.get(entity_id)
+    if isinstance(nested, dict) and nested and _looks_like_field_record_map(nested):
+        return nested
+    if _looks_like_field_record_map(records):
+        return records
+    return None
+
+
+def _trim_peer_fields(row: dict[str, Any]) -> dict[str, Any]:
+    """Keep found peer fields only (omit pending/na from prominent block)."""
+    return {
+        key: value
+        for key, value in row.items()
+        if isinstance(value, dict) and value.get("status") == "found"
+    }
+
+
 def peer_specialists_for_entity(
     context: dict[str, Any],
     *,
     entity_id: str,
     category: str,
 ) -> dict[str, Any]:
-    """Peer category slices for entity_id (exclude own category; omit pending fields)."""
+    """Peer category slices for entity_id (exclude own category; found fields only)."""
     specialists = context.get("specialists")
     if not isinstance(specialists, dict):
         return {}
@@ -160,17 +189,32 @@ def peer_specialists_for_entity(
         cat_key = str(cat).strip().lower()
         if cat_key == own or not isinstance(records, dict):
             continue
-        row = records.get(entity_id)
+        row = _peer_category_row(records, entity_id)
         if not isinstance(row, dict) or not row:
             continue
-        trimmed = {
-            key: value
-            for key, value in row.items()
-            if not (isinstance(value, dict) and value.get("status") == "pending")
-        }
+        trimmed = _trim_peer_fields(row)
         if trimmed:
             peers[cat_key] = trimmed
     return peers
+
+
+def peer_display_for_prompt(peer_specialists: dict[str, Any]) -> dict[str, list[dict[str, str]]]:
+    """Human-readable peer lines grouped by category for the prompt template."""
+    display: dict[str, list[dict[str, str]]] = {}
+    for cat, fields in peer_specialists.items():
+        lines: list[dict[str, str]] = []
+        for peer_field, record in fields.items():
+            if not isinstance(record, dict) or record.get("status") != "found":
+                continue
+            value = str(record.get("value") or "").strip()
+            if not value:
+                continue
+            sources = record.get("sources") or []
+            source = str(sources[0]).strip() if sources else ""
+            lines.append({"field": peer_field, "value": value, "source": source})
+        if lines:
+            display[cat] = lines
+    return display
 
 
 def build_research_prompts(
@@ -193,6 +237,7 @@ def build_research_prompts(
         entity_id=person_id,
         category=category,
     )
+    peer_display = peer_display_for_prompt(peer_specialists)
     template_vars = {
         "category": category,
         "specialist_name": specialist_name,
@@ -200,8 +245,9 @@ def build_research_prompts(
         "bind_disambiguators": disambiguators,
         "has_extra_bind_disambiguators": extra_disamb,
         "mvr_bind_fields": list(mvr.bind_fields),
-        "has_peer_specialists": bool(peer_specialists),
+        "has_peer_specialists": bool(peer_display),
         "peer_specialists": peer_specialists,
+        "peer_display": peer_display,
     }
 
     system_tpl = env.get_template("research/_system.j2")
@@ -229,12 +275,13 @@ def build_research_prompts(
     ]
     if fragment:
         user_parts.insert(1, f"Category guidance:\n{fragment}")
-    if peer_specialists:
-        peer_block = env.get_template("research/_peer_context.j2").render(**template_vars).strip()
-        user_parts.insert(0, peer_block)
     if extra_disamb:
         disambiguation = env.get_template("research/_disambiguation.j2").render(**template_vars).strip()
         user_parts.insert(0, disambiguation)
+    if peer_display:
+        peer_block = env.get_template("research/_peer_context.j2").render(**template_vars).strip()
+        insert_at = 1 if extra_disamb else 0
+        user_parts.insert(insert_at, peer_block)
     user = "\n\n".join(user_parts)
     return system, user
 

@@ -1,5 +1,9 @@
 PEER SPECIALIST FINDINGS (read-only):
 Use these to disambiguate the person and inform searches. Do not write peer fields unless listed in target_fields.
-{% for category, fields in peer_specialists.items() %}
-- {{ category }}: {{ fields | tojson }}
+
+{% for category, items in peer_display.items() %}
+{{ category }}:
+{% for item in items %}
+  - {{ item.field }}: {{ item.value }}{% if item.source %} (sources: {{ item.source }}){% endif %}
+{% endfor %}
 {% endfor %}
