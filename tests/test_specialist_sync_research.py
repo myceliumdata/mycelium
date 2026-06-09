@@ -224,6 +224,74 @@ def test_contact_retries_pending_with_last_error(
 
 
 @pytest.mark.smoke
+def test_contact_retries_pending_without_last_error_when_no_age_gate(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """pending without last_error is re-researched when retry age gate is 0 (default)."""
+    fn, storage_path = _setup_contact_specialist(tmp_path, monkeypatch)
+    monkeypatch.delenv("MYCELIUM_RESEARCH_RETRY_PENDING_MIN_AGE_SEC", raising=False)
+    monkeypatch.delenv("MYCELIUM_RESEARCH_RETRY_PENDING_SEC", raising=False)
+    test_id = "test-person-uuid-pending-no-error"
+    call_count = 0
+
+    def _fake_run_field_research(
+        *,
+        category: str,
+        specialist_name: str,
+        person_id: str,
+        target_fields: list[str],
+        context: dict[str, Any],
+        storage: Any,
+        llm: Any | None = None,
+    ) -> ResearchRunResult:
+        nonlocal call_count
+        _ = category, specialist_name, context, llm, person_id
+        call_count += 1
+        now = datetime.now(timezone.utc).isoformat()
+        data = storage.load()
+        data["records"][test_id]["email"] = {
+            "status": "found",
+            "value": "retry@example.com",
+            "confidence": 0.9,
+            "sources": ["https://example.com"],
+            "researched_at": now,
+        }
+        storage.save(data)
+        return ResearchRunResult(fields_updated=["email"])
+
+    monkeypatch.setattr("tools.research.is_research_available", lambda: True)
+    monkeypatch.setattr("tools.research.run_field_research", _fake_run_field_research)
+
+    storage_path.write_text(
+        json.dumps(
+            {
+                "records": {
+                    test_id: {
+                        "email": {
+                            "status": "pending",
+                            "started_at": "2026-06-09T07:31:20.937912+00:00",
+                        },
+                    },
+                },
+            },
+        ),
+        encoding="utf-8",
+    )
+
+    state = MyceliumGraphState(
+        query=EntityQuery(entity_key="Jane", requested_attributes=["email"]),
+        current_id=test_id,
+        context={"entity_id": test_id, "bind": {"name": "Jane", "employer": "Co"}, "specialists": {}},
+        target_fields=["email"],
+    )
+    result = fn(state)
+
+    assert call_count == 1
+    assert result["specialist_contrib"]["values"]["email"] == "retry@example.com"
+
+
+@pytest.mark.smoke
 def test_contact_mixed_found_and_na_message(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

@@ -192,7 +192,7 @@ def _pending_started_at(entry: Any) -> datetime | None:
 
 def _pending_is_stale(entry: Any, *, min_age_sec: int) -> bool:
     if min_age_sec <= 0:
-        return False
+        return True  # no age gate — eligible for retry
     started = _pending_started_at(entry)
     if started is None:
         return True
