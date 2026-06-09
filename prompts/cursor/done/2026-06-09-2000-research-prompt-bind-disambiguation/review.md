@@ -1,6 +1,6 @@
 # Review — Research prompt bind disambiguation (`2000`)
 
-**Verdict: Approved**
+**Verdict: Approved** (later **superseded** — employer hardcoding reverted; MVR-generalized approach in slice `2010`)
 
 Reviewed 2026-06-09 (Grok). Smoke tests and ruff re-run locally: 14 passed, all checks clean.
 

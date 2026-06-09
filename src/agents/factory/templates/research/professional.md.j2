@@ -1,6 +1,1 @@
-Professional research: job title, education, career history, investments. Align with employer from bind context.
-{% if bind_has_employer %}
-Your FIRST web_search query MUST include "{{ bind_employer }}" (or an equivalent company token) with the person name.
-{% else %}
-Use company and role in search queries when available.
-{% endif %}
+Professional research: job title, education, career history, investments. Align with employer from seed context; use company and role in search queries.

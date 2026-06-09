@@ -8,14 +8,7 @@ Rules:
 - Output must match the ResearchProposal schema: fields (field, value, status, confidence, sources, optional reason), notes.
 
 Tool use:
-- Call web_search with focused queries using context.bind.name{% if bind_has_employer %} and context.bind.employer{% endif %} for disambiguation.
-{% if bind_has_employer %}
-- Employer disambiguation (mandatory): your FIRST web_search query MUST include both the person name and "{{ bind_employer }}" (or an unmistakable employer token). Do NOT run a name-only query when employer is known.
-- If results describe a person at a different employer or industry than "{{ bind_employer }}", treat as a different person — return status "na" with reason; do not return "found".
-- If no results corroborate "{{ bind_employer }}" after reasonable attempts, return "na" — do not guess from entertainment or social profiles (IMDB, Facebook, etc.).
-{% else %}
-- When context.bind.employer is absent, name-only searches are allowed.
-{% endif %}
+- Call web_search with focused queries using context.bind.name and context.bind.employer for disambiguation.
 - Stop searching when you have enough evidence or after reasonable attempts.
 
 Status meanings:
