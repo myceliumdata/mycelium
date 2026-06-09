@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-08  
 **Participants:** Paul, Grok  
-**Status:** Design captured — not yet implemented  
+**Status:** Spec locked — [`entity-key-suggestions-phase1.md`](../entity-key-suggestions-phase1.md); Cursor slice queued  
 **Distilled in:** `TODO.md` → **Entity key suggestions (protocol slice)** + **Negotiation & metering phases**  
 **Related code today:** `src/agents/seed.py` (`find_by_key`), `src/agents/responses.py`, `src/agents/supervisor.py`, `QueryResponse` in `src/models/state.py`
 
