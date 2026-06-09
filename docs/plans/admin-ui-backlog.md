@@ -14,5 +14,6 @@ Review when implementing a dedicated admin polish track.
 | 7 | Slice 6+ | Indicate when research is gated vs allowed | Operator debugging for Tavily spend |
 | 8 | Slice 7 | Show registry vs specialist-owned fields separately | Entity drill-down; bind fields vs extended attrs |
 | 9 | Slice 8 | Show `attr_sources` + `last_researched_at` per attribute | Data attribution USP — which specialist, when researched |
+| 10 | Operator need (June 2026) | **Edit / correct attribute values** on entity drill-down | Wrong research (e.g. LinkedIn URL) — operator override; write specialist storage + provenance; see TODO **Operator attribute correction** |
 
 Add rows as later slices land. Do not block protocol slices on this file.

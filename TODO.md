@@ -158,6 +158,7 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 
 ### Entity program — deferred follow-ups (Paul + Grok)
 
+- [ ] **Operator attribute correction** — *deferred until entity protocol v1 manual sign-off (§2 in test plan).* Research can return wrong values (e.g. Paul Murphy @ Ormi Labs → LinkedIn `paul-murphy-003360` is not Paul). Operators need to **view and update** extended attributes in specialist storage (LinkedIn, email, etc.): correct value, mark source as operator override, prevent naive re-research from overwriting without policy. Surfaces: admin UI edit on entity field drill-down (primary); optional CLI/MCP operator tool later. Ties to attribution (`attr_sources` / provenance) and re-research/staleness policy.
 - [ ] **Data attribution (product — USP)** — core registry fields shipped in Slice 8; follow-on: MCP/`describe_network` surfacing, admin UI (#9 in `admin-ui-backlog.md`), staleness/re-research policy. Broader provenance story not yet designed.
 - [ ] **Empty-seed network demo (launch v2)** — deferred from Slice 8 (Q8b). `examples/networks/empty-crm/` or similar after Slices 1–7 land.
 - [ ] **Seed export tooling (`export-growth-seed`)** — deferred from Slice 8 (Q8c). Operator script: validated `entities.json` → `seed.json` fragment.
@@ -202,4 +203,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-09 (entity protocol Slices 1–8 + polish 1800 done; metering 9–10 deferred)
+Last updated: 2026-06-09 (entity protocol 1–8 + polish done; operator attr correction on backlog)

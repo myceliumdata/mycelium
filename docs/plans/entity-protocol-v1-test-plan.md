@@ -126,18 +126,22 @@ From repo root, after refresh:
 
 ```bash
 uv run python - <<'PY'
-import json, os, sys
+import json, os, sys, uuid
 sys.path.insert(0, "src")
+# Required before importing graphs.core — multiple run_query() in one process
+# otherwise hits: asyncio lock bound to a different event loop.
+os.environ["MYCELIUM_USE_SYNC_CHECKPOINTER"] = "1"
 os.environ.setdefault("MYCELIUM_NETWORK", "crm")
 from graphs.core import run_query
 from models.state import EntityQuery
 
 def q(entity_key, attrs=None, binding=None):
+    thread_id = f"manual-{uuid.uuid4()}"
     r = run_query(EntityQuery(
         entity_key=entity_key,
         requested_attributes=attrs or [],
         binding=binding or {},
-    ))
+    ), thread_id=thread_id)
     print(json.dumps({
         "outcome": r.outcome,
         "required_fields": r.required_fields,
@@ -167,7 +171,25 @@ Copy `q(...)` calls from each scenario into the heredoc, or run interactively.
 }
 ```
 
-### 2.4 Scenarios
+### 2.4 Query outcomes (reference)
+
+Read `outcome` before `results`. Full program table: [`entity-protocol-and-registry-program.md`](entity-protocol-and-registry-program.md) (§ Outcome enum). Runtime policy prose: MCP `describe_network` → `policy.*`. Field definitions: `QueryResponse.outcome` in `src/models/state.py`.
+
+| `outcome` | Meaning |
+|-----------|---------|
+| `entity_key_unresolved` | Near-miss on `entity_key` — check `suggestions[]`, re-query with a suggested `entity_key`; no attribute research yet |
+| `assembled` | Match found; requested attributes merged into `results` (research may be pending or complete) |
+| `entity_unknown` | No seed/registry match (or ambiguous name) — supply `binding` per `required_fields` before research |
+| `found` | Identity-only hit, duplicate bind, or validation failed (stays provisional) — read `message` for which |
+| `entity_validated` | New registry row passed MVR checks — attribute research may proceed on a follow-up query |
+| `entity_under_specified` | Partial `binding` — more MVR fields still needed |
+| `entity_bound_provisional` | Bind accepted; core validation not finished yet |
+| `not_found` | Generic miss (legacy path; most CRM flows use protocol outcomes above) |
+| `error` | Graph finished without a proper response payload |
+
+**Manual scenario map:** M1 → `entity_key_unresolved`; M2/M5/M6/M10/M12 → `assembled`; M3/M9 → `entity_unknown`; M4/M8 → `entity_validated`; M7/M11 → `found`.
+
+### 2.5 Scenarios
 
 | ID | Scenario | Input | Expected `outcome` | Notes |
 |----|----------|-------|-------------------|-------|
@@ -184,7 +206,7 @@ Copy `q(...)` calls from each scenario into the heredoc, or run interactively.
 | M11 | Provisional gate | Bind with invalid employer (e.g. `"X"`) + email | validation fail or under-specified | No specialist invoke before validation passes |
 | M12 | Aaron Holiday (seed only) | `entity_key`: `"Aaron Holiday"`, `requested_attributes`: `["email"]` | `assembled` | No `entities.json` write for pure seed hit |
 
-### 2.5 Operator verification (after M4–M6)
+### 2.6 Operator verification (after M4–M6)
 
 ```bash
 uv run mycelium network status --network crm --entity "Paul Murphy"
@@ -203,7 +225,7 @@ Inspect files (paths depend on your registered root):
 cat ~/mycelium-networks/crm/entities.json | python -m json.tool
 ```
 
-### 2.6 Admin UI (optional)
+### 2.7 Admin UI (optional)
 
 ```bash
 MYCELIUM_NETWORK=crm uv run mycelium-admin
@@ -212,7 +234,7 @@ MYCELIUM_NETWORK=crm uv run mycelium-admin
 
 Search **Andrea Kalmans** and **Paul Murphy** after growth scenarios; confirm entity fields render.
 
-### 2.7 CLI-only quick smoke (no binding)
+### 2.8 CLI-only quick smoke (no binding)
 
 ```bash
 uv run mycelium query --network crm --entity-key "Andrea Kalman" --attributes email
@@ -228,7 +250,7 @@ Inspect JSON: first should show unresolved/suggestions; second and third should 
 
 - [ ] §1.1 full smoke green (`213 passed`)
 - [ ] §1.2 entity bundle green (`59 passed`)
-- [ ] §2.4 scenarios M1–M12 pass (or documented env limitation for live research)
+- [ ] §2.5 scenarios M1–M12 pass (or documented env limitation for live research)
 - [ ] `describe_network` policy matches §2.3
 - [ ] Ready to `git push origin main` and delete `entity-protocol-v1-rc`
 
