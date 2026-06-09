@@ -266,10 +266,12 @@ See `docs/plans/seed-data-context-architecture.md` and the reprocess reviews (`p
 
 **Phase 1 specialist research (implemented, sync):** On cache miss, specialists call `run_field_research` inline (LLM + Tavily `web_search`, bounded tool rounds). Low confidence → `na` + `reason`; API/timeout failure → `pending`. **Async dispatch** (non-blocking queries) is deferred — see `docs/plans/specialist-research-phase1.md`.
 
-**Next phases:** async research dispatch (non-blocking queries), peer context retrieval, Tavily Extract/Crawl. Attribute-scoped `results` and specialist-first merge are already live (`2026-06-04-1400-filter-query-results-and-trace-url`).
+**Research prompt context (implemented, June 2026):** `build_research_prompts()` applies **MVR-driven bind disambiguation** (`MvrPolicy.bind_fields` from `network.json`) and includes **peer specialist findings** from `_research_context()` (other categories for the same `entity_id`). Templates: `src/agents/factory/templates/research/`. Follow-on hardening: `docs/plans/research-robustness-backlog.md`.
+
+**Next phases:** async research dispatch (non-blocking queries), Tavily Extract/Crawl, research robustness items in backlog. Attribute-scoped `results` and specialist-first merge are already live (`2026-06-04-1400-filter-query-results-and-trace-url`).
 
 See `TODO.md` for follow-ups.
 
 ---
 
-**Last major update:** June 2026 (seed-data-context redesign + Phase 1 sync specialist research)
+**Last major update:** June 2026 (seed-data-context redesign + Phase 1 sync specialist research + MVR/peer research prompts)

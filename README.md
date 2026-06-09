@@ -92,6 +92,8 @@ The CLI starts a **fresh process** each run and reloads registry/storage from di
 
 **Research latency (CLI and MCP):** With `OPENAI_API_KEY` and `TAVILY_API_KEY` set, the **first** query for a missing attribute (e.g. `email`) runs **synchronous** LLM + Tavily web search and may take tens of seconds. Results are persisted under `<network_root>/agents/<category>/` (gitignored). **Repeat queries** for the same person + attribute are fast — specialists read from cache and skip research unless retry flags apply.
 
+**Research prompts:** Prompts use **MVR bind disambiguation** (`network.json` `bind_fields`) and **peer specialist context** (findings from other categories for the same entity). Inspect prompts in LangSmith under the research LLM span. Detail: [docs/README.md](docs/README.md#research-prompts-june-2026), [docs/plans/research-robustness-backlog.md](docs/plans/research-robustness-backlog.md).
+
 ### MCP server
 
 ```bash
@@ -313,7 +315,7 @@ flowchart TD
 | MCP | `src/mycelium_mcp/server.py` | `describe_network`, `query_entity`, `health_check` |
 | CLI | `src/main.py` | `mycelium query`, `mycelium network`, `mycelium seed` |
 
-Full detail: [docs/architecture.md](docs/architecture.md). Phase 1 research plan: [docs/plans/specialist-research-phase1.md](docs/plans/specialist-research-phase1.md).
+Full detail: [docs/architecture.md](docs/architecture.md). Research: [docs/plans/specialist-research-phase1.md](docs/plans/specialist-research-phase1.md), prompt context ([docs/README.md](docs/README.md#research-prompts-june-2026)).
 
 ## LangSmith tracing
 
@@ -362,6 +364,6 @@ mycelium/
 
 ## Status
 
-**Implemented (June 2026):** Query-only CLI/MCP, seed-data-context graph, classification engine, agent factory, **specialist research Phase 1** (synchronous LLM + Tavily), **Networks Phases 1–5** (path resolver, name registry, CRM example, integration testing, **`network create`** with per-network `specialists/` and skeleton ontology — slices `1500`–`1800`), public repo under [myceliumdata](https://github.com/myceliumdata).
+**Implemented (June 2026):** Query-only CLI/MCP, seed-data-context graph, classification engine, agent factory, **specialist research Phase 1** (synchronous LLM + Tavily), **research prompt context enrichment** (MVR bind disambiguation + peer specialist findings in prompts), **Networks Phases 1–5** (path resolver, name registry, CRM example, integration testing, **`network create`** with per-network `specialists/` and skeleton ontology — slices `1500`–`1800`), public repo under [myceliumdata](https://github.com/myceliumdata).
 
 **Roadmap:** Query-as-seed launch (v2), inter-network handoff (Phase 6), per-network LangSmith projects — see [TODO.md](TODO.md) and [docs/plans/networks-terminology.md](docs/plans/networks-terminology.md).
