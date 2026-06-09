@@ -188,6 +188,7 @@ if [[ "$DEMO" == true ]]; then
   echo "Network:    ${DISPLAY_NETWORK}"
   echo ""
   trap - INT TERM EXIT
+  export MYCELIUM_USE_SYNC_CHECKPOINTER=1
   exec uv run mycelium-admin
 fi
 
@@ -205,7 +206,7 @@ if [[ "$DRY_RUN" == true ]]; then
   exit 0
 fi
 
-uv run mycelium-admin &
+MYCELIUM_USE_SYNC_CHECKPOINTER=1 uv run mycelium-admin &
 DAEMON_PID=$!
 
 if ! wait_for_admin; then

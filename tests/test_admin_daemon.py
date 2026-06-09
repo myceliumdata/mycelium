@@ -260,10 +260,25 @@ def test_serves_admin_ui_when_dist_present(
 
 
 @pytest.mark.smoke
+def test_admin_module_forces_sync_checkpointer() -> None:
+    """Admin daemon must compile the graph with sync SqliteSaver (see server.py)."""
+    import mycelium_admin.server as admin_server  # noqa: F401 — sets env before graphs.core
+    from graphs.core import get_core_graph, reset_core_graph
+
+    assert admin_server.os.environ.get("MYCELIUM_USE_SYNC_CHECKPOINTER") == "1"
+    reset_core_graph()
+    get_core_graph()
+    import graphs.core as core
+
+    assert core._is_async_checkpointer is False
+
+
+@pytest.mark.smoke
 def test_admin_query_seed_entity(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
+    """POST /query exercises run_query; requires sync checkpointer in admin process."""
     root = _populated_root(tmp_path)
     client = _client_for_root(monkeypatch, tmp_path, root)
     monkeypatch.setattr(
@@ -280,6 +295,32 @@ def test_admin_query_seed_entity(
     payload = response.json()
     assert payload["outcome"] in {"found", "assembled"}
     assert payload["results"]
+
+
+@pytest.mark.smoke
+def test_admin_query_registry_bind(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root = _populated_root(tmp_path)
+    client = _client_for_root(monkeypatch, tmp_path, root)
+    monkeypatch.setattr(
+        "tools.research.is_research_available",
+        lambda: False,
+    )
+
+    response = client.post(
+        "/query",
+        json={
+            "entity_key": "Paul Murphy",
+            "binding": {"employer": "Acme Corp"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["outcome"] in {"entity_validated", "found"}
+    assert payload["results"][0]["name"] == "Paul Murphy"
 
 
 @pytest.mark.smoke

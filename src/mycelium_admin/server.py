@@ -6,6 +6,11 @@ import os
 import uuid
 from typing import Any
 
+# Force the sync checkpointer path for the long-lived admin HTTP server.
+# Matches MCP/CLI: avoids event-loop lock errors when run_query() is called
+# from FastAPI worker threads with repeated asyncio.run() on the async saver.
+os.environ["MYCELIUM_USE_SYNC_CHECKPOINTER"] = "1"
+
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
