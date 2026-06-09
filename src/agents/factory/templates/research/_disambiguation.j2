@@ -1,0 +1,7 @@
+DISAMBIGUATION (mandatory):
+{% for field, value in bind_disambiguators.items() %}
+- {{ field }}: {{ value }}
+{% endfor %}
+- Your FIRST web_search query MUST include all non-name bind values listed above.
+- Do NOT run queries that omit those tokens when they are known.
+- Reject sources that do not corroborate these bind values.

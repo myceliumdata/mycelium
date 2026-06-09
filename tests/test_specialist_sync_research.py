@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -357,6 +358,37 @@ def test_contact_mixed_found_and_na_message(
     assert "mix@example.com" not in msg
     assert "not currently available" not in msg
     assert "(via contact_specialist)" not in msg
+
+
+@pytest.mark.smoke
+def test_research_context_includes_peers_excludes_own_category(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _fn, _storage_path = _setup_contact_specialist(tmp_path, monkeypatch)
+    py_path = tmp_path / "specialists" / "contact_specialist.py"
+    spec = importlib.util.spec_from_file_location("dyn_contact_specialist", py_path)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    storage = mod.get_specialist_storage()
+    entity_id = "uuid-peer-context"
+    ctx = {
+        "bind": {"name": "Jane"},
+        "specialists": {
+            "contact": {
+                entity_id: {"email": {"status": "found", "value": "jane@example.com"}},
+            },
+            "professional": {
+                entity_id: {"title": {"status": "found", "value": "CEO"}},
+            },
+        },
+    }
+    out = mod._research_context(ctx, entity_id, storage)
+    peers = out.get("specialists", {})
+    assert "professional" in peers
+    assert "contact" not in peers
+    assert peers["professional"]["title"]["value"] == "CEO"
 
 
 @pytest.mark.smoke

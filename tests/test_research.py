@@ -10,12 +10,16 @@ import pytest
 
 from agents.classification import get_category_tree, reset_category_tree
 from agents.specialists.base import SpecialistStorage
+from network.mvr import MvrPolicy
 from tools.research import (
     FieldProposal,
     ResearchProposal,
     ResearchRunResult,
     _persist_proposal,
     _validate_and_build_record,
+    bind_disambiguators,
+    build_research_prompts,
+    has_extra_bind_disambiguators,
     is_research_available,
     load_category_metadata,
     research_min_confidence,
@@ -32,6 +36,121 @@ def categories_seed_tree(
     monkeypatch.setenv("MYCELIUM_CATEGORIES_PATH", str(tmp_path / "categories.json"))
     reset_category_tree()
     get_category_tree()
+
+
+@pytest.mark.smoke
+def test_build_research_prompts_crm_mvr_employer_mandates_disambiguation() -> None:
+    system, user = build_research_prompts(
+        category="relationships",
+        specialist_name="relationships_specialist",
+        person_id="uuid-angela",
+        target_fields=["spouse"],
+        context={
+            "entity_id": "uuid-angela",
+            "bind": {"name": "Angela Murphy", "employer": "Talentcare"},
+            "storage": {},
+        },
+    )
+    assert user.startswith("DISAMBIGUATION (mandatory):")
+    assert "employer: Talentcare" in user
+    assert "FIRST web_search" in user
+    assert "Bind disambiguation (mandatory)" in system
+    assert "non-name bind disambiguators" in system
+
+
+@pytest.mark.smoke
+def test_build_research_prompts_name_only_bind_omits_disambiguation() -> None:
+    system, user = build_research_prompts(
+        category="relationships",
+        specialist_name="relationships_specialist",
+        person_id="uuid-jane",
+        target_fields=["spouse"],
+        context={
+            "entity_id": "uuid-jane",
+            "bind": {"name": "Jane"},
+            "storage": {},
+        },
+    )
+    assert "DISAMBIGUATION" not in user
+    assert "Bind disambiguation (mandatory)" not in system
+    assert "name-only searches are allowed" in system
+
+
+@pytest.mark.smoke
+def test_build_research_prompts_custom_mvr_account_id_disambiguation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    custom_mvr = MvrPolicy(
+        bind_fields=["name", "account_id"],
+        name_source="entity_key",
+        description="Custom network",
+    )
+    monkeypatch.setattr("tools.research.load_mvr", lambda **kwargs: custom_mvr)
+    system, user = build_research_prompts(
+        category="contact",
+        specialist_name="contact_specialist",
+        person_id="uuid-acct",
+        target_fields=["email"],
+        context={
+            "entity_id": "uuid-acct",
+            "bind": {"name": "Jane", "account_id": "ACME-42"},
+            "storage": {},
+        },
+    )
+    assert "account_id: ACME-42" in user
+    assert "employer:" not in user.split("Category guidance", 1)[0]
+    assert "Bind disambiguation (mandatory)" in system
+    assert "account_id" in system
+
+
+@pytest.mark.smoke
+def test_build_research_prompts_whitespace_bind_value_treated_as_absent() -> None:
+    system, user = build_research_prompts(
+        category="contact",
+        specialist_name="contact_specialist",
+        person_id="uuid-jane",
+        target_fields=["email"],
+        context={
+            "entity_id": "uuid-jane",
+            "bind": {"name": "Jane", "employer": "   "},
+            "storage": {},
+        },
+    )
+    assert "DISAMBIGUATION" not in user
+    assert "Bind disambiguation (mandatory)" not in system
+    disamb = bind_disambiguators(
+        {"bind": {"name": "Jane", "employer": "   "}},
+        MvrPolicy(bind_fields=["name", "employer"], name_source="entity_key", description=""),
+    )
+    assert has_extra_bind_disambiguators(disamb) is False
+
+
+@pytest.mark.smoke
+def test_build_research_prompts_includes_peer_specialists() -> None:
+    _system, user = build_research_prompts(
+        category="relationships",
+        specialist_name="relationships_specialist",
+        person_id="uuid-peer",
+        target_fields=["spouse"],
+        context={
+            "entity_id": "uuid-peer",
+            "bind": {"name": "Angela Murphy", "employer": "Talentcare"},
+            "storage": {},
+            "specialists": {
+                "professional": {
+                    "uuid-peer": {
+                        "title": {"status": "found", "value": "VP Sales"},
+                    },
+                },
+                "relationships": {
+                    "uuid-peer": {"spouse": {"status": "pending"}},
+                },
+            },
+        },
+    )
+    assert "PEER SPECIALIST FINDINGS" in user
+    assert "professional" in user
+    assert "VP Sales" in user
 
 
 @pytest.mark.smoke
@@ -210,6 +329,7 @@ def test_run_field_research_mock_llm_persists_found(
     assert entry["value"] == "ada@lab.com"
     audit = data.get("meta", {}).get("research_audit", [])
     assert audit and audit[-1]["tool_calls_count"] == 1
+    assert audit[-1]["context_bind"] == {"name": "Ada", "employer": "Lab"}
 
 
 @pytest.mark.smoke

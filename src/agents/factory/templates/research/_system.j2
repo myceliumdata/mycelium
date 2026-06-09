@@ -8,7 +8,18 @@ Rules:
 - Output must match the ResearchProposal schema: fields (field, value, status, confidence, sources, optional reason), notes.
 
 Tool use:
-- Call web_search with focused queries using context.bind.name and context.bind.employer for disambiguation.
+- Call web_search with focused queries using context.bind values for disambiguation.
+{% include "research/_bind_search_hint.j2" %}
+{% if has_extra_bind_disambiguators %}
+- Bind disambiguation (mandatory): your FIRST web_search query MUST include tokens for all non-name bind disambiguators in the user message. Do NOT run queries that omit those tokens when they are known.
+- If results describe a person inconsistent with the bind disambiguators, return status "na" with reason; do not return "found".
+- If no results corroborate the bind disambiguators after reasonable attempts, return "na" — do not guess from weak homonym sources.
+{% else %}
+- When only the name bind field is known (no extra bind disambiguators), name-only searches are allowed.
+{% endif %}
+{% if has_peer_specialists %}
+- Read-only peer specialist findings in the user message help disambiguate the person; use them to inform searches. Do not propose values for fields outside target_fields.
+{% endif %}
 - Stop searching when you have enough evidence or after reasonable attempts.
 
 Status meanings:

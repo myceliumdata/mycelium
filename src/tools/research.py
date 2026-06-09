@@ -18,6 +18,7 @@ import jinja2
 from pydantic import BaseModel, Field
 
 from agents.specialists.base import SpecialistStorage
+from network.mvr import MvrPolicy, load_mvr
 from tools.tavily import create_tavily_search_tool, is_web_search_available
 
 _RESEARCH_TEMPLATE_DIR = (
@@ -119,6 +120,59 @@ def _jinja_env() -> jinja2.Environment:
     )
 
 
+def bind_disambiguators(context: dict[str, Any], mvr: MvrPolicy) -> dict[str, str]:
+    """Non-empty bind values for fields declared in MVR bind_fields."""
+    bind = context.get("bind")
+    if not isinstance(bind, dict):
+        return {}
+    result: dict[str, str] = {}
+    for bind_field in mvr.bind_fields:
+        key = bind_field.strip().lower()
+        if not key:
+            continue
+        raw = bind.get(key)
+        if raw is None:
+            raw = bind.get(bind_field)
+        text = str(raw or "").strip()
+        if text:
+            result[key] = text
+    return result
+
+
+def has_extra_bind_disambiguators(disambiguators: dict[str, str]) -> bool:
+    """True when any non-name bind field has a value (triggers mandatory search rules)."""
+    return any(key != "name" for key in disambiguators)
+
+
+def peer_specialists_for_entity(
+    context: dict[str, Any],
+    *,
+    entity_id: str,
+    category: str,
+) -> dict[str, Any]:
+    """Peer category slices for entity_id (exclude own category; omit pending fields)."""
+    specialists = context.get("specialists")
+    if not isinstance(specialists, dict):
+        return {}
+    own = category.strip().lower()
+    peers: dict[str, Any] = {}
+    for cat, records in specialists.items():
+        cat_key = str(cat).strip().lower()
+        if cat_key == own or not isinstance(records, dict):
+            continue
+        row = records.get(entity_id)
+        if not isinstance(row, dict) or not row:
+            continue
+        trimmed = {
+            key: value
+            for key, value in row.items()
+            if not (isinstance(value, dict) and value.get("status") == "pending")
+        }
+        if trimmed:
+            peers[cat_key] = trimmed
+    return peers
+
+
 def build_research_prompts(
     *,
     category: str,
@@ -131,13 +185,27 @@ def build_research_prompts(
     env = _jinja_env()
     meta = load_category_metadata(category)
     min_conf = research_min_confidence()
+    mvr = load_mvr()
+    disambiguators = bind_disambiguators(context, mvr)
+    extra_disamb = has_extra_bind_disambiguators(disambiguators)
+    peer_specialists = peer_specialists_for_entity(
+        context,
+        entity_id=person_id,
+        category=category,
+    )
+    template_vars = {
+        "category": category,
+        "specialist_name": specialist_name,
+        "min_confidence": min_conf,
+        "bind_disambiguators": disambiguators,
+        "has_extra_bind_disambiguators": extra_disamb,
+        "mvr_bind_fields": list(mvr.bind_fields),
+        "has_peer_specialists": bool(peer_specialists),
+        "peer_specialists": peer_specialists,
+    }
 
     system_tpl = env.get_template("research/_system.j2")
-    system = system_tpl.render(
-        category=category,
-        specialist_name=specialist_name,
-        min_confidence=min_conf,
-    )
+    system = system_tpl.render(**template_vars)
 
     fragment_name = f"research/{category.strip().lower()}.md.j2"
     try:
@@ -161,6 +229,12 @@ def build_research_prompts(
     ]
     if fragment:
         user_parts.insert(1, f"Category guidance:\n{fragment}")
+    if peer_specialists:
+        peer_block = env.get_template("research/_peer_context.j2").render(**template_vars).strip()
+        user_parts.insert(0, peer_block)
+    if extra_disamb:
+        disambiguation = env.get_template("research/_disambiguation.j2").render(**template_vars).strip()
+        user_parts.insert(0, disambiguation)
     user = "\n\n".join(user_parts)
     return system, user
 
@@ -322,6 +396,7 @@ def _append_research_audit(
     fields_updated: list[str],
     tool_calls_count: int,
     errors: list[str],
+    context_bind: dict[str, str] | None = None,
 ) -> None:
     meta = data.setdefault("meta", {})
     if not isinstance(meta, dict):
@@ -329,17 +404,18 @@ def _append_research_audit(
     audit = meta.setdefault("research_audit", [])
     if not isinstance(audit, list):
         return
-    audit.append(
-        {
-            "at": datetime.now(timezone.utc).isoformat(),
-            "category": category,
-            "specialist": specialist_name,
-            "person_id": person_id,
-            "fields_updated": fields_updated,
-            "tool_calls_count": tool_calls_count,
-            "errors": errors,
-        },
-    )
+    entry: dict[str, Any] = {
+        "at": datetime.now(timezone.utc).isoformat(),
+        "category": category,
+        "specialist": specialist_name,
+        "person_id": person_id,
+        "fields_updated": fields_updated,
+        "tool_calls_count": tool_calls_count,
+        "errors": errors,
+    }
+    if context_bind is not None:
+        entry["context_bind"] = context_bind
+    audit.append(entry)
 
 
 def _pending_record(
@@ -477,6 +553,7 @@ def _execute_research(
         fields_updated=updated,
         tool_calls_count=tool_calls_count,
         errors=errors,
+        context_bind=bind_disambiguators(context, load_mvr()),
     )
     storage.save(data)
 
