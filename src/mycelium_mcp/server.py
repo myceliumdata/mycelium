@@ -99,9 +99,9 @@ def _neutral_json_schema(model: type[EntityQuery] | type[QueryResponse] | type[S
     if model is EntityQuery:
         schema.setdefault("description", "Lookup request: entity_key plus optional requested_attributes.")
     elif model is QueryResponse:
-        schema.setdefault(
-            "description",
-            "Query outcome: results (attribute values), message (status narrative), debug, trace_id, thread_id.",
+        schema["description"] = (
+            "Query outcome: outcome (machine-readable), suggestions (near-miss retries), "
+            "results (attribute values), message (status narrative), debug, trace_id, thread_id."
         )
     elif model is SeedRecord:
         schema.setdefault("description", "Seed identity record (id, name, employer).")
@@ -130,7 +130,12 @@ def _execute_mcp_query(query_json: str) -> str:
             {
                 "results": [],
                 "message": f"Query failed internally: {exc}",
-                "debug": f"error_type={type(exc).__name__}; entity_key={query.entity_key!r}",
+                "debug": (
+                    f"outcome='error'; error_type={type(exc).__name__}; "
+                    f"entity_key={query.entity_key!r}"
+                ),
+                "outcome": "error",
+                "suggestions": [],
                 "trace_id": None,
                 "thread_id": thread_id,
             },

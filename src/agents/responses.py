@@ -438,10 +438,10 @@ def response_non_core(
     return _make_response(
         results=shaped,
         message=message,
-        outcome="non_core_requested",
+        outcome="assembled",
         debug=debug_for_query(
             query,
-            outcome="non_core_requested",
+            outcome="assembled",
             num_matches=str(n),
             **buckets,
             **({"classifications": clfs} if clfs else {}),

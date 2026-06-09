@@ -393,7 +393,8 @@ def run_query(
     return QueryResponse(
         results=[],
         message="Graph finished without a response payload.",
-        debug="No response set by assemble_response.",
+        debug="outcome='error'; reason='no_response_set_by_assemble_response'",
+        outcome="error",
         thread_id=thread_id,
         trace_id=captured_trace_id,
     )

@@ -36,6 +36,7 @@ def test_routing_delegates_lookup_to_core_identity() -> None:
 
     assert len(decision.response.results) == 1
     assert decision.response.results[0]["name"] == "Ada"
+    assert decision.response.outcome == "found"
     assert "Found record for" in decision.response.message
     assert "core record" not in decision.response.message.lower()
 
@@ -48,6 +49,7 @@ def test_routing_not_found_when_missing() -> None:
     decision = evaluate_supervisor_turn(state, core_identity=core_identity)
 
     assert decision.response.results == []
+    assert decision.response.outcome == "not_found"
     assert "No record found" in decision.response.message
     assert "core record" not in decision.response.message.lower()
     assert core_identity.persisted == []
@@ -66,6 +68,7 @@ def test_routing_non_core_attributes() -> None:
     decision = evaluate_supervisor_turn(state, core_identity=core_identity)
 
     assert len(decision.response.results) == 1
+    assert decision.response.outcome == "assembled"
     assert "Classified age as demographic" in decision.response.message
     assert "researching" in decision.response.message.lower()
     assert "age" in decision.response.message

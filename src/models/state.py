@@ -84,13 +84,17 @@ class QueryResponse(BaseModel):
     outcome: str | None = Field(
         default=None,
         description=(
-            "Machine-readable query outcome: found, assembled, not_found, "
-            "entity_key_unresolved, or non_core_requested."
+            "Machine-readable query outcome on every response: found (seed identity only), "
+            "assembled (requested attributes merged), not_found, entity_key_unresolved "
+            "(near-miss suggestions), or error (internal failure). Mirrors debug outcome=."
         ),
     )
     suggestions: list[EntityKeySuggestion] = Field(
         default_factory=list,
-        description="Near-miss entity_key suggestions when outcome is entity_key_unresolved.",
+        description=(
+            "Near-miss entity_key suggestions when outcome is entity_key_unresolved; "
+            "empty otherwise. Re-query with suggestions[].entity_key to confirm."
+        ),
     )
     results: list[dict[str, Any]] = Field(
         default_factory=list,

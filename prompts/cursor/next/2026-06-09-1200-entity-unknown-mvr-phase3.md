@@ -1,6 +1,6 @@
 # Task: Unknown entity + MVR policy — Phase 3
 
-> **Queued** — Implement after Slice 2 is in `done/`.
+> **READY** — Slice 2 approved. Move to `in-progress/` to start (`1105` test hygiene optional in parallel).
 
 **Read these first (mandatory):**
 - `prompts/cursor/WORKFLOW.md`

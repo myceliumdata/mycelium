@@ -357,6 +357,11 @@ _POLICY_OUT_OF_SCOPE = (
     "response will say it does not appear related to this network. Such attributes "
     "are not researched."
 )
+_POLICY_OUTCOME = (
+    "Every query_entity response includes a machine-readable outcome field "
+    "(found, assembled, not_found, entity_key_unresolved, or error). "
+    "Read outcome before results; use message for per-attribute detail."
+)
 _POLICY_ENTITY_KEY_UNRESOLVED = (
     'When outcome is "entity_key_unresolved", the entity_key had no exact seed match '
     "but near-miss suggestions are provided in suggestions[]. Re-query with "
@@ -437,6 +442,7 @@ def build_network_capabilities() -> dict[str, Any]:
             "extensibility": _POLICY_EXTENSIBILITY,
             "out_of_scope": _POLICY_OUT_OF_SCOPE,
             "multi_match": _POLICY_MULTI_MATCH,
+            "outcome": _POLICY_OUTCOME,
             "entity_key_unresolved": _POLICY_ENTITY_KEY_UNRESOLVED,
             "query": {
                 "tool": "query_entity",

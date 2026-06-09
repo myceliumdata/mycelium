@@ -251,6 +251,8 @@ CLI and MCP return **`QueryResponse`** JSON:
 
 ```json
 {
+  "outcome": "assembled",
+  "suggestions": [],
   "results": [
     {
       "id": "3fe6db14-a41d-50fe-9959-c5263dc5f53b",
@@ -265,6 +267,8 @@ CLI and MCP return **`QueryResponse`** JSON:
   "thread_id": "session-abc"
 }
 ```
+
+Every CLI and MCP query response includes **`outcome`** (machine-readable: `found`, `assembled`, `not_found`, `entity_key_unresolved`, or `error`) and **`suggestions`** (near-miss entity keys when `outcome` is `entity_key_unresolved`). Agents should branch on `outcome` before trusting `results`; use `message` for per-attribute status. MCP schema: `mycelium://schema/query-response`.
 
 - **`results`** — One dict per seed match. Always includes `"id"`. With `requested_attributes`, includes only those keys after specialist-first merge.
 - **`message`** — Human-readable status (seed found, research pending, N/A, etc.).
