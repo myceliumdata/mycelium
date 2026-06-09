@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from agents.context import get_context_builder
+from agents.entity_growth import apply_registry_research_attribution
 from agents.entity_registry import get_entity_registry, registry_entity_to_match
 from agents.entity_resolution import is_provisional_registry_match
 from agents.entity_validation import (
@@ -183,20 +184,28 @@ def invoke_specialists_node(state: MyceliumGraphState | dict[str, Any]) -> dict[
             },
         )
         result = fn(enriched)
+        contrib_audit = list(result.get("audit_log") or [])
         contributions.append(
             {
                 "agent": agent_name,
                 "target_fields": target_fields,
                 "specialist_contrib": result.get("specialist_contrib"),
                 "response": result.get("response"),
+                "audit_log": contrib_audit,
             },
         )
         logs.append(
             f"invoke_specialists: invoked {agent_name} with context "
             f"({len(target_fields)} owned field(s)).",
         )
-        if result.get("audit_log"):
-            logs.extend(result["audit_log"])
+        if contrib_audit:
+            logs.extend(contrib_audit)
+
+    growth_logs = apply_registry_research_attribution(
+        entity_id=current.current_id,
+        contributions=contributions,
+    )
+    logs.extend(growth_logs)
 
     meta = dict(meta)
     meta["contributions"] = contributions

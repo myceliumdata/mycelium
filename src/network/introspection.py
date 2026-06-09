@@ -388,6 +388,13 @@ _POLICY_ENTITY_VALIDATED = (
     'When outcome is "entity_validated", provisional registry entity passed rule-based '
     "MVR checks (name and employer). The entity is promoted to validated in entities.json."
 )
+_POLICY_ENTITY_GROWTH = (
+    "Network growth from queries: bind creates a registry row (entities.json), validation "
+    "promotes it, gated research writes extended attributes to specialist storage keyed by "
+    "entity_id. Registry rows track attr_sources (attr → category slug) and "
+    "last_researched_at after each successful research pass. Seed remains bootstrap origin; "
+    "registry rows override seed on conflict for the same bind key."
+)
 _POLICY_ENTITY_KEY_UNRESOLVED = (
     'When outcome is "entity_key_unresolved", the entity_key had no exact seed match '
     "but near-miss suggestions are provided in suggestions[]. Re-query with "
@@ -475,6 +482,7 @@ def build_network_capabilities() -> dict[str, Any]:
             "entity_bind": _POLICY_ENTITY_BIND,
             "research_gate": _POLICY_RESEARCH_GATE,
             "entity_validated": _POLICY_ENTITY_VALIDATED,
+            "entity_growth": _POLICY_ENTITY_GROWTH,
             "entity_key_unresolved": _POLICY_ENTITY_KEY_UNRESOLVED,
             "query": {
                 "tool": "query_entity",

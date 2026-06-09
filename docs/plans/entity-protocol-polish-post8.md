@@ -28,6 +28,9 @@ Non-blocking nits from Grok review of Slices 1–8 accumulate here. One polish p
 | ~~P9~~ | 5 | ~~Duplicate-bind message still says “provisional” after validation~~ — fixed in `1500` | — |
 | P10 | 6 | `output.md` claims `invoke_specialists_node` gate defense; only supervisor + `validate_entity` enforce | `src/agents/dispatch.py` |
 | P11 | 7 | Supervisor/validate still set `context["seed"]` pre–`build_context` (confusing vs `entity_id`/`bind` shape) | `supervisor.py`, `dispatch.py` |
+| P12 | 8 | `output.md` says “Slice 9 (`1800`)” — polish is `1800`, not Slice 9 | `1700` done/output.md |
+| P13 | 8 | Paul Murphy re-query smoke does not assert email in `results` | `tests/test_entity_growth.py` |
+| P14 | 8 | Attribution coupled to specialist audit log `updated=[...]` format | `entity_growth.py` |
 
 ---
 

@@ -1,6 +1,6 @@
 # Task: Entity protocol polish — post Slice 8
 
-> **Queued** — Run after Slice 8 (`1700`) is reviewed and approved. Do not start earlier.
+> **READY** — Slices 1–8 approved. Move to `in-progress/` to start.
 
 **Read these first (mandatory):**
 - `prompts/cursor/WORKFLOW.md`

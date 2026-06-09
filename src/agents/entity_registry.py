@@ -42,6 +42,14 @@ class RegistryEntity(BaseModel):
     employer: str | None = None
     validation_state: str = "provisional"
     field_states: dict[str, str] = Field(default_factory=dict)
+    attr_sources: dict[str, str] = Field(
+        default_factory=dict,
+        description="Attr name → specialist category slug that stores the value.",
+    )
+    last_researched_at: dict[str, str] = Field(
+        default_factory=dict,
+        description="Attr name → ISO8601 UTC timestamp of last successful research write.",
+    )
     source: str = "query_bind"
     created_at: str = ""
 
@@ -159,6 +167,21 @@ class EntityRegistry:
             "name": "validated",
             "employer": "validated",
         }
+        self._save()
+        return entity
+
+    def record_research_attribution(
+        self,
+        entity_id: str,
+        updates: dict[str, tuple[str, str]],
+    ) -> RegistryEntity:
+        """Merge attr_sources and last_researched_at for attrs researched this pass."""
+        entity = self._data.entities.get(entity_id)
+        if entity is None:
+            raise KeyError(f"Unknown registry entity: {entity_id}")
+        for attr, (category, researched_at) in updates.items():
+            entity.attr_sources[attr] = category
+            entity.last_researched_at[attr] = researched_at
         self._save()
         return entity
 

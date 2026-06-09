@@ -51,6 +51,18 @@ uv run mycelium network status --network crm --verbose   # debug layout
 uv run mycelium network status --network crm --entity "Andrea Kalmans"
 ```
 
+## Network growth from queries
+
+`seed.json` is the **bootstrap origin** only. When a visiting agent binds a new person (for example `Paul Murphy` with `binding.employer`), Mycelium:
+
+1. Creates a provisional row in `entities.json` (registry)
+2. Runs core validation and promotes the row to `validated`
+3. Invokes specialists for requested attributes (research gate: validated or seed hit)
+4. Writes extended attributes under `agents/<category>/storage.json` keyed by `entity_id`
+5. Records **data attribution** on the registry row: `attr_sources` (which category owns each attr) and `last_researched_at` (when research last succeeded)
+
+Re-query the same bind key (`entity_key` + `binding`) resolves the registry row before seed. Specialist storage remains the source of truth for attribute values; registry metadata tracks provenance for operators and future admin UI.
+
 ## Layout
 
 ```
