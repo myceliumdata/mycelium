@@ -1,6 +1,6 @@
 # Research gate — Phase 6 spec (draft)
 
-**Status:** Draft for Paul review (batch 2: slices 5–7)  
+**Status:** Partially locked (Paul, June 2026) — Q6b confirmed pending spec lock  
 **Depends on:** Slices 4–5
 
 ---
@@ -47,7 +47,7 @@ AND (
 
 **Outcome when gated with attrs (proposal):** `found` if identity resolved, else prior negotiation outcome; `message` explains gate; `results` identity only, no attr values.
 
-*Paul: prefer dedicated `outcome: research_gated` or use `found` + message?*
+**Locked (Paul):** `found` + clear `message` (no `research_gated` outcome).
 
 ---
 

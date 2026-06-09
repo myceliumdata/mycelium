@@ -1,6 +1,6 @@
 # Core validation orchestration — Phase 5 spec (draft)
 
-**Status:** Draft for Paul review (batch 2: slices 5–7)  
+**Status:** Partially locked (Paul, June 2026) — Q5c/Q5d pending confirmation  
 **Program:** [`entity-protocol-and-registry-program.md`](entity-protocol-and-registry-program.md)  
 **Depends on:** Slice 4
 
@@ -102,12 +102,11 @@ On pass: `validation_state: validated`, `field_states.*: validated`.
 
 ---
 
-## Open questions for Paul
+## Paul decisions (locked)
 
-1. **Validation trigger:** every provisional resolve, or only when attributes requested? **Proposal: always validate once MVR complete on any query touching that entity.**
-
-2. **Validator failure:** stay provisional + `found` message (proposal) vs new `validation_rejected` outcome?
-
-3. **Same-turn email:** after `entity_validated` in one query with `email`, allow research in Slice 5 or wait for Slice 6? **Proposal: Slice 6 only.**
-
-4. **CRM rules above** sufficient for demo, or require LLM plausibility in v1?
+| # | Decision |
+|---|----------|
+| Q5a | Validate on **every** query once MVR complete (even identity-only) |
+| Q5b | Validator failure → stay **provisional**, explain in `message`; **no** `validation_rejected` outcome |
+| Q5c | *Pending Paul confirmation after explanation* |
+| Q5d | *Pending Paul confirmation after explanation* |

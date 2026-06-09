@@ -1,6 +1,6 @@
 # Seed vs specialists boundary — Phase 7 spec (draft)
 
-**Status:** Draft for Paul review (batch 2: slices 5–7)  
+**Status:** Partially locked (Paul, June 2026) — Q7c pending decision  
 **Depends on:** Slices 4–6
 
 ---
@@ -34,7 +34,7 @@
 }
 ```
 
-Remove reliance on full `context.seed` blob in generated specialists (reference modules in `src/agents/specialists/` may stay until regen).
+Remove reliance on full `context.seed` blob. **Locked (Paul):** clean slate — update factory template **and** regen/update all committed reference specialists under `src/agents/specialists/` and per-network copies as needed.
 
 ---
 
@@ -48,9 +48,7 @@ Remove reliance on full `context.seed` blob in generated specialists (reference 
 
 ## Existing networks
 
-**Proposal:** Best-effort read: if legacy storage contains `name`/`employer`, ignore for merge; registry/seed wins. No automatic file rewrite.
-
-*Paul: OK to leave legacy keys in old storage.json, or run one-time strip on read?*
+**Locked (Paul):** Clean slate — ignore legacy specialist storage; no migration. Refresh-example-network or operator wipe for demos.
 
 ---
 
