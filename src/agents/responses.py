@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from models.state import (
+    EntityKeySuggestion,
     EntityQuery,
     QueryResponse,
     SeedRecord,
@@ -284,6 +285,8 @@ def _make_response(
     results: list[dict[str, Any]],
     message: str,
     debug: str,
+    outcome: str | None = None,
+    suggestions: list[EntityKeySuggestion] | None = None,
     trace_id: str | None = None,
     thread_id: str | None = None,
 ) -> QueryResponse:
@@ -291,6 +294,8 @@ def _make_response(
         results=results,
         message=message,
         debug=debug,
+        outcome=outcome,
+        suggestions=suggestions or [],
         trace_id=trace_id,
         thread_id=thread_id,
     )
@@ -320,6 +325,7 @@ def response_found(
     return _make_response(
         results=records,
         message=message,
+        outcome="found",
         debug=debug_for_query(
             query,
             outcome="found",
@@ -349,11 +355,54 @@ def response_not_found(
     return _make_response(
         results=[],
         message=message,
+        outcome="not_found",
         debug=debug_for_query(
             query,
             outcome="not_found",
             **({"classifications": classifications} if classifications else {}),
             **({"specialist": specialist} if specialist else {}),
+        ),
+        trace_id=trace_id,
+        thread_id=thread_id,
+    )
+
+
+def response_entity_unresolved(
+    query: EntityQuery,
+    suggestions: list[EntityKeySuggestion],
+    *,
+    trace_id: str | None = None,
+    thread_id: str | None = None,
+) -> QueryResponse:
+    """Near-miss entity_key: suggest retries without returning attribute data."""
+    if not suggestions:
+        return response_not_found(query, trace_id=trace_id, thread_id=thread_id)
+
+    top = suggestions[0]
+    employer_hint = f" ({top.employer})" if top.employer else ""
+    if len(suggestions) == 1:
+        message = (
+            f"No exact match for {query.entity_key!r}. "
+            f"Did you mean {top.entity_key!r}{employer_hint}? "
+            "Re-query with that entity_key to continue."
+        )
+    else:
+        names = ", ".join(f"{item.entity_key!r}" for item in suggestions[:3])
+        message = (
+            f"No exact match for {query.entity_key!r}. "
+            f"Did you mean one of: {names}? "
+            "Re-query with a suggested entity_key to continue."
+        )
+
+    return _make_response(
+        results=[],
+        message=message,
+        outcome="entity_key_unresolved",
+        suggestions=suggestions,
+        debug=debug_for_query(
+            query,
+            outcome="entity_key_unresolved",
+            suggestions=[item.model_dump() for item in suggestions],
         ),
         trace_id=trace_id,
         thread_id=thread_id,
@@ -389,6 +438,7 @@ def response_non_core(
     return _make_response(
         results=shaped,
         message=message,
+        outcome="non_core_requested",
         debug=debug_for_query(
             query,
             outcome="non_core_requested",
@@ -431,6 +481,7 @@ def response_assembled(
     return _make_response(
         results=records,
         message=message,
+        outcome="assembled",
         debug=debug_for_query(query, outcome="assembled", **extra),
         trace_id=trace_id,
         thread_id=thread_id,

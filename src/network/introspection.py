@@ -357,6 +357,12 @@ _POLICY_OUT_OF_SCOPE = (
     "response will say it does not appear related to this network. Such attributes "
     "are not researched."
 )
+_POLICY_ENTITY_KEY_UNRESOLVED = (
+    'When outcome is "entity_key_unresolved", the entity_key had no exact seed match '
+    "but near-miss suggestions are provided in suggestions[]. Re-query with "
+    "query_entity using a chosen suggestions[].entity_key (usually the highest score). "
+    "No attribute data is authoritative until an exact match resolves."
+)
 _POLICY_MULTI_MATCH = (
     "When entity_key matches multiple seed records, results contains every match. "
     "Disambiguate using fields in each record (for example id and employer on CRM "
@@ -431,6 +437,7 @@ def build_network_capabilities() -> dict[str, Any]:
             "extensibility": _POLICY_EXTENSIBILITY,
             "out_of_scope": _POLICY_OUT_OF_SCOPE,
             "multi_match": _POLICY_MULTI_MATCH,
+            "entity_key_unresolved": _POLICY_ENTITY_KEY_UNRESOLVED,
             "query": {
                 "tool": "query_entity",
                 "request_schema": "mycelium://schema/entity-query",
@@ -454,8 +461,9 @@ def format_mcp_instructions(capabilities: dict[str, Any]) -> str:
         "Call **`describe_network`** for the author guide, ontology, and usage policy. "
         "Use **`query_entity`** with JSON: `entity_key`, optional `requested_attributes`, "
         "optional `thread_id`. Responses are **`QueryResponse`** "
-        "(`results`, `message`, `debug`, `trace_id`, `thread_id`); "
-        "read **`message`** for per-attribute status and classification. "
+        "(`outcome`, `suggestions`, `results`, `message`, `debug`, `trace_id`, "
+        "`thread_id`); read **`message`** for per-attribute status and classification. "
+        "On **`outcome: entity_key_unresolved`**, retry with a **`suggestions[].entity_key`**. "
         "Use **`health_check`** for server liveness and network binding. "
         "Registry, categories, seed, and specialists reload from disk before each query — "
         "restart MCP only after code deploy or if reload fails."

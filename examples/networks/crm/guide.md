@@ -11,3 +11,7 @@ Ask for any attribute that fits that purpose. The network classifies each
 request, routes it to the right specialist, and researches it if we do not
 have it yet. If a request does not fit this network's purpose, you will
 get a clear refusal in the response message.
+
+If your `entity_key` is a near miss (for example a typo in a name), the response
+may return `outcome: entity_key_unresolved` with `suggestions` — re-query using
+a suggested `entity_key`; no attribute data is returned until an exact match.

@@ -179,7 +179,9 @@ def query_entity(query_json: str) -> str:
       "thread_id": "optional-conversation-id"
     }
 
-    Response JSON includes results, message, debug, trace_id, and thread_id.
+    Response JSON includes outcome, suggestions (when near-miss), results, message,
+    debug, trace_id, and thread_id. On outcome entity_key_unresolved, re-query with
+    a suggestions[].entity_key — no attribute data until an exact match resolves.
     """
     return _run_mcp_query(query_json)
 

@@ -23,6 +23,22 @@ class SeedRecord(BaseModel):
         return self.model_dump(exclude_none=True)
 
 
+class EntityKeySuggestion(BaseModel):
+    """Near-miss seed name suggestion when entity_key has no exact match."""
+
+    entity_key: str = Field(
+        description="Retry key — seed display name (canonical for re-query).",
+    )
+    id: str = Field(description="Stable seed UUID for the suggested record.")
+    name: str
+    employer: str | None = None
+    score: float = Field(description="Similarity score 0.0–1.0 (sequence_ratio).")
+    reason: str = Field(
+        default="sequence_ratio",
+        description="Why this candidate was suggested (slice 1: sequence_ratio only).",
+    )
+
+
 class EntityQuery(BaseModel):
     """Inbound JSON query for looking up a seed record (public interface).
 
@@ -65,6 +81,17 @@ class EntityQuery(BaseModel):
 class QueryResponse(BaseModel):
     """Lightweight response for external consumers (CLI + MCP agents)."""
 
+    outcome: str | None = Field(
+        default=None,
+        description=(
+            "Machine-readable query outcome: found, assembled, not_found, "
+            "entity_key_unresolved, or non_core_requested."
+        ),
+    )
+    suggestions: list[EntityKeySuggestion] = Field(
+        default_factory=list,
+        description="Near-miss entity_key suggestions when outcome is entity_key_unresolved.",
+    )
     results: list[dict[str, Any]] = Field(
         default_factory=list,
         description=(
@@ -175,6 +202,14 @@ class MyceliumGraphState(BaseModel):
     invocation_trace_id: str | None = Field(
         default=None,
         description="LangSmith trace id propagated into QueryResponse (set by run_query).",
+    )
+    entity_resolution_kind: str | None = Field(
+        default=None,
+        description="Internal resolution kind: exact, multiple, suggest, or none.",
+    )
+    entity_suggestions: list[EntityKeySuggestion] = Field(
+        default_factory=list,
+        description="Populated when entity_resolution_kind is suggest.",
     )
 
 

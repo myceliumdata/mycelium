@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 from agents.classification import get_category_tree
+from agents.entity_resolution import resolve_entity_key
 from agents.factory.agent_factory import get_agent_factory
 from agents.registry import get_agent_registry
-from agents.seed import find_by_key
 from models.state import MyceliumGraphState, SeedRecord
 
 # Context pull + specialist calls run in graph nodes (build_context, invoke_specialists).
@@ -102,7 +102,31 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
     query = current.query
     audit_log = ["Supervisor: evaluating query."]
 
-    matched = find_by_key(query.entity_key)
+    resolution = resolve_entity_key(query.entity_key)
+
+    if resolution.kind == "suggest":
+        audit_log.append(
+            f"Supervisor: near-miss suggestions for {query.entity_key!r} "
+            f"(count={len(resolution.suggestions)}); skipping classification.",
+        )
+        return {
+            "matched_records": [],
+            "entity_resolution_kind": "suggest",
+            "entity_suggestions": resolution.suggestions,
+            "context": {
+                "seed": [],
+                "specialists": {},
+                "_meta": {
+                    "ids": [],
+                    "specialists_to_invoke": [],
+                    "contributions": [],
+                },
+            },
+            "audit_log": audit_log,
+            "route": None,
+        }
+
+    matched = resolution.matches
     seed_records = _seed_records_from_seed(matched)
     ids = [m["id"] for m in matched if m.get("id")]
 
@@ -144,6 +168,7 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
 
     result: dict[str, Any] = {
         "matched_records": matched,
+        "entity_resolution_kind": resolution.kind if matched else "none",
         "context": context,
         "audit_log": audit_log,
         "route": None,

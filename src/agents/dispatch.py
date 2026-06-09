@@ -9,6 +9,7 @@ from agents.registry import get_agent_registry
 from agents.responses import (
     merge_requested_record,
     response_assembled,
+    response_entity_unresolved,
     response_found,
     response_not_found,
 )
@@ -122,6 +123,16 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
     meta = _meta(current)
     contributions = meta.get("contributions") or []
     matched = current.matched_records or []
+
+    if current.entity_resolution_kind == "suggest" and current.entity_suggestions:
+        return {
+            "response": response_entity_unresolved(
+                query,
+                current.entity_suggestions,
+                **id_kwargs,
+            ),
+            "audit_log": ["assemble_response: entity key unresolved (suggestions)."],
+        }
 
     if not matched:
         return {
