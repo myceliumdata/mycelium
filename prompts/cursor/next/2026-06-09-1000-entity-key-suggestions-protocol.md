@@ -1,8 +1,7 @@
 # Task: Entity key suggestions — protocol slice (Phase 1)
 
-> **ON HOLD** — Do not start until Paul approves [`docs/plans/entity-protocol-and-registry-program.md`](../../docs/plans/entity-protocol-and-registry-program.md) (full slice map).
-
 **Read these first (mandatory):**
+- [`docs/plans/entity-protocol-and-registry-program.md`](../../docs/plans/entity-protocol-and-registry-program.md) — full program (Paul approved)
 - `prompts/cursor/WORKFLOW.md`
 - `docs/plans/entity-key-suggestions-phase1.md` — **locked spec; follow exactly**
 - `docs/plans/conversations/2026-06-08-entity-key-negotiation.md` — motivation

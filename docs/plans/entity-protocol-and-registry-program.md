@@ -1,6 +1,6 @@
 # Entity protocol & registry — full program (slice map)
 
-**Status:** Draft for Paul + Grok agreement — **no Cursor implementation until approved**  
+**Status:** Approved by Paul (June 2026) — bootstrap seed trusted for gating; grown entities must validate. Cursor may proceed slice-by-slice per locked specs.  
 **Sources:**  
 - [`conversations/2026-06-08-entity-key-negotiation.md`](conversations/2026-06-08-entity-key-negotiation.md)  
 - [`conversations/2026-06-08-entity-registry-validation-growth.md`](conversations/2026-06-08-entity-registry-validation-growth.md)  
@@ -42,6 +42,7 @@ Build **agent-to-agent negotiation** from the outside in:
 | P7 | Research gate | **No `current_id` → no specialists/Tavily** (enforce uniformly by Slice 6) | Fixes today’s leak: unknown key + `email` still classifies |
 | P8 | Validation depth (v1) | **Sync-light**: rules + optional small LLM coherence check; no Tavily for core bind | Demos stay fast; extended attrs still use research |
 | P9 | Metering | **Design in Slice 9; hooks in Slice 10; no billing before Slice 6 gate works** | x402 depends on stable negotiation outcomes |
+| P10 | Bootstrap seed gating | **Seed rows = trusted for research gate** (maintainer-curated at bootstrap); **grown entities must validate** | Preserves CRM demo; not a claim of real-world factual truth |
 
 ---
 
@@ -127,11 +128,11 @@ Fallback for CRM example: if `mvr` absent, default `bind_fields: ["name", "emplo
 
 **Message (Paul Murphy):** *"No record for 'Paul Murphy'. To look up email, tell me who they work for (`employer`)."*
 
-**Decisions to lock in this slice:**
+**Decisions (locked):**
 
-- [ ] MVR lives in `network.json` vs `guide.md` front-matter vs ontology — **proposal: `network.json`**
-- [ ] `entity_unknown` vs `entity_under_specified` — **proposal: unknown when zero exact match and zero suggestions; under_specified when `binding` partial (Slice 4) or multi-field MVR incomplete**
-- [ ] For Slice 3 only: `entity_key` carries name; missing MVR fields → `entity_unknown` + `required_fields`
+- MVR lives in **`network.json`**
+- `entity_unknown` when zero exact match and zero suggestions; `entity_under_specified` when `binding` partial (Slice 4) or MVR incomplete
+- Slice 3: `entity_key` carries name; missing MVR fields → `entity_unknown` + `required_fields`
 
 **Exit criteria:** Paul Murphy+email → `entity_unknown`, `required_fields=["employer"]`, no Tavily; Andrea Kalman still → Slice 1 path.
 
@@ -169,11 +170,11 @@ Fallback for CRM example: if `mvr` absent, default `bind_fields: ["name", "emplo
 
 **Lookup order:** registry exact bind match → seed `find_by_key` → suggest → unknown.
 
-**Decisions to lock:**
+**Decisions (locked):**
 
-- [ ] Id allocation: **new uuid4** on bind (not uuid5 seed algorithm) — distinguishes grown entities
-- [ ] Duplicate bind: same name+employer → same id; conflicting employer → new entity or `multiple` — **proposal: new entity unless exact bind key match**
-- [ ] `EntityQuery.binding` optional dict; keys must be MVR fields
+- Id allocation: **new uuid4** on bind (not uuid5 seed algorithm) — distinguishes grown entities
+- Duplicate bind: same name+employer → same id; conflicting employer → new entity unless exact bind key match
+- `EntityQuery.binding` optional dict; keys must be MVR fields
 
 **Exit criteria:** Paul Murphy + `binding.employer` → provisional id in registry; re-query with name+employer resolves; still no email research until Slice 5/6.
 
@@ -207,6 +208,8 @@ Fallback for CRM example: if `mvr` absent, default `bind_fields: ["name", "emplo
 | **Persists** | Nothing new |
 
 **Exit criteria:** Unbound/unknown/provisional → never invokes Tavily; validated Paul Murphy + email → contact research runs.
+
+**Bootstrap seed (locked):** seed matches are treated as **validated for gating** — no provisional loop. Research on Andrea Kalmans + `email` still works without registry mirroring. Grown entities (registry `source: query_bind`) require `validation_state: validated`.
 
 ---
 
@@ -310,21 +313,24 @@ flowchart LR
 
 | Rule | |
 |------|--|
-| **Now** | **Hold all Cursor prompts** until Paul approves this program |
-| **Per slice** | One prompt in `prompts/cursor/next/` after slice spec locked (Slice 1 spec already written) |
+| **Per slice** | One prompt in `prompts/cursor/next/` after slice spec locked |
 | **Spec before code** | Slices 3–10 need short spec files like `entity-key-suggestions-phase1.md` before queueing |
 | **TODO.md** | Grok + Paul update after each slice reviewed — not Cursor |
+| **Next up** | Slice 1 (`2026-06-09-1000-entity-key-suggestions-protocol.md`) — ready for Cursor |
 
 ---
 
-## Open questions for Paul (approve or revise)
+## Paul decisions (locked June 2026)
 
-1. **Slice 2** — separate polish slice vs fold into Slice 1?  
-2. **MVR location** — `network.json` vs elsewhere?  
-3. **`EntityQuery.binding`** — OK to add in Slice 4? Any naming preference (`binding` vs `bind_fields`)?  
-4. **Seed rows after registry exists** — treat bootstrap seed as **pre-validated** for demo CRM, or run through validation? **Proposal: pre-validated** for existing seed only.  
-5. **Slice 8** — must `network create` allow empty seed in same slice, or registry-first create later? **Proposal: growth first, empty-seed create in follow-up.**  
-6. **Program scope** — anything missing or too much for v1?
+| Topic | Decision |
+|-------|----------|
+| Slice 2 | Keep separate from Slice 1 |
+| MVR location | `network.json` |
+| Binding field | `EntityQuery.binding` |
+| Bootstrap seed | **Trusted for gating** — maintainer-curated seed skips validation loop; not a claim of real-world truth |
+| Grown entities | **Must validate** before research (Slices 5–6) |
+| Slice 8 | Growth first; empty-seed `network create` later |
+| Program scope | Approved |
 
 ---
 
@@ -332,11 +338,5 @@ flowchart LR
 
 | Role | Status |
 |------|--------|
-| Paul | _pending_ |
-| Grok | draft ready |
-
-When Paul approves (with any revisions), Grok will:
-
-1. Lock per-slice spec files for Slices 3+  
-2. Unblock Cursor queue starting Slice 1  
-3. Update `TODO.md` with slice map reference
+| Paul | **Approved** (June 2026) |
+| Grok | Program locked |
