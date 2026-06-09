@@ -225,6 +225,7 @@ def test_bootstrap_fails_when_unconfigured(
     monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(tmp_path / "missing.json"))
     monkeypatch.delenv("MYCELIUM_NETWORK_ROOT", raising=False)
     monkeypatch.delenv("MYCELIUM_NETWORK", raising=False)
+    monkeypatch.setattr("mycelium_admin.server.load_dotenv", lambda *a, **k: None)
 
     with pytest.raises(ValueError, match=NO_NETWORK_CONFIGURED_MSG.split(".")[0]):
         bootstrap_admin()

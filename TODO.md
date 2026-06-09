@@ -131,7 +131,7 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 |-------|------|---------------|--------|
 | 1 | [`entity-key-suggestions-phase1.md`](docs/plans/entity-key-suggestions-phase1.md) | `1000` + `1005` | **Done** |
 | 2 | [`entity-outcome-infrastructure-phase2.md`](docs/plans/entity-outcome-infrastructure-phase2.md) | `1100` | **Done** |
-| 2h | — | `1105` smoke test env isolation | Ready (local `.env` flakes) |
+| 2h | — | `1105` smoke test env isolation | **Done** |
 | 3 | [`entity-unknown-mvr-phase3.md`](docs/plans/entity-unknown-mvr-phase3.md) | `1200` | **Ready** |
 | 4 | [`entity-registry-bind-phase4.md`](docs/plans/entity-registry-bind-phase4.md) | `1300` | Queued |
 | 5 | [`entity-validation-phase5.md`](docs/plans/entity-validation-phase5.md) | `1400` | Queued |

@@ -22,6 +22,8 @@ def _setup_factory_env(
     monkeypatch.setenv("MYCELIUM_AGENT_REGISTRY_PATH", str(reg_path))
     monkeypatch.setenv("MYCELIUM_SPECIALISTS_DIR", str(specialists_dir))
     monkeypatch.setenv("MYCELIUM_AGENT_DATA_DIR", str(data_dir))
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
     reset_agent_registry()
     reset_agent_factory()
     return reg_path, specialists_dir, data_dir
