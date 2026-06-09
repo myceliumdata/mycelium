@@ -125,7 +125,7 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 
 ### Protocol & conversation — Entity program (Slices 1–8 → Cursor)
 
-**Program index:** [`docs/plans/entity-protocol-and-registry-program.md`](docs/plans/entity-protocol-and-registry-program.md) — **Paul approved Slices 1–8** (June 2026). **Slices 9–10 (metering) deferred** until 1–8 ship. **Cursor:** start `prompts/cursor/next/2026-06-09-1000-entity-key-suggestions-protocol.md` (Slice 1), then sequential `1100`–`1700`.
+**Program index:** [`docs/plans/entity-protocol-and-registry-program.md`](docs/plans/entity-protocol-and-registry-program.md) — **Paul approved Slices 1–8** (June 2026). **Slices 9–10 (metering) deferred** until 1–8 ship. **Cursor:** Slice 1 in progress; then sequential `1100`–`1700`, then polish `1800`. **Review:** blocking nits → fix slice before next planned slice; non-blocking → [`entity-protocol-polish-post8.md`](docs/plans/entity-protocol-polish-post8.md).
 
 | Slice | Spec | Cursor prompt | Status |
 |-------|------|---------------|--------|
@@ -137,6 +137,7 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 | 6 | [`entity-research-gate-phase6.md`](docs/plans/entity-research-gate-phase6.md) | `1500` | Queued |
 | 7 | [`entity-boundary-cleanup-phase7.md`](docs/plans/entity-boundary-cleanup-phase7.md) | `1600` | Queued |
 | 8 | [`entity-growth-phase8.md`](docs/plans/entity-growth-phase8.md) | `1700` | Queued |
+| P | [`entity-protocol-polish-post8.md`](docs/plans/entity-protocol-polish-post8.md) | `1800` | After 8 (non-blocking nits) |
 
 - [x] **Remove `list_specialist_routing` from MCP** — dropped public tool; `_routing_payload()` retained for `health_check` only (`2026-06-08-1400`).
 - [x] **MCP onboarding for visiting agents** — **complete** (slices `1300`–`1600`: entity rename, specialist fixup, `guide.md` + `describe_network`, classification-aware messages, polish). Paul MCP live verify done (June 2026).

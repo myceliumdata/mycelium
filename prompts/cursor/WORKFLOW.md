@@ -121,10 +121,18 @@ When Cursor finishes:
 ### 4. Review (Grok + Paul)
 
 - We review the contents of `prompts/cursor/done/<name>/`
-- We can add a `review.md` with feedback, approvals, or requested changes.
-- If changes are needed, we can either:
-  - Create a follow-up prompt in `prompts/cursor/next/`, or
-  - Ask Cursor to continue in the same done folder.
+- Grok adds `review.md` with: **Approved** / **Approved + fix slice** / **Approved + polish nits**
+
+**Entity protocol program — nit triage (Paul, June 2026):**
+
+| Severity | Grok action |
+|----------|-------------|
+| **Blocking** | Create a **fix slice** in `prompts/cursor/next/` immediately — must run **before** the next planned slice. Batch related blocking nits into one fix prompt when sensible. Naming: timestamp between parent and next (e.g. `1005-…-fix-…` between `1000` and `1100`). |
+| **Non-blocking** | Add a row to `docs/plans/entity-protocol-polish-post8.md` — addressed in polish slice `1800` after Slice 8. |
+
+Do not advance the planned slice queue past a slice with open **blocking** nits unless Paul waives.
+
+- Other programs / ad-hoc work: follow-up prompt in `prompts/cursor/next/`, or ask Cursor to continue in the same done folder.
 
 ## How to Get a Cursor Agent to Start Working (Paul)
 

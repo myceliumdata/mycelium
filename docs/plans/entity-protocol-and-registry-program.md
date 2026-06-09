@@ -337,6 +337,27 @@ flowchart LR
 
 ---
 
+## Review nit triage (Grok — Paul approved June 2026)
+
+After each slice lands in `prompts/cursor/done/`, Grok reviews `output.md` + diff. Every nit is **blocking** or **non-blocking**.
+
+| Severity | Action | When it runs |
+|----------|--------|--------------|
+| **Blocking** | Define a **fix slice** immediately; queue in `prompts/cursor/next/` **before** the next planned slice | e.g. Slice 1 review → `1005-fix-…` before `1100` |
+| **Non-blocking** | Add row to [`entity-protocol-polish-post8.md`](entity-protocol-polish-post8.md) | Single polish pass via `1800` after Slice 8 |
+
+**Blocking** means any of: spec deviation that breaks exit criteria or downstream slices; failing smoke tests; broken agent contract (MCP/outcomes); security or data-integrity risk; regression on Andrea Kalmans / Paul Murphy arcs already shipped.
+
+**Non-blocking** means: style, naming, doc wording, optional refactors, nice-to-have tests, admin-deferred UX — ship is correct but could be cleaner.
+
+**Fix slice naming:** `YYYY-MM-DD-HHMM-<parent-slug>-fix-<short-topic>.md` with timestamp **between** parent and next planned prompt (e.g. `1005` between `1000` and `1100`). One fix slice per review pass when possible (batch related blocking nits).
+
+**Review artifact:** Grok writes `review.md` in the done folder: Approved / Approved with fix slice / Approved with polish nits — lists fix prompt path or polish backlog rows.
+
+**Gate:** Do not queue the next planned slice until blocking nits are cleared (fix slice reviewed) or Paul explicitly waives.
+
+---
+
 ## Cursor handoff policy
 
 | Rule | |
@@ -348,6 +369,8 @@ flowchart LR
 | **Batch 2** | **Locked** — `1400`–`1600` |
 | **Batch 3** | Slice 8 **locked** (`1700`); Slices 9–10 **deferred** |
 | **Cursor** | **Approved for Slices 1–8** — start `1000` (Slice 1); sequential per dependency |
+| **Fix slices** | Inserted by Grok after review when blocking nits found |
+| **Polish** | Non-blocking nits → `entity-protocol-polish-post8.md`; Cursor `1800` after Slice 8 |
 
 ---
 
