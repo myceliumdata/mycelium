@@ -50,7 +50,15 @@ def apply_registry_research_attribution(
         category = specialist_contrib.get("category")
         if not category:
             continue
-        researched_fields = parse_research_fields_updated(contrib.get("audit_log") or [])
+        researched_fields = list(
+            contrib.get("researched_fields")
+            or specialist_contrib.get("researched_fields")
+            or [],
+        )
+        if not researched_fields:
+            researched_fields = parse_research_fields_updated(
+                contrib.get("audit_log") or [],
+            )
         if not researched_fields:
             continue
         try:

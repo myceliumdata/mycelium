@@ -125,7 +125,7 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 
 ### Protocol & conversation — Entity program (Slices 1–8 → Cursor)
 
-**Program index:** [`docs/plans/entity-protocol-and-registry-program.md`](docs/plans/entity-protocol-and-registry-program.md) — **Slices 1–8 shipped** (June 2026). **Slices 9–10 (metering) deferred.** **Cursor:** polish `1800` ready (non-blocking nits). **Review:** blocking nits → fix slice; non-blocking → [`entity-protocol-polish-post8.md`](docs/plans/entity-protocol-polish-post8.md).
+**Program index:** [`docs/plans/entity-protocol-and-registry-program.md`](docs/plans/entity-protocol-and-registry-program.md) — **Slices 1–8 + polish shipped** (June 2026). **Slices 9–10 (metering) deferred.** **Review:** blocking nits → fix slice; non-blocking → [`entity-protocol-polish-post8.md`](docs/plans/entity-protocol-polish-post8.md).
 
 | Slice | Spec | Cursor prompt | Status |
 |-------|------|---------------|--------|
@@ -138,7 +138,7 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 | 6 | [`entity-research-gate-phase6.md`](docs/plans/entity-research-gate-phase6.md) | `1500` | **Done** |
 | 7 | [`entity-boundary-cleanup-phase7.md`](docs/plans/entity-boundary-cleanup-phase7.md) | `1600` + `1605` | **Done** |
 | 8 | [`entity-growth-phase8.md`](docs/plans/entity-growth-phase8.md) | `1700` | **Done** |
-| P | [`entity-protocol-polish-post8.md`](docs/plans/entity-protocol-polish-post8.md) | `1800` | **Ready** |
+| P | [`entity-protocol-polish-post8.md`](docs/plans/entity-protocol-polish-post8.md) | `1800` | **Done** |
 
 - [x] **Remove `list_specialist_routing` from MCP** — dropped public tool; `_routing_payload()` retained for `health_check` only (`2026-06-08-1400`).
 - [x] **MCP onboarding for visiting agents** — **complete** (slices `1300`–`1600`: entity rename, specialist fixup, `guide.md` + `describe_network`, classification-aware messages, polish). Paul MCP live verify done (June 2026).
@@ -150,6 +150,7 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 - [x] **Research gate (Slice 6)** — `research_gate_allows`, provisional + attrs → `found` + gate message; same-turn validate→research (June 2026).
 - [x] **Seed vs specialists boundary (Slice 7 + fix `1605`)** — `entity_id`/`bind` context, `core_identity` deleted, framework specialists regenned (June 2026).
 - [x] **Entity growth & attribution (Slice 8)** — registry `attr_sources` + `last_researched_at`; Paul Murphy arc smoke; CRM README growth model (June 2026).
+- [x] **Entity protocol polish (post Slice 8, `1800`)** — P1–P14 nits: stronger no-invoke tests, `binding` in `optional_fields`, `planner_context`, research gate defense, `researched_fields` attribution, doc/test fixes (June 2026).
 - [ ] **Negotiation & metering (Slices 9–10 — deferred)** — Paul (June 2026): complete Slices 1–8 first; payment decisions premature. Core validation **free for now**. Drafts: [`entity-metering-design-phase9.md`](docs/plans/entity-metering-design-phase9.md), [`entity-metering-hooks-phase10.md`](docs/plans/entity-metering-hooks-phase10.md).
 - [ ] **Per-record query messages (multi-match)** — v1 keeps collective `message` when `entity_key` matches multiple seed records (e.g. two Kevin Zhangs); agent disambiguates via `results`. Revisit when non-person or other domains need per-record status in `message` (different attrs per match, async research diverging per id).
 - [x] **Thread checkpoint: new query on same `thread_id`** — fixed (`run_query` clears stale `response`; removed `assemble_response` short-circuit; smoke test `test_same_thread_new_query_rebuilds_response`). **Follow-up:** multi-turn merge semantics (reuse specialist cache across attributes on one thread without redundant research) still open.
@@ -201,4 +202,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-09 (entity protocol Slices 1–8 done; polish 1800 ready; metering 9–10 deferred)
+Last updated: 2026-06-09 (entity protocol Slices 1–8 + polish 1800 done; metering 9–10 deferred)

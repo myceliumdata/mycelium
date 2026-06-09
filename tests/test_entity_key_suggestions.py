@@ -108,8 +108,16 @@ def test_andrea_kalman_email_unresolved_no_specialist_invoke(
     assert response.suggestions[0].entity_key == "Andrea Kalmans"
     assert "Andrea Kalmans" in response.message
     assert "Lontra Ventures" in response.message
-    assert "invoke_specialists" not in response.debug
     assert "outcome='entity_key_unresolved'" in response.debug
+    from agents.supervisor import supervisor_agent
+    from models.state import MyceliumGraphState
+
+    planned = supervisor_agent(
+        MyceliumGraphState(
+            query=EntityQuery(entity_key="Andrea Kalman", requested_attributes=["email"]),
+        ),
+    )
+    assert planned["context"]["_meta"]["specialists_to_invoke"] == []
 
 
 @pytest.mark.smoke

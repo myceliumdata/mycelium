@@ -6,6 +6,7 @@ from typing import Any
 
 from agents.classification import get_category_tree
 from agents.entity_resolution import is_provisional_registry_match, resolve_entity
+from agents.context import planner_context
 from agents.research_gate import research_gate_allows
 from agents.factory.agent_factory import get_agent_factory
 from agents.registry import get_agent_registry
@@ -192,15 +193,11 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
             "entity_resolution_kind": "bind_provisional",
             "entity_suggestions": [],
             "current_id": matched[0].get("id"),
-            "context": {
-                "seed": matched[0],
-                "specialists": {},
-                "_meta": {
-                    "ids": [matched[0].get("id", "")],
-                    "specialists_to_invoke": [],
-                    "contributions": [],
-                },
-            },
+            "context": planner_context(
+                matched=matched,
+                ids=[matched[0].get("id", "")],
+                specialists_to_invoke=[],
+            ),
             "audit_log": audit_log,
             "route": None,
         }
@@ -244,15 +241,11 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
             "validation.",
         )
 
-    context: dict[str, Any] = {
-        "seed": matched[0] if len(matched) == 1 else matched,
-        "specialists": {},
-        "_meta": {
-            "ids": ids,
-            "specialists_to_invoke": specialists_to_invoke,
-            "contributions": [],
-        },
-    }
+    context = planner_context(
+        matched=matched[0] if len(matched) == 1 else matched,
+        ids=ids,
+        specialists_to_invoke=specialists_to_invoke,
+    )
 
     result: dict[str, Any] = {
         "matched_records": matched,

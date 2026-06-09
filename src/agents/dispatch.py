@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from agents.context import get_context_builder
-from agents.entity_growth import apply_registry_research_attribution
+from agents.context import get_context_builder, planner_context
+from agents.entity_growth import apply_registry_research_attribution, parse_research_fields_updated
 from agents.entity_registry import get_entity_registry, registry_entity_to_match
 from agents.entity_resolution import is_provisional_registry_match
 from agents.entity_validation import (
@@ -87,9 +87,7 @@ def validate_entity_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str
 
     updated = registry.promote_validated(str(entity_id))
     updated_match = registry_entity_to_match(updated)
-    ctx = dict(current.context) if isinstance(current.context, dict) else {}
     meta = dict(_meta(current))
-    meta["ids"] = [updated.id]
     specialists_to_invoke: list[str] = []
     if (
         current.query.requested_attributes
@@ -106,14 +104,11 @@ def validate_entity_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str
             logs.append(
                 "validate_entity: validation passed — scheduling attribute specialists.",
             )
-    meta["specialists_to_invoke"] = specialists_to_invoke
-    meta.setdefault("contributions", [])
-    ctx.update(
-        {
-            "seed": updated_match,
-            "specialists": ctx.get("specialists") or {},
-            "_meta": meta,
-        },
+    ctx = planner_context(
+        matched=[updated_match],
+        ids=[updated.id],
+        specialists_to_invoke=specialists_to_invoke,
+        contributions=list(meta.get("contributions") or []),
     )
 
     return {
@@ -160,6 +155,14 @@ def build_context_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, 
 def invoke_specialists_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     """Sequentially invoke each required specialist with full context + owned fields."""
     current = _coerce(state)
+    if not research_gate_allows(
+        current_id=current.current_id,
+        matched=current.matched_records or [],
+    ):
+        return {
+            "audit_log": ["invoke_specialists: blocked by research gate."],
+            "route": None,
+        }
     meta = _meta(current)
     to_invoke: list[str] = list(meta.get("specialists_to_invoke") or [])
     contributions: list[dict[str, Any]] = list(meta.get("contributions") or [])
@@ -185,13 +188,18 @@ def invoke_specialists_node(state: MyceliumGraphState | dict[str, Any]) -> dict[
         )
         result = fn(enriched)
         contrib_audit = list(result.get("audit_log") or [])
+        specialist_contrib = result.get("specialist_contrib") or {}
+        researched_fields = list(specialist_contrib.get("researched_fields") or [])
+        if not researched_fields:
+            researched_fields = parse_research_fields_updated(contrib_audit)
         contributions.append(
             {
                 "agent": agent_name,
                 "target_fields": target_fields,
-                "specialist_contrib": result.get("specialist_contrib"),
+                "specialist_contrib": specialist_contrib,
                 "response": result.get("response"),
                 "audit_log": contrib_audit,
+                "researched_fields": researched_fields,
             },
         )
         logs.append(

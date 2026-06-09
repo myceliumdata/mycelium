@@ -34,6 +34,7 @@ def test_build_network_capabilities_with_guide_and_ontology(
     _configure_root(monkeypatch, root)
 
     caps = build_network_capabilities()
+    assert "binding" in caps["policy"]["query"]["optional_fields"]
 
     assert caps["guide_present"] is True
     assert "investor information" in (caps["guide"] or "")
@@ -55,6 +56,7 @@ def test_build_network_capabilities_missing_guide(
     _configure_root(monkeypatch, root)
 
     caps = build_network_capabilities()
+    assert "binding" in caps["policy"]["query"]["optional_fields"]
 
     assert caps["guide_present"] is False
     assert caps["guide"] is None

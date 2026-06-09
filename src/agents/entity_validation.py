@@ -1,4 +1,8 @@
-"""Rule-based MVR validation for provisional registry entities (Slice 5)."""
+"""Rule-based MVR validation for provisional registry entities (Slice 5).
+
+Validators run inline in ``validate_entity_node`` — attribute specialists are not
+invoked during validation (Pattern C / specialist-driven validation deferred).
+"""
 
 from __future__ import annotations
 

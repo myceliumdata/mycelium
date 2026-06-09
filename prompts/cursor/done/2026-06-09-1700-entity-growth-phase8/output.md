@@ -34,7 +34,7 @@ uv run pytest -m smoke -q                                 # 212 passed
 ## For Grok + Paul
 
 - Mark **Slice 8 (`1700`)** done in `TODO.md` when reviewed.
-- Slice 9 (`1800`) entity protocol polish is next in queue.
+- Entity protocol polish (`1800`) is next in queue.
 - Admin UI for `attr_sources` / `last_researched_at` remains backlog #9.
 
 ## Exit criteria

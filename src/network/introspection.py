@@ -489,7 +489,7 @@ def build_network_capabilities() -> dict[str, Any]:
                 "request_schema": "mycelium://schema/entity-query",
                 "response_schema": "mycelium://schema/query-response",
                 "key_field": "entity_key",
-                "optional_fields": ["requested_attributes", "thread_id"],
+                "optional_fields": ["requested_attributes", "binding", "thread_id"],
             },
         },
     }

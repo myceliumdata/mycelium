@@ -37,6 +37,33 @@ def strip_bind_fields(record: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in record.items() if key not in BIND_FIELDS}
 
 
+def planner_context(
+    *,
+    matched: list[dict[str, Any]] | dict[str, Any],
+    ids: list[str],
+    specialists_to_invoke: list[str],
+    contributions: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Supervisor/validate planning context (entity_id + bind before build_context)."""
+    rows = matched if isinstance(matched, list) else [matched]
+    entity_id: str | None = None
+    bind: dict[str, str | None] | None = None
+    if len(rows) == 1:
+        row = rows[0]
+        entity_id = str(row.get("id") or "") or None
+        bind = bind_from_record(row)
+    return {
+        "entity_id": entity_id,
+        "bind": bind,
+        "specialists": {},
+        "_meta": {
+            "ids": ids,
+            "specialists_to_invoke": specialists_to_invoke,
+            "contributions": list(contributions or []),
+        },
+    }
+
+
 class ContextBuilder:
     """Synchronous context assembly from resolution rows + specialist JSON stores."""
 

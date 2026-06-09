@@ -137,6 +137,30 @@ def test_repeat_bind_is_idempotent_found(crm_registry_env: CoreStorage) -> None:
 
 
 @pytest.mark.smoke
+def test_name_only_two_registry_rows_requires_employer(crm_registry_env: CoreStorage) -> None:
+    _ = crm_registry_env
+    run_query(EntityQuery(entity_key="Paul Murphy", binding={"employer": "Acme Corp"}))
+    run_query(EntityQuery(entity_key="Paul Murphy", binding={"employer": "Beta LLC"}))
+
+    response = run_query(
+        EntityQuery(entity_key="Paul Murphy", requested_attributes=["email"]),
+    )
+
+    assert response.outcome == "entity_unknown"
+    assert response.required_fields == ["employer"]
+    assert response.results == []
+    from agents.supervisor import supervisor_agent
+    from models.state import MyceliumGraphState
+
+    planned = supervisor_agent(
+        MyceliumGraphState(
+            query=EntityQuery(entity_key="Paul Murphy", requested_attributes=["email"]),
+        ),
+    )
+    assert planned["context"]["_meta"]["specialists_to_invoke"] == []
+
+
+@pytest.mark.smoke
 def test_same_name_different_employers_get_two_ids(crm_registry_env: CoreStorage) -> None:
     _ = crm_registry_env
 

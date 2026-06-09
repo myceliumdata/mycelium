@@ -162,9 +162,7 @@ def test_murphy_bind_plus_email_validates_then_assembles_same_turn(
     )
 
     assert response.outcome == "assembled"
-    assert "validate_entity" in " ".join(
-        line for line in (response.debug or "").split(";")
-    ) or "entity_validated" not in response.outcome
+    assert "entity_validated" not in response.outcome
     payload = json.loads(_entities_path().read_text(encoding="utf-8"))
     entity = next(iter(payload["entities"].values()))
     assert entity["validation_state"] == "validated"

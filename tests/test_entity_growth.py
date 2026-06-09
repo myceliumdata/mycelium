@@ -131,6 +131,36 @@ def test_parse_research_fields_updated() -> None:
     assert parse_research_fields_updated(audit) == ["email"]
 
 
+def test_attribution_uses_researched_fields_without_audit() -> None:
+    from agents.entity_growth import apply_registry_research_attribution
+    from agents.entity_registry import EntityRegistry
+
+    path = REPO_ROOT / "tmp-entity-growth-test.json"
+    if path.exists():
+        path.unlink()
+    reg = EntityRegistry(path=path)
+    entity, _ = reg.bind_provisional("Paul Murphy", "Acme Corp")
+    reg.promote_validated(entity.id)
+
+    logs = apply_registry_research_attribution(
+        entity_id=entity.id,
+        contributions=[
+            {
+                "specialist_contrib": {
+                    "category": "contact",
+                    "researched_fields": ["email"],
+                },
+                "researched_fields": ["email"],
+            },
+        ],
+    )
+    assert logs
+    updated = reg.lookup_by_id(entity.id)
+    assert updated is not None
+    assert updated.attr_sources["email"] == "contact"
+    path.unlink(missing_ok=True)
+
+
 @pytest.mark.smoke
 def test_paul_murphy_full_growth_arc(crm_growth_env: CoreStorage, monkeypatch: pytest.MonkeyPatch) -> None:
     _ = crm_growth_env
@@ -171,6 +201,7 @@ def test_paul_murphy_full_growth_arc(crm_growth_env: CoreStorage, monkeypatch: p
     )
     assert requery.outcome == "assembled"
     assert requery.results[0]["id"] == entity_id
+    assert requery.results[0].get("email") == "paul.murphy@acme.example"
 
 
 @pytest.mark.smoke

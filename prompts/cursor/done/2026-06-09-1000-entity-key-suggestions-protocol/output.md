@@ -39,4 +39,4 @@ uv run ruff check src tests                                      # clean on touc
 
 - Mark **Entity key suggestions (Slice 1)** done in `TODO.md`.
 - Queue **Slice 2** (`1100-entity-outcome-infrastructure`) when ready.
-- No spec deviations. `entity_unknown` intentionally deferred to slice 2.
+- No spec deviations. `entity_unknown` intentionally deferred to Slice 3.
