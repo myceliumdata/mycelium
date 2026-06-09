@@ -23,11 +23,29 @@ class MvrPolicy:
     name_source: str
     description: str
 
+    def allowed_binding_keys(self) -> set[str]:
+        """MVR bind field keys accepted in ``EntityQuery.binding``."""
+        allowed = {field.strip().lower() for field in self.bind_fields if field.strip()}
+        if self.name_source == "entity_key":
+            allowed.discard("name")
+        return allowed
+
     def required_fields_for_entity_key(self, entity_key: str) -> list[str]:
         """Return MVR bind fields not satisfied by the current query."""
+        return self.required_bind_fields(entity_key, {})
+
+    def required_bind_fields(
+        self,
+        entity_key: str,
+        binding: dict[str, str],
+    ) -> list[str]:
+        """Return MVR bind fields not yet satisfied by entity_key + binding."""
         satisfied: set[str] = set()
         if self.name_source == "entity_key" and entity_key.strip():
             satisfied.add("name")
+        for field, value in binding.items():
+            if value.strip():
+                satisfied.add(field.strip().lower())
         return [field for field in self.bind_fields if field not in satisfied]
 
     def summary(self) -> dict[str, Any]:
@@ -66,6 +84,23 @@ def _parse_mvr_block(raw: Any) -> MvrPolicy | None:
         name_source=name_source.strip(),
         description=description.strip(),
     )
+
+
+def normalize_binding(
+    binding: dict[str, str] | None,
+    mvr: MvrPolicy,
+) -> dict[str, str]:
+    """Strip binding to allowed MVR keys with non-empty values (ignore unknown keys)."""
+    allowed = mvr.allowed_binding_keys()
+    normalized: dict[str, str] = {}
+    for key, value in (binding or {}).items():
+        field = key.strip().lower()
+        if field not in allowed:
+            continue
+        text = value.strip() if isinstance(value, str) else ""
+        if text:
+            normalized[field] = text
+    return normalized
 
 
 def load_mvr(*, paths: NetworkPaths | None = None) -> MvrPolicy:

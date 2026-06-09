@@ -324,6 +324,7 @@ def response_found(
     base_records: list[dict[str, Any]] | None = None,
     classifications: list[dict[str, Any]] | None = None,
     specialist: str | None = None,
+    message: str | None = None,
     trace_id: str | None = None,
     thread_id: str | None = None,
 ) -> QueryResponse:
@@ -333,11 +334,12 @@ def response_found(
         requested=query.requested_attributes,
     )
     n = len(records)
-    if n == 1:
-        name = records[0].get("name") or query.entity_key
-        message = f"Found record for {name}."
-    else:
-        message = f"Found {n} records for {query.entity_key!r}."
+    if message is None:
+        if n == 1:
+            name = records[0].get("name") or query.entity_key
+            message = f"Found record for {name}."
+        else:
+            message = f"Found {n} records for {query.entity_key!r}."
     return _make_response(
         results=records,
         message=message,
@@ -458,6 +460,120 @@ def response_entity_unknown(
             query,
             outcome="entity_unknown",
             required_fields=required_fields,
+        ),
+        trace_id=trace_id,
+        thread_id=thread_id,
+    )
+
+
+def response_entity_under_specified(
+    query: EntityQuery,
+    required_fields: list[str],
+    *,
+    trace_id: str | None = None,
+    thread_id: str | None = None,
+) -> QueryResponse:
+    """Partial binding: MVR fields still missing after binding attempt."""
+    fields_phrase = _required_fields_phrase(required_fields)
+    if query.requested_attributes:
+        attrs = ", ".join(query.requested_attributes)
+        message = (
+            f"No record for {query.entity_key!r}. "
+            f"To research {attrs}, complete binding with {fields_phrase}. "
+            "Re-query with the same entity_key and binding when ready."
+        )
+    else:
+        message = (
+            f"No record for {query.entity_key!r}. "
+            f"Complete binding with {fields_phrase}."
+        )
+
+    return _make_response(
+        results=[],
+        message=message,
+        outcome="entity_under_specified",
+        required_fields=required_fields,
+        debug=debug_for_query(
+            query,
+            outcome="entity_under_specified",
+            required_fields=required_fields,
+            binding=query.binding,
+        ),
+        trace_id=trace_id,
+        thread_id=thread_id,
+    )
+
+
+def response_entity_bound_provisional(
+    query: EntityQuery,
+    record: dict[str, Any],
+    *,
+    trace_id: str | None = None,
+    thread_id: str | None = None,
+) -> QueryResponse:
+    """New provisional registry bind; identity only — no attribute research."""
+    name = record.get("name") or query.entity_key
+    employer = record.get("employer")
+    employer_phrase = f" at {employer}" if employer else ""
+    message = (
+        f"Bound provisional record for {name}{employer_phrase}. "
+        "Core validation and attribute research are not available until a later step."
+    )
+    results = [
+        {
+            "id": record.get("id", ""),
+            "name": name,
+            "employer": employer,
+        },
+    ]
+    return _make_response(
+        results=results,
+        message=message,
+        outcome="entity_bound_provisional",
+        required_fields=[],
+        debug=debug_for_query(
+            query,
+            outcome="entity_bound_provisional",
+            registry_id=record.get("id"),
+            binding=query.binding,
+        ),
+        trace_id=trace_id,
+        thread_id=thread_id,
+    )
+
+
+def response_registry_provisional_identity(
+    query: EntityQuery,
+    record: dict[str, Any],
+    *,
+    trace_id: str | None = None,
+    thread_id: str | None = None,
+) -> QueryResponse:
+    """Provisional registry hit: return identity only (no research on attrs)."""
+    name = record.get("name") or query.entity_key
+    employer = record.get("employer")
+    employer_phrase = f" at {employer}" if employer else ""
+    message = (
+        f"Found provisional record for {name}{employer_phrase}. "
+        "Attribute research is not available until validation (later slice)."
+    )
+    results = [
+        {
+            "id": record.get("id", ""),
+            "name": name,
+            "employer": employer,
+        },
+    ]
+    return _make_response(
+        results=results,
+        message=message,
+        outcome="found",
+        required_fields=[],
+        debug=debug_for_query(
+            query,
+            outcome="found",
+            registry_provisional=True,
+            registry_id=record.get("id"),
         ),
         trace_id=trace_id,
         thread_id=thread_id,

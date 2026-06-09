@@ -69,6 +69,13 @@ class EntityQuery(BaseModel):
     entity_key: str = Field(
         description="Seed record UUID (``id``) or display name used for lookup.",
     )
+    binding: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "Optional MVR bind fields (e.g. employer). Name comes from entity_key "
+            "when network mvr.name_source is entity_key. Used to bind unknown entities."
+        ),
+    )
     requested_attributes: list[str] = Field(
         default_factory=list,
         description=(
@@ -87,14 +94,15 @@ class QueryResponse(BaseModel):
             "Machine-readable query outcome on every response: found (seed identity only), "
             "assembled (requested attributes merged), not_found, entity_key_unresolved "
             "(near-miss suggestions), entity_unknown (no seed match, MVR fields needed), "
-            "or error (internal failure). Mirrors debug outcome=."
+            "entity_under_specified (partial binding), entity_bound_provisional "
+            "(new registry bind), or error (internal failure). Mirrors debug outcome=."
         ),
     )
     required_fields: list[str] = Field(
         default_factory=list,
         description=(
-            "MVR bind fields still needed when outcome is entity_unknown "
-            "(excludes name when name_source is entity_key)."
+            "MVR bind fields still needed when outcome is entity_unknown or "
+            "entity_under_specified (excludes name when name_source is entity_key)."
         ),
     )
     suggestions: list[EntityKeySuggestion] = Field(
@@ -217,11 +225,29 @@ class MyceliumGraphState(BaseModel):
     )
     entity_resolution_kind: str | None = Field(
         default=None,
-        description="Internal resolution kind: exact, multiple, suggest, unknown, or none.",
+        description=(
+            "Internal resolution kind: exact, multiple, suggest, unknown, "
+            "under_specified, bind_provisional, or none."
+        ),
     )
     entity_suggestions: list[EntityKeySuggestion] = Field(
         default_factory=list,
         description="Populated when entity_resolution_kind is suggest.",
+    )
+    entity_required_fields: list[str] = Field(
+        default_factory=list,
+        description="MVR gaps when entity_resolution_kind is unknown or under_specified.",
+    )
+    registry_provisional_only: bool = Field(
+        default=False,
+        description=(
+            "When true, assemble identity-only response for provisional registry "
+            "matches (no specialist research until validation gate)."
+        ),
+    )
+    duplicate_bind: bool = Field(
+        default=False,
+        description="True when bind_index matched an existing provisional entity.",
     )
 
 

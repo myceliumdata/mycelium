@@ -1,6 +1,6 @@
 # Task: Core validation orchestration — Phase 5
 
-> **Queued** — Implement after Slice 4 is in `done/`.
+> **READY** — Slice 4 approved. Move to `in-progress/` to start.
 
 **Read these first (mandatory):**
 - `prompts/cursor/WORKFLOW.md`

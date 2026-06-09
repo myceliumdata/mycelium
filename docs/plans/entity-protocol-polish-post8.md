@@ -18,8 +18,10 @@ Non-blocking nits from Grok review of Slices 1–8 accumulate here. One polish p
 | # | Source slice | Nit | Files / area |
 |---|--------------|-----|--------------|
 | P1 | 1 | `output.md` says `entity_unknown` deferred to "slice 2" — should be Slice 3 | `1000` done/output.md |
-| P2 | 1 | Weak no-invoke assertion (`invoke_specialists` not in debug); prefer audit_log / empty `specialists_to_invoke` | `tests/test_entity_key_suggestions.py` |
+| P2 | 1, 4 | Weak no-invoke assertion (`invoke_specialists` not in debug); prefer audit_log / empty `specialists_to_invoke` | `tests/test_entity_key_suggestions.py`, `tests/test_entity_registry_bind.py` |
 | ~~P3~~ | 1 | ~~Clear `entity_suggestions`~~ — fixed in `1005` | — |
+| P4 | 4 | `describe_network` `policy.query.optional_fields` omits `binding` | `src/network/introspection.py` |
+| P5 | 4 | No smoke for Q4c: name-only key with 2+ registry rows → require employer | `tests/test_entity_registry_bind.py` |
 
 ---
 

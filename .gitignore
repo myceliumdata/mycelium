@@ -22,6 +22,7 @@ src/agents/specialists/*_specialist.py
 
 # Runtime artifacts under committed example networks (seed.json + network.json stay tracked)
 examples/networks/**/categories.json
+examples/networks/**/entities.json
 examples/networks/**/mycelium.db
 examples/networks/**/checkpoints.sqlite
 examples/networks/**/checkpoints.sqlite-*

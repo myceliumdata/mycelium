@@ -367,7 +367,14 @@ _POLICY_ENTITY_UNKNOWN = (
     'When outcome is "entity_unknown", the entity_key had no seed match and no '
     "near-miss suggestions. required_fields lists MVR bind fields still needed "
     "(for CRM: employer when name comes from entity_key). Re-query with the same "
-    "entity_key after gathering required_fields — binding arrives in a later slice."
+    "entity_key and binding when ready."
+)
+_POLICY_ENTITY_BIND = (
+    'Supply MVR fields in query_entity JSON via binding (e.g. {"employer": "Acme Corp"}). '
+    'On outcome entity_bound_provisional, results include id, name, and employer — '
+    "use entity_key as the bound uuid for follow-ups. Duplicate bind returns found "
+    "with the same id. Provisional entities do not trigger attribute research until "
+    "validation (later slices)."
 )
 _POLICY_ENTITY_KEY_UNRESOLVED = (
     'When outcome is "entity_key_unresolved", the entity_key had no exact seed match '
@@ -453,6 +460,7 @@ def build_network_capabilities() -> dict[str, Any]:
             "outcome": _POLICY_OUTCOME,
             "mvr": load_mvr(paths=paths).summary(),
             "entity_unknown": _POLICY_ENTITY_UNKNOWN,
+            "entity_bind": _POLICY_ENTITY_BIND,
             "entity_key_unresolved": _POLICY_ENTITY_KEY_UNRESOLVED,
             "query": {
                 "tool": "query_entity",
@@ -477,9 +485,10 @@ def format_mcp_instructions(capabilities: dict[str, Any]) -> str:
         "Call **`describe_network`** for the author guide, ontology, and usage policy. "
         "Use **`query_entity`** with JSON: `entity_key`, optional `requested_attributes`, "
         "optional `thread_id`. Responses are **`QueryResponse`** "
-        "(`outcome`, `suggestions`, `results`, `message`, `debug`, `trace_id`, "
-        "`thread_id`); read **`message`** for per-attribute status and classification. "
+        "(`outcome`, `suggestions`, `required_fields`, `results`, `message`, `debug`, "
+        "`trace_id`, `thread_id`); read **`message`** for per-attribute status. "
         "On **`outcome: entity_key_unresolved`**, retry with a **`suggestions[].entity_key`**. "
+        "On **`entity_unknown`**, supply **`binding`** per MVR **`required_fields`**. "
         "Use **`health_check`** for server liveness and network binding. "
         "Registry, categories, seed, and specialists reload from disk before each query — "
         "restart MCP only after code deploy or if reload fails."

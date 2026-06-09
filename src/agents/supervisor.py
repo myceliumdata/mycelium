@@ -1,11 +1,11 @@
-"""Supervisor: seed resolution, classification, and specialist invocation planning."""
+"""Supervisor: entity resolution, classification, and specialist invocation planning."""
 
 from __future__ import annotations
 
 from typing import Any
 
 from agents.classification import get_category_tree
-from agents.entity_resolution import resolve_entity_key
+from agents.entity_resolution import is_provisional_registry_match, resolve_entity
 from agents.factory.agent_factory import get_agent_factory
 from agents.registry import get_agent_registry
 from models.state import MyceliumGraphState, SeedRecord
@@ -44,6 +44,18 @@ def _seed_records_from_seed(matched: list[dict[str, Any]]) -> list[SeedRecord]:
         )
         for rec in matched
     ]
+
+
+def _short_circuit_context() -> dict[str, Any]:
+    return {
+        "seed": [],
+        "specialists": {},
+        "_meta": {
+            "ids": [],
+            "specialists_to_invoke": [],
+            "contributions": [],
+        },
+    }
 
 
 def _collect_specialists_to_invoke(
@@ -92,7 +104,7 @@ def _target_fields_for_agent(
 
 def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     """
-    Resolve from seed, classify requested attributes, plan specialist invocations.
+    Resolve entity (registry + seed), classify requested attributes, plan specialists.
 
     Does not build the full cross-specialist context or final QueryResponse —
     graph nodes ``build_context``, ``invoke_specialists``, and ``assemble_response``
@@ -102,7 +114,7 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
     query = current.query
     audit_log = ["Supervisor: evaluating query."]
 
-    resolution = resolve_entity_key(query.entity_key)
+    resolution = resolve_entity(query)
 
     if resolution.kind == "suggest":
         audit_log.append(
@@ -113,15 +125,7 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
             "matched_records": [],
             "entity_resolution_kind": "suggest",
             "entity_suggestions": resolution.suggestions,
-            "context": {
-                "seed": [],
-                "specialists": {},
-                "_meta": {
-                    "ids": [],
-                    "specialists_to_invoke": [],
-                    "contributions": [],
-                },
-            },
+            "context": _short_circuit_context(),
             "audit_log": audit_log,
             "route": None,
         }
@@ -134,12 +138,44 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
         return {
             "matched_records": [],
             "entity_resolution_kind": "unknown",
+            "entity_required_fields": resolution.required_fields,
             "entity_suggestions": [],
+            "context": _short_circuit_context(),
+            "audit_log": audit_log,
+            "route": None,
+        }
+
+    if resolution.kind == "under_specified":
+        audit_log.append(
+            f"Supervisor: under-specified bind for {query.entity_key!r}; "
+            "skipping classification and specialists.",
+        )
+        return {
+            "matched_records": [],
+            "entity_resolution_kind": "under_specified",
+            "entity_required_fields": resolution.required_fields,
+            "entity_suggestions": [],
+            "context": _short_circuit_context(),
+            "audit_log": audit_log,
+            "route": None,
+        }
+
+    if resolution.kind == "bind_provisional":
+        matched = resolution.matches
+        audit_log.append(
+            f"Supervisor: provisional bind for {query.entity_key!r} "
+            f"(id={matched[0].get('id')!r}); skipping classification.",
+        )
+        return {
+            "matched_records": matched,
+            "entity_resolution_kind": "bind_provisional",
+            "entity_suggestions": [],
+            "current_id": matched[0].get("id"),
             "context": {
-                "seed": [],
+                "seed": matched[0],
                 "specialists": {},
                 "_meta": {
-                    "ids": [],
+                    "ids": [matched[0].get("id", "")],
                     "specialists_to_invoke": [],
                     "contributions": [],
                 },
@@ -151,17 +187,25 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
     matched = resolution.matches
     seed_records = _seed_records_from_seed(matched)
     ids = [m["id"] for m in matched if m.get("id")]
+    provisional_only = (
+        len(matched) == 1
+        and is_provisional_registry_match(matched[0])
+        and bool(query.requested_attributes)
+    )
 
     if matched:
+        source = "registry" if matched[0].get("_registry") else "seed"
         audit_log.append(
-            f"Supervisor: resolved via seed, match count={len(matched)} "
+            f"Supervisor: resolved via {source}, match count={len(matched)} "
             f"for {query.entity_key!r}.",
         )
+        if resolution.duplicate_bind:
+            audit_log.append("Supervisor: duplicate bind key — existing entity returned.")
     else:
-        audit_log.append(f"Supervisor: no seed match for {query.entity_key!r}.")
+        audit_log.append(f"Supervisor: no match for {query.entity_key!r}.")
 
     classifications: list[dict[str, Any]] = []
-    if query.requested_attributes:
+    if query.requested_attributes and not provisional_only:
         tree = get_category_tree()
         for attr in query.requested_attributes:
             cl = tree.classify(attr)
@@ -172,10 +216,18 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
                     f"agent={cl.assigned_agent}, confidence={cl.confidence:.2f}",
                 )
 
-    specialists_to_invoke = _collect_specialists_to_invoke(classifications, audit_log)
+    specialists_to_invoke = (
+        []
+        if provisional_only
+        else _collect_specialists_to_invoke(classifications, audit_log)
+    )
     if specialists_to_invoke:
         audit_log.append(
             f"Supervisor: will invoke specialist(s): {', '.join(specialists_to_invoke)}.",
+        )
+    if provisional_only:
+        audit_log.append(
+            "Supervisor: provisional registry entity — skipping specialists.",
         )
 
     context: dict[str, Any] = {
@@ -192,6 +244,8 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
         "matched_records": matched,
         "entity_resolution_kind": resolution.kind if matched else "none",
         "entity_suggestions": [],
+        "registry_provisional_only": provisional_only,
+        "duplicate_bind": resolution.duplicate_bind,
         "context": context,
         "audit_log": audit_log,
         "route": None,

@@ -75,6 +75,7 @@ class NetworkPaths:
 
     root: Path
     seed_path: Path
+    entities_path: Path
     registry_path: Path
     categories_path: Path
     agents_dir: Path
@@ -88,6 +89,7 @@ class NetworkPaths:
         return cls(
             root=resolved,
             seed_path=resolved / "seed.json",
+            entities_path=resolved / "entities.json",
             registry_path=resolved / "agent_registry.json",
             categories_path=resolved / "categories.json",
             agents_dir=resolved / "agents",
@@ -99,6 +101,7 @@ class NetworkPaths:
 
 _RUNTIME_ENV_FIELDS: dict[str, str] = {
     "MYCELIUM_SEED_PATH": "seed_path",
+    "MYCELIUM_ENTITIES_PATH": "entities_path",
     "MYCELIUM_AGENT_REGISTRY_PATH": "registry_path",
     "MYCELIUM_CATEGORIES_PATH": "categories_path",
     "MYCELIUM_AGENT_DATA_DIR": "agents_dir",

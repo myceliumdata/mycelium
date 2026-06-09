@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+from agents.entity_registry import reset_entity_registry
 from agents.classification import reset_category_tree
 from agents.context import reset_context_builder
 from agents.core_identity import reset_core_identity
@@ -58,6 +59,7 @@ def _final_cleanup():
     for reset_func in (
         reset_core_graph,
         reset_storage,
+        reset_entity_registry,
         reset_seed_data,
         reset_context_builder,
         reset_core_identity,

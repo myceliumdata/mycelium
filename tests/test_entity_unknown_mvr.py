@@ -11,6 +11,7 @@ import pytest
 from agents.classification import reset_category_tree
 from agents.context import reset_context_builder
 from agents.core_identity import reset_core_identity
+from agents.entity_registry import reset_entity_registry
 from agents.entity_resolution import resolve_entity_key
 from agents.seed import get_seed_data, reset_seed_data
 from graphs.core import reset_core_graph, run_query
@@ -41,6 +42,7 @@ def crm_mvr_env(
     """Isolated CRM network with committed MVR policy."""
     reset_storage()
     reset_seed_data()
+    reset_entity_registry()
     reset_context_builder()
     reset_core_identity()
     reset_core_graph()
@@ -60,6 +62,7 @@ def crm_mvr_env(
     monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
     monkeypatch.setenv("MYCELIUM_CHECKPOINT_PATH", str(tmp_path / "cp.sqlite"))
     monkeypatch.setenv("MYCELIUM_CATEGORIES_PATH", str(categories_path))
+    monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(tmp_path / "entities.json"))
     monkeypatch.setenv(
         "MYCELIUM_AGENT_REGISTRY_PATH",
         str(tmp_path / "agent_registry.json"),
@@ -84,6 +87,7 @@ def crm_mvr_env(
 
     reset_storage()
     reset_seed_data()
+    reset_entity_registry()
     reset_context_builder()
     reset_core_identity()
     reset_core_graph()

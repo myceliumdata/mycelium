@@ -125,7 +125,7 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 
 ### Protocol & conversation — Entity program (Slices 1–8 → Cursor)
 
-**Program index:** [`docs/plans/entity-protocol-and-registry-program.md`](docs/plans/entity-protocol-and-registry-program.md) — **Paul approved Slices 1–8** (June 2026). **Slices 9–10 (metering) deferred** until 1–8 ship. **Cursor:** Slice 1 in progress; then sequential `1100`–`1700`, then polish `1800`. **Review:** blocking nits → fix slice before next planned slice; non-blocking → [`entity-protocol-polish-post8.md`](docs/plans/entity-protocol-polish-post8.md).
+**Program index:** [`docs/plans/entity-protocol-and-registry-program.md`](docs/plans/entity-protocol-and-registry-program.md) — **Paul approved Slices 1–8** (June 2026). **Slices 9–10 (metering) deferred** until 1–8 ship. **Cursor:** Slice 5 (`1400`) ready; then sequential `1500`–`1700`, then polish `1800`. **Review:** blocking nits → fix slice before next planned slice; non-blocking → [`entity-protocol-polish-post8.md`](docs/plans/entity-protocol-polish-post8.md).
 
 | Slice | Spec | Cursor prompt | Status |
 |-------|------|---------------|--------|
@@ -133,8 +133,8 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 | 2 | [`entity-outcome-infrastructure-phase2.md`](docs/plans/entity-outcome-infrastructure-phase2.md) | `1100` | **Done** |
 | 2h | — | `1105` smoke test env isolation | **Done** |
 | 3 | [`entity-unknown-mvr-phase3.md`](docs/plans/entity-unknown-mvr-phase3.md) | `1200` | **Done** |
-| 4 | [`entity-registry-bind-phase4.md`](docs/plans/entity-registry-bind-phase4.md) | `1300` | **Ready** |
-| 5 | [`entity-validation-phase5.md`](docs/plans/entity-validation-phase5.md) | `1400` | Queued |
+| 4 | [`entity-registry-bind-phase4.md`](docs/plans/entity-registry-bind-phase4.md) | `1300` | **Done** |
+| 5 | [`entity-validation-phase5.md`](docs/plans/entity-validation-phase5.md) | `1400` | **Ready** |
 | 6 | [`entity-research-gate-phase6.md`](docs/plans/entity-research-gate-phase6.md) | `1500` | Queued |
 | 7 | [`entity-boundary-cleanup-phase7.md`](docs/plans/entity-boundary-cleanup-phase7.md) | `1600` | Queued |
 | 8 | [`entity-growth-phase8.md`](docs/plans/entity-growth-phase8.md) | `1700` | Queued |
@@ -145,7 +145,8 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 - [x] **Entity key suggestions (Slice 1 + fix `1005`)** — reviewed and approved (June 2026). Kalman → suggest Kalmans; same-thread retry serde fixed. Context: [`2026-06-08-entity-key-negotiation.md`](docs/plans/conversations/2026-06-08-entity-key-negotiation.md).
 - [x] **Entity outcome infrastructure (Slice 2)** — `outcome` on all paths; `response_non_core` → `assembled`; MCP schema + policy (June 2026).
 - [x] **Unknown entity + MVR (Slice 3)** — `entity_unknown`, `required_fields`, `network.json` MVR, supervisor short-circuit (June 2026).
-- [ ] **Entity registry, validation & growth (Slices 4–8)** — specs locked in program doc. Paul Murphy arc: bind → validate → gate → attribution. Context: [`2026-06-08-entity-registry-validation-growth.md`](docs/plans/conversations/2026-06-08-entity-registry-validation-growth.md).
+- [x] **Entity registry + provisional bind (Slice 4)** — `entities.json`, `EntityQuery.binding`, `resolve_entity`, `entity_bound_provisional` / `entity_under_specified`; duplicate bind → `found` (June 2026).
+- [ ] **Entity validation & growth (Slices 5–8)** — specs locked in program doc. Paul Murphy arc: validate → gate → attribution. Context: [`2026-06-08-entity-registry-validation-growth.md`](docs/plans/conversations/2026-06-08-entity-registry-validation-growth.md).
 - [ ] **Seed data vs specialists (Slice 7)** — [`entity-boundary-cleanup-phase7.md`](docs/plans/entity-boundary-cleanup-phase7.md); delete `core_identity.py`.
 - [ ] **Negotiation & metering (Slices 9–10 — deferred)** — Paul (June 2026): complete Slices 1–8 first; payment decisions premature. Core validation **free for now**. Drafts: [`entity-metering-design-phase9.md`](docs/plans/entity-metering-design-phase9.md), [`entity-metering-hooks-phase10.md`](docs/plans/entity-metering-hooks-phase10.md).
 - [ ] **Per-record query messages (multi-match)** — v1 keeps collective `message` when `entity_key` matches multiple seed records (e.g. two Kevin Zhangs); agent disambiguates via `results`. Revisit when non-person or other domains need per-record status in `message` (different attrs per match, async research diverging per id).
@@ -198,4 +199,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-09 (entity protocol Slices 1–8 approved for Cursor; 9–10 deferred)
+Last updated: 2026-06-09 (entity protocol Slice 4 done; Slice 5 ready; 9–10 deferred)

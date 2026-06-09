@@ -9,10 +9,13 @@ from agents.registry import get_agent_registry
 from agents.responses import (
     merge_requested_record,
     response_assembled,
+    response_entity_bound_provisional,
+    response_entity_under_specified,
     response_entity_unknown,
     response_entity_unresolved,
     response_found,
     response_not_found,
+    response_registry_provisional_identity,
 )
 from agents.supervisor import _identity_records_from_seed, _target_fields_for_agent
 from models.state import MyceliumGraphState, normalized_requested_attributes
@@ -141,24 +144,73 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
             "audit_log": ["assemble_response: entity unknown (MVR required)."],
         }
 
+    if current.entity_resolution_kind == "under_specified":
+        return {
+            "response": response_entity_under_specified(
+                query,
+                current.entity_required_fields,
+                **id_kwargs,
+            ),
+            "audit_log": ["assemble_response: entity under-specified (partial binding)."],
+        }
+
+    if current.entity_resolution_kind == "bind_provisional" and matched:
+        return {
+            "response": response_entity_bound_provisional(
+                query,
+                matched[0],
+                **id_kwargs,
+            ),
+            "audit_log": ["assemble_response: entity bound provisional."],
+        }
+
     if not matched:
         return {
             "response": response_not_found(query, **id_kwargs, **clf_kwargs),
             "audit_log": ["assemble_response: no seed match."],
         }
 
+    if current.registry_provisional_only and len(matched) == 1:
+        return {
+            "response": response_registry_provisional_identity(
+                query,
+                matched[0],
+                **id_kwargs,
+            ),
+            "audit_log": ["assemble_response: provisional registry identity only."],
+        }
+
     requested = normalized_requested_attributes(query.requested_attributes)
 
     if not requested:
         identity_records = _identity_records_from_seed(matched)
+        message = None
+        if current.duplicate_bind and len(matched) == 1:
+            name = matched[0].get("name") or query.entity_key
+            employer = matched[0].get("employer")
+            employer_phrase = f" at {employer}" if employer else ""
+            message = (
+                f"Already bound provisional record for {name}{employer_phrase}."
+            )
         return {
             "response": response_found(
                 query,
                 base_records=identity_records,
+                message=message,
                 **id_kwargs,
                 **clf_kwargs,
             ),
             "audit_log": ["assemble_response: seed identity response."],
+        }
+
+    if current.duplicate_bind and len(matched) == 1:
+        return {
+            "response": response_registry_provisional_identity(
+                query,
+                matched[0],
+                **id_kwargs,
+            ),
+            "audit_log": ["assemble_response: duplicate bind — identity only."],
         }
 
     merged_records: list[dict[str, Any]] = []
