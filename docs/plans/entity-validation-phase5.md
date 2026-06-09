@@ -1,8 +1,9 @@
-# Core validation orchestration — Phase 5 spec (draft)
+# Core validation orchestration — Phase 5 spec
 
-**Status:** Partially locked (Paul, June 2026) — Q5c/Q5d pending confirmation  
+**Status:** Locked (Paul, June 2026)  
 **Program:** [`entity-protocol-and-registry-program.md`](entity-protocol-and-registry-program.md)  
-**Depends on:** Slice 4
+**Depends on:** Slice 4  
+**Cursor prompt:** `prompts/cursor/next/2026-06-09-1400-entity-validation-phase5.md`
 
 ---
 
@@ -14,7 +15,7 @@ After provisional bind, CRM policy expects **name** and **employer** to be valid
 
 ## Objective
 
-Run **sync-light validation** on provisional registry entities; promote `validation_state` and per-field states to `validated` when MVR passes. New outcome `entity_validated` when validation completes in-query.
+Run **sync-light, rule-based validation** on provisional registry entities; promote `validation_state` and per-field states to `validated` when MVR passes. Outcome `entity_validated` when validation completes and no attribute research runs in the same turn.
 
 **Bootstrap seed:** unchanged — pre-validated for gating (no validation pass).
 
@@ -32,36 +33,44 @@ Specialists do **not** own bind fields in storage after Slice 7; validation mode
 
 ---
 
-## Validation mode API (proposal)
+## Validation mode API
 
 Add optional flag on specialist invoke path when `validation_state == provisional`:
 
 - Input: `current_id`, MVR fields from registry, `target_fields: ["name"]` or `["employer"]`
 - Output: `validation_contrib: { field, status: pass|fail|pending, reason? }`
 - **No Tavily** in validation mode
+- **No LLM** in v1 — rule-based only (Paul Q5d)
 
-**CRM v1 rules (proposal — no LLM required for demo):**
+**CRM v1 rules:**
 
 | Field | Pass rule |
 |-------|-----------|
 | `name` | Non-empty, ≥2 chars, not all digits |
 | `employer` | Non-empty, ≥2 chars |
 
-LLM coherence check: **deferred** unless Paul wants in v1.
+LLM coherence check: **deferred** (not in v1).
 
 ---
 
-## When validation runs
+## When validation runs (locked)
 
-**Proposal:** On query when:
+On **every** query when:
 
 1. Resolved entity is registry `provisional`, and  
-2. Complete MVR present (bind satisfied), and  
-3. Either no `requested_attributes` OR attrs requested (validation before research in Slice 6)
+2. Complete MVR present (bind satisfied)
 
-Same graph turn: bind (if needed) → validate → then gate research.
+Runs even for identity-only queries (no `requested_attributes`) — Paul Q5a.
 
-*Paul: confirm validate on every provisional resolve, or only when `requested_attributes` non-empty?*
+**Same graph turn (locked — Paul Q5c, aligned with Slice 6 Q6b):**
+
+```
+bind (if needed) → validate → research (if validated and attrs requested)
+```
+
+Slice 5 owns the validate step; Slice 6 owns the gate that allows research immediately after validation in the same run.
+
+When `requested_attributes` non-empty and validation passes, final outcome is **`assembled`** / **`found`** with attrs (Slice 6), not `entity_validated`.
 
 ---
 
@@ -69,22 +78,23 @@ Same graph turn: bind (if needed) → validate → then gate research.
 
 | Situation | `outcome` |
 |-----------|-----------|
-| All MVR fields pass | `entity_validated` |
-| Any field fails | stay `provisional`; **proposal:** `outcome: found` with message explaining validation failed — no `validation_rejected` enum in v1 |
+| All MVR fields pass; no attrs requested | `entity_validated` |
+| All MVR fields pass; attrs requested | defer to Slice 6 — `assembled` / `found` with attrs |
+| Any field fails | stay `provisional`; `found` + message explaining validation failed |
 | Already validated | normal `found` / `assembled` |
 
-**`entity_validated` response (proposal):**
+**No `validation_rejected` outcome in v1** — Paul Q5b.
+
+**`entity_validated` response:**
 
 ```json
 {
   "outcome": "entity_validated",
   "results": [{ "id": "…", "name": "Paul Murphy", "employer": "Acme Corp" }],
-  "message": "Core record validated. Attribute research may proceed on subsequent queries.",
+  "message": "Core record validated.",
   "required_fields": []
 }
 ```
-
-Email in same request after validation in one turn — **Slice 6** decides; Slice 5 may validate only and defer research to next invoke.
 
 ---
 
@@ -96,7 +106,8 @@ On pass: `validation_state: validated`, `field_states.*: validated`.
 
 ## Tests (smoke)
 
-- Provisional Murphy @ Acme → validators pass → `entity_validated` in registry
+- Provisional Murphy @ Acme → validators pass → `entity_validated` in registry (identity-only query)
+- Provisional Murphy @ Acme + email → validate then research same turn → `assembled` / attr values (with Slice 6)
 - Absurd employer `""` → stay provisional, clear message
 - Seed Andrea Kalmans → no validation invoke
 
@@ -108,5 +119,5 @@ On pass: `validation_state: validated`, `field_states.*: validated`.
 |---|----------|
 | Q5a | Validate on **every** query once MVR complete (even identity-only) |
 | Q5b | Validator failure → stay **provisional**, explain in `message`; **no** `validation_rejected` outcome |
-| Q5c | *Pending Paul confirmation after explanation* |
-| Q5d | *Pending Paul confirmation after explanation* |
+| Q5c | **Same turn:** bind → validate → research when validated (Slice 6 gate) |
+| Q5d | **Rule-based validation only** in v1 (no LLM plausibility) |

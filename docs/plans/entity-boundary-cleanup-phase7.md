@@ -1,7 +1,9 @@
-# Seed vs specialists boundary — Phase 7 spec (draft)
+# Seed vs specialists boundary — Phase 7 spec
 
-**Status:** Partially locked (Paul, June 2026) — Q7c pending decision  
-**Depends on:** Slices 4–6
+**Status:** Locked (Paul, June 2026)  
+**Program:** [`entity-protocol-and-registry-program.md`](entity-protocol-and-registry-program.md)  
+**Depends on:** Slices 4–6  
+**Cursor prompt:** `prompts/cursor/next/2026-06-09-1600-entity-boundary-cleanup-phase7.md`
 
 ---
 
@@ -16,13 +18,14 @@
 - Supervisor/registry: entity resolution + bind fields  
 - Specialists: `current_id` + `target_fields` only for identity context  
 - Stop writing `name` / `employer` into new specialist storage entries  
-- Update Jinja factory template + `context.py` + `build_context`
+- Update Jinja factory template + `context.py` + `build_context`  
+- **Delete** `src/agents/core_identity.py` and remove remaining imports/resets
 
 **Non-goals:** Bulk migration of existing demo storage; delete `seed.json`.
 
 ---
 
-## Context shape (proposal)
+## Context shape (locked)
 
 `build_context` supplies specialists:
 
@@ -34,7 +37,9 @@
 }
 ```
 
-Remove reliance on full `context.seed` blob. **Locked (Paul):** clean slate — update factory template **and** regen/update all committed reference specialists under `src/agents/specialists/` and per-network copies as needed.
+Remove reliance on full `context.seed` blob.
+
+**Clean slate (Paul Q7b):** update factory template **and** regen/update all committed reference specialists under `src/agents/specialists/` and per-network copies as needed.
 
 ---
 
@@ -46,16 +51,24 @@ Remove reliance on full `context.seed` blob. **Locked (Paul):** clean slate — 
 
 ---
 
-## Existing networks
+## Legacy cleanup (locked — Paul Q7c)
 
-**Locked (Paul):** Clean slate — ignore legacy specialist storage; no migration. Refresh-example-network or operator wipe for demos.
+| Item | Action |
+|------|--------|
+| `src/agents/core_identity.py` | **Delete** |
+| `src/agents/routing.py` | Remove `core_identity` imports/usages (legacy routing) |
+| `tests/conftest.py` | Remove `reset_core_identity` from fixture resets |
+| Other test imports of `core_identity` | Remove or stub as needed for tests that still exercise legacy routing |
+
+**Legacy specialist storage (Paul Q7a):** ignore-on-read — no migration. Operator wipe / `refresh-example-network` for demos.
 
 ---
 
 ## Tests
 
 - New specialist creation via factory → storage.json lacks name/employer  
-- Query validated entity + email → research uses bind from context, not storage copy
+- Query validated entity + email → research uses bind from context, not storage copy  
+- No remaining runtime imports of `core_identity`
 
 ---
 
@@ -65,10 +78,10 @@ Add item #8: show registry vs specialist-owned fields separately in entity drill
 
 ---
 
-## Open questions for Paul
+## Paul decisions (locked)
 
-1. **Legacy storage:** ignore-on-read (proposal) vs migrate-on-read?
-
-2. **Regen committed reference specialists** (`src/agents/specialists/*`) in this slice or only factory template for new/generated modules?
-
-3. **`core_identity.py`:** delete, or leave unwired with comment?
+| # | Decision |
+|---|----------|
+| Q7a | Ignore legacy `name`/`employer` in specialist storage — clean slate |
+| Q7b | Clean slate — factory template + reference specialists, not half-migrated legacy |
+| Q7c | **Delete `core_identity.py`** in Slice 7 + clean `routing.py` / `tests/conftest.py` resets |

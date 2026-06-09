@@ -12,5 +12,6 @@ Review when implementing a dedicated admin polish track.
 | 5 | Slice 4 | Display `binding` context if ever surfaced via status API | Likely N/A until status API exposes negotiation metadata |
 | 6 | Slice 5+ | Validation state per field (`provisional` / `validated`) | Entity field drill-down |
 | 7 | Slice 6+ | Indicate when research is gated vs allowed | Operator debugging for Tavily spend |
+| 8 | Slice 7 | Show registry vs specialist-owned fields separately | Entity drill-down; bind fields vs extended attrs |
 
 Add rows as later slices land. Do not block protocol slices on this file.

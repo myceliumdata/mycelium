@@ -40,7 +40,7 @@ Build **agent-to-agent negotiation** from the outside in:
 | P5 | Binding input shape | **Optional `binding: dict[str, str]` on `EntityQuery`** (Slice 4+) — keys from MVR (CRM: `employer`) | Machine agents need structured follow-up; no `provided_data` blob |
 | P6 | Confirmation for near-miss | **Retry with `entity_key` only** (Slice 1 — locked) | Simplest agent loop |
 | P7 | Research gate | **No `current_id` → no specialists/Tavily** (enforce uniformly by Slice 6) | Fixes today’s leak: unknown key + `email` still classifies |
-| P8 | Validation depth (v1) | **Sync-light**: rules + optional small LLM coherence check; no Tavily for core bind | Demos stay fast; extended attrs still use research |
+| P8 | Validation depth (v1) | **Sync-light, rule-based only** — no LLM plausibility; no Tavily for core bind | Paul Q5d; extended attrs still use research |
 | P9 | Metering | **Design in Slice 9; hooks in Slice 10; no billing before Slice 6 gate works** | x402 depends on stable negotiation outcomes |
 | P10 | Bootstrap seed gating | **Seed rows = trusted for research gate** (maintainer-curated at bootstrap); **grown entities must validate** | Preserves CRM demo; not a claim of real-world factual truth |
 
@@ -180,26 +180,34 @@ Fallback for CRM example: if `mvr` absent, default `bind_fields: ["name", "emplo
 
 ---
 
-### Slice 5 — Core validation orchestration
+### Slice 5 — Core validation orchestration *(spec locked)*
+
+**Cursor prompt:** `prompts/cursor/next/2026-06-09-1400-entity-validation-phase5.md`  
+**Detail:** [`entity-validation-phase5.md`](entity-validation-phase5.md)
 
 | | |
 |--|--|
 | **Solves** | Demographic validates name; professional validates employer; registry commits |
-| **Ships** | Validation mode on professional + demographic specialists (lightweight); registry promotes fields `provisional` → `validated`; outcome `entity_validated` |
+| **Ships** | Validation mode on professional + demographic specialists (rule-based); registry promotes fields `provisional` → `validated`; outcome `entity_validated` |
 | **Persists** | Registry validation_state updates |
 
-**Flow:** After provisional bind → run validators → registry arbiter commits → `validation_state: validated` when MVR satisfied.
+**Flow:** bind (if needed) → validate → research when validated (same turn, with Slice 6).
 
-**Decisions to lock:**
+**Decisions (locked):**
 
-- [ ] Validator failure: stay provisional + message vs `validation_rejected` outcome — **proposal: stay provisional, explain in message**
-- [ ] LLM in validation: **optional stub** (keyword rules first for CRM demo)
+- Q5a: Validate on every query once MVR complete (even identity-only)
+- Q5b: Validator failure → stay provisional, `found` + message; no `validation_rejected`
+- Q5c: Same turn: bind → validate → research when validated
+- Q5d: Rule-based validation only in v1 (no LLM)
 
-**Exit criteria:** Bind Paul Murphy → validators run → registry validated → ready for research gate.
+**Exit criteria:** Bind Paul Murphy → validators run → registry validated → same-turn email research when attrs requested (Slice 6).
 
 ---
 
-### Slice 6 — Research gate (enforce bind + validate)
+### Slice 6 — Research gate (enforce bind + validate) *(spec locked)*
+
+**Cursor prompt:** `prompts/cursor/next/2026-06-09-1500-entity-research-gate-phase6.md`  
+**Detail:** [`entity-research-gate-phase6.md`](entity-research-gate-phase6.md)
 
 | | |
 |--|--|
@@ -207,46 +215,63 @@ Fallback for CRM example: if `mvr` absent, default `bind_fields: ["name", "emplo
 | **Ships** | Single gate: specialists only when `current_id` set AND registry/seed entity `validation_state == validated` (seed bootstrap treated as **pre-validated** for backward compat) |
 | **Persists** | Nothing new |
 
-**Exit criteria:** Unbound/unknown/provisional → never invokes Tavily; validated Paul Murphy + email → contact research runs.
+**Decisions (locked):**
+
+- Q6a: No `research_gated` outcome — `found` + clear message
+- Q6b: Same turn — research after validation in one graph run
+
+**Exit criteria:** Unbound/unknown/provisional → never invokes Tavily; validated Paul Murphy + email → contact research runs (including same turn after validation).
 
 **Bootstrap seed (locked):** seed matches are treated as **validated for gating** — no provisional loop. Research on Andrea Kalmans + `email` still works without registry mirroring. Grown entities (registry `source: query_bind`) require `validation_state: validated`.
 
 ---
 
-### Slice 7 — Seed vs specialists boundary cleanup
+### Slice 7 — Seed vs specialists boundary cleanup *(spec locked)*
+
+**Cursor prompt:** `prompts/cursor/next/2026-06-09-1600-entity-boundary-cleanup-phase7.md`  
+**Detail:** [`entity-boundary-cleanup-phase7.md`](entity-boundary-cleanup-phase7.md)
 
 | | |
 |--|--|
 | **Solves** | Paul’s overlap complaint (name/employer in seed + specialist storage) |
-| **Ships** | Supervisor/registry owns bind lookup; specialists receive `current_id` + `target_fields` only; Jinja template + `context.py` stop replicating core fields in specialist storage; migration note for existing storage |
+| **Ships** | Supervisor/registry owns bind lookup; specialists receive `entity_id` + `bind` + extended storage only; Jinja template + `context.py` updated; **delete `core_identity.py`**; clean `routing.py` / test resets |
 | **Depends on** | Slices 4–6 |
-| **Detail:** TODO “Seed data vs specialists” |
 
-**Non-goals:** Delete seed.json; rewrite all historical specialist data automatically.
+**Decisions (locked):**
+
+- Q7a: Ignore legacy name/employer in specialist storage
+- Q7b: Clean slate — factory template + regen reference specialists
+- Q7c: Delete `core_identity.py` in Slice 7
+
+**Non-goals:** Delete seed.json; bulk migration of historical specialist data.
 
 ---
 
-### Slice 8 — Seed from queries & network growth
+### Slice 8 — Seed from queries & network growth *(draft)*
+
+**Detail:** [`entity-growth-phase8.md`](entity-growth-phase8.md) — Q8a–Q8d pending
 
 | | |
 |--|--|
 | **Solves** | Store must grow; launch v2 direction |
-| **Ships** | Queries enrich registry; optional `network create` without `--seed`; export/sync story documented |
-| **Persists** | Registry growth; optional seed regen script (operator) |
+| **Ships** | Harden growth path; docs + smoke; optional export tooling; empty-seed fixture (TBD) |
+| **Persists** | Registry + specialist enrichment (existing); optional seed export |
 
-**Launch v2 (subset):** first queries establish entities via bind flow; empty seed allowed when registry + negotiation ready.
+**Launch v2 (subset):** first queries establish entities via bind flow; empty-seed `network create` deferred.
 
 **Depends on:** Slices 4–7.
 
 ---
 
-### Slice 9 — Negotiation phases & metering *(design only)*
+### Slice 9 — Negotiation phases & metering *(design only — draft)*
+
+**Detail:** [`entity-metering-design-phase9.md`](entity-metering-design-phase9.md) — Q9a–Q9e pending
 
 | | |
 |--|--|
 | **Solves** | x402 alignment — price on total need |
 | **Ships** | Design doc: phases A→D, `quote_id`, checkpoint negotiation state, free vs paid boundaries |
-| **Code** | None (or stub types only) |
+| **Code** | None (or stub types only — TBD Q9e) |
 
 **Phases (from conversation):**
 
@@ -259,7 +284,9 @@ Fallback for CRM example: if `mvr` absent, default `bind_fields: ["name", "emplo
 
 ---
 
-### Slice 10 — Metering hooks *(implementation minimal)*
+### Slice 10 — Metering hooks *(draft)*
+
+**Detail:** [`entity-metering-hooks-phase10.md`](entity-metering-hooks-phase10.md) — Q10a–Q10d pending
 
 | | |
 |--|--|
@@ -317,8 +344,9 @@ flowchart LR
 | **Spec before code** | Slices 3–10 need short spec files like `entity-key-suggestions-phase1.md` before queueing |
 | **TODO.md** | Grok + Paul update after each slice reviewed — not Cursor |
 | **Batch 1** | **Locked** — specs + Cursor prompts in `prompts/cursor/next/` (`1000`–`1300`) |
-| **Batch 2 (draft)** | Slices 5–7: [`entity-validation-phase5.md`](entity-validation-phase5.md), [`entity-research-gate-phase6.md`](entity-research-gate-phase6.md), [`entity-boundary-cleanup-phase7.md`](entity-boundary-cleanup-phase7.md) |
-| **Cursor** | On hold until batches 2–3 specs approved |
+| **Batch 2** | **Locked** — specs + Cursor prompts (`1400`–`1600`): [`entity-validation-phase5.md`](entity-validation-phase5.md), [`entity-research-gate-phase6.md`](entity-research-gate-phase6.md), [`entity-boundary-cleanup-phase7.md`](entity-boundary-cleanup-phase7.md) |
+| **Batch 3** | Slices 8–10 — draft specs + questions pending |
+| **Cursor** | On hold until Batch 3 approved and full slice set (1–10) reviewed |
 
 ---
 
@@ -331,6 +359,9 @@ flowchart LR
 | Binding field | `EntityQuery.binding` |
 | Bootstrap seed | **Trusted for gating** — maintainer-curated seed skips validation loop; not a claim of real-world truth |
 | Grown entities | **Must validate** before research (Slices 5–6) |
+| Slice 5 validation | Rule-based only; same turn bind → validate → research |
+| Slice 6 gate | `found` + message when blocked; same-turn research after validation |
+| Slice 7 cleanup | Delete `core_identity.py`; clean slate specialist storage |
 | Slice 8 | Growth first; empty-seed `network create` later |
 | Program scope | Approved |
 
