@@ -13,7 +13,7 @@ from models.state import EntityKeySuggestion
 SUGGESTION_MIN_SCORE = 0.85
 SUGGESTION_MAX_COUNT = 5
 
-EntityResolutionKind = Literal["exact", "multiple", "suggest", "none"]
+EntityResolutionKind = Literal["exact", "multiple", "suggest", "unknown", "none"]
 
 
 @dataclass
@@ -95,4 +95,4 @@ def resolve_entity_key(entity_key: str) -> EntityResolution:
     if suggestions:
         return EntityResolution(kind="suggest", suggestions=suggestions)
 
-    return EntityResolution(kind="none")
+    return EntityResolution(kind="unknown")

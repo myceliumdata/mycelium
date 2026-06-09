@@ -1,5 +1,10 @@
 {
   "name": "crm",
   "display_name": "CRM example",
-  "description": "Public-safe subset of the prototype CRM seed for quick start and demos."
+  "description": "Public-safe subset of the prototype CRM seed for quick start and demos.",
+  "mvr": {
+    "bind_fields": ["name", "employer"],
+    "name_source": "entity_key",
+    "description": "CRM people: display name plus current employer before bind and research."
+  }
 }

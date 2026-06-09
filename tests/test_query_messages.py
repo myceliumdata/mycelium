@@ -53,7 +53,20 @@ def query_message_env(
     categories["attribute_map"]["xyzzy_garbage"] = "unknown"
     categories_path = tmp_path / "categories.json"
     categories_path.write_text(json.dumps(categories), encoding="utf-8")
+    (tmp_path / "network.json").write_text(
+        json.dumps(
+            {
+                "name": "crm",
+                "mvr": {
+                    "bind_fields": ["name", "employer"],
+                    "name_source": "entity_key",
+                },
+            },
+        ),
+        encoding="utf-8",
+    )
 
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
     monkeypatch.setenv("MYCELIUM_DB_PATH", str(db))
     monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
     monkeypatch.setenv("MYCELIUM_CHECKPOINT_PATH", str(tmp_path / "cp.sqlite"))
@@ -240,6 +253,9 @@ def test_not_found_neutral_entity_key_wording(
     response = run_query(EntityQuery(entity_key="NoSuchEntity-xyz"))
 
     assert response.results == []
-    assert response.message == "No record found for 'NoSuchEntity-xyz'."
+    assert response.outcome == "entity_unknown"
+    assert response.required_fields == ["employer"]
+    assert "NoSuchEntity-xyz" in response.message
+    assert "employer" in response.message.lower()
     assert "anyone" not in response.message.lower()
     assert "did not match" not in response.message.lower()

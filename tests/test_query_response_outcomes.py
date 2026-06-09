@@ -8,11 +8,13 @@ import pytest
 
 from agents.responses import (
     response_assembled,
+    response_entity_unknown,
     response_entity_unresolved,
     response_found,
     response_non_core,
     response_not_found,
 )
+from network.mvr import MvrPolicy
 from models.state import EntityKeySuggestion, EntityQuery, QueryResponse, SeedRecord
 from mycelium_mcp.server import _neutral_json_schema
 
@@ -72,6 +74,18 @@ def _assert_outcome(response: QueryResponse, expected: str) -> None:
             },
             "assembled",
         ),
+        (
+            response_entity_unknown,
+            {
+                "query": EntityQuery(entity_key="Paul Murphy", requested_attributes=["email"]),
+                "mvr": MvrPolicy(
+                    bind_fields=["name", "employer"],
+                    name_source="entity_key",
+                    description="test",
+                ),
+            },
+            "entity_unknown",
+        ),
     ],
 )
 def test_response_builders_set_outcome(
@@ -113,3 +127,4 @@ def test_query_response_model_json_schema_includes_outcome_and_suggestions() -> 
     schema = QueryResponse.model_json_schema()
     assert "outcome" in schema["properties"]
     assert "suggestions" in schema["properties"]
+    assert "required_fields" in schema["properties"]

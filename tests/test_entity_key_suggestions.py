@@ -19,7 +19,8 @@ from storage.core import CoreStorage, get_storage, reset_storage
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SAMPLE_CATEGORIES = REPO_ROOT / "docs" / "examples" / "sample-categories.json"
-EXAMPLE_CRM_SEED = REPO_ROOT / "examples" / "networks" / "crm" / "seed.json"
+EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
+EXAMPLE_CRM_SEED = EXAMPLE_CRM / "seed.json"
 
 
 @pytest.fixture
@@ -44,6 +45,8 @@ def crm_seed_env(
     categories_path = tmp_path / "categories.json"
     shutil.copy(SAMPLE_CATEGORIES, categories_path)
 
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
+    shutil.copy(EXAMPLE_CRM / "network.json", tmp_path / "network.json")
     monkeypatch.setenv("MYCELIUM_DB_PATH", str(db))
     monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
     monkeypatch.setenv("MYCELIUM_CHECKPOINT_PATH", str(tmp_path / "cp.sqlite"))
@@ -119,7 +122,7 @@ def test_andrea_kalmans_not_unresolved(crm_seed_env: CoreStorage) -> None:
 
 
 @pytest.mark.smoke
-def test_unknown_entity_not_found_empty_suggestions(crm_seed_env: CoreStorage) -> None:
+def test_unknown_entity_entity_unknown_empty_suggestions(crm_seed_env: CoreStorage) -> None:
     response = run_query(
         EntityQuery(
             entity_key="NoSuchPerson-xyz",
@@ -127,7 +130,8 @@ def test_unknown_entity_not_found_empty_suggestions(crm_seed_env: CoreStorage) -
         ),
     )
 
-    assert response.outcome == "not_found"
+    assert response.outcome == "entity_unknown"
+    assert response.required_fields == ["employer"]
     assert response.suggestions == []
     assert response.results == []
 

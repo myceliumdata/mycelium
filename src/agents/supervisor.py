@@ -126,6 +126,28 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
             "route": None,
         }
 
+    if resolution.kind == "unknown":
+        audit_log.append(
+            f"Supervisor: unknown entity {query.entity_key!r}; "
+            "skipping classification and specialists.",
+        )
+        return {
+            "matched_records": [],
+            "entity_resolution_kind": "unknown",
+            "entity_suggestions": [],
+            "context": {
+                "seed": [],
+                "specialists": {},
+                "_meta": {
+                    "ids": [],
+                    "specialists_to_invoke": [],
+                    "contributions": [],
+                },
+            },
+            "audit_log": audit_log,
+            "route": None,
+        }
+
     matched = resolution.matches
     seed_records = _seed_records_from_seed(matched)
     ids = [m["id"] for m in matched if m.get("id")]

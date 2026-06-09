@@ -16,6 +16,7 @@ from models.state import (
     SeedRecord,
     normalized_requested_attributes,
 )
+from network.mvr import MvrPolicy, load_mvr
 
 _IDENTITY_SUMMARY_KEYS = ("id", "name", "employer")
 
@@ -287,6 +288,7 @@ def _make_response(
     debug: str,
     outcome: str | None = None,
     suggestions: list[EntityKeySuggestion] | None = None,
+    required_fields: list[str] | None = None,
     trace_id: str | None = None,
     thread_id: str | None = None,
 ) -> QueryResponse:
@@ -296,9 +298,23 @@ def _make_response(
         debug=debug,
         outcome=outcome,
         suggestions=suggestions or [],
+        required_fields=required_fields or [],
         trace_id=trace_id,
         thread_id=thread_id,
     )
+
+
+def _required_field_hint(field: str) -> str:
+    hints = {
+        "employer": "employer (who they work for)",
+    }
+    return hints.get(field, field)
+
+
+def _required_fields_phrase(required_fields: list[str]) -> str:
+    if not required_fields:
+        return "required bind fields"
+    return ", ".join(_required_field_hint(field) for field in required_fields)
 
 
 def response_found(
@@ -403,6 +419,45 @@ def response_entity_unresolved(
             query,
             outcome="entity_key_unresolved",
             suggestions=[item.model_dump() for item in suggestions],
+        ),
+        trace_id=trace_id,
+        thread_id=thread_id,
+    )
+
+
+def response_entity_unknown(
+    query: EntityQuery,
+    *,
+    mvr: MvrPolicy | None = None,
+    trace_id: str | None = None,
+    thread_id: str | None = None,
+) -> QueryResponse:
+    """Unknown entity: no seed match and no near-miss suggestions; return MVR gaps."""
+    policy = mvr or load_mvr()
+    required_fields = policy.required_fields_for_entity_key(query.entity_key)
+    fields_phrase = _required_fields_phrase(required_fields)
+    if query.requested_attributes:
+        attrs = ", ".join(query.requested_attributes)
+        message = (
+            f"No record for {query.entity_key!r}. "
+            f"To research {attrs}, provide {fields_phrase}. "
+            "Re-query with the same entity_key when you have it."
+        )
+    else:
+        message = (
+            f"No record for {query.entity_key!r}. "
+            f"Provide {fields_phrase} to bind this entity."
+        )
+
+    return _make_response(
+        results=[],
+        message=message,
+        outcome="entity_unknown",
+        required_fields=required_fields,
+        debug=debug_for_query(
+            query,
+            outcome="entity_unknown",
+            required_fields=required_fields,
         ),
         trace_id=trace_id,
         thread_id=thread_id,

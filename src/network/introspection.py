@@ -10,6 +10,7 @@ from typing import Any
 
 from agents.seed import find_by_key, get_seed_data
 from agents.specialists.base import category_slug
+from network.mvr import load_mvr
 from network.paths import NetworkPaths, network_metadata, resolve_network_root
 
 
@@ -359,14 +360,21 @@ _POLICY_OUT_OF_SCOPE = (
 )
 _POLICY_OUTCOME = (
     "Every query_entity response includes a machine-readable outcome field "
-    "(found, assembled, not_found, entity_key_unresolved, or error). "
+    "(found, assembled, not_found, entity_key_unresolved, entity_unknown, or error). "
     "Read outcome before results; use message for per-attribute detail."
+)
+_POLICY_ENTITY_UNKNOWN = (
+    'When outcome is "entity_unknown", the entity_key had no seed match and no '
+    "near-miss suggestions. required_fields lists MVR bind fields still needed "
+    "(for CRM: employer when name comes from entity_key). Re-query with the same "
+    "entity_key after gathering required_fields — binding arrives in a later slice."
 )
 _POLICY_ENTITY_KEY_UNRESOLVED = (
     'When outcome is "entity_key_unresolved", the entity_key had no exact seed match '
     "but near-miss suggestions are provided in suggestions[]. Re-query with "
     "query_entity using a chosen suggestions[].entity_key (usually the highest score). "
-    "No attribute data is authoritative until an exact match resolves."
+    "No attribute data is authoritative until an exact match resolves. "
+    "If suggestions are empty and the name is not a near-miss, expect entity_unknown."
 )
 _POLICY_MULTI_MATCH = (
     "When entity_key matches multiple seed records, results contains every match. "
@@ -443,6 +451,8 @@ def build_network_capabilities() -> dict[str, Any]:
             "out_of_scope": _POLICY_OUT_OF_SCOPE,
             "multi_match": _POLICY_MULTI_MATCH,
             "outcome": _POLICY_OUTCOME,
+            "mvr": load_mvr(paths=paths).summary(),
+            "entity_unknown": _POLICY_ENTITY_UNKNOWN,
             "entity_key_unresolved": _POLICY_ENTITY_KEY_UNRESOLVED,
             "query": {
                 "tool": "query_entity",

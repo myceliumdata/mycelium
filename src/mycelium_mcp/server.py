@@ -101,7 +101,8 @@ def _neutral_json_schema(model: type[EntityQuery] | type[QueryResponse] | type[S
     elif model is QueryResponse:
         schema["description"] = (
             "Query outcome: outcome (machine-readable), suggestions (near-miss retries), "
-            "results (attribute values), message (status narrative), debug, trace_id, thread_id."
+            "required_fields (MVR gaps when entity_unknown), results (attribute values), "
+            "message (status narrative), debug, trace_id, thread_id."
         )
     elif model is SeedRecord:
         schema.setdefault("description", "Seed identity record (id, name, employer).")
@@ -184,9 +185,11 @@ def query_entity(query_json: str) -> str:
       "thread_id": "optional-conversation-id"
     }
 
-    Response JSON includes outcome, suggestions (when near-miss), results, message,
-    debug, trace_id, and thread_id. On outcome entity_key_unresolved, re-query with
-    a suggestions[].entity_key — no attribute data until an exact match resolves.
+    Response JSON includes outcome, suggestions (when near-miss), required_fields
+    (when entity_unknown), results, message, debug, trace_id, and thread_id.
+    On outcome entity_key_unresolved, re-query with a suggestions[].entity_key.
+    On outcome entity_unknown, gather required_fields from MVR policy (see
+    describe_network) before re-querying — no research until bound.
     """
     return _run_mcp_query(query_json)
 

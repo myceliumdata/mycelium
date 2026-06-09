@@ -39,6 +39,19 @@ def temp_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> CoreStorage
         ),
         encoding="utf-8",
     )
+    (tmp_path / "network.json").write_text(
+        json.dumps(
+            {
+                "name": "crm",
+                "mvr": {
+                    "bind_fields": ["name", "employer"],
+                    "name_source": "entity_key",
+                },
+            },
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
     monkeypatch.setenv("MYCELIUM_DB_PATH", str(db))
     monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
     monkeypatch.setenv("MYCELIUM_CHECKPOINT_PATH", str(tmp_path / "cp.sqlite"))
@@ -91,9 +104,12 @@ def test_query_missing_person(temp_storage: CoreStorage) -> None:
     _ = temp_storage
     response = run_query(EntityQuery(entity_key="Missing Person"))
     assert response.results == []
-    assert response.message == "No record found for 'Missing Person'."
+    assert response.outcome == "entity_unknown"
+    assert response.required_fields == ["employer"]
+    assert "Missing Person" in response.message
+    assert "employer" in response.message.lower()
     assert "core record" not in response.message.lower()
-    assert "outcome='not_found'" in response.debug
+    assert "outcome='entity_unknown'" in response.debug
 
 
 @pytest.mark.full

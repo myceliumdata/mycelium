@@ -86,7 +86,15 @@ class QueryResponse(BaseModel):
         description=(
             "Machine-readable query outcome on every response: found (seed identity only), "
             "assembled (requested attributes merged), not_found, entity_key_unresolved "
-            "(near-miss suggestions), or error (internal failure). Mirrors debug outcome=."
+            "(near-miss suggestions), entity_unknown (no seed match, MVR fields needed), "
+            "or error (internal failure). Mirrors debug outcome=."
+        ),
+    )
+    required_fields: list[str] = Field(
+        default_factory=list,
+        description=(
+            "MVR bind fields still needed when outcome is entity_unknown "
+            "(excludes name when name_source is entity_key)."
         ),
     )
     suggestions: list[EntityKeySuggestion] = Field(
@@ -209,7 +217,7 @@ class MyceliumGraphState(BaseModel):
     )
     entity_resolution_kind: str | None = Field(
         default=None,
-        description="Internal resolution kind: exact, multiple, suggest, or none.",
+        description="Internal resolution kind: exact, multiple, suggest, unknown, or none.",
     )
     entity_suggestions: list[EntityKeySuggestion] = Field(
         default_factory=list,

@@ -1,6 +1,6 @@
 # Task: Entity registry + provisional bind — Phase 4
 
-> **Queued** — Implement after Slice 3 is in `done/`.
+> **READY** — Slice 3 approved. Move to `in-progress/` to start.
 
 **Read these first (mandatory):**
 - `prompts/cursor/WORKFLOW.md`
