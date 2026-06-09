@@ -1,7 +1,7 @@
 """Core Mycelium LangGraph: seed resolution, context build, specialists, assembly.
 
-Flow: START → supervisor → build_context (if specialists needed) → invoke_specialists
-→ assemble_response → END; or supervisor → assemble_response when name-only / not found.
+Flow: START → supervisor → validate_entity → build_context (if specialists needed)
+→ invoke_specialists → assemble_response → END; or validate_entity → assemble_response.
 
 The default uses AsyncSqliteSaver (aiosqlite) so LangGraph Studio / langgraph dev
 (ASGI) can use ainvoke cleanly. The MCP server forces the sync SqliteSaver path
@@ -30,6 +30,7 @@ from agents.dispatch import (
     assemble_response_node,
     build_context_node,
     invoke_specialists_node,
+    validate_entity_node,
 )
 from agents.supervisor import supervisor_agent
 from models.state import EntityQuery, MyceliumGraphState, QueryResponse
@@ -44,7 +45,7 @@ _CHECKPOINT_MSGPACK_ALLOWLIST: tuple[tuple[str, str], ...] = (
     ("models.state", "EntityKeySuggestion"),
 )
 
-AfterSupervisor = Literal["build_context", "assemble_response"]
+AfterValidation = Literal["build_context", "assemble_response"]
 _compiled_graph: CompiledStateGraph | None = None
 _checkpointer_ctx: AsyncSqliteSaver | SqliteSaver | None = None
 _last_invocation_trace_id: str | None = None
@@ -140,9 +141,9 @@ def _specialists_planned(state: MyceliumGraphState) -> bool:
     return bool(planned)
 
 
-def _route_after_supervisor(
+def _route_after_validation(
     state: MyceliumGraphState | dict[str, Any],
-) -> AfterSupervisor:
+) -> AfterValidation:
     current = (
         state
         if isinstance(state, MyceliumGraphState)
@@ -170,14 +171,16 @@ def build_core_graph(
     graph: StateGraph = StateGraph(MyceliumGraphState)
 
     graph.add_node("supervisor", supervisor_agent)
+    graph.add_node("validate_entity", validate_entity_node)
     graph.add_node("build_context", build_context_node)
     graph.add_node("invoke_specialists", invoke_specialists_node)
     graph.add_node("assemble_response", assemble_response_node)
 
     graph.add_edge(START, "supervisor")
+    graph.add_edge("supervisor", "validate_entity")
     graph.add_conditional_edges(
-        "supervisor",
-        _route_after_supervisor,
+        "validate_entity",
+        _route_after_validation,
         {
             "build_context": "build_context",
             "assemble_response": "assemble_response",

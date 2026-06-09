@@ -374,7 +374,12 @@ _POLICY_ENTITY_BIND = (
     'On outcome entity_bound_provisional, results include id, name, and employer — '
     "use entity_key as the bound uuid for follow-ups. Duplicate bind returns found "
     "with the same id. Provisional entities do not trigger attribute research until "
-    "validation (later slices)."
+    "After bind, core validation runs automatically; outcome entity_validated when MVR "
+    "passes. Attribute research requires validated state."
+)
+_POLICY_ENTITY_VALIDATED = (
+    'When outcome is "entity_validated", provisional registry entity passed rule-based '
+    "MVR checks (name and employer). The entity is promoted to validated in entities.json."
 )
 _POLICY_ENTITY_KEY_UNRESOLVED = (
     'When outcome is "entity_key_unresolved", the entity_key had no exact seed match '
@@ -461,6 +466,7 @@ def build_network_capabilities() -> dict[str, Any]:
             "mvr": load_mvr(paths=paths).summary(),
             "entity_unknown": _POLICY_ENTITY_UNKNOWN,
             "entity_bind": _POLICY_ENTITY_BIND,
+            "entity_validated": _POLICY_ENTITY_VALIDATED,
             "entity_key_unresolved": _POLICY_ENTITY_KEY_UNRESOLVED,
             "query": {
                 "tool": "query_entity",

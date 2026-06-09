@@ -542,6 +542,78 @@ def response_entity_bound_provisional(
     )
 
 
+def response_entity_validated(
+    query: EntityQuery,
+    record: dict[str, Any],
+    *,
+    trace_id: str | None = None,
+    thread_id: str | None = None,
+) -> QueryResponse:
+    """MVR validation passed; registry entity promoted to validated."""
+    name = record.get("name") or query.entity_key
+    employer = record.get("employer")
+    results = [
+        {
+            "id": record.get("id", ""),
+            "name": name,
+            "employer": employer,
+        },
+    ]
+    return _make_response(
+        results=results,
+        message="Core record validated.",
+        outcome="entity_validated",
+        required_fields=[],
+        debug=debug_for_query(
+            query,
+            outcome="entity_validated",
+            registry_id=record.get("id"),
+        ),
+        trace_id=trace_id,
+        thread_id=thread_id,
+    )
+
+
+def response_validation_failed(
+    query: EntityQuery,
+    record: dict[str, Any],
+    *,
+    summary: str,
+    trace_id: str | None = None,
+    thread_id: str | None = None,
+) -> QueryResponse:
+    """Validation failed; entity stays provisional (outcome found per Q5b)."""
+    name = record.get("name") or query.entity_key
+    employer = record.get("employer")
+    employer_phrase = f" at {employer}" if employer else ""
+    message = (
+        f"Found provisional record for {name}{employer_phrase}. "
+        f"Core validation failed: {summary}"
+    )
+    results = [
+        {
+            "id": record.get("id", ""),
+            "name": name,
+            "employer": employer,
+        },
+    ]
+    return _make_response(
+        results=results,
+        message=message,
+        outcome="found",
+        required_fields=[],
+        debug=debug_for_query(
+            query,
+            outcome="found",
+            validation_failed=True,
+            validation_summary=summary,
+            registry_id=record.get("id"),
+        ),
+        trace_id=trace_id,
+        thread_id=thread_id,
+    )
+
+
 def response_registry_provisional_identity(
     query: EntityQuery,
     record: dict[str, Any],

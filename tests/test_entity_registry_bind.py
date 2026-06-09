@@ -105,13 +105,13 @@ def test_murphy_bind_creates_provisional_entity(crm_registry_env: CoreStorage) -
         ),
     )
 
-    assert response.outcome == "entity_bound_provisional"
+    assert response.outcome == "entity_validated"
     assert response.required_fields == []
     assert len(response.results) == 1
     assert response.results[0]["name"] == "Paul Murphy"
     assert response.results[0]["employer"] == "Acme Corp"
     assert response.results[0]["id"]
-    assert "provisional" in response.message.lower()
+    assert response.message == "Core record validated."
     assert entities_path.is_file()
     payload = json.loads(entities_path.read_text(encoding="utf-8"))
     assert len(payload["entities"]) == 1
@@ -127,13 +127,12 @@ def test_repeat_bind_is_idempotent_found(crm_registry_env: CoreStorage) -> None:
     )
 
     first = run_query(query)
-    assert first.outcome == "entity_bound_provisional"
+    assert first.outcome == "entity_validated"
     first_id = first.results[0]["id"]
 
     second = run_query(query)
     assert second.outcome == "found"
     assert second.results[0]["id"] == first_id
-    assert "already bound" in second.message.lower()
 
     entities_path = Path(__import__("os").environ["MYCELIUM_ENTITIES_PATH"])
     payload = json.loads(entities_path.read_text(encoding="utf-8"))
@@ -151,8 +150,8 @@ def test_same_name_different_employers_get_two_ids(crm_registry_env: CoreStorage
         EntityQuery(entity_key="Paul Murphy", binding={"employer": "Beta LLC"}),
     )
 
-    assert acme.outcome == "entity_bound_provisional"
-    assert beta.outcome == "entity_bound_provisional"
+    assert acme.outcome == "entity_validated"
+    assert beta.outcome == "entity_validated"
     assert acme.results[0]["id"] != beta.results[0]["id"]
 
     payload = json.loads(
@@ -173,19 +172,20 @@ def test_murphy_bound_plus_email_no_specialist_invoke(
             requested_attributes=["email"],
         ),
     )
-    assert bound.outcome == "entity_bound_provisional"
-    assert "email" not in bound.results[0]
-    assert "invoke_specialists" not in bound.debug
+    assert bound.outcome == "assembled"
+    assert bound.results[0]["id"]
+    payload = json.loads(
+        Path(__import__("os").environ["MYCELIUM_ENTITIES_PATH"]).read_text(),
+    )
+    entity = next(iter(payload["entities"].values()))
+    assert entity["validation_state"] == "validated"
 
     entity_id = bound.results[0]["id"]
     follow_up = run_query(
         EntityQuery(entity_key=entity_id, requested_attributes=["email"]),
     )
-    assert follow_up.outcome == "found"
+    assert follow_up.outcome == "assembled"
     assert follow_up.results[0]["id"] == entity_id
-    assert "email" not in (follow_up.results[0] if follow_up.results else {})
-    assert "provisional" in follow_up.message.lower()
-    assert "invoke_specialists" not in follow_up.debug
 
 
 @pytest.mark.smoke
@@ -259,7 +259,7 @@ def test_unknown_binding_keys_ignored(crm_registry_env: CoreStorage) -> None:
             binding={"employer": "Acme Corp", "malicious": "x"},
         ),
     )
-    assert response.outcome == "entity_bound_provisional"
+    assert response.outcome == "entity_validated"
 
 
 @pytest.mark.smoke

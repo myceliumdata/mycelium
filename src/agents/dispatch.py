@@ -5,6 +5,13 @@ from __future__ import annotations
 from typing import Any
 
 from agents.context import get_context_builder
+from agents.entity_registry import get_entity_registry, registry_entity_to_match
+from agents.entity_resolution import is_provisional_registry_match
+from agents.entity_validation import (
+    run_mvr_validation,
+    validation_all_passed,
+    validation_failure_summary,
+)
 from agents.registry import get_agent_registry
 from agents.responses import (
     merge_requested_record,
@@ -13,11 +20,16 @@ from agents.responses import (
     response_entity_under_specified,
     response_entity_unknown,
     response_entity_unresolved,
+    response_entity_validated,
     response_found,
     response_not_found,
-    response_registry_provisional_identity,
+    response_validation_failed,
 )
-from agents.supervisor import _identity_records_from_seed, _target_fields_for_agent
+from agents.supervisor import (
+    _collect_specialists_to_invoke,
+    _identity_records_from_seed,
+    _target_fields_for_agent,
+)
 from models.state import MyceliumGraphState, normalized_requested_attributes
 
 
@@ -31,6 +43,80 @@ def _meta(state: MyceliumGraphState) -> dict[str, Any]:
     ctx = state.context if isinstance(state.context, dict) else {}
     meta = ctx.get("_meta")
     return meta if isinstance(meta, dict) else {}
+
+
+def validate_entity_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
+    """Run MVR validation on provisional registry entities; promote when all pass."""
+    current = _coerce(state)
+    matched = current.matched_records or []
+    if len(matched) != 1 or not is_provisional_registry_match(matched[0]):
+        return {
+            "validation_passed": None,
+            "validation_contributions": [],
+            "audit_log": ["validate_entity: skip (not provisional registry)."],
+        }
+
+    entity_id = matched[0].get("id")
+    if not entity_id:
+        return {"audit_log": ["validate_entity: skip (no entity id)."]}
+
+    registry = get_entity_registry()
+    entity = registry.lookup_by_id(str(entity_id))
+    if entity is None:
+        return {"audit_log": ["validate_entity: skip (registry row missing)."]}
+
+    contribs = run_mvr_validation(entity.name, entity.employer)
+    logs = ["validate_entity: ran MVR validation on provisional registry entity."]
+    for item in contribs:
+        vc = item.get("validation_contrib") or {}
+        logs.append(
+            f"validate_entity: {item.get('agent')} "
+            f"{vc.get('field')} -> {vc.get('status')}.",
+        )
+
+    if not validation_all_passed(contribs):
+        summary = validation_failure_summary(contribs)
+        return {
+            "validation_passed": False,
+            "validation_contributions": contribs,
+            "audit_log": logs + [f"validate_entity: failed ({summary})."],
+        }
+
+    updated = registry.promote_validated(str(entity_id))
+    updated_match = registry_entity_to_match(updated)
+    ctx = dict(current.context) if isinstance(current.context, dict) else {}
+    meta = dict(_meta(current))
+    meta["ids"] = [updated.id]
+    specialists_to_invoke: list[str] = []
+    if current.query.requested_attributes and current.classifications:
+        audit: list[str] = []
+        specialists_to_invoke = _collect_specialists_to_invoke(
+            current.classifications,
+            audit,
+        )
+        logs.extend(audit)
+        if specialists_to_invoke:
+            logs.append(
+                "validate_entity: validation passed — scheduling attribute specialists.",
+            )
+    meta["specialists_to_invoke"] = specialists_to_invoke
+    meta.setdefault("contributions", [])
+    ctx.update(
+        {
+            "seed": updated_match,
+            "specialists": ctx.get("specialists") or {},
+            "_meta": meta,
+        },
+    )
+
+    return {
+        "matched_records": [updated_match],
+        "current_id": updated.id,
+        "validation_passed": True,
+        "validation_contributions": contribs,
+        "context": ctx,
+        "audit_log": logs + ["validate_entity: promoted to validated."],
+    }
 
 
 def build_context_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
@@ -154,7 +240,34 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
             "audit_log": ["assemble_response: entity under-specified (partial binding)."],
         }
 
-    if current.entity_resolution_kind == "bind_provisional" and matched:
+    if current.validation_passed is False and matched:
+        summary = validation_failure_summary(current.validation_contributions)
+        return {
+            "response": response_validation_failed(
+                query,
+                matched[0],
+                summary=summary,
+                **id_kwargs,
+            ),
+            "audit_log": ["assemble_response: validation failed (stay provisional)."],
+        }
+
+    if (
+        current.validation_passed is True
+        and current.validation_contributions
+        and matched
+        and not normalized_requested_attributes(query.requested_attributes)
+    ):
+        return {
+            "response": response_entity_validated(query, matched[0], **id_kwargs),
+            "audit_log": ["assemble_response: entity validated."],
+        }
+
+    if (
+        current.entity_resolution_kind == "bind_provisional"
+        and matched
+        and current.validation_passed is not True
+    ):
         return {
             "response": response_entity_bound_provisional(
                 query,
@@ -168,16 +281,6 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
         return {
             "response": response_not_found(query, **id_kwargs, **clf_kwargs),
             "audit_log": ["assemble_response: no seed match."],
-        }
-
-    if current.registry_provisional_only and len(matched) == 1:
-        return {
-            "response": response_registry_provisional_identity(
-                query,
-                matched[0],
-                **id_kwargs,
-            ),
-            "audit_log": ["assemble_response: provisional registry identity only."],
         }
 
     requested = normalized_requested_attributes(query.requested_attributes)
@@ -201,16 +304,6 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
                 **clf_kwargs,
             ),
             "audit_log": ["assemble_response: seed identity response."],
-        }
-
-    if current.duplicate_bind and len(matched) == 1:
-        return {
-            "response": response_registry_provisional_identity(
-                query,
-                matched[0],
-                **id_kwargs,
-            ),
-            "audit_log": ["assemble_response: duplicate bind — identity only."],
         }
 
     merged_records: list[dict[str, Any]] = []

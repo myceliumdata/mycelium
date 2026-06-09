@@ -95,7 +95,8 @@ class QueryResponse(BaseModel):
             "assembled (requested attributes merged), not_found, entity_key_unresolved "
             "(near-miss suggestions), entity_unknown (no seed match, MVR fields needed), "
             "entity_under_specified (partial binding), entity_bound_provisional "
-            "(new registry bind), or error (internal failure). Mirrors debug outcome=."
+            "(new registry bind), entity_validated (MVR validation passed), "
+            "or error (internal failure). Mirrors debug outcome=."
         ),
     )
     required_fields: list[str] = Field(
@@ -214,6 +215,10 @@ class MyceliumGraphState(BaseModel):
     )
     validation_passed: bool | None = None
     validation_errors: Annotated[list[str], operator.add] = Field(default_factory=list)
+    validation_contributions: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Demographic/professional validation_contrib rows from validate_entity.",
+    )
     audit_log: Annotated[list[str], operator.add] = Field(default_factory=list)
     invocation_thread_id: str | None = Field(
         default=None,

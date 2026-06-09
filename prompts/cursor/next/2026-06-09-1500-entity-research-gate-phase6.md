@@ -1,6 +1,6 @@
 # Task: Research gate — Phase 6
 
-> **Queued** — Implement after Slice 5 is in `done/`.
+> **READY** — Slice 5 approved. Move to `in-progress/` to start.
 
 **Read these first (mandatory):**
 - `prompts/cursor/WORKFLOW.md`

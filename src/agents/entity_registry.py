@@ -149,6 +149,19 @@ class EntityRegistry:
         self._save()
         return entity, False
 
+    def promote_validated(self, entity_id: str) -> RegistryEntity:
+        """Promote provisional entity and MVR field states to validated."""
+        entity = self._data.entities.get(entity_id)
+        if entity is None:
+            raise KeyError(f"Unknown registry entity: {entity_id}")
+        entity.validation_state = "validated"
+        entity.field_states = {
+            "name": "validated",
+            "employer": "validated",
+        }
+        self._save()
+        return entity
+
 
 def get_entity_registry() -> EntityRegistry:
     global _registry
