@@ -1,6 +1,6 @@
 # Entity registry + provisional bind — Phase 4 spec (draft)
 
-**Status:** Locked except Q4e (Paul, June 2026)  
+**Status:** Locked (Paul, June 2026)  
 **Program:** [`entity-protocol-and-registry-program.md`](entity-protocol-and-registry-program.md)  
 **Depends on:** Slices 1–3  
 **Cursor slice:** TBD after Paul approves batch 1
@@ -175,30 +175,4 @@ Include **`id` + `name` + `employer` in `results`** — id is the precise handle
 | Q4b | **Uuid `entity_key` preferred** for follow-ups; name + `binding` also supported |
 | Q4c | Name-only key → require **`binding.employer` or uuid** when 0 or 2+ registry matches |
 | Q4d | **Ignore unknown `binding` keys** — MVR fields only; reduces malicious/extra-key injection |
-| Q4e | **Pending** — see below |
-
----
-
-## Q4e — idempotent re-bind (Paul to decide)
-
-**Scenario:** Paul Murphy @ Acme is **already** in registry (provisional). Visiting agent sends **again**:
-
-```json
-{
-  "entity_key": "Paul Murphy",
-  "binding": { "employer": "Acme Corp" },
-  "requested_attributes": ["email"]
-}
-```
-
-Or the same query using `entity_key: "<existing-uuid>"`.
-
-Nothing new to persist — bind key already exists. **Which outcome and behavior?**
-
-| Option | Outcome | `results` | `message` (summary) | Implications |
-|--------|---------|-----------|---------------------|--------------|
-| **A** | `found` | id + name + employer | “Record already bound.” | Treats repeat bind as identity resolution; agent can store id once; email still gated until Slice 6 |
-| **B** | `entity_bound_provisional` | same | “Provisional bind confirmed.” | Repeats bind semantics every time; may confuse agents that already bound |
-| **C** | `found` if no attrs requested; if `email` requested → new outcome or message clarifying “bound but not validated / research not allowed” | id + … | Explicit about why email missing | Clearest for agents learning negotiation phases |
-
-**Recommendation:** **Option A** for Slice 4 — duplicate bind resolves to **`found`** with same id; **no email research** until Slice 6. Option C nuance can live in `message` text without a new outcome.
+| Q4e | **Option A (locked):** duplicate bind → **`found`** with same `id`; message notes already bound; **no email** until Slice 6 |

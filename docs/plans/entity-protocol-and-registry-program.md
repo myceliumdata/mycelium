@@ -316,8 +316,9 @@ flowchart LR
 | **Per slice** | One prompt in `prompts/cursor/next/` after slice spec locked |
 | **Spec before code** | Slices 3–10 need short spec files like `entity-key-suggestions-phase1.md` before queueing |
 | **TODO.md** | Grok + Paul update after each slice reviewed — not Cursor |
-| **Batch 1 specs (draft)** | Slice 1: [`entity-key-suggestions-phase1.md`](entity-key-suggestions-phase1.md); Slices 2–4: [`entity-outcome-infrastructure-phase2.md`](entity-outcome-infrastructure-phase2.md), [`entity-unknown-mvr-phase3.md`](entity-unknown-mvr-phase3.md), [`entity-registry-bind-phase4.md`](entity-registry-bind-phase4.md) — **Paul review before Cursor** |
-| **Cursor** | All slices on hold until batch approved |
+| **Batch 1** | **Locked** — specs + Cursor prompts in `prompts/cursor/next/` (`1000`–`1300`) |
+| **Batch 2 (draft)** | Slices 5–7: [`entity-validation-phase5.md`](entity-validation-phase5.md), [`entity-research-gate-phase6.md`](entity-research-gate-phase6.md), [`entity-boundary-cleanup-phase7.md`](entity-boundary-cleanup-phase7.md) |
+| **Cursor** | On hold until batches 2–3 specs approved |
 
 ---
 

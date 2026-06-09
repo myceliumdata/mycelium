@@ -1,6 +1,6 @@
 # Task: Entity key suggestions — protocol slice (Phase 1)
 
-> **ON HOLD** — Part of batch 1 (slices 1–4). Do not start until Paul approves all batch specs.
+> **ON HOLD** — Batch 1 spec locked. Do not start until batches 2–3 specs approved (full program before Cursor).
 
 **Read these first (mandatory):**
 - [`docs/plans/entity-protocol-and-registry-program.md`](../../docs/plans/entity-protocol-and-registry-program.md) — full program (Paul approved)
@@ -25,7 +25,7 @@ Implement **entity key suggestions** for near-miss lookups (Kalman → suggest K
 1. **Public `outcome` + `suggestions[]` on `QueryResponse`** — see spec for `EntityKeySuggestion` shape and outcome enum values.
 2. **Confirmation:** caller re-queries with `suggestions[].entity_key` — no `confirm_suggestion_id`.
 3. **Thresholds:** `SUGGESTION_MIN_SCORE = 0.85`, max 5 suggestions, first-token guard, `SequenceMatcher.ratio` on normalized names.
-4. **`entity_key_unresolved` vs `not_found`:** unresolved only when ≥1 suggestion passes threshold; Paul Murphy stays `not_found` until slice 2.
+4. **`entity_key_unresolved` vs `not_found`:** unresolved only when ≥1 suggestion passes threshold; unknown entities are Slice 3.
 
 Full detail: `docs/plans/entity-key-suggestions-phase1.md`.
 

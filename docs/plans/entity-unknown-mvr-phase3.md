@@ -1,6 +1,6 @@
 # Unknown entity + MVR policy — Phase 3 spec (draft)
 
-**Status:** Locked (Paul, June 2026) — pending Q4e in Slice 4 for full batch Cursor handoff  
+**Status:** Locked (Paul, June 2026)  
 **Program:** [`entity-protocol-and-registry-program.md`](entity-protocol-and-registry-program.md)  
 **Depends on:** Slices 1–2  
 **Cursor slice:** TBD after Paul approves batch 1
