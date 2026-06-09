@@ -1,6 +1,6 @@
 # Task: Seed vs specialists boundary cleanup — Phase 7
 
-> **ON HOLD** — Batch 2 (slices 5–7). Do not start until Batch 3 specs approved and full slice set (1–10) reviewed.
+> **Queued** — Implement after Slice 6 is in `done/`.
 
 **Read these first (mandatory):**
 - `prompts/cursor/WORKFLOW.md`

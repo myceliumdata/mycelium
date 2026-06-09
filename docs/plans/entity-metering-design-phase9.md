@@ -1,24 +1,30 @@
-# Negotiation phases & metering — Phase 9 spec (design only)
+# Negotiation phases & metering — Phase 9 spec (deferred)
 
-**Status:** Draft — questions for Paul  
+**Status:** **Deferred** — Paul (June 2026): complete Slices 1–8 first; revisit metering design when protocol + growth are proven  
 **Program:** [`entity-protocol-and-registry-program.md`](entity-protocol-and-registry-program.md)  
-**Depends on:** Slices 1–6 behavior stable (implementation: none or stub types only)
+**Depends on:** Slices 1–6 behavior stable (implementation: none)
 
 ---
 
-## Problem
+## Paul direction (June 2026)
 
-Paul’s agent-to-agent model needs **priced commit** — cost reflects total work scoped, not a single attribute. Slices 1–6 define negotiation outcomes; Slice 9 designs how **x402-style metering** attaches without blocking the protocol track.
+- **Proceed with Slices 1–8** before any metering design or hooks land in code.
+- Payment/quote decisions are **premature** — more conversation needed across use cases.
+- **Q9a (quote granularity):** defer discussion.
+- **Q9b (validation free tier):** keep core validation **free for now**; revisit when metering resumes.
+- **Q9c (classify placement):** defer — tied to payment model not yet agreed.
+
+Open questions Q9a–Q9e remain in this file for when Paul + Grok pick the thread back up. No Cursor prompt until spec is locked.
 
 ---
 
-## Objective
+## Problem (unchanged — for future reference)
 
-**Design document only** — no billing integration, no mandatory code changes. Output: locked phase model, state machine sketch, free vs paid boundaries, and types stub list for Slice 10.
+Paul’s agent-to-agent model needs **priced commit** — cost reflects total work scoped, not a single attribute. Slices 1–6 define negotiation outcomes; Slice 9 would design how **x402-style metering** attaches without blocking the protocol track.
 
 ---
 
-## Phase model (from conversations — proposal)
+## Phase model (proposal — not locked)
 
 | Phase | Name | Slices today | Typical cost |
 |-------|------|--------------|--------------|
@@ -27,114 +33,38 @@ Paul’s agent-to-agent model needs **priced commit** — cost reflects total wo
 | **C** | Commit + research | 5–6 gate, specialists/Tavily | Paid |
 | **D** | Deliver + follow-ups | assemble, re-query | Included or metered |
 
-**Rule:** Phases A–B stay cheap — no Tavily until Phase C commit accepted.
+**Working assumption until locked:** Phases A–B stay cheap — no Tavily until Phase C commit accepted. Core validation (Slice 5) stays free.
 
 ---
 
-## Negotiation state (proposal)
-
-Per `thread_id` (or future session store):
-
-```
-discovering → binding → validating → scoping → quoted → committed → researching → delivered
-```
-
-Map to existing outcomes:
-
-| State | Outcome examples |
-|-------|------------------|
-| discovering | `entity_key_unresolved`, `entity_unknown` |
-| binding | `entity_bound_provisional`, `entity_under_specified` |
-| validating | `entity_validated`, `found` + validation message |
-| scoping | classify complete, no research |
-| quoted | `quote_required` (Slice 10 stub) |
-| committed | gate passes, specialists invoked |
-
----
-
-## Quote object (proposal — design only)
-
-```json
-{
-  "quote_id": "uuid",
-  "thread_id": "...",
-  "entity_id": "...",
-  "scoped_attributes": ["email"],
-  "estimated_units": 1,
-  "expires_at": "ISO8601",
-  "phase": "C"
-}
-```
-
-Client accepts quote → commit → research runs. Reject → stay at scoping, no Tavily.
-
----
-
-## Free vs paid boundaries (proposal)
-
-| Action | Free? |
-|--------|-------|
-| Key suggestions | Yes |
-| Unknown / required_fields | Yes |
-| Provisional bind | Yes |
-| Core validation (rule-based) | Yes |
-| Classify attrs (no Tavily) | Yes |
-| Specialist + Tavily research | No — requires quote accept (future) |
-
----
-
-## Deliverables (Slice 9)
-
-1. This spec locked after Paul answers
-2. `docs/plans/entity-metering-integration.md` (or section in program doc) — integration notes for future x402
-3. Type stubs list for Slice 10 (`Quote`, `NegotiationPhase` enum) — optional `.py` stubs, no runtime wiring
-
-**No:** payment provider, HTTP 402 responses, wallet flows.
-
----
-
-## Open questions for Paul
+## Open questions (deferred)
 
 ### Q9a — Quote granularity
 
-| Option | Meaning |
-|--------|---------|
-| A | One quote per **research commit** (all scoped attrs in one Tavily batch) |
-| B | Per-attribute quotes (email separate from title) |
-| C | Per-phase only (Phase C lump sum); attrs listed for transparency |
+- A: One quote per research commit
+- B: Per-attribute quotes
+- C: Per-phase lump sum
 
 ### Q9b — Validation in free tier?
 
-Confirm: core validation (Slice 5 rule-based) stays **free** before any quote?
-
-| Option | Meaning |
-|--------|---------|
-| A | Yes — always free (proposal) |
-| B | Free for first N entities per network |
-| C | Metered from day one (unlikely for demo) |
+- A: Always free *(Paul: yes for now)*
+- B: Free for first N entities
+- C: Metered from day one
 
 ### Q9c — Classify step placement
 
-Is ontology classify (today’s supervisor classify) **Phase B** (pre-quote), always free?
-
-| Option | Meaning |
-|--------|---------|
-| A | Yes — classify before quote, no Tavily |
-| B | Classify after quote accept |
-| C | Skip classify in metering model — gate on attrs list only |
+- A: Phase B, free, before quote
+- B: After quote accept
+- C: Skip classify in metering model
 
 ### Q9d — Design doc location
 
-| Option | Meaning |
-|--------|---------|
-| A | Expand this file + program doc cross-link |
-| B | Separate `entity-metering-integration.md` for x402 partner handoff |
-| C | Both — this file = phases; integration doc = wire protocol |
+- A: This file + program doc
+- B: Separate integration doc
+- C: Both
 
 ### Q9e — Stub types in repo?
 
-| Option | Meaning |
-|--------|---------|
-| A | Markdown design only — no `.py` until Slice 10 |
-| B | `src/protocol/negotiation.py` stubs (dataclasses, no imports in graph) |
-| C | Stubs + MCP `describe_network` phase documentation strings |
+- A: Markdown only
+- B: `negotiation.py` stubs
+- C: Stubs + MCP strings

@@ -1,6 +1,6 @@
 # Task: Entity outcome infrastructure — Phase 2
 
-> **ON HOLD** — Batch 1 (slices 1–4). Do not start until batches 2–3 specs approved and program ready for Cursor.
+> **Queued** — Implement after Slice 1 is in `done/`.
 
 **Read these first (mandatory):**
 - `prompts/cursor/WORKFLOW.md`

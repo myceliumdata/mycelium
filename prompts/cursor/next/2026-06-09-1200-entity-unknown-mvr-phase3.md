@@ -1,6 +1,6 @@
 # Task: Unknown entity + MVR policy — Phase 3
 
-> **ON HOLD** — Batch 1 (slices 1–4). Do not start until batches 2–3 specs approved.
+> **Queued** — Implement after Slice 2 is in `done/`.
 
 **Read these first (mandatory):**
 - `prompts/cursor/WORKFLOW.md`

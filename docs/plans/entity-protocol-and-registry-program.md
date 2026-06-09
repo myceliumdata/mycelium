@@ -1,6 +1,6 @@
 # Entity protocol & registry — full program (slice map)
 
-**Status:** Approved by Paul (June 2026) — bootstrap seed trusted for gating; grown entities must validate. Cursor may proceed slice-by-slice per locked specs.  
+**Status:** Approved by Paul (June 2026) — bootstrap seed trusted for gating; grown entities must validate. **Cursor handoff: Slices 1–8** (locked specs + prompts). **Slices 9–10 deferred** — metering design resumes after 1–8 ship.  
 **Sources:**  
 - [`conversations/2026-06-08-entity-key-negotiation.md`](conversations/2026-06-08-entity-key-negotiation.md)  
 - [`conversations/2026-06-08-entity-registry-validation-growth.md`](conversations/2026-06-08-entity-registry-validation-growth.md)  
@@ -247,51 +247,52 @@ Fallback for CRM example: if `mvr` absent, default `bind_fields: ["name", "emplo
 
 ---
 
-### Slice 8 — Seed from queries & network growth *(draft)*
+### Slice 8 — Seed from queries & network growth *(spec locked)*
 
-**Detail:** [`entity-growth-phase8.md`](entity-growth-phase8.md) — Q8a–Q8d pending
+**Cursor prompt:** `prompts/cursor/next/2026-06-09-1700-entity-growth-phase8.md`  
+**Detail:** [`entity-growth-phase8.md`](entity-growth-phase8.md)
 
 | | |
 |--|--|
-| **Solves** | Store must grow; launch v2 direction |
-| **Ships** | Harden growth path; docs + smoke; optional export tooling; empty-seed fixture (TBD) |
-| **Persists** | Registry + specialist enrichment (existing); optional seed export |
+| **Solves** | Store must grow; **data attribution** (USP) on registry |
+| **Ships** | Growth path hardened; `attr_sources` + `last_researched_at` on registry; Paul Murphy smoke arc |
+| **Persists** | Registry attribution metadata + specialist storage |
 
-**Launch v2 (subset):** first queries establish entities via bind flow; empty-seed `network create` deferred.
+**Decisions (locked):**
+
+- Q8a: Full attribution — `attr_sources` + `last_researched_at` on registry rows
+- Q8b: Empty-seed demo → deferred (`TODO.md`)
+- Q8c: Seed export tooling → deferred (`TODO.md`)
+- Q8d: Seed vs grown linking → deferred (`TODO.md`) — multi-network-type design needed
 
 **Depends on:** Slices 4–7.
 
 ---
 
-### Slice 9 — Negotiation phases & metering *(design only — draft)*
+### Slice 9 — Negotiation phases & metering *(deferred)*
 
-**Detail:** [`entity-metering-design-phase9.md`](entity-metering-design-phase9.md) — Q9a–Q9e pending
+**Detail:** [`entity-metering-design-phase9.md`](entity-metering-design-phase9.md) — **no Cursor prompt**
 
 | | |
 |--|--|
-| **Solves** | x402 alignment — price on total need |
-| **Ships** | Design doc: phases A→D, `quote_id`, checkpoint negotiation state, free vs paid boundaries |
-| **Code** | None (or stub types only — TBD Q9e) |
+| **Status** | **Deferred** — Paul: complete Slices 1–8 first; payment decisions premature |
+| **Working assumption** | Core validation stays **free** until metering design resumes |
+| **Code** | None |
 
-**Phases (from conversation):**
+**Phases (reference only — not locked):** A discover/bind → B scope/classify → C commit/research → D deliver.
 
-- **A** — Discover/bind entity (slices 1–4)
-- **B** — Scope attributes + ontology (classify without research)
-- **C** — Commit + research (paid)
-- **D** — Deliver + follow-ups
-
-**Depends on:** Slices 1–6 behavior stable.
+**Depends on:** Slices 1–8 shipped; Paul + Grok design pass.
 
 ---
 
-### Slice 10 — Metering hooks *(draft)*
+### Slice 10 — Metering hooks *(deferred)*
 
-**Detail:** [`entity-metering-hooks-phase10.md`](entity-metering-hooks-phase10.md) — Q10a–Q10d pending
+**Detail:** [`entity-metering-hooks-phase10.md`](entity-metering-hooks-phase10.md) — **no Cursor prompt**
 
 | | |
 |--|--|
-| **Ships** | `quote_required` outcome stub; audit_log markers for phase transitions; MCP policy strings; no real payment integration |
-| **Depends on** | Slice 9 design + Slice 6 gate |
+| **Status** | **Deferred** — blocked on Slice 9 |
+| **Depends on** | Slice 9 design lock + Slice 6 gate |
 
 ---
 
@@ -343,10 +344,10 @@ flowchart LR
 | **Per slice** | One prompt in `prompts/cursor/next/` after slice spec locked |
 | **Spec before code** | Slices 3–10 need short spec files like `entity-key-suggestions-phase1.md` before queueing |
 | **TODO.md** | Grok + Paul update after each slice reviewed — not Cursor |
-| **Batch 1** | **Locked** — specs + Cursor prompts in `prompts/cursor/next/` (`1000`–`1300`) |
-| **Batch 2** | **Locked** — specs + Cursor prompts (`1400`–`1600`): [`entity-validation-phase5.md`](entity-validation-phase5.md), [`entity-research-gate-phase6.md`](entity-research-gate-phase6.md), [`entity-boundary-cleanup-phase7.md`](entity-boundary-cleanup-phase7.md) |
-| **Batch 3** | Slices 8–10 — draft specs + questions pending |
-| **Cursor** | On hold until Batch 3 approved and full slice set (1–10) reviewed |
+| **Batch 1** | **Locked** — `1000`–`1300` |
+| **Batch 2** | **Locked** — `1400`–`1600` |
+| **Batch 3** | Slice 8 **locked** (`1700`); Slices 9–10 **deferred** |
+| **Cursor** | **Approved for Slices 1–8** — start `1000` (Slice 1); sequential per dependency |
 
 ---
 
@@ -362,8 +363,10 @@ flowchart LR
 | Slice 5 validation | Rule-based only; same turn bind → validate → research |
 | Slice 6 gate | `found` + message when blocked; same-turn research after validation |
 | Slice 7 cleanup | Delete `core_identity.py`; clean slate specialist storage |
-| Slice 8 | Growth first; empty-seed `network create` later |
-| Program scope | Approved |
+| Slice 8 attribution | `attr_sources` + `last_researched_at` on registry (USP) |
+| Slice 8 deferred | Empty-seed demo, seed export, seed/grown linking → `TODO.md` |
+| Slices 9–10 | **Deferred** — metering after 1–8 ship; validation free for now |
+| Program scope | Slices 1–8 approved for implementation |
 
 ---
 
@@ -371,5 +374,5 @@ flowchart LR
 
 | Role | Status |
 |------|--------|
-| Paul | **Approved** (June 2026) |
-| Grok | Program locked |
+| Paul | **Approved Slices 1–8** (June 2026); 9–10 deferred |
+| Grok | Handoff ready — Cursor starts Slice 1 |

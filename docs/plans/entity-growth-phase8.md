@@ -1,113 +1,113 @@
-# Seed from queries & network growth — Phase 8 spec (draft)
+# Seed from queries & network growth — Phase 8 spec
 
-**Status:** Draft — questions for Paul  
+**Status:** Locked (Paul, June 2026) — Q8a only; Q8b–Q8d deferred to `TODO.md`  
 **Program:** [`entity-protocol-and-registry-program.md`](entity-protocol-and-registry-program.md)  
-**Depends on:** Slices 4–7
+**Depends on:** Slices 4–7  
+**Cursor prompt:** `prompts/cursor/next/2026-06-09-1700-entity-growth-phase8.md`
 
 ---
 
 ## Problem
 
-Slices 4–7 establish bind, validate, gate, and boundary cleanup — but growth is still **implicit** (registry rows from bind). Slice 8 makes **network growth from queries** a first-class story: the store must grow, and launch v2 may start without bootstrap seed.
+Slices 4–7 establish bind, validate, gate, and boundary cleanup — but growth is still **implicit** (registry rows from bind). Slice 8 makes **network growth from queries** a first-class story and introduces **data attribution** in the registry — a product differentiator Paul wants tracked from the start.
 
 ---
 
 ## Objective
 
-- Document and harden the **growth path** already started in Slice 4 (bind → validate → research enriches specialists)
-- Optional operator tooling: export registry bind rows → seed regen (not required for runtime)
-- Prepare for **empty-seed networks** (launch v2 subset) without implementing full `network create` UX in this slice
+- Harden the **growth path**: bind → validate → research → specialist storage under `entity_id`
+- Extend registry with **attribute attribution metadata** (which specialist owns each attr, when last researched)
+- End-to-end smoke test of the Paul Murphy arc
+- Document growth model for operators and future admin UI
 
-**In scope:** registry as canonical store for grown entities; research results persist to specialist storage under validated `entity_id`.
-
-**Out of scope (this slice):** empty-seed `network create` CLI flag; inter-network handoff; non-person schemas.
+**Out of scope (deferred — see `TODO.md`):** empty-seed fixture networks, seed export tooling, seed-vs-grown entity linking across network types.
 
 ---
 
-## Growth model (proposal)
+## Growth model (locked)
 
 ```
 Query bind (Slice 4)
   → validate (Slice 5)
   → research (Slice 6, gated)
   → specialist storage write (extended attrs)
-  → registry row remains SoT for bind fields
+  → registry updates attr_sources + last_researched_at
 ```
 
 **Seed role after growth:** bootstrap origin only. Validated registry overrides seed on conflict (program P4). Re-query resolves registry before seed.
 
 ---
 
-## Behaviors (proposal)
+## Registry schema extension (locked — Paul Q8a)
+
+On successful specialist research for a validated or seed-pre-validated entity, registry arbiter (supervisor-owned) updates the entity row:
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Paul Murphy",
+  "employer": "Acme Corp",
+  "validation_state": "validated",
+  "attr_sources": {
+    "email": "contact",
+    "title": "professional"
+  },
+  "last_researched_at": {
+    "email": "2026-06-09T14:30:00+00:00",
+    "title": "2026-06-09T14:30:00+00:00"
+  }
+}
+```
+
+| Field | Meaning |
+|-------|---------|
+| `attr_sources` | Map attr name → specialist category slug that produced/stores the value |
+| `last_researched_at` | Map attr name → ISO8601 UTC timestamp of last successful research write |
+
+**Rules:**
+
+- Update only attrs actually written in that research pass
+- Seed-only entities (no registry row): optional mirror row on first research, or attribution on registry rows only — **implement for registry-grown entities**; seed hits may skip registry write unless already in `entities.json`
+- Attribution is **registry metadata** — specialist storage remains SoT for attr values
+
+**USP note:** Data attribution is a deliberate product capability; admin UI and MCP surfacing come later (`admin-ui-backlog.md`).
+
+---
+
+## Behaviors (locked)
 
 | Scenario | Expected |
 |----------|----------|
-| Paul Murphy bind + validate + email research | Registry row + contact storage under `entity_id` |
+| Paul Murphy bind + validate + email research | Registry row + contact storage; `attr_sources.email = "contact"` |
 | Re-query Paul Murphy @ Acme + email | Registry hit; attrs from specialist storage |
 | Andrea Kalmans (seed only) | Unchanged — seed pre-validated for gate |
-| Registry + seed same name, different employer | Two entities (Slice 4 bind key) |
-
----
-
-## Launch v2 subset (proposal — deferred detail)
-
-Networks may ship with **empty `seed.json`** once negotiation + registry + gate work (Slices 1–7). First queries establish entities via bind flow.
-
-**This slice:** document the path + smoke test with minimal/empty seed fixture. **Not** required: new `network create` without `--seed` in CLI.
-
----
-
-## Operator tooling (proposal)
-
-Optional script or documented procedure:
-
-- `export-growth-seed` — read `entities.json` validated rows → generate `seed.json` fragment for maintainer review
-- Not automatic; operator-initiated sync only
+| Registry + seed same name, different employer | Two entities (Slice 4 bind key) — linking deferred |
 
 ---
 
 ## Tests (smoke)
 
 - Full Paul Murphy arc: unknown → bind → validate → email → re-query returns assembled attrs
-- Empty-seed fixture network: first bind creates registry; no seed dependency for grown entity
+- Registry row contains `attr_sources` and `last_researched_at` after email research
 - Seed person unchanged after growth queries on other entities
 
 ---
 
-## Open questions for Paul
+## Deferred (Paul — tracked in `TODO.md`)
 
-### Q8a — Growth enrichment scope
+| # | Topic | Reason |
+|---|-------|--------|
+| Q8b | Empty-seed demo fixture | Defer to launch v2 track |
+| Q8c | `export-growth-seed` operator script | Post-program polish |
+| Q8d | Seed vs grown entity linking (`supersedes`, etc.) | Needs multi-network-type design (CRM ≠ car parts) |
 
-When research completes, should Slice 8 **explicitly** persist specialist findings and link them in registry (e.g. `attr_sources`), or is **existing specialist storage** sufficient and this slice is mostly docs + smoke tests?
+---
 
-| Option | Meaning |
-|--------|---------|
-| A | Docs + smoke only — storage already works via Slices 6–7 |
-| B | Add registry pointers (`attr_sources: { email: "contact" }`) for operator visibility |
-| C | Broader — registry tracks last_researched timestamps per attr |
+## Paul decisions (locked)
 
-### Q8b — Empty-seed demo in this slice?
-
-| Option | Meaning |
-|--------|---------|
-| A | Document only; test with existing CRM seed |
-| B | Add `examples/networks/empty-crm/` fixture with `[]` seed + MVR; smoke test bind path |
-| C | Defer empty-seed entirely to a later launch track |
-
-### Q8c — Seed export tooling
-
-| Option | Meaning |
-|--------|---------|
-| A | No script — document manual export in plan only |
-| B | Minimal `bin/export-growth-seed` operator script |
-| C | Defer to post-program polish |
-
-### Q8d — Conflict: seed row vs grown registry entity
-
-If seed has `Paul Murphy @ OldCo` and a query binds `Paul Murphy @ NewCo`, we already get two entities (Slice 4). Should Slice 8 add an **explicit** `seed_override` or `supersedes` link, or leave as separate rows forever?
-
-| Option | Meaning |
-|--------|---------|
-| A | Separate rows — no linking |
-| B | Registry field `supersedes_seed_id` when bind matches seed name but different employer |
-| C | Defer — not needed for CRM demo |
+| # | Decision |
+|---|----------|
+| Q8a | **C — full attribution:** `attr_sources` + `last_researched_at` on registry rows |
+| Q8b | Defer empty-seed demo → `TODO.md` |
+| Q8c | Defer seed export tooling → `TODO.md` |
+| Q8d | Defer seed/grown linking → `TODO.md` |

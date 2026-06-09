@@ -1,6 +1,6 @@
 # Task: Entity key suggestions — protocol slice (Phase 1)
 
-> **ON HOLD** — Batch 1 spec locked. Do not start until batches 2–3 specs approved (full program before Cursor).
+> **READY** — First slice of entity protocol program (Slices 1–8 approved). Move to `in-progress/` to start.
 
 **Read these first (mandatory):**
 - [`docs/plans/entity-protocol-and-registry-program.md`](../../docs/plans/entity-protocol-and-registry-program.md) — full program (Paul approved)
