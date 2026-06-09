@@ -27,6 +27,7 @@ Non-blocking nits from Grok review of Slices 1–8 accumulate here. One polish p
 | ~~P8~~ | 5 | ~~Dead code: `registry_provisional_only`, `response_registry_provisional_identity`~~ — fixed in `1500` | — |
 | ~~P9~~ | 5 | ~~Duplicate-bind message still says “provisional” after validation~~ — fixed in `1500` | — |
 | P10 | 6 | `output.md` claims `invoke_specialists_node` gate defense; only supervisor + `validate_entity` enforce | `src/agents/dispatch.py` |
+| P11 | 7 | Supervisor/validate still set `context["seed"]` pre–`build_context` (confusing vs `entity_id`/`bind` shape) | `supervisor.py`, `dispatch.py` |
 
 ---
 

@@ -10,7 +10,6 @@ import pytest
 
 from agents.classification import reset_category_tree
 from agents.context import reset_context_builder
-from agents.core_identity import reset_core_identity
 from agents.entity_registry import reset_entity_registry
 from agents.entity_resolution import resolve_entity_key
 from agents.seed import get_seed_data, reset_seed_data
@@ -34,7 +33,6 @@ def crm_seed_env(
     reset_seed_data()
     reset_entity_registry()
     reset_context_builder()
-    reset_core_identity()
     reset_core_graph()
     reset_category_tree()
 
@@ -80,7 +78,6 @@ def crm_seed_env(
     reset_seed_data()
     reset_entity_registry()
     reset_context_builder()
-    reset_core_identity()
     reset_core_graph()
     reset_category_tree()
     reset_agent_registry()

@@ -38,7 +38,6 @@ def _sync_checkpointer_env(monkeypatch: pytest.MonkeyPatch) -> None:
 def _reset_runtime_singletons() -> None:
     from agents.classification import reset_category_tree
     from agents.context import reset_context_builder
-    from agents.core_identity import reset_core_identity
     from agents.factory.agent_factory import reset_agent_factory
     from agents.registry import reset_agent_registry
     from agents.seed import reset_seed_data
@@ -49,7 +48,6 @@ def _reset_runtime_singletons() -> None:
         reset_storage,
         reset_seed_data,
         reset_context_builder,
-        reset_core_identity,
         reset_category_tree,
         reset_agent_registry,
         reset_agent_factory,

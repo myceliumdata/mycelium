@@ -1,6 +1,6 @@
 # Task: Seed vs specialists boundary cleanup — Phase 7
 
-> **Queued** — Implement after Slice 6 is in `done/`.
+> **READY** — Slice 6 approved. Move to `in-progress/` to start.
 
 **Read these first (mandatory):**
 - `prompts/cursor/WORKFLOW.md`

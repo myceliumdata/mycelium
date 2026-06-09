@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 from pathlib import Path
 from typing import Any
 
@@ -56,7 +57,7 @@ def _minimal_state(*, requested: list[str]) -> MyceliumGraphState:
     return MyceliumGraphState(
         query=EntityQuery(entity_key="Jane", requested_attributes=requested),
         current_id="test-uuid",
-        context={"seed": seed, "specialists": {}},
+        context={"entity_id": seed["id"], "bind": {"name": seed["name"], "employer": seed.get("employer")}, "specialists": {}},
         target_fields=requested,
         matched_records=[seed],
     )
@@ -98,6 +99,45 @@ def test_framework_specialist_uses_entity_vocab(
 
 
 @pytest.mark.smoke
+def test_framework_demographic_specialist_import_module_bind_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Registry fallback path: agents.specialists.demographic_specialist uses bind, not seed."""
+    monkeypatch.setattr("tools.research.is_research_available", lambda: False)
+    mod = importlib.import_module("agents.specialists.demographic_specialist")
+    fn = mod.demographic_specialist
+    state = MyceliumGraphState(
+        query=EntityQuery(entity_key="Jane", requested_attributes=["age"]),
+        current_id="test-uuid",
+        context={
+            "entity_id": "test-uuid",
+            "bind": {"name": "Jane", "employer": "Acme"},
+            "specialists": {},
+        },
+        target_fields=["age"],
+    )
+    result = fn(state)
+    assert result["specialist_contrib"]["id"] == "test-uuid"
+    assert "Jane" in result["response"].message
+    assert "seed" not in state.context
+
+
+@pytest.mark.smoke
+def test_framework_specialists_on_disk_use_bind_not_seed() -> None:
+    specialists_dir = (
+        Path(__file__).resolve().parent.parent / "src" / "agents" / "specialists"
+    )
+    paths = sorted(specialists_dir.glob("*_specialist.py"))
+    assert len(paths) == 4
+    for path in paths:
+        text = path.read_text(encoding="utf-8")
+        assert 'ctx.get("seed")' not in text
+        assert 'context.get("seed")' not in text
+        assert "entity_id" in text
+        assert "_research_context" in text
+
+
+@pytest.mark.smoke
 def test_crm_reference_contact_specialist_uses_entity_vocab() -> None:
     """Committed CRM example specialist is a reference copy aligned with the factory template."""
     from pathlib import Path
@@ -112,6 +152,8 @@ def test_crm_reference_contact_specialist_uses_entity_vocab() -> None:
     )
     text = ref_path.read_text(encoding="utf-8")
     assert "entity_key" in text
+    assert "entity_id" in text
+    assert "bind" in text
     assert "person_key" not in text
     assert "matched_persons" not in text
     assert "not currently available but may be in the future" not in text

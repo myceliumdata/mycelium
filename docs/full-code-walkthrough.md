@@ -7,7 +7,7 @@
 - **Networks:** Framework repo + user-chosen **`network_root`** paths. Committed CRM example at `examples/networks/crm/`; bootstrap with `./bin/refresh-example-network crm`. See `docs/plans/networks-terminology.md`.
 - **Public API** = queries only (`EntityQuery`: `entity_key`, `requested_attributes`). No CLI `ingest`, no MCP `submit_person_data`, no `provided_data`.
 - **Graph:** `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` (or direct assemble for name-only / not found). Identity from `agents.seed` + specialist storage.
-- **Legacy on disk:** `core_data`, `core_identity`, `enrich`/`validator`/`person_prep` — unwired; not in the public graph.
+- **Legacy on disk:** `core_data`, `enrich`/`validator`/`person_prep` — unwired; not in the public graph.
 - See `docs/architecture.md` for the authoritative architecture; this doc is a walkthrough.
 
 ---

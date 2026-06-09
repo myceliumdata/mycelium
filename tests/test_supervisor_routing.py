@@ -7,32 +7,25 @@ from pathlib import Path
 
 import pytest
 
-from agents.core_identity import CoreIdentity
 from agents.routing import evaluate_supervisor_turn
 from agents.supervisor import supervisor_agent
-from models.state import EntityQuery, MyceliumGraphState, SeedRecord
+from models.state import EntityQuery, MyceliumGraphState
 
 
-class _StubCoreIdentity(CoreIdentity):
-    def __init__(self, person: SeedRecord | None) -> None:
-        super().__init__(storage=None)
-        self._person = person
-        self.persisted: list[SeedRecord] = []
+def _seed_lookup(rows: list[dict]) -> callable:
+    def lookup(entity_key: str) -> list[dict]:
+        key = entity_key.strip().lower()
+        return [r for r in rows if (r.get("name") or "").lower() == key]
 
-    def find_by_key(self, entity_key: str) -> list[SeedRecord]:
-        return [self._person] if self._person is not None else []
-
-    def persist(self, person: SeedRecord) -> None:
-        self.persisted.append(person)
+    return lookup
 
 
 @pytest.mark.smoke
-def test_routing_delegates_lookup_to_core_identity() -> None:
-    record = SeedRecord(id="p1", name="Ada", employer="Lab")
-    core_identity = _StubCoreIdentity(record)
+def test_routing_delegates_lookup_to_seed() -> None:
+    row = {"id": "p1", "name": "Ada", "employer": "Lab"}
     state = MyceliumGraphState(query=EntityQuery(entity_key="Ada"))
 
-    decision = evaluate_supervisor_turn(state, core_identity=core_identity)
+    decision = evaluate_supervisor_turn(state, seed_lookup=_seed_lookup([row]))
 
     assert len(decision.response.results) == 1
     assert decision.response.results[0]["name"] == "Ada"
@@ -43,29 +36,26 @@ def test_routing_delegates_lookup_to_core_identity() -> None:
 
 @pytest.mark.smoke
 def test_routing_not_found_when_missing() -> None:
-    core_identity = _StubCoreIdentity(None)
     state = MyceliumGraphState(query=EntityQuery(entity_key="Missing"))
 
-    decision = evaluate_supervisor_turn(state, core_identity=core_identity)
+    decision = evaluate_supervisor_turn(state, seed_lookup=_seed_lookup([]))
 
     assert decision.response.results == []
     assert decision.response.outcome == "not_found"
     assert "No record found" in decision.response.message
     assert "core record" not in decision.response.message.lower()
-    assert core_identity.persisted == []
     assert "ingest" not in decision.response.message.lower()
     assert "provided_data" not in decision.response.message.lower()
 
 
 @pytest.mark.smoke
 def test_routing_non_core_attributes() -> None:
-    record = SeedRecord(id="p1", name="Ada", employer="Lab")
-    core_identity = _StubCoreIdentity(record)
+    row = {"id": "p1", "name": "Ada", "employer": "Lab"}
     state = MyceliumGraphState(
         query=EntityQuery(entity_key="Ada", requested_attributes=["age"]),
     )
 
-    decision = evaluate_supervisor_turn(state, core_identity=core_identity)
+    decision = evaluate_supervisor_turn(state, seed_lookup=_seed_lookup([row]))
 
     assert len(decision.response.results) == 1
     assert decision.response.outcome == "assembled"

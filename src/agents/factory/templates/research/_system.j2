@@ -8,7 +8,7 @@ Rules:
 - Output must match the ResearchProposal schema: fields (field, value, status, confidence, sources, optional reason), notes.
 
 Tool use:
-- Call web_search with focused queries (person name, employer, field semantics).
+- Call web_search with focused queries using context.bind.name and context.bind.employer for disambiguation.
 - Stop searching when you have enough evidence or after reasonable attempts.
 
 Status meanings:

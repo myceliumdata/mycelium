@@ -10,7 +10,6 @@ import pytest
 
 from agents.classification import reset_category_tree
 from agents.context import reset_context_builder
-from agents.core_identity import reset_core_identity
 from agents.seed import get_seed_data, reset_seed_data
 from graphs.core import reset_core_graph, run_query
 from models.state import EntityQuery
@@ -30,7 +29,6 @@ def query_message_env(
     reset_storage()
     reset_seed_data()
     reset_context_builder()
-    reset_core_identity()
     reset_core_graph()
     reset_category_tree()
 
@@ -96,7 +94,6 @@ def query_message_env(
     reset_storage()
     reset_seed_data()
     reset_context_builder()
-    reset_core_identity()
     reset_core_graph()
     reset_category_tree()
     reset_agent_registry()
@@ -112,7 +109,6 @@ def kevin_multi_match_env(
     reset_storage()
     reset_seed_data()
     reset_context_builder()
-    reset_core_identity()
     reset_core_graph()
     reset_category_tree()
 
@@ -154,7 +150,6 @@ def kevin_multi_match_env(
     reset_storage()
     reset_seed_data()
     reset_context_builder()
-    reset_core_identity()
     reset_core_graph()
     reset_category_tree()
     reset_agent_registry()

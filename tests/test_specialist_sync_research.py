@@ -83,7 +83,8 @@ def test_contact_email_sync_research_persists_found_not_pending(
         query=EntityQuery(entity_key="Jane Doe", requested_attributes=["email"]),
         current_id=test_id,
         context={
-            "seed": {"id": test_id, "name": "Jane Doe", "employer": "Acme"},
+            "entity_id": test_id,
+            "bind": {"name": "Jane Doe", "employer": "Acme"},
             "specialists": {},
         },
         target_fields=["email"],
@@ -144,7 +145,7 @@ def test_contact_pre_marks_pending_before_research_runs(
     state = MyceliumGraphState(
         query=EntityQuery(entity_key="Jane", requested_attributes=["email"]),
         current_id=test_id,
-        context={"seed": {"id": test_id, "name": "Jane", "employer": "Co"}},
+        context={"entity_id": test_id, "bind": {"name": "Jane", "employer": "Co"}, "specialists": {}},
         target_fields=["email"],
     )
     fn(state)
@@ -212,7 +213,7 @@ def test_contact_retries_pending_with_last_error(
     state = MyceliumGraphState(
         query=EntityQuery(entity_key="Jane", requested_attributes=["email"]),
         current_id=test_id,
-        context={"seed": {"id": test_id, "name": "Jane", "employer": "Co"}},
+        context={"entity_id": test_id, "bind": {"name": "Jane", "employer": "Co"}, "specialists": {}},
         target_fields=["email"],
     )
     result = fn(state)
@@ -273,7 +274,7 @@ def test_contact_mixed_found_and_na_message(
             requested_attributes=["email", "phone"],
         ),
         current_id=test_id,
-        context={"seed": {"id": test_id, "name": "Jane", "employer": "Co"}},
+        context={"entity_id": test_id, "bind": {"name": "Jane", "employer": "Co"}, "specialists": {}},
         target_fields=["email", "phone"],
     )
     result = fn(state)

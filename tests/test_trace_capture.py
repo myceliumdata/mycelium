@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from agents.context import reset_context_builder
-from agents.core_identity import reset_core_identity
 from agents.factory.agent_factory import reset_agent_factory
 from agents.registry import reset_agent_registry
 from agents.seed import reset_seed_data
@@ -42,7 +41,6 @@ def test_run_query_clears_trace_id_when_tracing_disabled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     reset_storage()
-    reset_core_identity()
     reset_seed_data()
     reset_context_builder()
     reset_agent_registry()
@@ -86,7 +84,6 @@ def test_run_query_sets_trace_id_on_response_when_captured(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     reset_storage()
-    reset_core_identity()
     reset_seed_data()
     reset_context_builder()
     reset_agent_registry()

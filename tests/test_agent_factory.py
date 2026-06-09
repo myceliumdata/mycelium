@@ -58,6 +58,9 @@ def test_create_specialist_writes_files_and_registers(
     assert "def contact_specialist(" in text
     assert "core_identity" not in text
     assert "_resolve_id" in text
+    assert "entity_id" in text
+    assert "_identity_from_context" in text
+    assert "bind" in text
     assert "current_id" in text
     assert "specialist_contrib" in text
     assert "assemble_response builds the public message" in text
@@ -84,11 +87,9 @@ def test_create_specialist_writes_files_and_registers(
         query=EntityQuery(entity_key="Test User", requested_attributes=["email"]),
         current_id=test_id,
         context={
-            "seed": {
-                "id": test_id,
-                "name": "Test User",
-                "employer": "Co",
-            },
+            "entity_id": test_id,
+            "bind": {"name": "Test User", "employer": "Co"},
+            "specialists": {},
         },
         target_fields=["email"],
     )

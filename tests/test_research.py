@@ -130,7 +130,7 @@ def test_run_field_research_unavailable_marks_pending(
         specialist_name="contact_specialist",
         person_id=pid,
         target_fields=["email"],
-        context={"seed": {"name": "Ada", "employer": "Lab"}},
+        context={"entity_id": pid, "bind": {"name": "Ada", "employer": "Lab"}, "specialists": {}},
         storage=storage,
     )
     assert result.errors
@@ -195,7 +195,8 @@ def test_run_field_research_mock_llm_persists_found(
         person_id=pid,
         target_fields=["email"],
         context={
-            "seed": {"id": pid, "name": "Ada", "employer": "Lab"},
+            "entity_id": pid,
+            "bind": {"name": "Ada", "employer": "Lab"},
             "specialists": {},
         },
         storage=storage,
@@ -269,7 +270,7 @@ def test_run_field_research_timeout_marks_pending(
         specialist_name="contact_specialist",
         person_id=pid,
         target_fields=["email"],
-        context={"seed": {"name": "Ada"}},
+        context={"entity_id": pid, "bind": {"name": "Ada"}, "specialists": {}},
         storage=storage,
     )
     assert any("timed out" in e.lower() for e in result.errors)
@@ -297,7 +298,7 @@ def test_run_field_research_null_proposal_marks_all_pending(
         specialist_name="contact_specialist",
         person_id=pid,
         target_fields=["email", "phone"],
-        context={"seed": {"name": "Ada"}},
+        context={"entity_id": pid, "bind": {"name": "Ada"}, "specialists": {}},
         storage=storage,
         llm=MagicMock(),
     )

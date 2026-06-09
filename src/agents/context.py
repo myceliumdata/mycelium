@@ -1,7 +1,7 @@
-"""Build full person context: seed records + union of all specialist storage (by id).
+"""Build specialist context: read-only bind fields + extended-attrs-only storage.
 
 TODO: Eventually specialists should retrieve context from peer agents instead of the
-supervisor assembling and passing the full union on every invocation.
+supervisor assembling and passing storage snapshots on every invocation.
 """
 
 from __future__ import annotations
@@ -11,6 +11,8 @@ from typing import Any
 from agents.registry import get_agent_registry
 from agents.seed import get_seed_data
 from agents.specialists.base import SpecialistStorage
+
+BIND_FIELDS = frozenset({"name", "employer"})
 
 
 def reset_context_builder() -> None:
@@ -22,8 +24,21 @@ def get_context_builder() -> "ContextBuilder":
     return ContextBuilder()
 
 
+def bind_from_record(record: dict[str, Any]) -> dict[str, str | None]:
+    """Read-only bind slice (name, employer) from a resolved entity row."""
+    return {
+        "name": str(record.get("name") or ""),
+        "employer": record.get("employer"),
+    }
+
+
+def strip_bind_fields(record: dict[str, Any]) -> dict[str, Any]:
+    """Return specialist storage fields only (ignore legacy name/employer on read)."""
+    return {key: value for key, value in record.items() if key not in BIND_FIELDS}
+
+
 class ContextBuilder:
-    """Synchronous context assembly from seed loader + specialist JSON stores."""
+    """Synchronous context assembly from resolution rows + specialist JSON stores."""
 
     def build_full_context(
         self,
@@ -31,15 +46,13 @@ class ContextBuilder:
         *,
         seed_records: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
-        if seed_records is not None:
-            seed_part: Any = (
-                seed_records[0] if len(seed_records) == 1 else seed_records
-            )
-        else:
-            data = get_seed_data()
-            by_id = {p["id"]: p for p in data.people if p.get("id")}
-            selected = [by_id[pid] for pid in ids if pid in by_id]
-            seed_part = selected[0] if len(selected) == 1 else selected
+        resolved = self._resolve_seed_rows(ids, seed_records=seed_records)
+        entity_id: str | None = None
+        bind: dict[str, str | None] | None = None
+        if len(resolved) == 1:
+            row = resolved[0]
+            entity_id = str(row.get("id") or "") or None
+            bind = bind_from_record(row)
 
         specialist_part: dict[str, Any] = {}
         registry = get_agent_registry()
@@ -56,10 +69,26 @@ class ContextBuilder:
                 cat_slice: dict[str, Any] = {}
                 for pid in ids:
                     if pid in records:
-                        cat_slice[pid] = records[pid]
+                        cat_slice[pid] = strip_bind_fields(records[pid])
                 if cat_slice:
                     specialist_part[category] = cat_slice
             except OSError:
                 continue
 
-        return {"seed": seed_part, "specialists": specialist_part}
+        return {
+            "entity_id": entity_id,
+            "bind": bind,
+            "specialists": specialist_part,
+        }
+
+    def _resolve_seed_rows(
+        self,
+        ids: list[str],
+        *,
+        seed_records: list[dict[str, Any]] | None,
+    ) -> list[dict[str, Any]]:
+        if seed_records is not None:
+            return [r for r in seed_records if isinstance(r, dict)]
+        data = get_seed_data()
+        by_id = {p["id"]: p for p in data.people if p.get("id")}
+        return [by_id[pid] for pid in ids if pid in by_id]

@@ -15,7 +15,6 @@ import pytest
 from agents.entity_registry import reset_entity_registry
 from agents.classification import reset_category_tree
 from agents.context import reset_context_builder
-from agents.core_identity import reset_core_identity
 from agents.factory.agent_factory import reset_agent_factory
 from agents.registry import reset_agent_registry
 from agents.seed import reset_seed_data
@@ -62,7 +61,6 @@ def _final_cleanup():
         reset_entity_registry,
         reset_seed_data,
         reset_context_builder,
-        reset_core_identity,
         reset_category_tree,
         reset_agent_registry,
         reset_agent_factory,

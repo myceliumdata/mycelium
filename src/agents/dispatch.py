@@ -143,7 +143,8 @@ def build_context_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, 
     meta.setdefault("contributions", [])
 
     merged: dict[str, Any] = {
-        "seed": full_ctx.get("seed"),
+        "entity_id": full_ctx.get("entity_id"),
+        "bind": full_ctx.get("bind"),
         "specialists": full_ctx.get("specialists", {}),
         "_meta": meta,
     }

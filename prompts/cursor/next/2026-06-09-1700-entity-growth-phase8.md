@@ -1,6 +1,6 @@
 # Task: Seed from queries & network growth — Phase 8
 
-> **Queued** — Implement after Slices 1–7. Do not start until Slice 7 is in `done/`.
+> **READY** — Slice 7 + fix `1605` committed. Move to `in-progress/` to start.
 
 **Read these first (mandatory):**
 - `prompts/cursor/WORKFLOW.md`

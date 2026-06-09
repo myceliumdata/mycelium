@@ -10,7 +10,6 @@ import pytest
 
 from agents.classification import reset_category_tree
 from agents.context import reset_context_builder
-from agents.core_identity import reset_core_identity
 from agents.entity_registry import get_entity_registry, reset_entity_registry
 from agents.research_gate import RESEARCH_GATE_MESSAGE, is_research_gated, research_gate_allows
 from agents.seed import reset_seed_data
@@ -33,7 +32,6 @@ def crm_gate_env(
     reset_seed_data()
     reset_entity_registry()
     reset_context_builder()
-    reset_core_identity()
     reset_core_graph()
     reset_category_tree()
 
@@ -82,7 +80,6 @@ def crm_gate_env(
     reset_seed_data()
     reset_entity_registry()
     reset_context_builder()
-    reset_core_identity()
     reset_core_graph()
     reset_category_tree()
     reset_agent_registry()

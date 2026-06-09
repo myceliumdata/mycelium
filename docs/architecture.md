@@ -81,7 +81,7 @@ START → supervisor → build_context → invoke_specialists → assemble_respo
 
 Generated specialists (`src/agents/specialists/*_specialist.py`, Agent Factory template) implement three scenarios: has data, **synchronous** field research on cache miss (when `OPENAI_API_KEY` + `TAVILY_API_KEY` are set), or pending / N/A. Research runs via `tools.research.run_field_research` and Tavily `web_search` (`src/tools/tavily.py`). See `docs/plans/seed-data-context-architecture.md`, `docs/plans/specialist-research-phase1.md`, and Cursor slices `2026-06-09-1100`–`1400`.
 
-Legacy **enrich**, **validator**, **person_prep**, and **core_identity** remain on disk as unwired legacy; queries do not depend on them.
+Legacy **enrich**, **validator**, and **person_prep** remain on disk as unwired legacy; queries do not depend on them.
 
 ---
 

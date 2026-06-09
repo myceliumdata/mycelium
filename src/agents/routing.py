@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Any
 
-from agents.core_identity import CoreIdentity, get_core_identity
 from agents.responses import response_found, response_non_core, response_not_found
+from agents.seed import find_by_key
 from models.state import (
     MyceliumGraphState,
     QueryResponse,
@@ -37,20 +39,32 @@ def _resolve_invocation_ids(
     return resolved_thread, resolved_trace
 
 
+def _rows_to_seed_records(rows: list[dict[str, Any]]) -> list[SeedRecord]:
+    return [
+        SeedRecord(
+            id=str(row.get("id") or ""),
+            name=str(row.get("name") or ""),
+            employer=row.get("employer"),
+        )
+        for row in rows
+        if isinstance(row, dict)
+    ]
+
+
 def evaluate_supervisor_turn(
     state: MyceliumGraphState,
     *,
-    core_identity: CoreIdentity | None = None,
+    seed_lookup: Callable[[str], list[dict[str, Any]]] | None = None,
     thread_id: str | None = None,
     trace_id: str | None = None,
 ) -> SupervisorDecision:
     """
     Classify a query-only request and build the appropriate QueryResponse.
 
-    Core lookups are delegated to ``CoreIdentity``; this function only coordinates
+    Seed lookups use ``agents.seed.find_by_key``; this function only coordinates
     routing and selects response shapes (found, not-found, non-core).
     """
-    core_identity = core_identity or get_core_identity()
+    lookup = seed_lookup or find_by_key
     query = state.query
     resolved_thread_id, resolved_trace_id = _resolve_invocation_ids(
         state,
@@ -62,7 +76,7 @@ def evaluate_supervisor_turn(
         "trace_id": resolved_trace_id,
     }
 
-    seed_records = core_identity.find_by_key(query.entity_key)
+    seed_records = _rows_to_seed_records(lookup(query.entity_key))
     if not seed_records:
         return SupervisorDecision(
             response=response_not_found(query, **id_kwargs),

@@ -68,6 +68,12 @@ class SpecialistStorage:
             strategy = {
                 "strategy": "flat_json_v1",
                 "version": "1.0",
+                "bind_field_ownership": "registry_or_seed",
+                "stored_fields": "extended_attributes_only",
+                "notes": (
+                    "name and employer are read-only bind fields from entity resolution; "
+                    "do not persist them in storage.json (legacy keys are ignored on read)."
+                ),
                 "last_migrated": None,
                 "upgrade_path": {
                     "flat_json_v1": {
