@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import importlib
 from pathlib import Path
 from typing import Any
 
@@ -100,12 +99,19 @@ def test_framework_specialist_uses_entity_vocab(
 
 @pytest.mark.smoke
 def test_framework_demographic_specialist_import_module_bind_context(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Registry fallback path: agents.specialists.demographic_specialist uses bind, not seed."""
+    """Registry file-load path: generated demographic_specialist uses bind, not seed."""
     monkeypatch.setattr("tools.research.is_research_available", lambda: False)
-    mod = importlib.import_module("agents.specialists.demographic_specialist")
-    fn = mod.demographic_specialist
+    fn = _bootstrap_specialist(
+        tmp_path,
+        monkeypatch,
+        category="demographic",
+        agent_name="demographic_specialist",
+        description="Test demographic specialist",
+        examples=["age"],
+    )
     state = MyceliumGraphState(
         query=EntityQuery(entity_key="Jane", requested_attributes=["age"]),
         current_id="test-uuid",
@@ -122,19 +128,52 @@ def test_framework_demographic_specialist_import_module_bind_context(
     assert "seed" not in state.context
 
 
+def _assert_specialist_source_uses_bind_not_seed(text: str) -> None:
+    assert 'ctx.get("seed")' not in text
+    assert 'context.get("seed")' not in text
+    assert "entity_id" in text
+    assert "_research_context" in text
+
+
 @pytest.mark.smoke
-def test_framework_specialists_on_disk_use_bind_not_seed() -> None:
-    specialists_dir = (
-        Path(__file__).resolve().parent.parent / "src" / "agents" / "specialists"
+def test_framework_specialist_template_uses_bind_not_seed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Factory template and rendered specialists use entity_id + bind, not seed."""
+    template_path = (
+        Path(__file__).resolve().parent.parent
+        / "src"
+        / "agents"
+        / "factory"
+        / "templates"
+        / "specialist_agent.py.j2"
     )
+    _assert_specialist_source_uses_bind_not_seed(
+        template_path.read_text(encoding="utf-8"),
+    )
+
+    specialists_dir = tmp_path / "specialists"
+    reg_path = tmp_path / "reg.json"
+    monkeypatch.setenv("MYCELIUM_AGENT_REGISTRY_PATH", str(reg_path))
+    monkeypatch.setenv("MYCELIUM_SPECIALISTS_DIR", str(specialists_dir))
+    monkeypatch.setenv("MYCELIUM_AGENT_DATA_DIR", str(tmp_path / "agent_data"))
+    reset_agent_registry()
+    reset_agent_factory()
+    factory = get_agent_factory()
+    for category, agent_name, _field, examples in _SPECIALIST_SPECS:
+        factory.create_specialist(
+            category,
+            agent_name,
+            f"Test {category} specialist",
+            examples=examples,
+            auto_commit=False,
+        )
+
     paths = sorted(specialists_dir.glob("*_specialist.py"))
     assert len(paths) == 4
     for path in paths:
-        text = path.read_text(encoding="utf-8")
-        assert 'ctx.get("seed")' not in text
-        assert 'context.get("seed")' not in text
-        assert "entity_id" in text
-        assert "_research_context" in text
+        _assert_specialist_source_uses_bind_not_seed(path.read_text(encoding="utf-8"))
 
 
 @pytest.mark.smoke
