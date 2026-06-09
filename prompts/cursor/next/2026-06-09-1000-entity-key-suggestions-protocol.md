@@ -1,5 +1,7 @@
 # Task: Entity key suggestions — protocol slice (Phase 1)
 
+> **ON HOLD** — Part of batch 1 (slices 1–4). Do not start until Paul approves all batch specs.
+
 **Read these first (mandatory):**
 - [`docs/plans/entity-protocol-and-registry-program.md`](../../docs/plans/entity-protocol-and-registry-program.md) — full program (Paul approved)
 - `prompts/cursor/WORKFLOW.md`
