@@ -16,6 +16,7 @@ from tools.research import (
     ResearchRunResult,
     _persist_proposal,
     _validate_and_build_record,
+    build_research_prompts,
     is_research_available,
     load_category_metadata,
     research_min_confidence,
@@ -32,6 +33,63 @@ def categories_seed_tree(
     monkeypatch.setenv("MYCELIUM_CATEGORIES_PATH", str(tmp_path / "categories.json"))
     reset_category_tree()
     get_category_tree()
+
+
+@pytest.mark.smoke
+def test_build_research_prompts_with_employer_mandates_disambiguation() -> None:
+    system, user = build_research_prompts(
+        category="relationships",
+        specialist_name="relationships_specialist",
+        person_id="uuid-angela",
+        target_fields=["spouse"],
+        context={
+            "entity_id": "uuid-angela",
+            "bind": {"name": "Angela Murphy", "employer": "Talentcare"},
+            "storage": {},
+        },
+    )
+    assert user.startswith("DISAMBIGUATION (mandatory):")
+    assert "Talentcare" in user
+    assert "FIRST web_search" in user
+    assert "Angela Murphy spouse" in user
+    assert "Employer disambiguation (mandatory)" in system
+    assert "FIRST web_search" in system
+    assert "Do NOT run a name-only query" in system
+
+
+@pytest.mark.smoke
+def test_build_research_prompts_without_employer_omits_disambiguation() -> None:
+    system, user = build_research_prompts(
+        category="relationships",
+        specialist_name="relationships_specialist",
+        person_id="uuid-jane",
+        target_fields=["spouse"],
+        context={
+            "entity_id": "uuid-jane",
+            "bind": {"name": "Jane", "employer": None},
+            "storage": {},
+        },
+    )
+    assert "DISAMBIGUATION" not in user
+    assert "Employer disambiguation (mandatory)" not in system
+    assert "name-only searches are allowed" in system
+
+
+@pytest.mark.smoke
+def test_build_research_prompts_whitespace_employer_treated_as_absent() -> None:
+    system, user = build_research_prompts(
+        category="contact",
+        specialist_name="contact_specialist",
+        person_id="uuid-jane",
+        target_fields=["email"],
+        context={
+            "entity_id": "uuid-jane",
+            "bind": {"name": "Jane", "employer": "   "},
+            "storage": {},
+        },
+    )
+    assert "DISAMBIGUATION" not in user
+    assert "Employer disambiguation (mandatory)" not in system
 
 
 @pytest.mark.smoke
@@ -210,6 +268,7 @@ def test_run_field_research_mock_llm_persists_found(
     assert entry["value"] == "ada@lab.com"
     audit = data.get("meta", {}).get("research_audit", [])
     assert audit and audit[-1]["tool_calls_count"] == 1
+    assert audit[-1]["context_bind"] == {"name": "Ada", "employer": "Lab"}
 
 
 @pytest.mark.smoke

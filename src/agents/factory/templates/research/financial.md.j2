@@ -1,1 +1,4 @@
 Financial research: funding, investments, and financial roles from public filings and news. Require strong corroboration; mark na when data is indirect or unverified.
+{% if bind_has_employer %}
+Include "{{ bind_employer }}" (or a company token) in your FIRST web_search query.
+{% endif %}

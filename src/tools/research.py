@@ -119,6 +119,25 @@ def _jinja_env() -> jinja2.Environment:
     )
 
 
+def _bind_prompt_vars(context: dict[str, Any]) -> tuple[str, str, bool]:
+    """Extract bind name/employer for research prompt templates."""
+    bind = context.get("bind")
+    if not isinstance(bind, dict):
+        return "", "", False
+    name = str(bind.get("name") or "").strip()
+    employer = str(bind.get("employer") or "").strip()
+    return name, employer, bool(employer)
+
+
+def _context_bind_snapshot(context: dict[str, Any]) -> dict[str, str] | None:
+    """Name + employer only for research audit entries."""
+    bind = context.get("bind")
+    if not isinstance(bind, dict):
+        return None
+    name, employer, has_employer = _bind_prompt_vars(context)
+    return {"name": name, "employer": employer if has_employer else ""}
+
+
 def build_research_prompts(
     *,
     category: str,
@@ -131,17 +150,24 @@ def build_research_prompts(
     env = _jinja_env()
     meta = load_category_metadata(category)
     min_conf = research_min_confidence()
+    bind_name, bind_employer, bind_has_employer = _bind_prompt_vars(context)
+    bind_kwargs = {
+        "bind_name": bind_name,
+        "bind_employer": bind_employer,
+        "bind_has_employer": bind_has_employer,
+    }
 
     system_tpl = env.get_template("research/_system.j2")
     system = system_tpl.render(
         category=category,
         specialist_name=specialist_name,
         min_confidence=min_conf,
+        **bind_kwargs,
     )
 
     fragment_name = f"research/{category.strip().lower()}.md.j2"
     try:
-        fragment = env.get_template(fragment_name).render().strip()
+        fragment = env.get_template(fragment_name).render(**bind_kwargs).strip()
     except jinja2.TemplateNotFound:
         fragment = ""
 
@@ -161,6 +187,9 @@ def build_research_prompts(
     ]
     if fragment:
         user_parts.insert(1, f"Category guidance:\n{fragment}")
+    if bind_has_employer:
+        disambiguation = env.get_template("research/_disambiguation.j2").render(**bind_kwargs).strip()
+        user_parts.insert(0, disambiguation)
     user = "\n\n".join(user_parts)
     return system, user
 
@@ -322,6 +351,7 @@ def _append_research_audit(
     fields_updated: list[str],
     tool_calls_count: int,
     errors: list[str],
+    context_bind: dict[str, str] | None = None,
 ) -> None:
     meta = data.setdefault("meta", {})
     if not isinstance(meta, dict):
@@ -329,17 +359,18 @@ def _append_research_audit(
     audit = meta.setdefault("research_audit", [])
     if not isinstance(audit, list):
         return
-    audit.append(
-        {
-            "at": datetime.now(timezone.utc).isoformat(),
-            "category": category,
-            "specialist": specialist_name,
-            "person_id": person_id,
-            "fields_updated": fields_updated,
-            "tool_calls_count": tool_calls_count,
-            "errors": errors,
-        },
-    )
+    entry: dict[str, Any] = {
+        "at": datetime.now(timezone.utc).isoformat(),
+        "category": category,
+        "specialist": specialist_name,
+        "person_id": person_id,
+        "fields_updated": fields_updated,
+        "tool_calls_count": tool_calls_count,
+        "errors": errors,
+    }
+    if context_bind is not None:
+        entry["context_bind"] = context_bind
+    audit.append(entry)
 
 
 def _pending_record(
@@ -477,6 +508,7 @@ def _execute_research(
         fields_updated=updated,
         tool_calls_count=tool_calls_count,
         errors=errors,
+        context_bind=_context_bind_snapshot(context),
     )
     storage.save(data)
 

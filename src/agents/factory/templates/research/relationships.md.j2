@@ -1,1 +1,4 @@
 Relationships research: spouse, partner, family ties from reputable public sources only. Do not infer private relationships without clear evidence.
+{% if bind_has_employer %}
+When bind employer is "{{ bind_employer }}": your FIRST web_search must include the employer token — do not run name-only queries. Bad: "{{ bind_name }} spouse". Good: "{{ bind_name }} {{ bind_employer }} spouse". Reject IMDB, Facebook, and entertainment profiles that do not corroborate this employer.
+{% endif %}

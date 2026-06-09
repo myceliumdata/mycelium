@@ -181,6 +181,8 @@ Backend shipped in entity protocol Slices 1–8; operator-facing admin work defe
 
 - [ ] **Operator attribute correction** — Research can return wrong values (e.g. Paul Murphy @ Ormi Labs → LinkedIn `paul-murphy-003360` is not Paul). Operators need to **view and update** extended attributes in specialist storage (LinkedIn, email, etc.): correct value, mark source as operator override, prevent naive re-research from overwriting without policy. Surfaces: admin UI edit on entity field drill-down (primary); optional CLI/MCP operator tool later. Ties to attribution (`attr_sources` / provenance) and re-research/staleness policy.
 - [ ] **Operator force re-research** — Mechanism to **retry** a specialist lookup for a specific entity + attribute (not only edit the stored value). Today retries are automatic for `pending` / `last_error` (env-gated age); operators need an explicit **“try again”** that clears or supersedes a stuck/failed/wrong result and re-invokes research. Optional **operator context** on retry (hint text, known URL, disambiguation notes) passed into the research prompt / `_research_context` so the agent has more to work with. Distinct from attribute correction (manual override) and from naive re-query (same thread may hit cache). Surfaces: admin UI action on entity field drill-down (primary); optional CLI/MCP operator tool. Policy: how hints merge with bind + storage; provenance marks forced retry vs automatic.
+- [x] **Research prompt bind disambiguation** — When `bind.employer` is set, research prompts mandate employer in first `web_search` (system + disambiguation block + category fragments); `context_bind` on `research_audit`. Shipped slice `2026-06-09-2000-research-prompt-bind-disambiguation`.
+- [ ] **Research prompt peer context** — Slice 7 narrowed `_research_context` to bind + own-category storage; Phase 1 plan had full `build_context` (all specialist slices). Pass peer `context.specialists` into research prompts so relationships (etc.) see professional/social findings. Cursor slice `2026-06-09-2010-research-prompt-full-peer-context`.
 - [ ] **Data attribution (product — USP)** — core registry fields shipped in Slice 8; follow-on: MCP/`describe_network` surfacing, admin UI (**Attribution per attribute** in Admin UI v2), staleness/re-research policy. Broader provenance story not yet designed.
 - [ ] **Empty-seed network demo (launch v2)** — deferred from Slice 8 (Q8b). `examples/networks/empty-crm/` or similar after Slices 1–7 land.
 - [ ] **Seed export tooling (`export-growth-seed`)** — deferred from Slice 8 (Q8c). Operator script: validated `entities.json` → `seed.json` fragment.
@@ -225,4 +227,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-09 (Admin UI v2 read-only surfaces shipped; auth + operator write actions remain)
+Last updated: 2026-06-09 (research bind disambiguation shipped; peer context slice 2010 queued)

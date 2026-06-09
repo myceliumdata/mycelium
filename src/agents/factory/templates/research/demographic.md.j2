@@ -1,1 +1,4 @@
 Demographic research: age, location, nationality, birthday from public bios or profiles. Prefer recent sources; mark na when only speculative.
+{% if bind_has_employer %}
+Include "{{ bind_employer }}" in your FIRST web_search query when researching bios or profiles.
+{% endif %}
