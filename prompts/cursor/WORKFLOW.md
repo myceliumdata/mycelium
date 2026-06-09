@@ -109,6 +109,7 @@ When Cursor finishes:
    - `output.md` — A clear summary of what was changed, decisions made, and open questions. Include **"For Grok + Paul"** with any `TODO.md` updates needed (Cursor does not apply them).
    - Any relevant diffs, new files, or notes.
 4. **It must remove only the specific file it claimed** from `prompts/cursor/in-progress/`.
+5. **Do not `git commit` to `main` (or push) until Grok + Paul review.** Leave changes in the working tree (or on a branch if Paul prefers). Paul commits after `review.md` approval — or after any blocking **fix slice** is also approved. Cursor may note suggested commit message in `output.md` only.
    - Do **not** delete, move, or touch any other files that may be present in `in-progress/` at the time of completion.
    - This rule is **mandatory** for safe parallel execution. When multiple Cursor agents (or multiple sessions) are running, each agent is responsible **only** for the file it personally claimed. "Helpful" cleanup of other files can corrupt or delete work being done by other agents.
 
@@ -161,7 +162,7 @@ Every prompt in `prompts/cursor/next/` **must** contain:
 - Explicit instructions on **output location** and **required artifacts**
 - Clear instructions telling Cursor to **move the prompt file to `in-progress/`** before starting work
 - The **Governance** block below (mandatory — do not tell Cursor to edit `TODO.md`)
-- Guidance on commit hygiene (code + `output.md`; not `TODO.md`)
+- **No commit before review** — see §3 step 5
 
 ### Governance block (copy into every new prompt)
 

@@ -129,7 +129,8 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 
 | Slice | Spec | Cursor prompt | Status |
 |-------|------|---------------|--------|
-| 1 | [`entity-key-suggestions-phase1.md`](docs/plans/entity-key-suggestions-phase1.md) | `1000` | **Ready** |
+| 1 | [`entity-key-suggestions-phase1.md`](docs/plans/entity-key-suggestions-phase1.md) | `1000` | Reviewed — fix `1005` |
+| 1f | — | `1005` checkpoint serde | **Ready** (blocks `1100`) |
 | 2 | [`entity-outcome-infrastructure-phase2.md`](docs/plans/entity-outcome-infrastructure-phase2.md) | `1100` | Queued |
 | 3 | [`entity-unknown-mvr-phase3.md`](docs/plans/entity-unknown-mvr-phase3.md) | `1200` | Queued |
 | 4 | [`entity-registry-bind-phase4.md`](docs/plans/entity-registry-bind-phase4.md) | `1300` | Queued |

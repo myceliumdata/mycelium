@@ -1,6 +1,6 @@
 # Task: Entity outcome infrastructure — Phase 2
 
-> **Queued** — Implement after Slice 1 is in `done/`.
+> **Queued** — Implement after Slice 1 fix `1005` is reviewed and approved.
 
 **Read these first (mandatory):**
 - `prompts/cursor/WORKFLOW.md`
