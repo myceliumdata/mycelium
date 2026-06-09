@@ -1,6 +1,6 @@
 # Entity outcome infrastructure — Phase 2 spec (draft)
 
-**Status:** Draft for Paul review (batch 1: slices 2–4)  
+**Status:** Locked (Paul, June 2026) — backend only; admin deferred to [`admin-ui-backlog.md`](admin-ui-backlog.md)  
 **Program:** [`entity-protocol-and-registry-program.md`](entity-protocol-and-registry-program.md)  
 **Depends on:** Slice 1 (`entity-key-suggestions-phase1.md`)  
 **Cursor slice:** TBD after Paul approves batch 1
@@ -34,7 +34,7 @@ Harden **outcome consistency** across every query exit path. No new negotiation 
 
 ### Out of scope
 
-- `entity_unknown`, registry, `binding`, admin UI feature work (see questions below)
+- `entity_unknown`, registry, `binding`, admin UI (see [`admin-ui-backlog.md`](admin-ui-backlog.md))
 - Changing message text except where `outcome` was missing
 
 ---
@@ -72,7 +72,6 @@ After Slice 1 + 2, every `QueryResponse` from `run_query` must set `outcome`:
 
 ---
 
-## Open question for Paul
+## Paul decisions (locked)
 
-**Admin UI (slice 2):** Show `outcome` on network overview / entity drill-down, or defer to a later admin polish slice?  
-**Proposal:** defer — Slice 2 is backend + schema only; admin ignoring new fields is fine.
+- **Admin UI:** deferred — backlog items #1–2 in [`admin-ui-backlog.md`](admin-ui-backlog.md)

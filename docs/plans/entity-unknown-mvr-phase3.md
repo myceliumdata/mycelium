@@ -1,6 +1,6 @@
 # Unknown entity + MVR policy — Phase 3 spec (draft)
 
-**Status:** Draft for Paul review (batch 1: slices 2–4)  
+**Status:** Locked (Paul, June 2026) — pending Q4e in Slice 4 for full batch Cursor handoff  
 **Program:** [`entity-protocol-and-registry-program.md`](entity-protocol-and-registry-program.md)  
 **Depends on:** Slices 1–2  
 **Cursor slice:** TBD after Paul approves batch 1
@@ -82,11 +82,9 @@ Registry lookup not in Slice 3 (Slice 4). Seed exact + suggest only.
 
 ---
 
-## `entity_under_specified` — deferred to Slice 4
+## `entity_under_specified` — deferred to Slice 4 (locked)
 
-**Proposal:** Slice 3 ships **`entity_unknown` only**. `entity_under_specified` first appears in Slice 4 when `EntityQuery.binding` is partial (e.g. empty employer string). Avoids an outcome that never fires in Slice 3.
-
-*Paul: confirm or request both outcomes in Slice 3.*
+Slice 3 ships **`entity_unknown` only**. `entity_under_specified` first appears in Slice 4 when `EntityQuery.binding` is partial.
 
 ---
 
@@ -130,7 +128,7 @@ Add to `build_network_capabilities().policy`:
 | `Paul Murphy` + `email` | `entity_unknown`, `required_fields=["employer"]`, no specialist audit lines |
 | `Andrea Kalman` + `email` | `entity_key_unresolved` (Slice 1, not unknown) |
 | `Aaron Holiday` + `email` | normal assembled path |
-| `NoSuchPerson-xyz` + no close suggest | `entity_unknown` (not bare `not_found`) — **see open question** |
+| `NoSuchPerson-xyz` + no close suggest | `entity_unknown` (not bare `not_found`) |
 
 ---
 
@@ -138,17 +136,16 @@ Add to `build_network_capabilities().policy`:
 
 - `EntityQuery.binding` (Slice 4)
 - Registry / persist
-- `entity_under_specified` (unless Paul wants in Slice 3)
+- `entity_under_specified` (Slice 4)
 - Research gate for seed hits (Slice 6)
 
 ---
 
-## Open questions for Paul
+## Paul decisions (locked)
 
-1. **`not_found` vs `entity_unknown`:** Should every zero-match with no suggestions be `entity_unknown`, eliminating bare `not_found` for person queries? **Proposal: yes** — `not_found` reserved for empty/invalid `entity_key` only.
-
-2. **`entity_under_specified` timing:** Slice 4 only? (proposal: yes)
-
-3. **Identity-only query** (`Paul Murphy`, no `requested_attributes`): Still `entity_unknown` + `required_fields`, or softer message without `required_fields` until attrs requested? **Proposal: always `entity_unknown` + `required_fields` when MVR incomplete — agents learn bind requirements early.**
-
-4. **CRM `network.json`:** Add `mvr` to committed example in this slice? **Proposal: yes.**
+| # | Decision |
+|---|----------|
+| Q3a | Zero match + no suggestions → **`entity_unknown`**; bare `not_found` only for empty/invalid `entity_key` |
+| Q3b | **`entity_under_specified` in Slice 4 only** |
+| Q3c | Identity-only unknown → **`entity_unknown` + `required_fields`** |
+| Q3d | Add **`mvr` to `examples/networks/crm/network.json`** in this slice |

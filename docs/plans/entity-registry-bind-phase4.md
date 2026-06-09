@@ -1,6 +1,6 @@
 # Entity registry + provisional bind — Phase 4 spec (draft)
 
-**Status:** Draft for Paul review (batch 1: slices 2–4)  
+**Status:** Locked except Q4e (Paul, June 2026)  
 **Program:** [`entity-protocol-and-registry-program.md`](entity-protocol-and-registry-program.md)  
 **Depends on:** Slices 1–3  
 **Cursor slice:** TBD after Paul approves batch 1
@@ -100,13 +100,13 @@ Runtime file under `network_root`, gitignored (like `categories.json`). Atomic s
 | `binding` partial / empty | `entity_under_specified` + `required_fields` |
 | `binding` absent | `entity_unknown` (Slice 3 behavior) |
 
-**Duplicate bind key** (`paul murphy|acme corp` exists): return existing entity (idempotent), outcome `entity_bound_provisional` or `found` — **see open question**.
+**Duplicate bind key** (`paul murphy|acme corp` exists): idempotent return — outcome per **Q4e** (Paul pending).
 
 **Same name, different employer:** new uuid4, new row (two Paul Murphys allowed).
 
 ---
 
-## `entity_bound_provisional` response (proposal)
+## `entity_bound_provisional` response (locked)
 
 ```json
 {
@@ -124,17 +124,17 @@ Runtime file under `network_root`, gitignored (like `categories.json`). Atomic s
 }
 ```
 
-**Proposal:** Include minimal identity in `results` so agents can store `id`. No requested attributes researched in Slice 4.
+Include **`id` + `name` + `employer` in `results`** — id is the precise handle for follow-ups across threads. No requested attributes researched in Slice 4.
 
 ---
 
-## Re-query after bind
+## Re-query after bind (locked)
 
-**Proposal:** Visiting agent may use:
+**Preferred:** `entity_key: "<uuid>"` — direct registry lookup; works across threads without repeating MVR.
 
-- `entity_key: "<uuid>"` — direct id lookup in registry
-- `entity_key: "Paul Murphy"` + `binding: {"employer": "Acme Corp"}` — bind_index lookup
-- `entity_key: "Paul Murphy"` alone — if exactly one registry row or seed row matches name only? **Ambiguous — see open question**
+**Also supported:** `entity_key: "Paul Murphy"` + `binding: {"employer": "Acme Corp"}` — bind_index lookup.
+
+**Name-only `entity_key`:** when registry has **0 or 2+** rows for that name, require `binding.employer` or uuid (no guessing).
 
 ---
 
@@ -167,14 +167,38 @@ Runtime file under `network_root`, gitignored (like `categories.json`). Atomic s
 
 ---
 
-## Open questions for Paul
+## Paul decisions (locked)
 
-1. **`results` on `entity_bound_provisional`:** Include `id`+`name`+`employer` (proposal) or empty `results` like unresolved?
+| # | Decision |
+|---|----------|
+| Q4a | **`results` includes `id`, `name`, `employer`** on bind — id preferred for follow-ups |
+| Q4b | **Uuid `entity_key` preferred** for follow-ups; name + `binding` also supported |
+| Q4c | Name-only key → require **`binding.employer` or uuid** when 0 or 2+ registry matches |
+| Q4d | **Ignore unknown `binding` keys** — MVR fields only; reduces malicious/extra-key injection |
+| Q4e | **Pending** — see below |
 
-2. **Re-query identity:** After bind, is `entity_key` + `binding` the canonical retry pattern, or should we encourage uuid-only follow-ups?
+---
 
-3. **Name-only re-query** when multiple Paul Murphys exist in registry: return multiple matches in `results` (like seed Kevin Zhang) or require employer in `binding`? **Proposal: require `binding.employer` for name-only keys when registry has 0 or 2+ bind matches.**
+## Q4e — idempotent re-bind (Paul to decide)
 
-4. **Invalid `binding` keys:** Silently ignore vs `outcome` error? **Proposal: ignore unknown keys; validate required MVR keys only.**
+**Scenario:** Paul Murphy @ Acme is **already** in registry (provisional). Visiting agent sends **again**:
 
-5. **Idempotent re-bind:** Same bind key + `email` requested → `entity_bound_provisional` again or `found` with same id? **Proposal: `found` if already provisional and complete MVR.**
+```json
+{
+  "entity_key": "Paul Murphy",
+  "binding": { "employer": "Acme Corp" },
+  "requested_attributes": ["email"]
+}
+```
+
+Or the same query using `entity_key: "<existing-uuid>"`.
+
+Nothing new to persist — bind key already exists. **Which outcome and behavior?**
+
+| Option | Outcome | `results` | `message` (summary) | Implications |
+|--------|---------|-----------|---------------------|--------------|
+| **A** | `found` | id + name + employer | “Record already bound.” | Treats repeat bind as identity resolution; agent can store id once; email still gated until Slice 6 |
+| **B** | `entity_bound_provisional` | same | “Provisional bind confirmed.” | Repeats bind semantics every time; may confuse agents that already bound |
+| **C** | `found` if no attrs requested; if `email` requested → new outcome or message clarifying “bound but not validated / research not allowed” | id + … | Explicit about why email missing | Clearest for agents learning negotiation phases |
+
+**Recommendation:** **Option A** for Slice 4 — duplicate bind resolves to **`found`** with same id; **no email research** until Slice 6. Option C nuance can live in `message` text without a new outcome.
