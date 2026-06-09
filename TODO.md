@@ -62,19 +62,19 @@ Backend shipped in entity protocol Slices 1–8; operator-facing admin work defe
 **Infrastructure**
 
 - [ ] **Admin auth** — today localhost-only, no credentials; design session/token or operator login before remote admin.
-- [ ] **Port / bind robustness** — wire `MYCELIUM_ADMIN_UI_PORT` through Vite + `restart-admin`; less hardcoded demo assumptions.
+- [x] **Port / bind robustness** — `MYCELIUM_ADMIN_UI_PORT` wired through Vite + `restart-admin` (`2026-06-09`).
 
 **Read-only protocol surfaces** (entity protocol Slices 1–8)
 
-- [ ] **Outcome badges** — show `outcome` on query/status surfaces (entity drill-down, network overview when status reflects last query).
-- [ ] **Key suggestions** — show `suggestions[]` when outcome is `entity_key_unresolved` (debug visiting-agent loops).
-- [ ] **Required fields** — show `required_fields` when outcome is `entity_unknown` (negotiation state).
-- [ ] **Registry-backed entities** — distinguish bootstrap seed rows from `entities.json` grown rows (provisional vs seed).
-- [ ] **Binding context** — display `binding` when status API exposes negotiation metadata (likely blocked on API).
-- [ ] **Validation state** — per-field `provisional` / `validated` on entity drill-down.
-- [ ] **Research gate indicator** — show when research is gated vs allowed (operator debugging for Tavily spend).
-- [ ] **Bind vs extended fields** — registry vs specialist-owned fields separately on entity drill-down.
-- [ ] **Attribution per attribute** — `attr_sources` + `last_researched_at` (data attribution USP).
+- [x] **Outcome badges** — `POST /query` + Run query panel shows `outcome` badge (`2026-06-09`).
+- [x] **Key suggestions** — entity lookup + query panel show `suggestions[]` on near-miss (`2026-06-09`).
+- [x] **Required fields** — entity lookup + query panel show `required_fields` on unknown (`2026-06-09`).
+- [x] **Registry-backed entities** — status lookup uses seed + `entities.json`; match source + validation on drill-down (`2026-06-09`).
+- [ ] **Binding context** — query panel accepts optional `binding.employer`; full negotiation metadata on `/status` still open.
+- [x] **Validation state** — bind-field status + match `validation_state` on entity drill-down (`2026-06-09`).
+- [x] **Research gate indicator** — `research_allowed` on single-match drill-down (`2026-06-09`).
+- [x] **Bind vs extended fields** — entity field table separates `bind` vs `extended` rows (`2026-06-09`).
+- [x] **Attribution per attribute** — `attr_source` + `last_researched_at` columns when registry row exists (`2026-06-09`).
 
 **Operator write actions** (see also Entity program deferred follow-ups)
 
@@ -225,4 +225,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-09 (admin UI backlog cleared → Admin UI v2 in TODO; operator correction + force re-research)
+Last updated: 2026-06-09 (Admin UI v2 read-only surfaces shipped; auth + operator write actions remain)

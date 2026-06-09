@@ -1,13 +1,38 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { fetchCapabilities, fetchHealth, fetchStatus } from "./api";
+import { fetchCapabilities, fetchHealth, fetchStatus, runQuery } from "./api";
 import { networkLabel } from "./format";
 import type {
   CapabilitiesResponse,
   HealthResponse,
+  QueryResponse,
   StatusResponse,
 } from "./types";
 
 const POLL_MS = 3000;
+
+function outcomeBadgeClass(outcome: string | null | undefined): string {
+  if (!outcome) {
+    return "badge neutral";
+  }
+  if (
+    outcome === "found" ||
+    outcome === "assembled" ||
+    outcome === "entity_validated"
+  ) {
+    return "badge ok";
+  }
+  if (outcome === "error" || outcome === "not_found") {
+    return "badge bad";
+  }
+  return "badge neutral";
+}
+
+function parseAttributes(raw: string): string[] {
+  return raw
+    .split(/[,\s]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
 
 export default function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
@@ -25,6 +50,14 @@ export default function App() {
 
   const [entityLookupOpen, setEntityLookupOpen] = useState(false);
   const [guideCardOpen, setGuideCardOpen] = useState(false);
+  const [queryPanelOpen, setQueryPanelOpen] = useState(false);
+
+  const [queryEntityKey, setQueryEntityKey] = useState("");
+  const [queryAttributes, setQueryAttributes] = useState("");
+  const [queryEmployer, setQueryEmployer] = useState("");
+  const [queryLoading, setQueryLoading] = useState(false);
+  const [queryError, setQueryError] = useState<string | null>(null);
+  const [queryResult, setQueryResult] = useState<QueryResponse | null>(null);
 
   const statusInFlight = useRef(false);
   const capsInFlight = useRef(false);
@@ -190,10 +223,52 @@ export default function App() {
     });
   };
 
+  const onQuerySubmit = (event: FormEvent) => {
+    event.preventDefault();
+    const key = queryEntityKey.trim();
+    if (!key) {
+      return;
+    }
+    setQueryLoading(true);
+    setQueryError(null);
+    void (async () => {
+      try {
+        const binding =
+          queryEmployer.trim() !== ""
+            ? { employer: queryEmployer.trim() }
+            : undefined;
+        const result = await runQuery({
+          entity_key: key,
+          requested_attributes: parseAttributes(queryAttributes),
+          binding,
+        });
+        setQueryResult(result);
+      } catch (err) {
+        setQueryError(err instanceof Error ? err.message : String(err));
+        setQueryResult(null);
+      } finally {
+        setQueryLoading(false);
+      }
+    })();
+  };
+
+  const applySuggestion = (suggestedKey: string) => {
+    setQueryEntityKey(suggestedKey);
+    setEntityInput(suggestedKey);
+    setEntityKey(suggestedKey);
+    void fetchStatusNow({
+      category: entityCategoryLimit || undefined,
+      entity: suggestedKey,
+    });
+  };
+
   const storedSpecialists =
     status?.specialists.filter((spec) => spec.record_count > 0) ?? [];
 
   const ontologyCategories = capabilities?.ontology.categories ?? [];
+
+  const singleMatch =
+    status?.entity_matches === 1 ? status.entity_match_summaries[0] : null;
 
   return (
     <div className="app">
@@ -221,6 +296,10 @@ export default function App() {
         <section className="card">
           <h2>Overview</h2>
           <p className="status-line">✅ Seed ({status.seed_people_count})</p>
+          <p className="status-line">
+            {status.registry_entity_count > 0 ? "✅" : "❌"} Registry (
+            {status.registry_entity_count})
+          </p>
           <p className="status-line">
             {status.ontology_present ? "✅" : "❌"} Categories
           </p>
@@ -270,6 +349,93 @@ export default function App() {
       {status && (
         <details
           className="card collapsible-card"
+          open={queryPanelOpen}
+          onToggle={(event) => setQueryPanelOpen(event.currentTarget.open)}
+        >
+          <summary className="collapsible-summary disclosure-summary">
+            Run query
+          </summary>
+          <form className="row-actions query-form" onSubmit={onQuerySubmit}>
+            <input
+              type="search"
+              placeholder="Entity key"
+              value={queryEntityKey}
+              onChange={(e) => setQueryEntityKey(e.target.value)}
+              aria-label="Query entity key"
+            />
+            <input
+              type="text"
+              placeholder="Attributes (email, linkedin)"
+              value={queryAttributes}
+              onChange={(e) => setQueryAttributes(e.target.value)}
+              aria-label="Requested attributes"
+            />
+            <input
+              type="text"
+              placeholder="Binding employer (optional)"
+              value={queryEmployer}
+              onChange={(e) => setQueryEmployer(e.target.value)}
+              aria-label="Binding employer"
+            />
+            <button type="submit" disabled={queryLoading}>
+              {queryLoading ? "Running…" : "Run"}
+            </button>
+          </form>
+          {queryError && <p className="error">Query error: {queryError}</p>}
+          {queryResult && (
+            <div className="query-result">
+              <p>
+                Outcome:{" "}
+                <span className={outcomeBadgeClass(queryResult.outcome)}>
+                  {queryResult.outcome ?? "—"}
+                </span>
+              </p>
+              {queryResult.required_fields.length > 0 && (
+                <p>
+                  <strong>Required fields:</strong>{" "}
+                  {queryResult.required_fields.join(", ")}
+                </p>
+              )}
+              {queryResult.suggestions.length > 0 && (
+                <div>
+                  <p>
+                    <strong>Suggestions:</strong>
+                  </p>
+                  <ul className="suggestion-list">
+                    {queryResult.suggestions.map((item) => (
+                      <li key={item.id}>
+                        <button
+                          type="button"
+                          className="link-button"
+                          onClick={() => applySuggestion(item.entity_key)}
+                        >
+                          {item.entity_key}
+                        </button>{" "}
+                        <span className="muted">
+                          score {item.score}
+                          {item.employer ? ` · ${item.employer}` : ""}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {queryResult.message && (
+                <p className="query-message">{queryResult.message}</p>
+              )}
+              {queryResult.results.length > 0 && (
+                <pre className="query-json">
+                  {JSON.stringify(queryResult.results, null, 2)}
+                </pre>
+              )}
+            </div>
+          )}
+        </details>
+      )}
+
+      {status && (
+        <details
+          className="card collapsible-card"
           open={entityLookupOpen}
           onToggle={(event) => setEntityLookupOpen(event.currentTarget.open)}
         >
@@ -279,7 +445,7 @@ export default function App() {
           <form className="row-actions" onSubmit={onEntitySubmit}>
             <input
               type="search"
-              placeholder="Name or id"
+              placeholder="Name, employer, or id"
               value={entityInput}
               onChange={(e) => setEntityInput(e.target.value)}
               aria-label="Entity key"
@@ -310,13 +476,77 @@ export default function App() {
               <p>
                 Lookup: <code>{entityKey}</code> — {status.entity_matches}{" "}
                 match(es)
+                {status.entity_resolution_kind && (
+                  <>
+                    {" "}
+                    ·{" "}
+                    <span className="muted">
+                      {status.entity_resolution_kind}
+                    </span>
+                  </>
+                )}
               </p>
+              {status.entity_required_fields.length > 0 && (
+                <p>
+                  <strong>Required fields:</strong>{" "}
+                  {status.entity_required_fields.join(", ")}
+                </p>
+              )}
+              {status.entity_suggestions.length > 0 && (
+                <div>
+                  <p>
+                    <strong>Suggestions:</strong>
+                  </p>
+                  <ul className="suggestion-list">
+                    {status.entity_suggestions.map((item) => (
+                      <li key={item.id}>
+                        <button
+                          type="button"
+                          className="link-button"
+                          onClick={() => applySuggestion(item.entity_key)}
+                        >
+                          {item.entity_key}
+                        </button>{" "}
+                        <span className="muted">
+                          score {item.score}
+                          {item.employer ? ` · ${item.employer}` : ""}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {status.entity_matches === 0 && (
-                <p className="empty">No seed match.</p>
+                <p className="empty">No match.</p>
               )}
               {status.entity_matches > 1 && (
-                <p className="empty">
-                  Multiple seed matches — narrow the key.
+                <div>
+                  <p className="empty">Multiple matches — narrow the key.</p>
+                  <ul className="match-list">
+                    {status.entity_match_summaries.map((match) => (
+                      <li key={match.id}>
+                        <strong>{match.name}</strong>{" "}
+                        <span className="muted">
+                          {match.source}
+                          {match.validation_state
+                            ? ` · ${match.validation_state}`
+                            : ""}
+                          {match.employer ? ` · ${match.employer}` : ""}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {singleMatch && (
+                <p className="muted">
+                  Source: {singleMatch.source}
+                  {singleMatch.validation_state
+                    ? ` · ${singleMatch.validation_state}`
+                    : ""}
+                  {" · "}
+                  Research:{" "}
+                  {singleMatch.research_allowed ? "allowed" : "gated"}
                 </p>
               )}
               {status.entity_matches === 1 &&
@@ -324,19 +554,25 @@ export default function App() {
                   <table>
                     <thead>
                       <tr>
+                        <th>Kind</th>
                         <th>Field</th>
                         <th>Category</th>
                         <th>Status</th>
                         <th>Value</th>
+                        <th>Source</th>
+                        <th>Researched</th>
                       </tr>
                     </thead>
                     <tbody>
                       {status.entity_fields.map((field) => (
-                        <tr key={field.field}>
+                        <tr key={`${field.field_kind}-${field.field}`}>
+                          <td>{field.field_kind ?? "extended"}</td>
                           <td>{field.field}</td>
                           <td>{field.category}</td>
                           <td>{field.status}</td>
                           <td>{field.value ?? "—"}</td>
+                          <td>{field.attr_source ?? "—"}</td>
+                          <td>{field.last_researched_at ?? "—"}</td>
                         </tr>
                       ))}
                     </tbody>

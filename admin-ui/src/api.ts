@@ -1,4 +1,9 @@
-import type { CapabilitiesResponse, HealthResponse, StatusResponse } from "./types";
+import type {
+  CapabilitiesResponse,
+  HealthResponse,
+  QueryResponse,
+  StatusResponse,
+} from "./types";
 
 /** Empty string → same-origin relative paths (dev proxy or daemon-served SPA). */
 export function apiBase(): string {
@@ -24,9 +29,9 @@ function looksLikeHtml(text: string, contentType: string | null): boolean {
   return peek.startsWith("<!doctype") || peek.startsWith("<html");
 }
 
-async function fetchJson<T>(path: string): Promise<T> {
+async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const url = `${apiBase()}${path}`;
-  const response = await fetch(url);
+  const response = await fetch(url, init);
   const contentType = response.headers.get("Content-Type");
   const text = await response.text();
 
@@ -72,4 +77,17 @@ export function fetchStatus(params?: {
 
 export function fetchCapabilities(): Promise<CapabilitiesResponse> {
   return fetchJson<CapabilitiesResponse>("/capabilities");
+}
+
+export function runQuery(body: {
+  entity_key: string;
+  requested_attributes?: string[];
+  binding?: Record<string, string>;
+  thread_id?: string;
+}): Promise<QueryResponse> {
+  return fetchJson<QueryResponse>("/query", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }

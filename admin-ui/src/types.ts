@@ -31,6 +31,27 @@ export interface EntityFieldStatus {
   agent: string;
   status: string;
   value: string | null;
+  field_kind?: string;
+  attr_source?: string | null;
+  last_researched_at?: string | null;
+}
+
+export interface EntityMatchSummary {
+  id: string;
+  name: string;
+  employer: string | null;
+  source: string;
+  validation_state: string | null;
+  research_allowed: boolean;
+}
+
+export interface EntityKeySuggestion {
+  entity_key: string;
+  id: string;
+  name: string;
+  employer: string | null;
+  score: number;
+  reason?: string;
 }
 
 export interface StatusResponse {
@@ -38,12 +59,17 @@ export interface StatusResponse {
   network_root: string;
   display_name: string | null;
   seed_people_count: number;
+  registry_entity_count: number;
   ontology_present: boolean;
   ontology_message: string;
   categories: CategorySummary[];
   specialists: SpecialistSummary[];
   entity_key: string | null;
   entity_matches: number;
+  entity_resolution_kind: string | null;
+  entity_required_fields: string[];
+  entity_suggestions: EntityKeySuggestion[];
+  entity_match_summaries: EntityMatchSummary[];
   entity_fields: EntityFieldStatus[];
 }
 
@@ -65,4 +91,15 @@ export interface CapabilitiesResponse {
     categories: OntologyCategory[];
   };
   policy: Record<string, unknown>;
+}
+
+export interface QueryResponse {
+  outcome: string | null;
+  required_fields: string[];
+  suggestions: EntityKeySuggestion[];
+  results: Record<string, unknown>[];
+  message: string;
+  debug: string;
+  trace_id: string | null;
+  thread_id: string | null;
 }

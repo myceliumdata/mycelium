@@ -8,7 +8,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from agents.seed import find_by_key, get_seed_data
+from agents.entity_registry import RegistryEntity, get_entity_registry
+from agents.seed import get_seed_data
 from agents.specialists.base import category_slug
 from network.mvr import load_mvr
 from network.paths import NetworkPaths, network_metadata, resolve_network_root
@@ -42,6 +43,19 @@ class EntityFieldStatus:
     agent: str
     status: str
     value: str | None = None
+    field_kind: str = "extended"
+    attr_source: str | None = None
+    last_researched_at: str | None = None
+
+
+@dataclass(frozen=True)
+class EntityMatchSummary:
+    id: str
+    name: str
+    employer: str | None
+    source: str
+    validation_state: str | None = None
+    research_allowed: bool = True
 
 
 @dataclass(frozen=True)
@@ -54,8 +68,13 @@ class NetworkStatusSummary:
     ontology_message: str
     categories: list[CategorySummary] = field(default_factory=list)
     specialists: list[SpecialistSummary] = field(default_factory=list)
+    registry_entity_count: int = 0
     entity_key: str | None = None
     entity_matches: int = 0
+    entity_resolution_kind: str | None = None
+    entity_required_fields: list[str] = field(default_factory=list)
+    entity_suggestions: list[dict[str, Any]] = field(default_factory=list)
+    entity_match_summaries: list[EntityMatchSummary] = field(default_factory=list)
     entity_fields: list[EntityFieldStatus] = field(default_factory=list)
 
 
@@ -290,6 +309,113 @@ def _entity_field_statuses(
     return statuses
 
 
+def _registry_entity_count() -> int:
+    return get_entity_registry().entity_count()
+
+
+def _registry_entity_for_match(record: dict[str, Any]) -> RegistryEntity | None:
+    if not record.get("_registry"):
+        return None
+    entity_id = record.get("id")
+    if not isinstance(entity_id, str) or not entity_id:
+        return None
+    return get_entity_registry().lookup_by_id(entity_id)
+
+
+def _match_summaries(matches: list[dict[str, Any]]) -> list[EntityMatchSummary]:
+    summaries: list[EntityMatchSummary] = []
+    for match in matches:
+        source = "registry" if match.get("_registry") else "seed"
+        validation_state = match.get("_validation_state")
+        if isinstance(validation_state, str):
+            research_allowed = validation_state == "validated"
+        else:
+            research_allowed = source == "seed"
+        summaries.append(
+            EntityMatchSummary(
+                id=str(match.get("id") or ""),
+                name=str(match.get("name") or ""),
+                employer=match.get("employer"),
+                source=source,
+                validation_state=(
+                    validation_state if isinstance(validation_state, str) else None
+                ),
+                research_allowed=research_allowed,
+            ),
+        )
+    return summaries
+
+
+def _bind_field_statuses(
+    match: dict[str, Any],
+    registry_entity: RegistryEntity | None,
+) -> list[EntityFieldStatus]:
+    rows: list[EntityFieldStatus] = []
+    for field_name in ("name", "employer"):
+        value = match.get(field_name)
+        if field_name == "employer" and not value:
+            continue
+        if field_name == "name" and not value:
+            value = match.get("name") or ""
+        status = "seed"
+        if registry_entity is not None:
+            status = registry_entity.field_states.get(field_name) or (
+                registry_entity.validation_state
+            )
+        rows.append(
+            EntityFieldStatus(
+                field=field_name,
+                category="bind",
+                agent="—",
+                status=status,
+                value=str(value) if value is not None else None,
+                field_kind="bind",
+            ),
+        )
+    return rows
+
+
+def _entity_fields_for_match(
+    paths: NetworkPaths,
+    match: dict[str, Any],
+    agent_map: dict[str, str],
+    *,
+    category_filter: str | None,
+) -> list[EntityFieldStatus]:
+    record_id = match.get("id")
+    if not isinstance(record_id, str) or not record_id:
+        return []
+    registry_entity = _registry_entity_for_match(match)
+    fields = _bind_field_statuses(match, registry_entity)
+    extended = _entity_field_statuses(
+        paths,
+        record_id,
+        agent_map,
+        category_filter=category_filter,
+    )
+    if registry_entity is not None:
+        enriched: list[EntityFieldStatus] = []
+        for item in extended:
+            enriched.append(
+                EntityFieldStatus(
+                    field=item.field,
+                    category=item.category,
+                    agent=item.agent,
+                    status=item.status,
+                    value=item.value,
+                    field_kind="extended",
+                    attr_source=registry_entity.attr_sources.get(item.field),
+                    last_researched_at=registry_entity.last_researched_at.get(
+                        item.field,
+                    ),
+                ),
+            )
+        fields.extend(enriched)
+    else:
+        fields.extend(extended)
+    return fields
+
+
 def build_network_status(
     *,
     category_filter: str | None = None,
@@ -312,13 +438,26 @@ def build_network_status(
 
     entity_fields: list[EntityFieldStatus] = []
     entity_matches = 0
+    entity_resolution_kind: str | None = None
+    entity_required_fields: list[str] = []
+    entity_suggestions: list[dict[str, Any]] = []
+    entity_match_summaries: list[EntityMatchSummary] = []
     if entity_key:
-        matches = find_by_key(entity_key)
+        from agents.entity_resolution import resolve_entity_for_lookup
+
+        resolution = resolve_entity_for_lookup(entity_key)
+        entity_resolution_kind = resolution.kind
+        entity_required_fields = list(resolution.required_fields)
+        entity_suggestions = [
+            item.model_dump() for item in resolution.suggestions
+        ]
+        matches = resolution.matches
         entity_matches = len(matches)
+        entity_match_summaries = _match_summaries(matches)
         if len(matches) == 1:
-            entity_fields = _entity_field_statuses(
+            entity_fields = _entity_fields_for_match(
                 paths,
-                matches[0]["id"],
+                matches[0],
                 agent_map,
                 category_filter=category_filter,
             )
@@ -336,8 +475,13 @@ def build_network_status(
             agent_map,
             category_filter=category_filter,
         ),
+        registry_entity_count=_registry_entity_count(),
         entity_key=entity_key,
         entity_matches=entity_matches,
+        entity_resolution_kind=entity_resolution_kind,
+        entity_required_fields=entity_required_fields,
+        entity_suggestions=entity_suggestions,
+        entity_match_summaries=entity_match_summaries,
         entity_fields=entity_fields,
     )
 
@@ -562,13 +706,32 @@ def format_category_examples(category_name: str, examples: list[str] | tuple[str
 def _format_entity_drill_down(summary: NetworkStatusSummary) -> list[str]:
     if not summary.entity_key:
         return []
+    kind = summary.entity_resolution_kind or "unknown"
     lines = [
-        f"Entity lookup: {summary.entity_key!r} ({summary.entity_matches} match(es))",
+        f"Entity lookup: {summary.entity_key!r} ({summary.entity_matches} match(es), {kind})",
     ]
+    if summary.entity_required_fields:
+        lines.append(
+            f"  Required fields: {', '.join(summary.entity_required_fields)}",
+        )
+    if summary.entity_suggestions:
+        lines.append("  Suggestions:")
+        for item in summary.entity_suggestions[:3]:
+            lines.append(
+                f"    {item.get('entity_key')} (score={item.get('score')})",
+            )
     if summary.entity_matches == 0:
-        lines.append("  No seed match.")
+        lines.append("  No match.")
     elif summary.entity_matches > 1:
-        lines.append("  Multiple seed matches — narrow the key.")
+        lines.append("  Multiple matches — narrow the key.")
+        for match in summary.entity_match_summaries:
+            source = match.source
+            validation = (
+                f" {match.validation_state}" if match.validation_state else ""
+            )
+            lines.append(
+                f"    {match.name} ({match.id}) [{source}{validation}]",
+            )
     elif summary.entity_fields:
         lines.append("  Fields:")
         for item in summary.entity_fields:

@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 import os
+import uuid
 from typing import Any
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 
+from agents.runtime import refresh_runtime_from_disk
 from agents.seed import reset_seed_data
+from graphs.core import run_query
+from models.state import EntityQuery, QueryResponse
 from network.introspection import (
     build_network_capabilities,
     build_network_status,
@@ -20,6 +25,13 @@ from network.paths import NO_NETWORK_CONFIGURED_MSG, NetworkPaths, apply_network
 from storage.core import get_storage
 
 _NETWORK_INFO: dict[str, str | None] | None = None
+
+
+class AdminQueryRequest(BaseModel):
+    entity_key: str
+    requested_attributes: list[str] = Field(default_factory=list)
+    binding: dict[str, str] = Field(default_factory=dict)
+    thread_id: str | None = None
 
 _DEFAULT_HOST = "127.0.0.1"
 _DEFAULT_PORT = 8741
@@ -76,7 +88,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origin_regex=r"http://(127\.0\.0\.1|localhost)(:\d+)?",
-        allow_methods=["GET"],
+        allow_methods=["GET", "POST"],
         allow_headers=["*"],
     )
 
@@ -102,6 +114,19 @@ def create_app() -> FastAPI:
     def capabilities() -> dict[str, Any]:
         _refresh_read_cache()
         return build_network_capabilities()
+
+    @app.post("/query")
+    def query_entity(body: AdminQueryRequest) -> dict[str, Any]:
+        refresh_runtime_from_disk()
+        _refresh_read_cache()
+        query = EntityQuery(
+            entity_key=body.entity_key,
+            requested_attributes=body.requested_attributes,
+            binding=body.binding,
+        )
+        thread_id = body.thread_id or f"admin-{uuid.uuid4()}"
+        response: QueryResponse = run_query(query, thread_id=thread_id)
+        return response.model_dump()
 
     _mount_admin_ui(app)
     return app

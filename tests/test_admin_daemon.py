@@ -154,10 +154,12 @@ def test_status_entity_drill_down(
     assert payload["entity_key"] == entity
     assert payload["entity_matches"] == 1
     fields = payload["entity_fields"]
-    assert len(fields) == 1
-    assert fields[0]["field"] == "email"
-    assert fields[0]["status"] == "found"
-    assert fields[0]["value"] == "akalmans@example.com"
+    email = next(item for item in fields if item["field"] == "email")
+    assert email["field_kind"] == "extended"
+    assert email["status"] == "found"
+    assert email["value"] == "akalmans@example.com"
+    bind_fields = [item for item in fields if item["field_kind"] == "bind"]
+    assert {item["field"] for item in bind_fields} == {"name", "employer"}
 
 
 @pytest.mark.smoke
@@ -255,6 +257,29 @@ def test_serves_admin_ui_when_dist_present(
     status = client.get("/status")
     assert status.status_code == 200
     assert status.json()["seed_people_count"] == 15
+
+
+@pytest.mark.smoke
+def test_admin_query_seed_entity(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root = _populated_root(tmp_path)
+    client = _client_for_root(monkeypatch, tmp_path, root)
+    monkeypatch.setattr(
+        "tools.research.is_research_available",
+        lambda: False,
+    )
+
+    response = client.post(
+        "/query",
+        json={"entity_key": "Andrea Kalmans"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["outcome"] in {"found", "assembled"}
+    assert payload["results"]
 
 
 @pytest.mark.smoke

@@ -184,3 +184,58 @@ def resolve_entity(query: EntityQuery) -> EntityResolution:
 def resolve_entity_key(entity_key: str) -> EntityResolution:
     """Resolve by entity_key only (no binding); used in unit tests."""
     return resolve_entity(EntityQuery(entity_key=entity_key))
+
+
+def resolve_entity_for_lookup(entity_key: str) -> EntityResolution:
+    """Read-only resolution for admin/CLI status (never creates provisional binds)."""
+    key = entity_key.strip()
+    if not key:
+        return EntityResolution(kind="none")
+
+    registry = get_entity_registry()
+    mvr = load_mvr()
+
+    if _is_uuid_shaped(key):
+        by_id = registry.lookup_by_id(key)
+        if by_id is not None:
+            return EntityResolution(
+                kind="exact",
+                matches=[registry_entity_to_match(by_id)],
+            )
+        seed_matches = find_by_key(key)
+        if seed_matches:
+            return EntityResolution(kind="exact", matches=seed_matches)
+        return EntityResolution(kind="none")
+
+    seed_matches = find_by_key(key)
+    if seed_matches:
+        kind: EntityResolutionKind = (
+            "multiple" if len(seed_matches) > 1 else "exact"
+        )
+        return EntityResolution(kind=kind, matches=seed_matches)
+
+    by_name = registry.lookup_by_name(key)
+    if len(by_name) == 1:
+        return EntityResolution(
+            kind="exact",
+            matches=[registry_entity_to_match(by_name[0])],
+        )
+    if len(by_name) >= 2:
+        required = mvr.required_bind_fields(key, {})
+        return EntityResolution(
+            kind="unknown",
+            required_fields=required or ["employer"],
+        )
+
+    suggestions = _rank_suggestions(key)
+    if suggestions:
+        return EntityResolution(kind="suggest", suggestions=suggestions)
+
+    required = mvr.required_bind_fields(key, {})
+    if required:
+        return EntityResolution(kind="unknown", required_fields=required)
+
+    return EntityResolution(
+        kind="unknown",
+        required_fields=mvr.required_fields_for_entity_key(key),
+    )

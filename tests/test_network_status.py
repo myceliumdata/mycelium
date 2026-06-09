@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from agents.entity_registry import get_entity_registry
 from agents.seed import find_by_key, reset_seed_data
 from network.introspection import (
     build_network_status,
@@ -282,6 +283,51 @@ def test_status_cli_verbose(
     )
     assert result.returncode == 0, result.stderr or result.stdout
     assert "Root:" in result.stdout
+
+
+@pytest.mark.smoke
+def test_status_registry_entity_lookup(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root = _ontology_root(tmp_path)
+    _configure_root(monkeypatch, tmp_path, root)
+    registry = get_entity_registry()
+    entity, _created = registry.bind_provisional("New Person", "Acme Labs")
+    registry.promote_validated(entity.id)
+    registry.record_research_attribution(
+        entity.id,
+        {"email": ("contact", "2026-06-09T12:00:00+00:00")},
+    )
+
+    summary = build_network_status(entity_key=entity.id)
+    assert summary.entity_matches == 1
+    assert summary.entity_resolution_kind == "exact"
+    assert summary.entity_match_summaries[0].source == "registry"
+    assert summary.entity_match_summaries[0].validation_state == "validated"
+    assert summary.entity_match_summaries[0].research_allowed is True
+    bind_fields = [item for item in summary.entity_fields if item.field_kind == "bind"]
+    assert {item.field for item in bind_fields} == {"name", "employer"}
+    extended = [item for item in summary.entity_fields if item.field_kind == "extended"]
+    if extended:
+        email = next((item for item in extended if item.field == "email"), None)
+        if email is not None:
+            assert email.attr_source == "contact"
+
+
+@pytest.mark.smoke
+def test_status_near_miss_suggestions(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root = _seed_only_root(tmp_path)
+    _configure_root(monkeypatch, tmp_path, root)
+
+    summary = build_network_status(entity_key="Andrea Kalman")
+    assert summary.entity_resolution_kind == "suggest"
+    assert summary.entity_matches == 0
+    assert summary.entity_suggestions
+    assert summary.entity_suggestions[0]["entity_key"]
 
 
 @pytest.mark.full
