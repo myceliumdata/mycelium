@@ -217,6 +217,25 @@ def peer_display_for_prompt(peer_specialists: dict[str, Any]) -> dict[str, list[
     return display
 
 
+def format_peer_context_block(peer_display: dict[str, list[dict[str, str]]]) -> str:
+    """Plain-text peer findings block (avoids Jinja trim_blocks eating newlines)."""
+    lines = [
+        "PEER SPECIALIST FINDINGS (read-only):",
+        "Use these to disambiguate the person and inform searches. "
+        "Do not write peer fields unless listed in target_fields.",
+        "",
+    ]
+    for cat, items in peer_display.items():
+        lines.append(f"{cat}:")
+        for item in items:
+            suffix = f" (sources: {item['source']})" if item.get("source") else ""
+            lines.append(f"  - {item['field']}: {item['value']}{suffix}")
+        lines.append("")
+    while lines and not lines[-1]:
+        lines.pop()
+    return "\n".join(lines)
+
+
 def build_research_prompts(
     *,
     category: str,
@@ -279,7 +298,7 @@ def build_research_prompts(
         disambiguation = env.get_template("research/_disambiguation.j2").render(**template_vars).strip()
         user_parts.insert(0, disambiguation)
     if peer_display:
-        peer_block = env.get_template("research/_peer_context.j2").render(**template_vars).strip()
+        peer_block = format_peer_context_block(peer_display)
         insert_at = 1 if extra_disamb else 0
         user_parts.insert(insert_at, peer_block)
     user = "\n\n".join(user_parts)

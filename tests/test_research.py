@@ -149,6 +149,13 @@ def test_build_research_prompts_flattened_peer_context_renders_header() -> None:
                         "reason": "No public address",
                     },
                 },
+                "social": {
+                    "twitter": {
+                        "status": "found",
+                        "value": "https://x.com/AngelaYMurphy",
+                        "sources": ["https://x.com/AngelaYMurphy"],
+                    },
+                },
                 "demographic": {
                     "city": {
                         "status": "found",
@@ -167,6 +174,9 @@ def test_build_research_prompts_flattened_peer_context_renders_header() -> None:
     assert "Austin, TX" in peer_section
     assert "address" not in peer_section
     assert peer_section.index("DISAMBIGUATION") < peer_section.index("PEER SPECIALIST FINDINGS")
+    assert ")social:" not in peer_section
+    assert "\nsocial:\n" in peer_section
+    assert "\ndemographic:\n" in peer_section
 
 
 @pytest.mark.smoke
