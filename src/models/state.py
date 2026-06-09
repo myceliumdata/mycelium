@@ -243,13 +243,6 @@ class MyceliumGraphState(BaseModel):
         default_factory=list,
         description="MVR gaps when entity_resolution_kind is unknown or under_specified.",
     )
-    registry_provisional_only: bool = Field(
-        default=False,
-        description=(
-            "When true, assemble identity-only response for provisional registry "
-            "matches (no specialist research until validation gate)."
-        ),
-    )
     duplicate_bind: bool = Field(
         default=False,
         description="True when bind_index matched an existing provisional entity.",

@@ -614,20 +614,22 @@ def response_validation_failed(
     )
 
 
-def response_registry_provisional_identity(
+def response_research_gated(
     query: EntityQuery,
     record: dict[str, Any],
     *,
     trace_id: str | None = None,
     thread_id: str | None = None,
 ) -> QueryResponse:
-    """Provisional registry hit: return identity only (no research on attrs)."""
+    """Provisional registry entity with attrs requested: identity only, gate message."""
+    from agents.research_gate import RESEARCH_GATE_MESSAGE
+
     name = record.get("name") or query.entity_key
     employer = record.get("employer")
     employer_phrase = f" at {employer}" if employer else ""
     message = (
         f"Found provisional record for {name}{employer_phrase}. "
-        "Attribute research is not available until validation (later slice)."
+        f"{RESEARCH_GATE_MESSAGE}"
     )
     results = [
         {
@@ -644,7 +646,7 @@ def response_registry_provisional_identity(
         debug=debug_for_query(
             query,
             outcome="found",
-            registry_provisional=True,
+            research_gated=True,
             registry_id=record.get("id"),
         ),
         trace_id=trace_id,

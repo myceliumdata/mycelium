@@ -13,6 +13,7 @@ from agents.entity_validation import (
     validation_failure_summary,
 )
 from agents.registry import get_agent_registry
+from agents.research_gate import is_research_gated, research_gate_allows
 from agents.responses import (
     merge_requested_record,
     response_assembled,
@@ -23,6 +24,7 @@ from agents.responses import (
     response_entity_validated,
     response_found,
     response_not_found,
+    response_research_gated,
     response_validation_failed,
 )
 from agents.supervisor import (
@@ -88,7 +90,11 @@ def validate_entity_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str
     meta = dict(_meta(current))
     meta["ids"] = [updated.id]
     specialists_to_invoke: list[str] = []
-    if current.query.requested_attributes and current.classifications:
+    if (
+        current.query.requested_attributes
+        and current.classifications
+        and research_gate_allows(current_id=updated.id, matched=[updated_match])
+    ):
         audit: list[str] = []
         specialists_to_invoke = _collect_specialists_to_invoke(
             current.classifications,
@@ -263,6 +269,12 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
             "audit_log": ["assemble_response: entity validated."],
         }
 
+    if is_research_gated(current):
+        return {
+            "response": response_research_gated(query, matched[0], **id_kwargs),
+            "audit_log": ["assemble_response: research gate (provisional + attrs)."],
+        }
+
     if (
         current.entity_resolution_kind == "bind_provisional"
         and matched
@@ -292,9 +304,12 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
             name = matched[0].get("name") or query.entity_key
             employer = matched[0].get("employer")
             employer_phrase = f" at {employer}" if employer else ""
-            message = (
-                f"Already bound provisional record for {name}{employer_phrase}."
-            )
+            if matched[0].get("_validation_state") == "validated":
+                message = f"Already bound record for {name}{employer_phrase}."
+            else:
+                message = (
+                    f"Already bound provisional record for {name}{employer_phrase}."
+                )
         return {
             "response": response_found(
                 query,

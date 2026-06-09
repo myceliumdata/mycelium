@@ -372,10 +372,17 @@ _POLICY_ENTITY_UNKNOWN = (
 _POLICY_ENTITY_BIND = (
     'Supply MVR fields in query_entity JSON via binding (e.g. {"employer": "Acme Corp"}). '
     'On outcome entity_bound_provisional, results include id, name, and employer — '
-    "use entity_key as the bound uuid for follow-ups. Duplicate bind returns found "
-    "with the same id. Provisional entities do not trigger attribute research until "
-    "After bind, core validation runs automatically; outcome entity_validated when MVR "
-    "passes. Attribute research requires validated state."
+    "use the bound uuid as entity_key for follow-ups. Duplicate bind returns found "
+    "with the same id. After bind, core validation runs automatically; outcome "
+    "entity_validated when MVR passes."
+)
+_POLICY_RESEARCH_GATE = (
+    "Attribute research (specialists / Tavily) runs only when current_id is set and "
+    "the entity is a seed match (pre-validated) or a registry row with "
+    "validation_state validated. Provisional registry entities with requested "
+    "attributes return outcome found with identity-only results and a message that "
+    "core validation must complete before researching attributes. Same-turn bind, "
+    "validate, and research is supported when validation passes in one graph run."
 )
 _POLICY_ENTITY_VALIDATED = (
     'When outcome is "entity_validated", provisional registry entity passed rule-based '
@@ -466,6 +473,7 @@ def build_network_capabilities() -> dict[str, Any]:
             "mvr": load_mvr(paths=paths).summary(),
             "entity_unknown": _POLICY_ENTITY_UNKNOWN,
             "entity_bind": _POLICY_ENTITY_BIND,
+            "research_gate": _POLICY_RESEARCH_GATE,
             "entity_validated": _POLICY_ENTITY_VALIDATED,
             "entity_key_unresolved": _POLICY_ENTITY_KEY_UNRESOLVED,
             "query": {

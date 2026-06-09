@@ -6,6 +6,7 @@ from typing import Any
 
 from agents.classification import get_category_tree
 from agents.entity_resolution import is_provisional_registry_match, resolve_entity
+from agents.research_gate import research_gate_allows
 from agents.factory.agent_factory import get_agent_factory
 from agents.registry import get_agent_registry
 from models.state import MyceliumGraphState, SeedRecord
@@ -108,18 +109,6 @@ def _classify_requested_attributes(
                 f"agent={cl.assigned_agent}, confidence={cl.confidence:.2f}",
             )
     return classifications
-
-
-def _research_allowed(matched: list[dict[str, Any]]) -> bool:
-    """Seed matches or validated registry rows may invoke attribute specialists."""
-    if not matched:
-        return False
-    if len(matched) != 1:
-        return not matched[0].get("_registry")
-    rec = matched[0]
-    if rec.get("_registry"):
-        return rec.get("_validation_state") == "validated"
-    return True
 
 
 def _target_fields_for_agent(
@@ -235,7 +224,7 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
 
     classifications = _classify_requested_attributes(query, audit_log)
     specialists_to_invoke: list[str] = []
-    if _research_allowed(matched):
+    if research_gate_allows(current_id=None, matched=matched):
         specialists_to_invoke = _collect_specialists_to_invoke(
             classifications,
             audit_log,
