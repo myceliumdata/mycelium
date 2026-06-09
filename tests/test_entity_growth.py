@@ -131,14 +131,17 @@ def test_parse_research_fields_updated() -> None:
     assert parse_research_fields_updated(audit) == ["email"]
 
 
-def test_attribution_uses_researched_fields_without_audit() -> None:
+def test_attribution_uses_researched_fields_without_audit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from agents.entity_growth import apply_registry_research_attribution
-    from agents.entity_registry import EntityRegistry
+    from agents.entity_registry import get_entity_registry, reset_entity_registry
 
-    path = REPO_ROOT / "tmp-entity-growth-test.json"
-    if path.exists():
-        path.unlink()
-    reg = EntityRegistry(path=path)
+    entities_path = tmp_path / "entities.json"
+    monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(entities_path))
+    reset_entity_registry()
+    reg = get_entity_registry()
     entity, _ = reg.bind_provisional("Paul Murphy", "Acme Corp")
     reg.promote_validated(entity.id)
 
@@ -158,7 +161,7 @@ def test_attribution_uses_researched_fields_without_audit() -> None:
     updated = reg.lookup_by_id(entity.id)
     assert updated is not None
     assert updated.attr_sources["email"] == "contact"
-    path.unlink(missing_ok=True)
+    reset_entity_registry()
 
 
 @pytest.mark.smoke

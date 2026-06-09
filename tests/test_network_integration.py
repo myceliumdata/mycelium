@@ -109,6 +109,8 @@ def _run_mycelium_cli(
     for key in NETWORK_PATH_ENV_KEYS:
         merged.pop(key, None)
     merged.pop("MYCELIUM_NETWORK", None)
+    # Block repo .env (load_dotenv in main) from pinning a host network name.
+    merged.setdefault("MYCELIUM_NETWORK", "")
     if env:
         merged.update(env)
     merged["PYTHONPATH"] = str(REPO_ROOT / "src")
@@ -271,7 +273,17 @@ def test_cli_network_register_list_use_and_query(
     net_b = tmp_path / "b"
     _write_network_seed(net_a, [{"name": "Alpha Person", "employer": "A"}])
     _write_network_seed(net_b, [{"name": "Beta Person", "employer": "B"}])
-    env = {"MYCELIUM_NETWORKS_CONFIG": str(config), "MYCELIUM_FRAMEWORK_ROOT": str(tmp_path / "fw")}
+    bootstrap_env = {
+        "MYCELIUM_NETWORKS_CONFIG": str(config),
+        "MYCELIUM_FRAMEWORK_ROOT": str(tmp_path / "fw"),
+        "MYCELIUM_NETWORK_ROOT": str(net_a),
+        "MYCELIUM_USE_SYNC_CHECKPOINTER": "1",
+    }
+    registry_env = {
+        "MYCELIUM_NETWORKS_CONFIG": str(config),
+        "MYCELIUM_FRAMEWORK_ROOT": str(tmp_path / "fw"),
+        "MYCELIUM_USE_SYNC_CHECKPOINTER": "1",
+    }
 
     reg_a = _run_mycelium_cli(
         "network",
@@ -280,7 +292,7 @@ def test_cli_network_register_list_use_and_query(
         "--root",
         str(net_a),
         "--default",
-        env=env,
+        env=bootstrap_env,
     )
     assert reg_a.returncode == 0, reg_a.stderr or reg_a.stdout
 
@@ -290,18 +302,18 @@ def test_cli_network_register_list_use_and_query(
         "beta",
         "--root",
         str(net_b),
-        env=env,
+        env=registry_env,
     )
     assert reg_b.returncode == 0, reg_b.stderr or reg_b.stdout
 
-    listing = _run_mycelium_cli("network", "list", env=env)
+    listing = _run_mycelium_cli("network", "list", env=registry_env)
     assert listing.returncode == 0
     plain_list = _strip_ansi(listing.stdout)
     assert "alpha" in plain_list
     assert "beta" in plain_list
     assert "(default)" in plain_list
 
-    use_b = _run_mycelium_cli("network", "use", "beta", env=env)
+    use_b = _run_mycelium_cli("network", "use", "beta", env=registry_env)
     assert use_b.returncode == 0, use_b.stderr or use_b.stdout
 
     query = _run_mycelium_cli(
@@ -310,7 +322,7 @@ def test_cli_network_register_list_use_and_query(
         "Beta Person",
         "--thread-id",
         _unique_thread_id("cli-default"),
-        env=env,
+        env=registry_env,
     )
     assert query.returncode == 0, query.stderr or query.stdout
     payload = _parse_cli_json(query.stdout)
@@ -324,7 +336,7 @@ def test_cli_network_register_list_use_and_query(
         "Alpha Person",
         "--thread-id",
         _unique_thread_id("cli-named"),
-        env=env,
+        env=registry_env,
     )
     assert query_named.returncode == 0, query_named.stderr or query_named.stdout
     named_payload = _parse_cli_json(query_named.stdout)
