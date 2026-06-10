@@ -22,6 +22,12 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
    - README/TODO items that still describe pre-registry or pre-network behavior
    - Test fixtures and operator runbooks that assume runtime seed loading
    - Decide: update docs, deprecate plans, or queue targeted cleanup slices
+3. [ ] **Project website copy** — refresh public-facing site (myceliumdata) to match post–seed-elimination reality. Likely stale vs repo README/architecture:
+   - Bootstrap-only `seed.json` vs query-time `entities.json` / registry
+   - `empty-crm` growth-from-query story (not preloaded people)
+   - Entities-only operator surfaces (no seed people count)
+   - MCP `describe_network` + query-only public API
+   - Align quick start, diagrams, and feature bullets with `docs/architecture.md`
 
 ---
 
