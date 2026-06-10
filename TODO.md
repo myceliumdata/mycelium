@@ -10,19 +10,9 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 **Priority order when back from break:**
 
-1. [ ] **Hands-on: `empty-crm` example** — smoke test passed in CI; confirm operator flow end-to-end:
-   - `./bin/refresh-example-network empty-crm --yes`
-   - Verify no `seed.json`, empty/absent `entities.json` after refresh
-   - Paul Murphy bind: `uv run mycelium query --network-dir … --entity-key "Paul Murphy" --employer "Acme Corp"`
-   - Confirm `entities.json` grows (1 row, validated), `network status` shows Entities ✅
-   - Optional: MCP `query_entity` with `examples/networks/empty-crm/queries/01-bind-paul-murphy.json`; admin UI poll
-2. [ ] **Historical assumptions review** — audit early-phase decisions that may be stale or problematic after later work (seed elimination, entity registry, networks, metering, etc.). Candidates:
-   - `docs/plans/*` and `prompts/resets/*` vs current `docs/architecture.md`
-   - Leftover vocabulary (`SeedRecord`, `seed_records` state fields, SQLite `people` table, `core_data` on disk)
-   - README/TODO items that still describe pre-registry or pre-network behavior
-   - Test fixtures and operator runbooks that assume runtime seed loading
-   - Decide: update docs, deprecate plans, or queue targeted cleanup slices
-3. [x] **Project website copy** — Option A overhaul shipped in `../mycelium-website` (June 2026). Review: `prompts/cursor/done/2026-06-10-website-overhaul-option-a/review.md`. Deploy `dist/` to refresh [myceliumdata.org](https://myceliumdata.org).
+1. [x] **Hands-on: `empty-crm` example** — verified June 2026 (refresh → no seed/entities → Paul Murphy bind → 1 validated row; `network status` Entities ✅). Nit fixed: `network_metadata` no longer lets `MYCELIUM_NETWORK` override explicit `--network-dir`.
+2. [ ] **Historical assumptions review** — **Phase 1 done:** [`docs/plans/historical-assumptions-audit.md`](docs/plans/historical-assumptions-audit.md). Runtime/tests clean; living docs aligned; plans/resets historical. **Phase 2:** TODO hygiene (P1), `docs/plans/README.md` index (P2), optional rename/launch-v2 slices per audit §7.
+3. [x] **Project website copy** — Done (`../mycelium-website`, June 2026). Option A overhaul + copy pass deployed by Paul.
 
 ---
 
@@ -46,7 +36,7 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 
 ### Slice 2 — network status (CLI) — **done** (`2026-06-08-1100`)
 
-- [x] **`mycelium network status`** — `src/network/introspection.py`; seed, ontology, specialists, storage stats; `--json`, `--category`, `--person`.
+- [x] **`mycelium network status`** — `src/network/introspection.py`; entities, ontology, specialists, storage stats; `--json`, `--category`, `--entity`.
 - [x] **Tests** — `tests/test_network_status.py` (empty + populated + JSON CLI + person drill-down).
 
 ### Slice 3 — admin daemon — **done** (`2026-06-08-1700`)
@@ -95,7 +85,7 @@ Backend shipped in entity protocol Slices 1–8; operator-facing admin work defe
 - [x] **Outcome badges** — `POST /query` + Run query panel shows `outcome` badge (`2026-06-09`).
 - [x] **Key suggestions** — entity lookup + query panel show `suggestions[]` on near-miss (`2026-06-09`).
 - [x] **Required fields** — entity lookup + query panel show `required_fields` on unknown (`2026-06-09`).
-- [x] **Registry-backed entities** — status lookup uses seed + `entities.json`; match source + validation on drill-down (`2026-06-09`).
+- [x] **Registry-backed entities** — status lookup uses `entities.json` registry; match source + validation on drill-down (`2026-06-09`).
 - [ ] **Binding context** — query panel accepts optional `binding.employer`; full negotiation metadata on `/status` still open.
 - [x] **Validation state** — bind-field status + match `validation_state` on entity drill-down (`2026-06-09`).
 - [x] **Research gate indicator** — `research_allowed` on single-match drill-down (`2026-06-09`).
@@ -206,7 +196,7 @@ Backend shipped in entity protocol Slices 1–8; operator-facing admin work defe
 - [x] **Metering negotiation test scaffolding — Slice 12** — Shipped + review approved: [`entity-metering-negotiation-test-scaffolding.md`](docs/plans/entity-metering-negotiation-test-scaffolding.md), `prompts/cursor/done/2026-06-09-2300-entity-metering-negotiation-test-scaffolding/`. `crm-metering` example; CLI + admin + demo script. Paul hands-on verify done (June 2026).
 - [x] **Metering Slice 12 fix** — Shipped + review approved: [`entity-metering-slice12-fix.md`](docs/plans/entity-metering-slice12-fix.md), `prompts/cursor/done/2026-06-09-2310-entity-metering-slice12-fix/`. Demo checkpointer, admin docs, subprocess test, MCP queries README.
 - [ ] **Settlement protocol** (separate from entity program) — Real x402 `PaymentProvider`, fundable-wallet test harness, HTTP 402 query gateway, rebate/pool ledger, async quotes. Deferred from Slice 11; design backlog when blockchain / anonymous-agent economics land.
-- [ ] **Per-record query messages (multi-match)** — v1 keeps collective `message` when `entity_key` matches multiple seed records (e.g. two Kevin Zhangs); agent disambiguates via `results`. Revisit when non-person or other domains need per-record status in `message` (different attrs per match, async research diverging per id).
+- [ ] **Per-record query messages (multi-match)** — v1 keeps collective `message` when `entity_key` matches multiple registry rows (e.g. two Kevin Zhangs); agent disambiguates via `results`. Revisit when non-person or other domains need per-record status in `message` (different attrs per match, async research diverging per id).
 - [x] **Thread checkpoint: new query on same `thread_id`** — fixed (`run_query` clears stale `response`; removed `assemble_response` short-circuit; smoke test `test_same_thread_new_query_rebuilds_response`). **Follow-up:** multi-turn merge semantics (reuse specialist cache across attributes on one thread without redundant research) still open.
 - [ ] **Long-running threads** — suspend and ask client for clarification (`thread_id` + checkpoints; bones exist).
 

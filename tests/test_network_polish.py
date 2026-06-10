@@ -14,6 +14,7 @@ from network.seed_import import import_seed_file
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
+EXAMPLE_EMPTY_CRM = REPO_ROOT / "examples" / "networks" / "empty-crm"
 
 
 @pytest.mark.smoke
@@ -22,6 +23,16 @@ def test_network_metadata_from_example_crm() -> None:
     assert meta["network_root"] == str(EXAMPLE_CRM.resolve())
     assert meta["network_name"] == "crm"
     assert meta["network_display_name"] == "CRM example"
+
+
+@pytest.mark.smoke
+def test_network_metadata_explicit_root_ignores_mycelium_network_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MYCELIUM_NETWORK", "crm")
+    meta = network_metadata(root=EXAMPLE_EMPTY_CRM)
+    assert meta["network_name"] == "empty-crm"
+    assert meta["network_display_name"] == "CRM (empty seed)"
 
 
 @pytest.mark.smoke

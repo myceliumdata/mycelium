@@ -169,12 +169,13 @@ def network_metadata(*, root: Path | None = None) -> dict[str, str | None]:
     paths = NetworkPaths.from_root(resolved_root)
     display_name = network_display_name(paths)
 
-    network_name: str | None = os.getenv("MYCELIUM_NETWORK", "").strip() or None
-    if not network_name:
-        for entry in load_network_registry():
-            if Path(entry.root).expanduser().resolve() == resolved_root:
-                network_name = entry.name
-                break
+    network_name: str | None = None
+    if root is None:
+        network_name = os.getenv("MYCELIUM_NETWORK", "").strip() or None
+    for entry in load_network_registry():
+        if Path(entry.root).expanduser().resolve() == resolved_root:
+            network_name = entry.name
+            break
     if not network_name:
         network_json = resolved_root / "network.json"
         if network_json.is_file():
