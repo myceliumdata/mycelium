@@ -39,6 +39,13 @@ class EntityKeySuggestion(BaseModel):
     )
 
 
+class BillingPrincipal(BaseModel):
+    """Optional billing identity for sponsor/pool funding models."""
+
+    kind: str = Field(description="wallet | tenant | sponsor_id")
+    id: str = Field(description="Principal identifier for entitlement attribution.")
+
+
 class EntityQuery(BaseModel):
     """Inbound JSON query for looking up a seed record (public interface).
 
@@ -83,6 +90,21 @@ class EntityQuery(BaseModel):
             "routed to specialist agents when present."
         ),
     )
+    quote_id: str | None = Field(
+        default=None,
+        description="Accepted quote id from a prior quote_required response (Slice 10).",
+    )
+    principal: BillingPrincipal | None = Field(
+        default=None,
+        description="Optional billing principal; required for some funding models.",
+    )
+    provenance: bool = Field(
+        default=False,
+        description=(
+            "When true, request query delivery with sources/audit trail "
+            "(metering: query_provenance consumption line)."
+        ),
+    )
 
 
 class QueryResponse(BaseModel):
@@ -96,8 +118,15 @@ class QueryResponse(BaseModel):
             "(near-miss suggestions), entity_unknown (no seed match, MVR fields needed), "
             "entity_under_specified (partial binding), entity_bound_provisional "
             "(new registry bind), entity_validated (MVR validation passed), "
+            "quote_required (metering: accept quote before research/delivery), "
+            "payment_required (metering: pay_quote before quote_id unlocks work), "
+            "principal_required (metering: billing principal missing for funding model), "
             "or error (internal failure). Mirrors debug outcome=."
         ),
+    )
+    quote: dict[str, Any] | None = Field(
+        default=None,
+        description="Structured quote payload when outcome is quote_required or payment_required.",
     )
     required_fields: list[str] = Field(
         default_factory=list,
@@ -246,6 +275,26 @@ class MyceliumGraphState(BaseModel):
     duplicate_bind: bool = Field(
         default=False,
         description="True when bind_index matched an existing provisional entity.",
+    )
+    pending_quote: dict[str, Any] | None = Field(
+        default=None,
+        description="Quote awaiting acceptance when metering gate blocks progress.",
+    )
+    metering_accepted_quote: dict[str, Any] | None = Field(
+        default=None,
+        description="Accepted quote payload for this invocation (internal).",
+    )
+    metering_write_entitlement: bool = Field(
+        default=False,
+        description="Write entitlement after successful production research this pass.",
+    )
+    metering_principal_required: str | None = Field(
+        default=None,
+        description="Funding model name when billing principal is required but missing.",
+    )
+    metering_payment_required: bool = Field(
+        default=False,
+        description="True when quote_id was supplied but quote is not paid yet.",
     )
 
 

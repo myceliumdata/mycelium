@@ -1,50 +1,29 @@
-# Metering hooks — Phase 10 spec (deferred)
+# Metering implementation — Slice 10
 
-**Status:** **Deferred** — blocked on Slice 9 design; Paul (June 2026): no Slice 10 work until Slices 1–8 ship and metering design resumes  
-**Program:** [`entity-protocol-and-registry-program.md`](entity-protocol-and-registry-program.md)  
-**Depends on:** Slice 9 design lock + Slice 6 gate
+**Status:** **Ready for Cursor** — Slice 9 locked; single implementation slice  
+**Detail:** [`entity-metering-implementation.md`](entity-metering-implementation.md)  
+**Cursor prompt:** `prompts/cursor/next/2026-06-09-2100-entity-metering-implementation.md`  
+**Design:** [`entity-metering-design-phase9.md`](entity-metering-design-phase9.md)
 
 ---
 
 ## Paul direction (June 2026)
 
-Metering hooks (`quote_required`, `quote_id`, audit markers) are **out of scope** for the current Cursor handoff. Complete the entity protocol through **Slice 8 (growth + attribution)** first.
-
-Open questions Q10a–Q10d below are preserved for a future design pass. No Cursor prompt until Slice 9 is locked.
+One slice if feasible. Split only if graph routing forces it (10a production / 10b consumption).
 
 ---
 
-## Objective (future)
+## Locked implementation choices (from Q9 + Q10 resolution)
 
-- `quote_required` outcome stub when research would run but quote not accepted
-- `audit_log` markers for phase transitions
-- MCP / `describe_network` policy strings
-- **No** payment provider, HTTP 402, or wallet
+| Topic | Choice |
+|-------|--------|
+| Stub strictness | Strict gate when `metering.enabled`; bypass via env + disabled default |
+| Quote persistence | `quotes.json` on disk |
+| Auto-accept | `MYCELIUM_AUTO_ACCEPT_QUOTES=1` |
+| Deliverable | Full v1 stub (outcome + quote + gate + stores + tests) |
 
 ---
 
-## Open questions (deferred)
+## Non-goals
 
-### Q10a — Stub strictness
-
-- A: Strict stub + env bypass
-- B: Loose stub (audit only)
-- C: Per-network `metering.enabled` flag
-
-### Q10b — Quote persistence
-
-- A: In-memory per thread
-- B: `quotes.json` on disk
-- C: Echo-only, no server persistence
-
-### Q10c — Auto-accept for CRM demo
-
-- A: `MYCELIUM_AUTO_ACCEPT_QUOTES` env
-- B: `network.json` bypass mode
-- C: No bypass
-
-### Q10d — Minimum deliverable
-
-- A: Full stub
-- B: Outcome + audit only
-- C: Audit + MCP strings only
+Payment provider, HTTP 402, wallet, rebate schema (Q9j-B), async quotes (Q9f-B).

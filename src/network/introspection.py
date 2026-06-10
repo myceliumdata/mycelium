@@ -11,6 +11,7 @@ from typing import Any
 from agents.entity_registry import RegistryEntity, get_entity_registry
 from agents.seed import get_seed_data
 from agents.specialists.base import category_slug
+from network.metering_policy import load_metering_policy
 from network.mvr import load_mvr
 from network.paths import NetworkPaths, network_metadata, resolve_network_root
 
@@ -532,6 +533,17 @@ _POLICY_ENTITY_VALIDATED = (
     'When outcome is "entity_validated", provisional registry entity passed rule-based '
     "MVR checks (name and employer). The entity is promoted to validated in entities.json."
 )
+_POLICY_METERING = (
+    "When metering.enabled is true, billable attribute research and delivery require an "
+    "accepted quote before specialists run. Responses with outcome quote_required include "
+    "a structured quote (line_items, cache_state, total_usd). When metering.payment.enabled "
+    "is also true: call pay_quote to settle, then retry query_entity with quote_id — "
+    "outcome payment_required if quote_id is sent before pay_quote. Negotiation (MCP quotes) "
+    "is separate from settlement (PaymentProvider / pay_quote). Set optional provenance=true "
+    "on EntityQuery to request sources/audit trail (query_provenance meter). Outcome "
+    "principal_required when billing principal is missing for sponsor_public or pool funding "
+    "models. Bind and validate phases stay free. Default CRM keeps metering and payment disabled."
+)
 _POLICY_ENTITY_GROWTH = (
     "Network growth from queries: bind creates a registry row (entities.json), validation "
     "promotes it, gated research writes extended attributes to specialist storage keyed by "
@@ -625,6 +637,8 @@ def build_network_capabilities() -> dict[str, Any]:
             "entity_unknown": _POLICY_ENTITY_UNKNOWN,
             "entity_bind": _POLICY_ENTITY_BIND,
             "research_gate": _POLICY_RESEARCH_GATE,
+            "metering": _POLICY_METERING,
+            "metering_policy": load_metering_policy(paths=paths).summary(),
             "entity_validated": _POLICY_ENTITY_VALIDATED,
             "entity_growth": _POLICY_ENTITY_GROWTH,
             "entity_key_unresolved": _POLICY_ENTITY_KEY_UNRESOLVED,
@@ -633,7 +647,14 @@ def build_network_capabilities() -> dict[str, Any]:
                 "request_schema": "mycelium://schema/entity-query",
                 "response_schema": "mycelium://schema/query-response",
                 "key_field": "entity_key",
-                "optional_fields": ["requested_attributes", "binding", "thread_id"],
+                "optional_fields": [
+                    "requested_attributes",
+                    "binding",
+                    "thread_id",
+                    "quote_id",
+                    "principal",
+                    "provenance",
+                ],
             },
         },
     }
@@ -650,9 +671,11 @@ def format_mcp_instructions(capabilities: dict[str, Any]) -> str:
         f"Mycelium network **{display_name}** (`{network_name}`). "
         "Call **`describe_network`** for the author guide, ontology, and usage policy. "
         "Use **`query_entity`** with JSON: `entity_key`, optional `requested_attributes`, "
-        "optional `thread_id`. Responses are **`QueryResponse`** "
-        "(`outcome`, `suggestions`, `required_fields`, `results`, `message`, `debug`, "
-        "`trace_id`, `thread_id`); read **`message`** for per-attribute status. "
+        "optional `thread_id`, optional `quote_id` (retry after quote_required / pay_quote). "
+        "When payment is enabled: quote_required → **`pay_quote`** → query_entity+quote_id. "
+        "Responses are **`QueryResponse`** "
+        "(`outcome`, `quote`, `suggestions`, `required_fields`, `results`, `message`, "
+        "`debug`, `trace_id`, `thread_id`); read **`message`** for per-attribute status. "
         "On **`outcome: entity_key_unresolved`**, retry with a **`suggestions[].entity_key`**. "
         "On **`entity_unknown`**, supply **`binding`** per MVR **`required_fields`**. "
         "Use **`health_check`** for server liveness and network binding. "

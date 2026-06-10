@@ -172,7 +172,11 @@ Backend shipped in entity protocol Slices 1–8; operator-facing admin work defe
 - [x] **Seed vs specialists boundary (Slice 7 + fix `1605`)** — `entity_id`/`bind` context, `core_identity` deleted, framework specialists regenned (June 2026).
 - [x] **Entity growth & attribution (Slice 8)** — registry `attr_sources` + `last_researched_at`; Paul Murphy arc smoke; CRM README growth model (June 2026).
 - [x] **Entity protocol polish (post Slice 8, `1800`)** — P1–P14 nits: stronger no-invoke tests, `binding` in `optional_fields`, `planner_context`, research gate defense, `researched_fields` attribution, doc/test fixes (June 2026).
-- [ ] **Negotiation & metering (Slices 9–10 — deferred)** — Paul (June 2026): complete Slices 1–8 first; payment decisions premature. Core validation **free for now**. Drafts: [`entity-metering-design-phase9.md`](docs/plans/entity-metering-design-phase9.md), [`entity-metering-hooks-phase10.md`](docs/plans/entity-metering-hooks-phase10.md).
+- [x] **Negotiation & metering — Slice 9 design** — Locked June 2026: [`entity-metering-design-phase9.md`](docs/plans/entity-metering-design-phase9.md). Q9a–Q9m incl. Q9i-A (principal optional marginal / required sponsor-pool).
+- [x] **Metering negotiation — Slice 10** — Shipped: `quote_required`, stores, gate, 16 tests. Cursor: `prompts/cursor/done/2026-06-09-2100-entity-metering-implementation/`. CRM `metering.enabled: false` default.
+- [x] **Metering Slice 10 fix** — Shipped + review approved: [`entity-metering-slice10-fix.md`](docs/plans/entity-metering-slice10-fix.md), `prompts/cursor/done/2026-06-09-2110-entity-metering-slice10-fix/`.
+- [x] **Payment settlement — Slice 11** — Shipped + review approved: [`entity-metering-payment-implementation.md`](docs/plans/entity-metering-payment-implementation.md), `prompts/cursor/done/2026-06-09-2200-entity-metering-payment-slice11/`. Negotiation (10) ≠ settlement (11).
+- [x] **Metering Slice 11 fix** — Shipped + review approved: [`entity-metering-slice11-fix.md`](docs/plans/entity-metering-slice11-fix.md), `prompts/cursor/done/2026-06-09-2210-entity-metering-payment-slice11-fix/`.
 - [ ] **Per-record query messages (multi-match)** — v1 keeps collective `message` when `entity_key` matches multiple seed records (e.g. two Kevin Zhangs); agent disambiguates via `results`. Revisit when non-person or other domains need per-record status in `message` (different attrs per match, async research diverging per id).
 - [x] **Thread checkpoint: new query on same `thread_id`** — fixed (`run_query` clears stale `response`; removed `assemble_response` short-circuit; smoke test `test_same_thread_new_query_rebuilds_response`). **Follow-up:** multi-turn merge semantics (reuse specialist cache across attributes on one thread without redundant research) still open.
 - [ ] **Long-running threads** — suspend and ask client for clarification (`thread_id` + checkpoints; bones exist).
@@ -228,4 +232,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-09 (peer context prominence shipped)
+Last updated: 2026-06-10 (metering Slice 11 + fix shipped)

@@ -6,5 +6,22 @@
     "bind_fields": ["name", "employer"],
     "name_source": "entity_key",
     "description": "CRM people: display name plus current employer before bind and research."
+  },
+  "metering": {
+    "enabled": false,
+    "description": "When enabled: EntityQuery.provenance requests query_provenance meter; default_funding_model marginal; full_duplicate charges production on cache hits.",
+    "default_funding_model": "marginal",
+    "meter_first_delivery": true,
+    "quote_provider": "builtin",
+    "principal": {
+      "marginal_optional": true,
+      "required_for_funding_models": ["sponsor_public", "pool"]
+    },
+    "payment": {
+      "enabled": false,
+      "provider": "mock",
+      "require_paid_before_accept": true,
+      "description": "When enabled with metering: quote_required → pay_quote MCP → query_entity+quote_id. Settlement is separate from MCP quote negotiation."
+    }
   }
 }

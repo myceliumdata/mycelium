@@ -1,6 +1,6 @@
 # Entity protocol & registry — full program (slice map)
 
-**Status:** Approved by Paul (June 2026) — bootstrap seed trusted for gating; grown entities must validate. **Cursor handoff: Slices 1–8** (locked specs + prompts). **Slices 9–10 deferred** — metering design resumes after 1–8 ship.  
+**Status:** Approved by Paul (June 2026) — entity protocol Slices 1–8 shipped; **Slice 9** design locked; **Slice 10** metering implementation shipped; **Slice 11** payment settlement shipped.
 **Sources:**  
 - [`conversations/2026-06-08-entity-key-negotiation.md`](conversations/2026-06-08-entity-key-negotiation.md)  
 - [`conversations/2026-06-08-entity-registry-validation-growth.md`](conversations/2026-06-08-entity-registry-validation-growth.md)  
@@ -16,7 +16,7 @@ Build **agent-to-agent negotiation** from the outside in:
 2. **Policy** — per-network minimum viable record (MVR) before bind.  
 3. **Registry** — one place for ids, bind keys, validation state (not replicated in specialists).  
 4. **Growth** — networks gain records from queries, not only bootstrap seed.  
-5. **Metering** — x402-style phases on commit (design → hooks → integration later).
+5. **Metering** — **priced commit** on MCP (negotiation → Slice 9–10); **payment settlement** optional behind gate (Slice 11 — x402 is settlement, not negotiation).
 
 **Paul’s problem split (never conflate):**
 
@@ -41,7 +41,7 @@ Build **agent-to-agent negotiation** from the outside in:
 | P6 | Confirmation for near-miss | **Retry with `entity_key` only** (Slice 1 — locked) | Simplest agent loop |
 | P7 | Research gate | **No `current_id` → no specialists/Tavily** (enforce uniformly by Slice 6) | Fixes today’s leak: unknown key + `email` still classifies |
 | P8 | Validation depth (v1) | **Sync-light, rule-based only** — no LLM plausibility; no Tavily for core bind | Paul Q5d; extended attrs still use research |
-| P9 | Metering | **Design in Slice 9; hooks in Slice 10; no billing before Slice 6 gate works** | x402 depends on stable negotiation outcomes |
+| P9 | Metering | **Negotiation Slice 9–10; settlement Slice 11+** | x402 = HTTP settlement only; MCP = quote negotiation |
 | P10 | Bootstrap seed gating | **Seed rows = trusted for research gate** (maintainer-curated at bootstrap); **grown entities must validate** | Preserves CRM demo; not a claim of real-world factual truth |
 
 ---
@@ -60,7 +60,9 @@ Evolves across slices; implement only when each slice ships.
 | `entity_under_specified` | **3** | Known name path but MVR incomplete (e.g. missing `employer`) |
 | `entity_bound_provisional` | **4** | Bind accepted; provisional id allocated |
 | `entity_validated` | **5** | Core bind fields validated; research may proceed |
-| `quote_required` | **10** | (Future) commit needs metering acceptance |
+| `quote_required` | **10** | Commit needs metering acceptance; retry with `quote_id` |
+| `principal_required` | **10 fix** | Metering: billing `principal` missing for funding model |
+| `payment_required` | **11** | Settlement: call `pay_quote` before `quote_id` unlocks work |
 
 Slice 1 implements the first four rows plus `entity_key_unresolved`. Later slices replace bare `not_found` for B/C cases.
 
@@ -269,30 +271,71 @@ Fallback for CRM example: if `mvr` absent, default `bind_fields: ["name", "emplo
 
 ---
 
-### Slice 9 — Negotiation phases & metering *(deferred)*
+### Slice 9 — Metering negotiation design *(locked)*
 
-**Detail:** [`entity-metering-design-phase9.md`](entity-metering-design-phase9.md) — **no Cursor prompt**
+**Detail:** [`entity-metering-design-phase9.md`](entity-metering-design-phase9.md)
 
 | | |
 |--|--|
-| **Status** | **Deferred** — Paul: complete Slices 1–8 first; payment decisions premature |
-| **Working assumption** | Core validation stays **free** until metering design resumes |
-| **Code** | None |
+| **Status** | **Locked** (June 2026) — Q9a–Q9m |
+| **Ships** | Design only — priced commit, funding models, quote schema, decision rationale |
+| **Not** | x402 / HTTP / wallet (see Slice 11) |
 
-**Phases (reference only — not locked):** A discover/bind → B scope/classify → C commit/research → D deliver.
-
-**Depends on:** Slices 1–8 shipped; Paul + Grok design pass.
+**Phases:** A–B free → C quoted → D quoted (first assembly metered by default).
 
 ---
 
-### Slice 10 — Metering hooks *(deferred)*
+### Slice 10 — Metering negotiation implementation *(shipped)*
 
-**Detail:** [`entity-metering-hooks-phase10.md`](entity-metering-hooks-phase10.md) — **no Cursor prompt**
+**Detail:** [`entity-metering-implementation.md`](entity-metering-implementation.md) · Cursor: `prompts/cursor/done/2026-06-09-2100-entity-metering-implementation/`
 
 | | |
 |--|--|
-| **Status** | **Deferred** — blocked on Slice 9 |
-| **Depends on** | Slice 9 design lock + Slice 6 gate |
+| **Status** | **Shipped** (+ fix `2110`) |
+| **Ships** | `quote_required`, `quote_id`, stores, `metering_gate`, 20 tests |
+| **Default** | CRM `metering.enabled: false` |
+
+**Depends on:** Slice 9 + Slice 6 gate.
+
+---
+
+### Slice 10 fix — Metering review nits *(shipped)*
+
+**Detail:** [`entity-metering-slice10-fix.md`](entity-metering-slice10-fix.md) · `prompts/cursor/done/2026-06-09-2110-entity-metering-slice10-fix/`
+
+| | |
+|--|--|
+| **Status** | **Shipped** — review approved |
+| **Ships** | `provenance`, `principal_required`, policy E2E tests (20 metering tests) |
+
+---
+
+### Slice 11 — Payment settlement *(shipped)*
+
+**Detail:** [`entity-metering-payment-phase11.md`](entity-metering-payment-phase11.md) · [`entity-metering-payment-implementation.md`](entity-metering-payment-implementation.md)  
+**Cursor:** `prompts/cursor/done/2026-06-09-2200-entity-metering-payment-slice11/`
+
+| | |
+|--|--|
+| **Status** | **Shipped** — review approved |
+| **Ships** | `PaymentProvider`, `pay_quote` MCP, mock/credit/x402-stub, `paid` gate, `payment_required` |
+| **Distinction** | **Negotiation = MCP (Slices 9–10). Settlement = Slice 11 (x402 is backend, not negotiation).** |
+
+**Depends on:** Slice 10 + fix.
+
+---
+
+### Slice 11 fix — Payment review nits *(shipped)*
+
+**Detail:** [`entity-metering-slice11-fix.md`](entity-metering-slice11-fix.md)  
+**Cursor:** `prompts/cursor/done/2026-06-09-2210-entity-metering-payment-slice11-fix/`
+
+| | |
+|--|--|
+| **Status** | **Shipped** — review pending |
+| **Ships** | Quote expiry in `settle_quote`, credit-after-`mark_paid`, MCP `pay_quote` test, doc exit-criteria hygiene, x402 env note |
+
+**Depends on:** Slice 11.
 
 ---
 
@@ -321,8 +364,10 @@ flowchart LR
   S6[6 Research gate]
   S7[7 Boundary cleanup]
   S8[8 Growth]
-  S9[9 Metering design]
-  S10[10 Metering hooks]
+  S9[9 Negotiation design]
+  S10[10 Negotiation code]
+  S11[11 Payment settlement]
+  S11f[11 fix Payment nits]
 
   S1 --> S2
   S1 --> S3
@@ -333,6 +378,8 @@ flowchart LR
   S7 --> S8
   S6 --> S9
   S9 --> S10
+  S10 --> S11
+  S11 --> S11f
 ```
 
 ---

@@ -18,7 +18,7 @@ os.environ["MYCELIUM_USE_SYNC_CHECKPOINTER"] = "1"
 
 from agents.runtime import refresh_runtime_from_disk
 from graphs.core import run_query
-from models.state import EntityQuery, QueryResponse, SeedRecord
+from models.state import BillingPrincipal, EntityQuery, QueryResponse, SeedRecord
 from network.introspection import build_network_capabilities, format_mcp_instructions
 from storage.core import get_storage
 
@@ -182,16 +182,74 @@ def query_entity(query_json: str) -> str:
     {
       "entity_key": "Nichanan Kesonpat",
       "requested_attributes": ["email"],
-      "thread_id": "optional-conversation-id"
+      "thread_id": "optional-conversation-id",
+      "quote_id": "q_abc (retry after quote_required / payment_required)"
     }
 
     Response JSON includes outcome, suggestions (when near-miss), required_fields
-    (when entity_unknown), results, message, debug, trace_id, and thread_id.
+    (when entity_unknown), quote (when quote_required or payment_required), results,
+    message, debug, trace_id, and thread_id.
     On outcome entity_key_unresolved, re-query with a suggestions[].entity_key.
     On outcome entity_unknown, gather required_fields from MVR policy (see
     describe_network) before re-querying — no research until bound.
+    When metering.payment.enabled: quote_required → pay_quote → retry with quote_id.
     """
     return _run_mcp_query(query_json)
+
+
+@mcp.tool
+def pay_quote(payment_json: str) -> str:
+    """
+    Settle a metering quote before query_entity can accept it (Slice 11).
+
+    Request JSON:
+    {
+      "quote_id": "q_abc",
+      "proof": "optional (x402:test:… for x402 stub)",
+      "principal": {"kind": "tenant", "id": "acme"}
+    }
+
+    Returns JSON: {"status": "paid", "receipt": {...}} or {"status": "error", "message": "..."}.
+    """
+    _bootstrap()
+    refresh_runtime_from_disk()
+    try:
+        data: Any = json.loads(payment_json)
+        if not isinstance(data, dict):
+            msg = "payment JSON must be an object"
+            raise ValueError(msg)
+        quote_id = data.get("quote_id")
+        if not isinstance(quote_id, str) or not quote_id.strip():
+            msg = "quote_id is required"
+            raise ValueError(msg)
+        proof = data.get("proof")
+        if proof is not None and not isinstance(proof, str):
+            msg = "proof must be a string when provided"
+            raise ValueError(msg)
+        principal_raw = data.get("principal")
+        principal = (
+            BillingPrincipal.model_validate(principal_raw)
+            if isinstance(principal_raw, dict)
+            else None
+        )
+        from network.payment import PaymentError, settle_quote
+
+        receipt = settle_quote(
+            quote_id.strip(),
+            proof=proof,
+            principal=principal,
+        )
+        return json.dumps(
+            {"status": "paid", "receipt": receipt.model_dump()},
+            indent=2,
+        )
+    except (PaymentError, ValueError) as exc:
+        return json.dumps({"status": "error", "message": str(exc)}, indent=2)
+    except Exception as exc:
+        return json.dumps(
+            {"status": "error", "message": f"pay_quote failed: {exc}"},
+            indent=2,
+        )
 
 
 @mcp.tool

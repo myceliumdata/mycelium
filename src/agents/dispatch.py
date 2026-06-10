@@ -15,6 +15,7 @@ from agents.entity_validation import (
 )
 from agents.registry import get_agent_registry
 from agents.research_gate import is_research_gated, research_gate_allows
+from agents.metering_gate import write_entitlement_from_accepted_quote
 from agents.responses import (
     merge_requested_record,
     response_assembled,
@@ -25,6 +26,9 @@ from agents.responses import (
     response_entity_validated,
     response_found,
     response_not_found,
+    response_principal_required,
+    response_payment_required,
+    response_quote_required,
     response_research_gated,
     response_validation_failed,
 )
@@ -215,6 +219,22 @@ def invoke_specialists_node(state: MyceliumGraphState | dict[str, Any]) -> dict[
     )
     logs.extend(growth_logs)
 
+    if current.metering_write_entitlement and current.metering_accepted_quote:
+        researched_any = any(
+            list((c.get("researched_fields") or []))
+            for c in contributions
+        )
+        if researched_any:
+            principal = current.query.principal
+            sponsor_id = principal.id if principal is not None else None
+            record = write_entitlement_from_accepted_quote(
+                accepted_quote=current.metering_accepted_quote,
+                sponsor_id=sponsor_id,
+            )
+            logs.append(
+                f"invoke_specialists: wrote entitlement {record.entitlement_id}.",
+            )
+
     meta = dict(meta)
     meta["contributions"] = contributions
     ctx = dict(current.context) if isinstance(current.context, dict) else {}
@@ -237,6 +257,43 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
     meta = _meta(current)
     contributions = meta.get("contributions") or []
     matched = current.matched_records or []
+
+    if current.metering_payment_required and current.pending_quote:
+        identity_records = _identity_records_from_seed(matched) if matched else []
+        return {
+            "response": response_payment_required(
+                query,
+                current.pending_quote,
+                base_records=identity_records or None,
+                **id_kwargs,
+            ),
+            "audit_log": ["assemble_response: payment_required."],
+        }
+
+    if current.pending_quote:
+        identity_records = _identity_records_from_seed(matched) if matched else []
+        return {
+            "response": response_quote_required(
+                query,
+                current.pending_quote,
+                base_records=identity_records or None,
+                **id_kwargs,
+            ),
+            "audit_log": ["assemble_response: quote_required."],
+        }
+
+    if current.metering_principal_required:
+        return {
+            "response": response_principal_required(
+                query,
+                funding_model=current.metering_principal_required,
+                **id_kwargs,
+            ),
+            "audit_log": [
+                "assemble_response: principal_required "
+                f"({current.metering_principal_required}).",
+            ],
+        }
 
     if current.entity_resolution_kind == "suggest" and current.entity_suggestions:
         return {

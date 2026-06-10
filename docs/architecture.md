@@ -71,9 +71,33 @@ The **supervisor** (`src/agents/supervisor.py`) resolves seed matches, classifie
 **Graph flow** (`src/graphs/core.py`):
 
 ```
-START → supervisor → build_context → invoke_specialists → assemble_response → END
-              └──────────────── assemble_response (name-only / not found)
+START → supervisor → validate_entity → metering_gate → build_context → invoke_specialists → assemble_response → END
+              └────────────────────────────────────── assemble_response (blocked / identity-only)
 ```
+
+### Metering negotiation vs payment settlement (Slice 10–11)
+
+Negotiation and settlement are separate layers. MCP `query_entity` handles priced-commit negotiation; `pay_quote` handles settlement.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ NEGOTIATION (MCP — query_entity)                            │
+│   query → quote_required + Quote JSON                       │
+│   query + quote_id → work runs (after accept gate)          │
+└────────────────────────────┬────────────────────────────────┘
+                             │ when metering.payment.enabled
+                             ▼
+┌─────────────────────────────────────────────────────────────┐
+│ SETTLEMENT (pay_quote → PaymentProvider)                    │
+│   MockProvider / CreditProvider / X402StubProvider          │
+│   quote status: pending → paid → accepted                   │
+│   payment_required if quote_id sent before pay_quote        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+Bypass env vars for tests/demos: `MYCELIUM_AUTO_ACCEPT_QUOTES` (skip metering), `MYCELIUM_AUTO_SETTLE_QUOTES` (skip payment when metering on). CRM example keeps both disabled.
+
+Future real x402 settlement may read `MYCELIUM_X402_FACILITATOR_URL` for facilitator HTTP; the Slice 11 stub provider ignores it (CI uses `x402:test:` proofs only).
 
 - **build_context** (`src/agents/context.py`) — union of seed + all specialist storage for the matched `id`(s).
 - **invoke_specialists** — each required specialist receives full `context`, `current_id`, and `target_fields` (owned attributes only).

@@ -289,6 +289,7 @@ def _make_response(
     outcome: str | None = None,
     suggestions: list[EntityKeySuggestion] | None = None,
     required_fields: list[str] | None = None,
+    quote: dict[str, Any] | None = None,
     trace_id: str | None = None,
     thread_id: str | None = None,
 ) -> QueryResponse:
@@ -299,6 +300,7 @@ def _make_response(
         outcome=outcome,
         suggestions=suggestions or [],
         required_fields=required_fields or [],
+        quote=quote,
         trace_id=trace_id,
         thread_id=thread_id,
     )
@@ -568,6 +570,96 @@ def response_entity_validated(
             query,
             outcome="entity_validated",
             registry_id=record.get("id"),
+        ),
+        trace_id=trace_id,
+        thread_id=thread_id,
+    )
+
+
+def response_quote_required(
+    query: EntityQuery,
+    quote: dict[str, Any],
+    *,
+    base_records: list[dict[str, Any]] | None = None,
+    trace_id: str | None = None,
+    thread_id: str | None = None,
+) -> QueryResponse:
+    """Metering gate blocked progress until quote is accepted."""
+    results = list(base_records or [])
+    total = quote.get("total_usd")
+    cache_state = quote.get("cache_state", "miss")
+    message = (
+        f"Quote required before research or delivery (cache_state={cache_state}, "
+        f"total_usd={total}). Retry with quote_id after acceptance."
+    )
+    return _make_response(
+        results=results,
+        message=message,
+        outcome="quote_required",
+        quote=quote,
+        debug=debug_for_query(
+            query,
+            outcome="quote_required",
+            quote_id=quote.get("quote_id"),
+            cache_state=cache_state,
+        ),
+        trace_id=trace_id,
+        thread_id=thread_id,
+    )
+
+
+def response_payment_required(
+    query: EntityQuery,
+    quote: dict[str, Any],
+    *,
+    base_records: list[dict[str, Any]] | None = None,
+    trace_id: str | None = None,
+    thread_id: str | None = None,
+) -> QueryResponse:
+    """Metering gate blocked: quote must be paid before quote_id unlocks work."""
+    results = list(base_records or [])
+    total = quote.get("total_usd")
+    quote_id = quote.get("quote_id")
+    message = (
+        f"Payment required before work runs (quote_id={quote_id}, total_usd={total}). "
+        "Call pay_quote with this quote_id, then retry query_entity with the same quote_id."
+    )
+    return _make_response(
+        results=results,
+        message=message,
+        outcome="payment_required",
+        quote=quote,
+        debug=debug_for_query(
+            query,
+            outcome="payment_required",
+            quote_id=quote_id,
+        ),
+        trace_id=trace_id,
+        thread_id=thread_id,
+    )
+
+
+def response_principal_required(
+    query: EntityQuery,
+    *,
+    funding_model: str,
+    trace_id: str | None = None,
+    thread_id: str | None = None,
+) -> QueryResponse:
+    """Metering blocked: billing principal required for the network funding model."""
+    message = (
+        f"Billing principal required for funding model {funding_model!r}. "
+        "Supply principal on EntityQuery (kind + id) and retry."
+    )
+    return _make_response(
+        results=[],
+        message=message,
+        outcome="principal_required",
+        required_fields=[],
+        debug=debug_for_query(
+            query,
+            outcome="principal_required",
+            funding_model=funding_model,
         ),
         trace_id=trace_id,
         thread_id=thread_id,

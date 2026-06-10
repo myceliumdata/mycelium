@@ -82,6 +82,9 @@ class NetworkPaths:
     specialists_dir: Path
     checkpoint_path: Path
     db_path: Path
+    entitlements_path: Path
+    quotes_path: Path
+    credits_path: Path
 
     @classmethod
     def from_root(cls, root: Path) -> NetworkPaths:
@@ -96,6 +99,9 @@ class NetworkPaths:
             specialists_dir=resolved / "specialists",
             checkpoint_path=resolved / "checkpoints.sqlite",
             db_path=resolved / "mycelium.db",
+            entitlements_path=resolved / "entitlements.json",
+            quotes_path=resolved / "quotes.json",
+            credits_path=resolved / "credits.json",
         )
 
 
@@ -108,6 +114,9 @@ _RUNTIME_ENV_FIELDS: dict[str, str] = {
     "MYCELIUM_SPECIALISTS_DIR": "specialists_dir",
     "MYCELIUM_CHECKPOINT_PATH": "checkpoint_path",
     "MYCELIUM_DB_PATH": "db_path",
+    "MYCELIUM_ENTITLEMENTS_PATH": "entitlements_path",
+    "MYCELIUM_QUOTES_PATH": "quotes_path",
+    "MYCELIUM_CREDITS_PATH": "credits_path",
 }
 
 
