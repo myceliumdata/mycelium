@@ -107,6 +107,15 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  {action} existing live root")
     for entry in result.copied:
         print(f"  copy: {entry}")
+    if result.seed_bootstrap_count > 0:
+        if result.dry_run:
+            print(
+                f"  Would import: seed.json → {result.seed_bootstrap_count} entities",
+            )
+        else:
+            print(
+                f"  seed: seed.json → {result.seed_bootstrap_count} entities imported",
+            )
     if result.registered and result.registry_name:
         suffix = " (default)" if result.is_default else ""
         action = "Would register" if result.dry_run else "Registered"

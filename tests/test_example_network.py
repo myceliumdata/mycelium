@@ -123,6 +123,7 @@ def test_refresh_example_network_empty_root(tmp_path: Path) -> None:
         check=False,
     )
     assert result.returncode == 0, result.stderr or result.stdout
+    assert "seed: seed.json → 15 entities imported" in result.stdout
     assert (target / "seed.json").is_file()
     assert (target / "network.json").is_file()
     assert not (target / "README.md").exists()
@@ -136,6 +137,7 @@ def test_refresh_empty_crm_has_no_seed_or_entities(tmp_path: Path) -> None:
     target = tmp_path / "empty-crm-live"
     result = refresh_example_network("empty-crm", root=target, register=False, yes=True)
     assert result.declined is False
+    assert result.seed_bootstrap_count == 0
     assert not (target / "seed.json").exists()
     entities_path = target / "entities.json"
     if entities_path.is_file():
@@ -150,6 +152,7 @@ def test_refresh_crm_imports_seed_into_entities(tmp_path: Path) -> None:
     target = tmp_path / "crm-live"
     result = refresh_example_network("crm", root=target, register=False, yes=True)
     assert result.declined is False
+    assert result.seed_bootstrap_count == 15
 
     entities_path = target / "entities.json"
     assert entities_path.is_file()

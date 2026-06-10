@@ -28,7 +28,7 @@ uv run mycelium query --entity-key "Nichanan Kesonpat"
 |------|---------|
 | **CRM example** (committed reference; wipe stale research before demos) | `./bin/refresh-example-network crm` |
 | **Empty-seed CRM** (no bootstrap people; growth from query binds) | `./bin/refresh-example-network empty-crm` |
-| **Custom domain** (your categories + specialists) | `uv run mycelium network create <name> --root <path> --seed <file> --prompt "..."` |
+| **Custom domain** (your categories + specialists) | `uv run mycelium network create <name> --root <path> --prompt "..."` (optional `--seed <file>`) |
 | **Live demo UI** (network state while you query) | `./bin/restart-admin` → open `http://127.0.0.1:5173` |
 
 **Demo runbook:** Before a demo, run `./bin/refresh-example-network crm --yes` to restore a clean seed and drop cached specialist research. **Restart your MCP server** (e.g. Claude Desktop) after refresh so it reloads the wiped network. Use a **fresh `thread_id`** per query attribute when demonstrating research (avoids stale checkpoint state).
@@ -44,7 +44,7 @@ uv run mycelium network create wheat_farm \
   --default
 ```
 
-`network create` copies seed, runs an LLM **skeleton ontology** (categories + specialists under `<root>/specialists/`), registers the name, and prints an MCP snippet. **Ontology** is fixed at create; **classification** still grows `attribute_map` lazily when clients request unknown attributes. See [docs/plans/networks-phase5.md](docs/plans/networks-phase5.md).
+`network create` runs an LLM **skeleton ontology** (categories + specialists under `<root>/specialists/`), registers the name, and prints an MCP snippet. With `--seed`, it copies the file and imports people into `entities.json`; without `--seed`, the registry stays empty until the first query bind (same as `empty-crm`). `./bin/refresh-example-network` auto-imports when the copied example ships `seed.json`. **Ontology** is fixed at create; **classification** still grows `attribute_map` lazily when clients request unknown attributes. See [docs/plans/networks-phase5.md](docs/plans/networks-phase5.md).
 
 ### CLI
 
@@ -65,6 +65,7 @@ uv run mycelium query --network-dir examples/networks/crm --entity-key "Nichanan
 uv run mycelium query --network crm --entity-key "Andrea Kalmans"
 
 # Network management
+uv run mycelium network create my_net --root ~/mycelium-networks/my_net --prompt "..."
 uv run mycelium network create my_net --root ~/mycelium-networks/my_net --seed ./seed.json --prompt "..."
 uv run mycelium network register crm --root ~/mycelium-networks/crm --default
 uv run mycelium network list
@@ -260,13 +261,16 @@ See [docs/database-notes.md](docs/database-notes.md) if you have an older `data/
 Use a **new network root** instead of resetting in place:
 
 ```bash
-# Custom domain (LLM ontology from creation prompt)
+# Custom domain — empty registry until first bind
+uv run mycelium network create my_net --root /abs/path --prompt "..."
+
+# Custom domain — with seed bootstrap
 uv run mycelium network create my_net --root /abs/path --seed ./seed.json --prompt "..."
 
-# Rebuild same root (overwrites ontology artifacts; does not touch seed.json)
-uv run mycelium network create my_net --root /abs/path --seed ./seed.json --prompt "..." --force
+# Rebuild same root (overwrites ontology; --force without --seed clears stale seed/entities)
+uv run mycelium network create my_net --root /abs/path --prompt "..." --force
 
-# CRM example (reset live root)
+# CRM example (reset live root; auto-imports seed.json when example ships it)
 ./bin/refresh-example-network crm --yes
 ```
 

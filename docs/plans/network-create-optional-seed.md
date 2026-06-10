@@ -1,6 +1,6 @@
 # Network create v2 — optional `--seed`
 
-**Status:** Queued for Cursor (June 2026)  
+**Status:** Shipped (June 2026)  
 **Trigger:** Paul + Grok agreed post seed-elimination: breaking-change window; empty networks are first-class.
 
 ## Goal

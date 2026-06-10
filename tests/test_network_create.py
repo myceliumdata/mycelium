@@ -169,8 +169,8 @@ def test_create_network_dry_run_writes_nothing(
     result = create_network(
         "dry_net",
         root,
-        seed,
         "Track widget telemetry",
+        seed_path=seed,
         dry_run=True,
         ontology_fn=_ontology,
     )
@@ -197,14 +197,15 @@ def test_create_network_happy_path_writes_artifacts(
     result = create_network(
         "happy_net",
         root,
-        seed,
         "Custom widget network",
+        seed_path=seed,
         display_name="Happy Net",
         default=True,
         ontology_fn=lambda _p: _mock_ontology_three(),
     )
 
     assert result.registered is True
+    assert result.entities_bootstrapped == 1
     assert result.specialists_count == 3
     assert (root / "seed.json").is_file()
     assert (root / "entities.json").is_file()
@@ -244,8 +245,8 @@ def test_create_network_rejects_existing_without_force(
         create_network(
             "existing",
             root,
-            seed,
             "prompt",
+            seed_path=seed,
             ontology_fn=lambda _p: _mock_ontology_three(),
         )
 
@@ -264,8 +265,8 @@ def test_create_network_invalid_seed_before_ontology(tmp_path: Path) -> None:
         create_network(
             "bad_seed",
             root,
-            seed,
             "prompt",
+            seed_path=seed,
             ontology_fn=_should_not_run,
         )
 
@@ -282,8 +283,8 @@ def test_create_network_force_overwrites_ontology(
     create_network(
         "force_net",
         root,
-        seed,
         "first",
+        seed_path=seed,
         ontology_fn=lambda _p: _mock_ontology_three(marker="first"),
     )
     orphan = root / "specialists" / "orphan_specialist.py"
@@ -293,8 +294,8 @@ def test_create_network_force_overwrites_ontology(
     create_network(
         "force_net",
         root,
-        seed,
         "second",
+        seed_path=seed,
         force=True,
         ontology_fn=lambda _p: _mock_ontology_three(marker="second-pass"),
     )
@@ -302,6 +303,84 @@ def test_create_network_force_overwrites_ontology(
     categories = json.loads((root / "categories.json").read_text(encoding="utf-8"))
     assert categories["categories"]["alpha"]["description"].endswith("second-pass")
     assert not orphan.is_file()
+
+
+@pytest.mark.smoke
+def test_create_network_without_seed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _isolated_registry(monkeypatch, tmp_path)
+    root = tmp_path / "empty_net"
+
+    result = create_network(
+        "empty_net",
+        root,
+        "Empty CRM-style network for demos",
+        ontology_fn=lambda _p: _mock_ontology_three(),
+    )
+
+    assert result.entities_bootstrapped == 0
+    assert not (root / "seed.json").exists()
+    assert not (root / "entities.json").exists()
+    assert (root / "categories.json").is_file()
+    assert (root / "agent_registry.json").is_file()
+    assert (root / "network.json").is_file()
+    assert (root / "guide.md").is_file()
+
+
+@pytest.mark.smoke
+def test_create_network_without_seed_dry_run(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _isolated_registry(monkeypatch, tmp_path)
+    root = tmp_path / "empty_dry"
+
+    result = create_network(
+        "empty_dry",
+        root,
+        "Dry empty network",
+        dry_run=True,
+        ontology_fn=lambda _p: _mock_ontology_three(),
+    )
+
+    assert result.dry_run is True
+    assert result.entities_bootstrapped == 0
+    assert not root.exists()
+
+
+@pytest.mark.smoke
+def test_create_network_force_without_seed_clears_stale_bootstrap(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _isolated_registry(monkeypatch, tmp_path)
+    root = tmp_path / "stale_net"
+    seed = _write_seed(tmp_path / "seed.json", [{"name": "Stale Person"}])
+
+    create_network(
+        "stale_net",
+        root,
+        "first with seed",
+        seed_path=seed,
+        ontology_fn=lambda _p: _mock_ontology_three(),
+    )
+    assert (root / "seed.json").is_file()
+    assert (root / "entities.json").is_file()
+
+    create_network(
+        "stale_net",
+        root,
+        "second without seed",
+        force=True,
+        ontology_fn=lambda _p: _mock_ontology_three(marker="empty-pass"),
+    )
+
+    assert not (root / "seed.json").exists()
+    assert not (root / "entities.json").exists()
+    categories = json.loads((root / "categories.json").read_text(encoding="utf-8"))
+    assert categories["categories"]["alpha"]["description"].endswith("empty-pass")
 
 
 @pytest.mark.smoke
@@ -316,8 +395,8 @@ def test_create_network_mcp_snippet_contains_network_root(
     result = create_network(
         "mcp_net",
         root,
-        seed,
         "MCP snippet test",
+        seed_path=seed,
         ontology_fn=lambda _p: _mock_ontology_three(),
     )
 
@@ -347,8 +426,8 @@ def test_create_network_query_uses_custom_ontology_not_crm_fallback(
     create_network(
         "query_net",
         root,
-        seed,
         "Industrial equipment monitoring",
+        seed_path=seed,
         default=True,
         ontology_fn=lambda _p: mock,
     )

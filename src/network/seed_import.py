@@ -6,6 +6,9 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from agents.entity_registry import reset_entity_registry
+from network.paths import NetworkPaths, apply_network_paths
+
 if TYPE_CHECKING:
     from agents.entity_registry import EntityRegistry
 
@@ -61,3 +64,17 @@ def import_seed_file(
             validation_state="validated",
         )
     return len(people)
+
+
+def count_seed_rows(seed_path: Path) -> int:
+    """Return the number of people rows in a seed file, or ``0`` when missing."""
+    if not seed_path.is_file():
+        return 0
+    return len(_load_seed_people(seed_path))
+
+
+def bootstrap_seed_at_paths(paths: NetworkPaths) -> int:
+    """Apply network paths, reset registry, import ``seed.json`` when present."""
+    apply_network_paths(paths)
+    reset_entity_registry()
+    return import_seed_file(paths.seed_path)

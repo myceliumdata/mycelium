@@ -8,10 +8,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from agents.entity_registry import reset_entity_registry
-from network.paths import NetworkPaths, apply_network_paths, framework_root
+from network.paths import NetworkPaths, framework_root
 from network.registry import load_network_registry, register_network
-from network.seed_import import import_seed_file
+from network.seed_import import bootstrap_seed_at_paths, count_seed_rows
 
 _SKIP_NAMES = frozenset(
     {
@@ -109,6 +108,7 @@ class RefreshExampleResult:
     registered: bool
     registry_name: str | None
     is_default: bool
+    seed_bootstrap_count: int = 0
     declined: bool = False
     dry_run: bool = False
 
@@ -144,6 +144,11 @@ def refresh_example_network(
             if not _should_skip(item)
         ]
         reg_name = resolve_registry_name(name, source) if register else None
+        seed_bootstrap_count = (
+            count_seed_rows(source / "seed.json")
+            if "seed.json" in would_copy
+            else 0
+        )
         return RefreshExampleResult(
             name=name,
             root=live_root,
@@ -153,6 +158,7 @@ def refresh_example_network(
             registered=register,
             registry_name=reg_name,
             is_default=make_default if register else False,
+            seed_bootstrap_count=seed_bootstrap_count,
             dry_run=True,
         )
 
@@ -180,11 +186,11 @@ def refresh_example_network(
     live_root.mkdir(parents=True, exist_ok=True)
     copied = copy_example_network(name, live_root)
 
-    seed_path = live_root / "seed.json"
-    if seed_path.is_file():
-        apply_network_paths(NetworkPaths.from_root(live_root))
-        reset_entity_registry()
-        import_seed_file(seed_path)
+    seed_bootstrap_count = 0
+    if (live_root / "seed.json").is_file():
+        seed_bootstrap_count = bootstrap_seed_at_paths(
+            NetworkPaths.from_root(live_root),
+        )
 
     if register:
         registry_name = resolve_registry_name(name, live_root)
@@ -207,4 +213,5 @@ def refresh_example_network(
         registered=registered,
         registry_name=registry_name,
         is_default=make_default if register else False,
+        seed_bootstrap_count=seed_bootstrap_count,
     )

@@ -191,9 +191,9 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     create_cmd.add_argument(
         "--seed",
-        required=True,
+        default=None,
         metavar="FILE",
-        help="Seed JSON file (must contain a 'people' array)",
+        help="Optional seed JSON file (people array); imported into entities.json when provided",
     )
     prompt_group = create_cmd.add_mutually_exclusive_group(required=True)
     prompt_group.add_argument(
@@ -352,8 +352,8 @@ def _run_network_command(args: argparse.Namespace) -> int:
             result = create_network(
                 args.name,
                 args.root,
-                args.seed,
                 prompt or "",
+                seed_path=args.seed,
                 display_name=args.display_name,
                 default=args.default,
                 dry_run=args.dry_run,
@@ -373,6 +373,14 @@ def _run_network_command(args: argparse.Namespace) -> int:
                 f"Categories: {result.categories_count} · "
                 f"Specialists: {result.specialists_count}",
             )
+            if result.entities_bootstrapped > 0:
+                console.print(
+                    f"Seed bootstrap: {result.entities_bootstrapped} entities imported",
+                )
+            elif not result.dry_run:
+                console.print(
+                    "[dim]No seed bootstrap — registry empty until first bind[/dim]",
+                )
             if result.registered:
                 suffix = " (default)" if args.default else ""
                 console.print(f"Registered [bold]{result.name}[/bold]{suffix}")

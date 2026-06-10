@@ -17,11 +17,10 @@ from pydantic import BaseModel
 from agents.factory.agent_factory import AgentFactory
 from agents.registry import AgentRegistryData
 from agents.specialists.base import SpecialistStorage
-from agents.entity_registry import reset_entity_registry
 from network.ontology import SkeletonOntologyResult, generate_skeleton_ontology
 from network.paths import NetworkPaths, apply_network_paths, framework_root
 from network.registry import register_network
-from network.seed_import import import_seed_file
+from network.seed_import import bootstrap_seed_at_paths, count_seed_rows
 
 _NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _DEFAULT_ONTOLOGY_MODEL = "gpt-4o-mini"
@@ -37,6 +36,7 @@ class CreateNetworkResult(BaseModel):
     specialists_count: int
     dry_run: bool
     registered: bool
+    entities_bootstrapped: int = 0
     ontology_json: str | None = None
     mcp_snippet: str | None = None
 
@@ -203,9 +203,9 @@ def _render_specialists(
 def create_network(
     name: str,
     root: str | Path,
-    seed_path: str | Path,
     creation_prompt: str,
     *,
+    seed_path: str | Path | None = None,
     display_name: str | None = None,
     default: bool = False,
     dry_run: bool = False,
@@ -230,13 +230,17 @@ def create_network(
             "(network.json present). Use --force to overwrite.",
         )
 
-    seed_file = Path(seed_path).expanduser().resolve()
-    validate_seed_file(seed_file)
+    seed_file: Path | None = None
+    if seed_path is not None:
+        seed_file = Path(seed_path).expanduser().resolve()
+        validate_seed_file(seed_file)
 
     generator = ontology_fn or (
         lambda p: generate_skeleton_ontology(p, llm=llm)
     )
     ontology = generator(prompt)
+
+    entities_bootstrapped = count_seed_rows(seed_file) if seed_file is not None else 0
 
     if dry_run:
         return CreateNetworkResult(
@@ -247,6 +251,7 @@ def create_network(
             specialists_count=len(ontology.agents),
             dry_run=True,
             registered=False,
+            entities_bootstrapped=entities_bootstrapped,
             ontology_json=ontology.categories.model_dump_json(indent=2),
             mcp_snippet=_build_mcp_snippet(clean_name, resolved_root)
             if print_mcp_snippet
@@ -259,10 +264,13 @@ def create_network(
             paths,
             {agent.name for agent in ontology.agents},
         )
-    shutil.copy2(seed_file, paths.seed_path)
-    apply_network_paths(paths)
-    reset_entity_registry()
-    import_seed_file(paths.seed_path)
+        if seed_file is None:
+            paths.seed_path.unlink(missing_ok=True)
+            paths.entities_path.unlink(missing_ok=True)
+    entities_bootstrapped = 0
+    if seed_file is not None:
+        shutil.copy2(seed_file, paths.seed_path)
+        entities_bootstrapped = bootstrap_seed_at_paths(paths)
     _write_categories(paths, ontology.categories)
     _write_agent_registry(paths, ontology.agents)
     _render_specialists(ontology, paths)
@@ -288,6 +296,7 @@ def create_network(
         specialists_count=len(ontology.agents),
         dry_run=False,
         registered=True,
+        entities_bootstrapped=entities_bootstrapped,
         mcp_snippet=_build_mcp_snippet(clean_name, resolved_root)
         if print_mcp_snippet
         else None,
