@@ -2,14 +2,39 @@
 
 from __future__ import annotations
 
+import json
 import types
 from pathlib import Path
 
 import pytest
 
+from agents.entity_registry import reset_entity_registry
 from agents.routing import evaluate_supervisor_turn
+from agents.seed import reset_seed_data
 from agents.supervisor import supervisor_agent
 from models.state import EntityQuery, MyceliumGraphState
+from network_helpers import import_seed_for_test
+
+
+def _configure_any_key_registry(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Path:
+    """Isolated network with ``any-key`` imported into ``entities.json``."""
+    root = tmp_path / "supervisor_net"
+    root.mkdir(parents=True, exist_ok=True)
+    seed = root / "seed.json"
+    seed.write_text(
+        json.dumps({"people": [{"name": "any-key", "employer": "Co"}]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(root))
+    monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
+    monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(root / "entities.json"))
+    reset_seed_data()
+    reset_entity_registry()
+    import_seed_for_test(seed)
+    return root
 
 
 def _seed_lookup(rows: list[dict]) -> callable:
@@ -69,24 +94,8 @@ def test_supervisor_agent_plans_no_specialists_without_attrs(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Name-only query: supervisor resolves seed; graph assemble builds response."""
-    import json
-
-    from agents.seed import reset_seed_data
-
-    seed = tmp_path / "seed.json"
-    seed.write_text(
-        json.dumps(
-            {
-                "people": [
-                    {"id": "p1", "name": "any-key", "employer": "Co"},
-                ],
-            },
-        ),
-        encoding="utf-8",
-    )
-    monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
-    reset_seed_data()
+    """Name-only query: supervisor resolves registry row; graph assemble builds response."""
+    _configure_any_key_registry(tmp_path, monkeypatch)
 
     state = MyceliumGraphState(query=EntityQuery(entity_key="any-key"))
     result = supervisor_agent(state)
@@ -95,7 +104,7 @@ def test_supervisor_agent_plans_no_specialists_without_attrs(
     assert "response" not in result
     meta = result["context"]["_meta"]
     assert meta.get("specialists_to_invoke") == []
-    assert any("resolved via seed" in entry for entry in result["audit_log"])
+    assert any("resolved via registry" in entry for entry in result["audit_log"])
 
 
 @pytest.mark.smoke
@@ -103,6 +112,7 @@ def test_supervisor_agent_classifies_requested_attributes(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    _configure_any_key_registry(tmp_path, monkeypatch)
     from agents.classification import reset_category_tree
     from agents.classification.engine import CategoryTree
     from agents.classification.models import CategoryProposal
@@ -177,6 +187,7 @@ def test_supervisor_triggers_creation_for_unregistered_specialist(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    _configure_any_key_registry(tmp_path, monkeypatch)
     from agents.classification import reset_category_tree
     from agents.classification.engine import CategoryTree
     from agents.classification.models import CategoryProposal
