@@ -103,14 +103,15 @@ def metering_cli_env(
     from agents.classification import get_category_tree, reset_category_tree
     from agents.factory.agent_factory import get_agent_factory, reset_agent_factory
     from agents.registry import reset_agent_registry
-    from agents.seed import reset_seed_data
+    from agents.entity_registry import reset_entity_registry
     from graphs.core import reset_core_graph
+    from network_helpers import import_seed_for_test
     from network.paths import NetworkPaths, apply_network_paths
-    from storage.core import get_storage, reset_storage
+    from storage.core import reset_storage
 
     apply_network_paths(NetworkPaths.from_root(root))
     reset_storage()
-    reset_seed_data()
+    reset_entity_registry()
     reset_category_tree()
     reset_agent_registry()
     reset_agent_factory()
@@ -125,7 +126,7 @@ def metering_cli_env(
         examples=["email", "phone"],
         auto_commit=False,
     )
-    get_storage().seed_from_file(root / "seed.json")
+    import_seed_for_test(root / "seed.json")
     reset_core_graph()
 
     _mock_email_research(monkeypatch)

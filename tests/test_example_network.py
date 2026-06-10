@@ -12,8 +12,9 @@ from pathlib import Path
 import pytest
 
 from agents.entity_registry import reset_entity_registry
-from agents.seed import find_by_key, get_seed_data, reset_seed_data
+from agents.entity_resolution import lookup_entities_by_key
 from network.example import refresh_example_network
+from network_helpers import import_seed_at_root
 from network.paths import NetworkPaths, apply_network_paths, resolve_network_root
 from network.registry import list_networks
 from network.seed_import import import_seed_file
@@ -96,9 +97,9 @@ def test_example_crm_seed_loads_via_network_paths(
     monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(tmp_path / "missing.json"))
     paths = NetworkPaths.from_root(EXAMPLE_CRM)
     apply_network_paths(paths)
-    reset_seed_data()
-    _ = get_seed_data()
-    matches = find_by_key("Nichanan Kesonpat")
+    reset_entity_registry()
+    import_seed_at_root(EXAMPLE_CRM)
+    matches = lookup_entities_by_key("Nichanan Kesonpat")
     assert len(matches) == 1
     assert matches[0]["name"] == "Nichanan Kesonpat"
 
@@ -128,6 +129,20 @@ def test_refresh_example_network_empty_root(tmp_path: Path) -> None:
     assert not (target / "prepare_seed.py").exists()
     for runtime_artifact in _RUNTIME_ARTIFACTS:
         assert not (target / runtime_artifact).exists()
+
+
+@pytest.mark.smoke
+def test_refresh_empty_crm_has_no_seed_or_entities(tmp_path: Path) -> None:
+    target = tmp_path / "empty-crm-live"
+    result = refresh_example_network("empty-crm", root=target, register=False, yes=True)
+    assert result.declined is False
+    assert not (target / "seed.json").exists()
+    entities_path = target / "entities.json"
+    if entities_path.is_file():
+        payload = json.loads(entities_path.read_text(encoding="utf-8"))
+        assert len(payload.get("entities", {})) == 0
+    assert (target / "network.json").is_file()
+    assert (target / "guide.md").is_file()
 
 
 @pytest.mark.smoke

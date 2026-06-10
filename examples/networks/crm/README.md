@@ -2,7 +2,9 @@
 
 Committed **reference network** for the Mycelium framework. Refresh it to a path you own, register it, and query.
 
-This example ships **`seed.json`**, **`network.json`**, **`guide.md`**, and an optional reference **`specialists/contact_specialist.py`** (plus this README and maintainer `prepare_seed.py`). Runtime artifacts — `categories.json`, `agent_registry.json`, `agents/`, additional `specialists/*.py`, DB, checkpoints — are created under your `network_root` on first query. `refresh-example-network` copies seed, network metadata, and guide; it does not copy `specialists/` (the committed reference is for inspection only).
+This example ships **`seed.json`** (bootstrap fixture only — imported into `entities.json` on refresh), **`network.json`**, **`guide.md`**, and an optional reference **`specialists/contact_specialist.py`** (plus this README and maintainer `prepare_seed.py`). Runtime artifacts — `entities.json`, `categories.json`, `agent_registry.json`, `agents/`, additional `specialists/*.py`, DB, checkpoints — are created under your `network_root` on refresh or first query. `refresh-example-network` copies seed, network metadata, and guide; it does not copy `specialists/` (the committed reference is for inspection only).
+
+For a **no-seed** growth demo, see [`../empty-crm/`](../empty-crm/).
 
 Edit **`guide.md`** at your network root to tell visiting agents what this network is for (MCP `describe_network` returns it verbatim).
 
@@ -53,15 +55,15 @@ uv run mycelium network status --network crm --entity "Andrea Kalmans"
 
 ## Network growth from queries
 
-`seed.json` is the **bootstrap origin** only. When a visiting agent binds a new person (for example `Paul Murphy` with `binding.employer`), Mycelium:
+`seed.json` is imported into **`entities.json` at bootstrap only** (refresh/create). Queries read the registry. When a visiting agent binds a new person (for example `Paul Murphy` with `binding.employer`), Mycelium:
 
 1. Creates a provisional row in `entities.json` (registry)
 2. Runs core validation and promotes the row to `validated`
-3. Invokes specialists for requested attributes (research gate: validated or seed hit)
+3. Invokes specialists for requested attributes (research gate: validated registry row)
 4. Writes extended attributes under `agents/<category>/storage.json` keyed by `entity_id`
 5. Records **data attribution** on the registry row: `attr_sources` (which category owns each attr) and `last_researched_at` (when research last succeeded)
 
-Re-query the same bind key (`entity_key` + `binding`) resolves the registry row before seed. Specialist storage remains the source of truth for attribute values; registry metadata tracks provenance for operators and future admin UI.
+Re-query the same bind key (`entity_key` + `binding`) resolves the registry row. Specialist storage remains the source of truth for attribute values; registry metadata tracks provenance for operators and the admin UI.
 
 ## Layout
 

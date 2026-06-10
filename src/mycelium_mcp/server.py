@@ -176,7 +176,7 @@ def _routing_payload() -> dict[str, Any]:
 @mcp.tool
 def query_entity(query_json: str) -> str:
     """
-    Query a seed record by id or name.
+    Query an entity by registry id or name.
 
     Request JSON (EntityQuery fields plus optional thread_id):
     {
@@ -277,7 +277,7 @@ def health_check() -> str:
     Lightweight diagnostics for the long-running MCP server.
 
     Verifies storage bootstrap, graph singleton, internal routing payload, and an
-    internal ping query against seed data. Always returns parseable JSON (never
+    internal ping query against registry data. Always returns parseable JSON (never
     raises to the MCP client).
     """
     try:

@@ -23,7 +23,7 @@ Mycelium is a system where AI agents autonomously handle data ingestion, schema 
 - **Graph:** `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` (see `src/graphs/core.py`).
 - **Specialists:** Generated per attribute domain (Agent Factory); not the original Ingest/Validator bootstrap agents.
 - **Checkpointer:** SQLite (`data/checkpoints.sqlite`), not Postgres.
-- **Data:** JSON flat files for seed, classification, registry, and specialist storage; SQLite is for checkpoints (and legacy DB compatibility only). See `docs/architecture.md`.
+- **Data:** JSON flat files for `entities.json` (canonical), optional bootstrap `seed.json`, classification, registry, and specialist storage; SQLite is for checkpoints (and legacy DB compatibility only). See `docs/architecture.md`.
 
 ## Project rules (enforce strictly)
 

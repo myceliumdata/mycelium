@@ -63,7 +63,6 @@ class NetworkStatusSummary:
     network_name: str | None
     network_root: str
     display_name: str | None
-    seed_people_count: int
     ontology_present: bool
     ontology_message: str
     categories: list[CategorySummary] = field(default_factory=list)
@@ -309,18 +308,6 @@ def _entity_field_statuses(
     return statuses
 
 
-def _seed_people_count(paths: NetworkPaths) -> int:
-    """Count rows in on-disk ``seed.json`` without loading runtime seed cache."""
-    if not paths.seed_path.is_file():
-        return 0
-    try:
-        payload = json.loads(paths.seed_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return 0
-    people = payload.get("people")
-    return len(people) if isinstance(people, list) else 0
-
-
 def _registry_entity_count() -> int:
     return get_entity_registry().entity_count()
 
@@ -444,7 +431,6 @@ def build_network_status(
         else "not created yet — run a query to bootstrap categories.json"
     )
 
-    seed_count = _seed_people_count(paths)
     registry_agents = _read_registry_agents(paths)
     agent_map = _agent_category_map(categories_doc, registry_agents)
 
@@ -478,7 +464,6 @@ def build_network_status(
         network_name=meta.get("network_name"),
         network_root=str(paths.root),
         display_name=meta.get("network_display_name"),
-        seed_people_count=seed_count,
         ontology_present=ontology_present,
         ontology_message=ontology_message,
         categories=_category_summaries(categories_doc, category_filter=category_filter),
@@ -520,7 +505,7 @@ _POLICY_OUTCOME = (
     "Read outcome before results; use message for per-attribute detail."
 )
 _POLICY_ENTITY_UNKNOWN = (
-    'When outcome is "entity_unknown", the entity_key had no seed match and no '
+    'When outcome is "entity_unknown", the entity_key had no registry match and no '
     "near-miss suggestions. required_fields lists MVR bind fields still needed "
     "(for CRM: employer when name comes from entity_key). Re-query with the same "
     "entity_key and binding when ready."
@@ -534,7 +519,7 @@ _POLICY_ENTITY_BIND = (
 )
 _POLICY_RESEARCH_GATE = (
     "Attribute research (specialists / Tavily) runs only when current_id is set and "
-    "the entity is a seed match (pre-validated) or a registry row with "
+    "the entity is a validated registry row (including seed_bootstrap imports) or "
     "validation_state validated. Provisional registry entities with requested "
     "attributes return outcome found with identity-only results and a message that "
     "core validation must complete before researching attributes. Same-turn bind, "
@@ -559,18 +544,18 @@ _POLICY_ENTITY_GROWTH = (
     "Network growth from queries: bind creates a registry row (entities.json), validation "
     "promotes it, gated research writes extended attributes to specialist storage keyed by "
     "entity_id. Registry rows track attr_sources (attr → category slug) and "
-    "last_researched_at after each successful research pass. Seed remains bootstrap origin; "
-    "registry rows override seed on conflict for the same bind key."
+    "last_researched_at after each successful research pass. Optional seed.json is "
+    "bootstrap-only; registry rows are canonical at query time."
 )
 _POLICY_ENTITY_KEY_UNRESOLVED = (
-    'When outcome is "entity_key_unresolved", the entity_key had no exact seed match '
+    'When outcome is "entity_key_unresolved", the entity_key had no exact registry match '
     "but near-miss suggestions are provided in suggestions[]. Re-query with "
     "query_entity using a chosen suggestions[].entity_key (usually the highest score). "
     "No attribute data is authoritative until an exact match resolves. "
     "If suggestions are empty and the name is not a near-miss, expect entity_unknown."
 )
 _POLICY_MULTI_MATCH = (
-    "When entity_key matches multiple seed records, results contains every match. "
+    "When entity_key matches multiple registry entities, results contains every match. "
     "Disambiguate using fields in each record (for example id and employer on CRM "
     "networks). The message summarizes status collectively unless per-record "
     "messaging is added later."
@@ -782,7 +767,8 @@ def _format_entity_drill_down(summary: NetworkStatusSummary) -> list[str]:
 def format_status_demo(summary: NetworkStatusSummary) -> str:
     """Render a scannable demo-oriented status report (default CLI layout)."""
     lines = [_format_network_header(summary)]
-    lines.append(f"Seed: ✅ ({summary.seed_people_count})")
+    entity_mark = "✅" if summary.registry_entity_count > 0 else "❌"
+    lines.append(f"Entities: {entity_mark} ({summary.registry_entity_count})")
 
     if summary.ontology_present and summary.categories:
         lines.append("Current ontology:")
@@ -812,7 +798,7 @@ def format_status_verbose(summary: NetworkStatusSummary) -> str:
     """Render a debug-oriented status report (``--verbose``)."""
     lines = [_format_network_header(summary)]
     lines.append(f"Root: {summary.network_root}")
-    lines.append(f"Seed: {summary.seed_people_count} records")
+    lines.append(f"Entities: {summary.registry_entity_count} records")
     if summary.ontology_present:
         lines.append(f"Ontology: {len(summary.categories)} categories")
         for category in summary.categories:

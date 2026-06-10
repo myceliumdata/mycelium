@@ -61,13 +61,13 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Mycelium core graph CLI")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    query_cmd = sub.add_parser("query", help="Query a seed record (JSON response)")
+    query_cmd = sub.add_parser("query", help="Query an entity via the registry (JSON response)")
     query_cmd.add_argument("--entity-key", required=True, help="Id, email, or name")
     query_cmd.add_argument(
         "--attributes",
         nargs="*",
         default=[],
-        help="Non-core attributes (seed identity in results; message describes specialist status)",
+        help="Non-core attributes (registry identity in results; message describes specialist status)",
     )
     query_cmd.add_argument(
         "--thread-id",
@@ -80,7 +80,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         metavar="DIR",
         help=(
-            "Network data root (seed, registry, agents, DB). "
+            "Network data root (entities, registry, agents, DB). "
             "Highest precedence; overrides --network and env selectors"
         ),
     )
@@ -138,7 +138,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     status_cmd = network_sub.add_parser(
         "status",
-        help="Read-only snapshot of seed, ontology, specialists, and storage",
+        help="Read-only snapshot of entities, ontology, specialists, and storage",
     )
     status_cmd.add_argument(
         "--network-dir",
@@ -167,7 +167,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--entity",
         default=None,
         metavar="KEY",
-        help="Drill down to one seed record (name or id)",
+        help="Drill down to one entity (name or id)",
     )
     status_cmd.add_argument(
         "--verbose",
@@ -231,36 +231,6 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--no-mcp-snippet",
         action="store_true",
         help="Suppress MCP client JSON snippet on success",
-    )
-
-    seed_cmd = sub.add_parser(
-        "seed",
-        help=(
-            "Legacy: load a JSON people file into SQLite at the resolved network_root DB. "
-            "Uses the same network selection as query "
-            "(--network-dir, --network, env, or registry default). "
-            "Queries read seed.json via agents.seed, not SQLite."
-        ),
-    )
-    seed_cmd.add_argument(
-        "--network-dir",
-        default=None,
-        metavar="DIR",
-        help=(
-            "Network data root for SQLite DB path. "
-            "Highest precedence; overrides --network and env selectors"
-        ),
-    )
-    seed_cmd.add_argument(
-        "--network",
-        default=None,
-        metavar="NAME",
-        help="Registered network name (see: mycelium network list)",
-    )
-    seed_cmd.add_argument(
-        "--seed-path",
-        default="examples/networks/crm/seed.json",
-        help="JSON people file to load into the resolved network SQLite DB",
     )
 
     return parser.parse_args(argv)
@@ -432,7 +402,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "network":
         return _run_network_command(args)
 
-    if args.command in ("query", "seed"):
+    if args.command == "query":
         try:
             _configure_network_paths(
                 cli_network_dir=getattr(args, "network_dir", None),
@@ -447,12 +417,6 @@ def main(argv: list[str] | None = None) -> int:
     get_storage()
 
     try:
-        if args.command == "seed":
-            storage = get_storage()
-            count = storage.seed_from_file(Path(args.seed_path))
-            console.print(f"Seeded {count} new records from {args.seed_path}")
-            return 0
-
         thread_id = _resolve_thread_id(args.thread_id)
 
         try:

@@ -19,7 +19,7 @@ Mycelium exists to create data infrastructure that is **100% managed by AI agent
 
 ## Storage (current)
 - **SQLite** — LangGraph conversation checkpoints only (`data/checkpoints.sqlite`; legacy `data/mycelium.db` retained minimally).
-- **JSON flat files** — everything else: seed (`data/seed.json`), classification (`data/categories.json`), agent registry (`data/agent_registry.json`), per-specialist data under `data/agents/<category>/`.
+- **JSON flat files** — everything else: optional bootstrap seed (`<network_root>/seed.json`), canonical entities (`entities.json`), classification (`categories.json`), agent registry (`agent_registry.json`), per-specialist data under `agents/<category>/`.
 
 Details: `docs/architecture.md` (Storage section).
 

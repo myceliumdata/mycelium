@@ -8,9 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from agents.entity_registry import reset_entity_registry
 from agents.routing import evaluate_supervisor_turn
-from agents.seed import reset_seed_data
 from agents.supervisor import supervisor_agent
 from models.state import EntityQuery, MyceliumGraphState
 from network_helpers import import_seed_for_test
@@ -31,8 +29,6 @@ def _configure_any_key_registry(
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(root))
     monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
     monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(root / "entities.json"))
-    reset_seed_data()
-    reset_entity_registry()
     import_seed_for_test(seed)
     return root
 

@@ -358,12 +358,12 @@ def test_create_network_query_uses_custom_ontology_not_crm_fallback(
     from agents.classification import reset_category_tree
     from agents.factory.agent_factory import reset_agent_factory
     from agents.registry import reset_agent_registry
-    from agents.seed import reset_seed_data
+    from agents.entity_registry import reset_entity_registry
     from storage.core import reset_storage
 
     for reset_fn in (
         reset_storage,
-        reset_seed_data,
+        reset_entity_registry,
         reset_category_tree,
         reset_agent_registry,
         reset_agent_factory,

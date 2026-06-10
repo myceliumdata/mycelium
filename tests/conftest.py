@@ -17,7 +17,6 @@ from agents.classification import reset_category_tree
 from agents.context import reset_context_builder
 from agents.factory.agent_factory import reset_agent_factory
 from agents.registry import reset_agent_registry
-from agents.seed import reset_seed_data
 from graphs.core import reset_core_graph
 from storage.core import reset_storage
 
@@ -59,7 +58,6 @@ def _final_cleanup():
         reset_core_graph,
         reset_storage,
         reset_entity_registry,
-        reset_seed_data,
         reset_context_builder,
         reset_category_tree,
         reset_agent_registry,

@@ -19,7 +19,6 @@ from agents.metering_gate import (
     should_meter,
 )
 from graphs.core import reset_core_graph
-from agents.seed import reset_seed_data
 from graphs.core import run_query
 from models.state import BillingPrincipal, EntityQuery, MyceliumGraphState
 from network.entitlements import EntitlementRecord, get_entitlement_store, reset_entitlement_store
@@ -102,7 +101,7 @@ def crm_metering_env(
     monkeypatch: pytest.MonkeyPatch,
 ) -> CoreStorage:
     reset_storage()
-    reset_seed_data()
+    reset_entity_registry()
     reset_entity_registry()
     reset_context_builder()
     reset_core_graph()
@@ -161,7 +160,7 @@ def crm_metering_env(
     yield storage
 
     reset_storage()
-    reset_seed_data()
+    reset_entity_registry()
     reset_entity_registry()
     reset_context_builder()
     reset_core_graph()
@@ -286,7 +285,7 @@ def test_metering_disabled_no_quote(
 ) -> None:
     reset_core_graph()
     reset_storage()
-    reset_seed_data()
+    reset_entity_registry()
     reset_entity_registry()
     reset_category_tree()
     seed = tmp_path / "seed.json"

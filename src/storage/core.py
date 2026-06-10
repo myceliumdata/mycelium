@@ -1,8 +1,9 @@
 """SQLite data layer for checkpoints and history in this phase.
 
-People seeding moved to agents.seed (direct JSON). This module retained for
-checkpoints/history only; the people table and seed_from_file remain for
-compatibility but are no longer auto-populated on get_storage().
+People identity lives in ``entities.json`` (bootstrap via ``import_seed_file``).
+This module retains checkpoints/history and an optional legacy ``people`` table;
+``seed_from_file`` mirrors seed rows into SQLite when tests need it but is not
+auto-populated on ``get_storage()``.
 
 Schema: people(id, name, employer) only. Legacy DBs with extra columns are
 documented in docs/database-notes.md.

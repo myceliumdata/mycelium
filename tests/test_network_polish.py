@@ -8,8 +8,9 @@ from pathlib import Path
 
 import pytest
 
-from agents.seed import get_seed_data, reset_seed_data
+from agents.entity_registry import reset_entity_registry
 from network.paths import NetworkPaths, apply_network_paths, legacy_network_root, network_metadata
+from network.seed_import import import_seed_file
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
@@ -96,7 +97,7 @@ def test_health_check_includes_network_metadata(
 
 
 @pytest.mark.smoke
-def test_missing_seed_raises_file_not_found(
+def test_missing_seed_import_returns_zero(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
 ) -> None:
     empty_root = tmp_path / "empty_data"
@@ -104,9 +105,26 @@ def test_missing_seed_raises_file_not_found(
     monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(tmp_path / "missing.json"))
     paths = NetworkPaths.from_root(empty_root)
     apply_network_paths(paths)
-    reset_seed_data()
-    with pytest.raises(FileNotFoundError, match="Seed file not found"):
-        get_seed_data()
+    reset_entity_registry()
+    assert import_seed_file(paths.seed_path) == 0
+
+
+@pytest.mark.smoke
+def test_empty_network_without_seed_initializes_storage(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Seed is optional at runtime; storage init must not require seed.json."""
+    empty_root = tmp_path / "empty_data"
+    empty_root.mkdir()
+    monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(tmp_path / "missing.json"))
+    paths = NetworkPaths.from_root(empty_root)
+    apply_network_paths(paths)
+    from storage.core import get_storage, reset_storage
+
+    reset_storage()
+    storage = get_storage()
+    assert storage is not None
 
 
 @pytest.mark.smoke

@@ -14,7 +14,6 @@ from agents.context import reset_context_builder
 from agents.entity_registry import get_entity_registry, reset_entity_registry
 from agents.factory.agent_factory import get_agent_factory, reset_agent_factory
 from agents.registry import reset_agent_registry
-from agents.seed import reset_seed_data
 from graphs.core import reset_core_graph, run_query
 from models.state import BillingPrincipal, EntityQuery
 from network.credits import get_credit_store, reset_credit_store
@@ -110,7 +109,7 @@ def crm_payment_env(
     monkeypatch: pytest.MonkeyPatch,
 ) -> CoreStorage:
     reset_storage()
-    reset_seed_data()
+    reset_entity_registry()
     reset_entity_registry()
     reset_context_builder()
     reset_core_graph()
@@ -169,7 +168,7 @@ def crm_payment_env(
     yield storage
 
     reset_storage()
-    reset_seed_data()
+    reset_entity_registry()
     reset_entity_registry()
     reset_context_builder()
     reset_core_graph()

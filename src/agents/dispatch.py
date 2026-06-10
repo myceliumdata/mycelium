@@ -34,7 +34,7 @@ from agents.responses import (
 )
 from agents.supervisor import (
     _collect_specialists_to_invoke,
-    _identity_records_from_seed,
+    _identity_records_from_match,
     _target_fields_for_agent,
 )
 from models.state import MyceliumGraphState, normalized_requested_attributes
@@ -136,7 +136,7 @@ def build_context_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, 
     builder = get_context_builder()
     full_ctx = builder.build_full_context(
         ids,
-        seed_records=current.matched_records or None,
+        matched_records=current.matched_records or None,
     )
     meta = dict(meta)
     meta.setdefault("specialists_to_invoke", [])
@@ -259,7 +259,7 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
     matched = current.matched_records or []
 
     if current.metering_payment_required and current.pending_quote:
-        identity_records = _identity_records_from_seed(matched) if matched else []
+        identity_records = _identity_records_from_match(matched) if matched else []
         return {
             "response": response_payment_required(
                 query,
@@ -271,7 +271,7 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
         }
 
     if current.pending_quote:
-        identity_records = _identity_records_from_seed(matched) if matched else []
+        identity_records = _identity_records_from_match(matched) if matched else []
         return {
             "response": response_quote_required(
                 query,
@@ -367,13 +367,13 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
     if not matched:
         return {
             "response": response_not_found(query, **id_kwargs, **clf_kwargs),
-            "audit_log": ["assemble_response: no seed match."],
+            "audit_log": ["assemble_response: no entity match."],
         }
 
     requested = normalized_requested_attributes(query.requested_attributes)
 
     if not requested:
-        identity_records = _identity_records_from_seed(matched)
+        identity_records = _identity_records_from_match(matched)
         message = None
         if current.duplicate_bind and len(matched) == 1:
             name = matched[0].get("name") or query.entity_key

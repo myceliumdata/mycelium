@@ -192,7 +192,7 @@ Backend shipped in entity protocol Slices 1–8; operator-facing admin work defe
 - [x] **Research peer context prominence** — `PEER SPECIALIST FINDINGS` for flattened `_research_context` shape; human-readable peer block. Shipped slice `2026-06-09-2110-research-peer-context-prominence`.
 - [ ] **Research robustness (post-2010)** — Network-agnostic hardening beyond prompts: category source-quality rules, multi-identity conflict → `na`, MVR-generic first-query enforcement, optional `network.json` research policy, audit `first_query`. Design backlog: [`docs/plans/research-robustness-backlog.md`](docs/plans/research-robustness-backlog.md). Angela Murphy–class synthesis failures are explicitly out of scope for `2010` alone.
 - [ ] **Data attribution (product — USP)** — core registry fields shipped in Slice 8; follow-on: MCP/`describe_network` surfacing, admin UI (**Attribution per attribute** in Admin UI v2), staleness/re-research policy. Broader provenance story not yet designed.
-- [ ] **Empty-seed network demo (launch v2)** — deferred from Slice 8 (Q8b). `examples/networks/empty-crm/` or similar after Slices 1–7 land.
+- [x] **Empty-seed network demo (launch v2)** — `examples/networks/empty-crm/` (seed elimination polish, June 2026). Paul Murphy bind arc via `queries/01-bind-paul-murphy.json`.
 - [ ] **Seed export tooling (`export-growth-seed`)** — deferred from Slice 8 (Q8c). Operator script: validated `entities.json` → `seed.json` fragment.
 - [ ] **Seed vs grown entity linking** — deferred from Slice 8 (Q8d). Network-type-specific rules (CRM ≠ car parts) before merge/override UX.
 

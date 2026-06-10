@@ -436,7 +436,7 @@ def response_entity_unknown(
     trace_id: str | None = None,
     thread_id: str | None = None,
 ) -> QueryResponse:
-    """Unknown entity: no seed match and no near-miss suggestions; return MVR gaps."""
+    """Unknown entity: no registry match and no near-miss suggestions; return MVR gaps."""
     policy = mvr or load_mvr()
     required_fields = policy.required_fields_for_entity_key(query.entity_key)
     fields_phrase = _required_fields_phrase(required_fields)

@@ -58,7 +58,6 @@ export interface StatusResponse {
   network_name: string | null;
   network_root: string;
   display_name: string | null;
-  seed_people_count: number;
   registry_entity_count: number;
   ontology_present: boolean;
   ontology_message: string;

@@ -6,7 +6,7 @@
 
 - **Networks:** Framework repo + user-chosen **`network_root`** paths. Committed CRM example at `examples/networks/crm/`; bootstrap with `./bin/refresh-example-network crm`. See `docs/plans/networks-terminology.md`.
 - **Public API** = queries only (`EntityQuery`: `entity_key`, `requested_attributes`). No CLI `ingest`, no MCP `submit_person_data`, no `provided_data`.
-- **Graph:** `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` (or direct assemble for name-only / not found). Identity from `agents.seed` + specialist storage.
+- **Graph:** `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` (or direct assemble for name-only / not found). Identity from `entities.json` + specialist storage.
 - **Legacy on disk:** `core_data`, `enrich`/`validator`/`person_prep` — unwired; not in the public graph.
 - See `docs/architecture.md` for the authoritative architecture; this doc is a walkthrough.
 
@@ -18,7 +18,7 @@ From `docs/architecture.md` and `prompts/system/CORE_PROMPT.md`:
 
 - AI-managed data infrastructure; external agents use MCP/CLI JSON.
 - Supervisor = thin coordinator/router; generated specialists own non-core domains.
-- Seed JSON at `<network_root>/seed.json`; stable UUIDs assigned at load time (`agents/seed.py`).
+- Optional bootstrap `seed.json` at `<network_root>/`; canonical store is `entities.json` (import on refresh/create; query-time binds).
 
 ---
 
@@ -26,7 +26,7 @@ From `docs/architecture.md` and `prompts/system/CORE_PROMPT.md`:
 
 - Handoffs: `prompts/cursor/next/` → `in-progress/` → `done/<slug>/` (see `prompts/cursor/WORKFLOW.md`).
 - `src/network/`: path resolver, name registry, `network_metadata` for MCP `health_check`.
-- `src/agents/`: `supervisor`, `dispatch`, `classification`, `factory`, `seed`, legacy modules (unwired).
+- `src/agents/`: `supervisor`, `dispatch`, `classification`, `factory`, `entity_registry`, legacy modules (unwired).
 - `src/graphs/core.py`, `src/models/state.py`, `src/storage/core.py`, `src/mycelium_mcp/server.py`, `src/main.py`.
 
 ---
@@ -44,7 +44,7 @@ From `docs/architecture.md` and `prompts/system/CORE_PROMPT.md`:
 
 | Surface | Commands / tools |
 |---------|------------------|
-| **CLI** | `mycelium query`, `mycelium network …`, `mycelium seed` (legacy SQLite load) |
+| **CLI** | `mycelium query`, `mycelium network …` |
 | **MCP** | `describe_network`, `query_entity`, `health_check`; schemas via resources |
 | **Studio** | `langgraph dev` via `./bin/run-studio` + optional ngrok |
 
@@ -59,27 +59,27 @@ Package: `mycelium_mcp` (renamed from `mcp` to avoid SDK collision).
 **Current:** `START → supervisor → build_context → invoke_specialists → assemble_response → END`  
 (or `supervisor → assemble_response` when name-only / not found).
 
-- **Supervisor** resolves seed matches, classifies attributes, plans specialist invocations.
-- **build_context** unions seed + specialist storage for matched person id(s).
+- **Supervisor** resolves registry matches, classifies attributes, plans specialist invocations.
+- **build_context** unions registry identity + specialist storage for matched id(s).
 - **invoke_specialists** runs generated specialists (sync research on cache miss when keys set).
 - **assemble_response** builds unified `QueryResponse`.
 - **Checkpointer:** async path (Studio); sync path forced for MCP/CLI (`MYCELIUM_USE_SYNC_CHECKPOINTER`).
 
 ---
 
-## 6. Seed loader (`src/agents/seed.py`)
+## 6. Entity registry + bootstrap import
 
-- Reads `<network_root>/seed.json` (env `MYCELIUM_SEED_PATH` after path resolver runs).
-- Enriches each row with uuid4 via `ensure_bound_entity` (persisted in `entities.json`); file holds name + employer only.
-- `find_by_key(entity_key)` — by UUID or exact name (0..N for ambiguous names).
+- **`entities.json`** — canonical runtime store (`EntityRegistry`, `lookup_entities_by_key`).
+- **`network/seed_import.py`** — imports optional `seed.json` rows at bootstrap (refresh/create) via `ensure_bound_entity`.
+- Query-time resolution: `resolve_entity` / `lookup_entities_by_key` (registry only).
 
-Committed example: `examples/networks/crm/seed.json`.
+Committed examples: `examples/networks/crm/` (bootstrap seed), `examples/networks/empty-crm/` (no seed, growth from queries).
 
 ---
 
 ## 7. Supervisor, dispatch, factory
 
-- **`supervisor_agent`**: seed resolution, classification, specialist planning, routing audit.
+- **`supervisor_agent`**: registry resolution, classification, specialist planning, routing audit.
 - **`dispatch`**: `build_context`, `invoke_specialists`, `assemble_response` nodes.
 - **`factory`**: Jinja template → generated `*_specialist.py` under `src/agents/specialists/` (gitignored).
 - **`classification`**: attribute → category map (`categories.json` under network root).
@@ -88,7 +88,7 @@ Committed example: `examples/networks/crm/seed.json`.
 
 ## 8. Storage (`src/storage/core.py`)
 
-SQLite `people(id, name, employer)` retained for legacy `mycelium seed` and checkpoints-era compatibility; **queries** use JSON seed + specialist files, not auto SQLite seeding.
+SQLite `people(id, name, employer)` retained for checkpoints-era compatibility; **queries** use `entities.json` + specialist files, not auto SQLite seeding.
 
 Paths resolve under active `network_root` via `src/network/paths.py`.
 
@@ -138,7 +138,7 @@ From `TODO.md`:
 ```
 External (CLI/MCP) → network_root → EntityQuery → run_query → LangGraph
   → supervisor → specialists → assemble_response
-Seed (seed.json) + Specialist storage (agents/<category>/) under network_root
+entities.json + Specialist storage (agents/<category>/) under network_root
 ```
 
 ---

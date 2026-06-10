@@ -53,20 +53,20 @@ This is a deliberate departure from earlier thinking that treated the core CRM t
 
 ### Public interface: query-only (June 2026)
 
-The **CLI** (`query`, `seed`) and **MCP** (`describe_network`, `query_entity`, `health_check`) expose **lookups only**. `EntityQuery` has `entity_key` and optional `requested_attributes` — no `provided_data` on the public model. MCP **`describe_network`** returns author `guide.md`, ontology categories, and framework policy (connect-time onboarding).
+The **CLI** (`query`) and **MCP** (`describe_network`, `query_entity`, `health_check`) expose **lookups only**. `EntityQuery` has `entity_key` and optional `requested_attributes` — no `provided_data` on the public model. MCP **`describe_network`** returns author `guide.md`, ontology categories, and framework policy (connect-time onboarding).
 
 Data addition via the public API was removed in the June 2026 refactor (tasks 1000–1050). It will return later as **internal agent coordination**, not as a direct caller-supplied payload.
 
-### Seed origin and identity (June 2026 — seed-data-context redesign)
+### Seed bootstrap and identity (June 2026 — seed elimination)
 
-- **Canonical seed:** `<network_root>/seed.json` — static JSON origin of person records (`people` array). Committed CRM example: `examples/networks/crm/seed.json` (public-safe subset). Bootstrap via `./bin/refresh-example-network crm` or `mycelium network create`. Rebuild ontology with `network create --force`; reset CRM demo state with `refresh-example-network`.
+- **Optional fixture:** `<network_root>/seed.json` — static `people` array for bootstrap only (not read at query time). Committed CRM example: `examples/networks/crm/seed.json`. Import via `./bin/refresh-example-network crm` or `mycelium network create` when the file is present (`network/seed_import.py` → `entities.json`).
 - **Transform (maintainers):** `examples/networks/crm/prepare_seed.py` builds example `seed.json` from a CRM source file (name + employer only; no legacy `id` in the file). Full prototype data: git tag `prototype`.
-- **Loader:** `src/agents/seed.py` enriches seed rows via `ensure_bound_entity` (uuid4, persisted in `entities.json` `bind_index`); public `results["id"]` is that UUID; supervisor resolves lookups via `find_by_key` (name or `id`).
-- **No `core_data` specialist** — identity fields (name, employer) come from seed; specialists may override them later.
+- **Runtime store:** `entities.json` holds canonical entities (uuid4 ids, `bind_index`). `ensure_bound_entity` assigns stable ids on import; supervisor resolves lookups via `lookup_entities_by_key` / `resolve_entity` (registry only).
+- **No `core_data` specialist** — identity fields (name, employer) come from the registry; specialists may override them later.
 
 ### Supervisor and graph (current)
 
-The **supervisor** (`src/agents/supervisor.py`) resolves seed matches, classifies `requested_attributes`, and plans which generated specialists to invoke. It does **not** build the final response when specialists are needed.
+The **supervisor** (`src/agents/supervisor.py`) resolves registry matches, classifies `requested_attributes`, and plans which generated specialists to invoke. It does **not** build the final response when specialists are needed.
 
 **Graph flow** (`src/graphs/core.py`):
 
@@ -99,9 +99,9 @@ Bypass env vars for tests/demos: `MYCELIUM_AUTO_ACCEPT_QUOTES` (skip metering), 
 
 Future real x402 settlement may read `MYCELIUM_X402_FACILITATOR_URL` for facilitator HTTP; the Slice 11 stub provider ignores it (CI uses `x402:test:` proofs only).
 
-- **build_context** (`src/agents/context.py`) — union of seed + all specialist storage for the matched `id`(s).
+- **build_context** (`src/agents/context.py`) — union of registry identity + all specialist storage for the matched `id`(s).
 - **invoke_specialists** — each required specialist receives full `context`, `current_id`, and `target_fields` (owned attributes only).
-- **assemble_response** — unified `QueryResponse` from seed identity + specialist contributions.
+- **assemble_response** — unified `QueryResponse` from registry identity + specialist contributions.
 
 Generated specialists (`src/agents/specialists/*_specialist.py`, Agent Factory template) implement three scenarios: has data, **synchronous** field research on cache miss (when `OPENAI_API_KEY` + `TAVILY_API_KEY` are set), or pending / N/A. Research runs via `tools.research.run_field_research` and Tavily `web_search` (`src/tools/tavily.py`). See `docs/plans/seed-data-context-architecture.md`, `docs/plans/specialist-research-phase1.md`, and Cursor slices `2026-06-09-1100`–`1400`.
 
@@ -121,7 +121,7 @@ class SeedRecord(BaseModel):
 ```
 
 **Identity rules:**
-- Seed file provides `name`, `employer` only; runtime and public `results["id"]` use the stable UUID from the seed loader (`agents/seed.py`).
+- Bootstrap seed provides `name`, `employer` only; runtime and public `results["id"]` use the stable UUID from `entities.json` (assigned on import via `ensure_bound_entity`).
 - `name` and `employer` are specialist-owned like any other attribute when requested (no privileged core filter).
 - There is no `extra` field on `SeedRecord`.
 
@@ -146,7 +146,7 @@ Phase 1 adds a **Classification Engine** (cached lookup in `src/agents/classific
 
 ## Storage (current)
 
-- **Seed (queries):** `<network_root>/seed.json` via `agents.seed` — not auto-loaded into SQLite on query.
+- **Entities (queries):** `<network_root>/entities.json` via `EntityRegistry` — seed is bootstrap-only when present.
 - **Specialists:** per-category JSON under `<network_root>/agents/<category>/` (`SpecialistStorage` in `src/agents/specialists/base.py`), keyed by `id` (UUID).
 - **SQLite:** `<network_root>/mycelium.db` (legacy `people` table; checkpoints/history only in this phase) and `<network_root>/checkpoints.sqlite` (LangGraph checkpointer).
 

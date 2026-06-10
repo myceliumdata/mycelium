@@ -5,5 +5,5 @@ from __future__ import annotations
 import pytest
 
 pytestmark = pytest.mark.skip(
-    reason="core_data specialist eliminated; see agents.seed + supervisor direct responses",
+    reason="core_data specialist eliminated; supervisor serves direct responses from registry",
 )

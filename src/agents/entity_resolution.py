@@ -7,12 +7,7 @@ from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from typing import Any, Literal
 
-from agents.entity_registry import (
-    EntityRegistry,
-    RegistryEntity,
-    get_entity_registry,
-    registry_entity_to_match,
-)
+from agents.entity_registry import get_entity_registry, registry_entity_to_match
 from models.state import EntityKeySuggestion, EntityQuery
 from network.mvr import load_mvr, normalize_binding
 
@@ -68,10 +63,6 @@ def is_provisional_registry_match(record: dict[str, Any]) -> bool:
     )
 
 
-def _iter_registry_entities(registry: EntityRegistry) -> list[RegistryEntity]:
-    return list(registry._data.entities.values())
-
-
 def lookup_entities_by_key(entity_key: str) -> list[dict[str, Any]]:
     """Resolve by registry UUID or exact name (case-insensitive).
 
@@ -101,7 +92,7 @@ def _rank_suggestions(entity_key: str) -> list[EntityKeySuggestion]:
     query_first = _first_token(query_norm)
     candidates: list[EntityKeySuggestion] = []
 
-    for entity in _iter_registry_entities(get_entity_registry()):
+    for entity in get_entity_registry().list_entities():
         name = entity.name or ""
         candidate_norm = normalize_name_for_comparison(name)
         if not candidate_norm:

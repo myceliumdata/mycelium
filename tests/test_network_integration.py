@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from network_helpers import NETWORK_PATH_ENV_KEYS, clear_network_path_env
+from network_helpers import NETWORK_PATH_ENV_KEYS, clear_network_path_env, import_seed_at_root
 from graphs.core import reset_core_graph, run_query
 from models.state import EntityQuery
 from network.paths import NetworkPaths, apply_network_paths, resolve_network_root
@@ -41,13 +41,11 @@ def _reset_runtime_singletons() -> None:
     from agents.entity_registry import reset_entity_registry
     from agents.factory.agent_factory import reset_agent_factory
     from agents.registry import reset_agent_registry
-    from agents.seed import reset_seed_data
     from storage.core import reset_storage
 
     for reset_fn in (
         reset_core_graph,
         reset_storage,
-        reset_seed_data,
         reset_entity_registry,
         reset_context_builder,
         reset_category_tree,
@@ -66,6 +64,28 @@ def _write_network_seed(root: Path, people: list[dict[str, str | None]]) -> None
         json.dumps({"people": people}, indent=2) + "\n",
         encoding="utf-8",
     )
+    (root / "network.json").write_text(
+        json.dumps(
+            {
+                "name": root.name,
+                "mvr": {
+                    "bind_fields": ["name", "employer"],
+                    "name_source": "entity_key",
+                },
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def _activate_network(root: Path) -> None:
+    """Apply paths, reset singletons, and import seed into entities.json."""
+    apply_network_paths(NetworkPaths.from_root(root))
+    _reset_runtime_singletons()
+    if (root / "seed.json").is_file():
+        import_seed_at_root(root)
 
 
 def _isolated_registry(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
@@ -93,8 +113,7 @@ def _isolated_network_env(
 
 def _apply_resolved_network(monkeypatch: pytest.MonkeyPatch, root: Path) -> None:
     _isolated_registry(monkeypatch, root.parent)  # no-op if already set
-    apply_network_paths(NetworkPaths.from_root(root))
-    _reset_runtime_singletons()
+    _activate_network(root)
 
 
 def _unique_thread_id(label: str) -> str:
@@ -205,8 +224,7 @@ def test_network_dir_overrides_registry_default_query(
     register_network("def", default_root, default=True)
 
     root = resolve_network_root(cli_network_dir=str(override_root))
-    apply_network_paths(NetworkPaths.from_root(root))
-    _reset_runtime_singletons()
+    _activate_network(root)
 
     response = run_query(
         EntityQuery(entity_key="Override Only"),
@@ -230,8 +248,7 @@ def test_query_via_registered_network_name(
     register_network("my_net", net, default=True)
 
     root = resolve_network_root(cli_network_name="my_net")
-    apply_network_paths(NetworkPaths.from_root(root))
-    _reset_runtime_singletons()
+    _activate_network(root)
 
     response = run_query(
         EntityQuery(entity_key="Registry Person"),
@@ -254,8 +271,7 @@ def test_plain_query_uses_default_network(
     register_network("secondary", other_root)
 
     root = resolve_network_root()
-    apply_network_paths(NetworkPaths.from_root(root))
-    _reset_runtime_singletons()
+    _activate_network(root)
 
     response = run_query(
         EntityQuery(entity_key="Default Person"),
@@ -275,6 +291,8 @@ def test_cli_network_register_list_use_and_query(
     net_b = tmp_path / "b"
     _write_network_seed(net_a, [{"name": "Alpha Person", "employer": "A"}])
     _write_network_seed(net_b, [{"name": "Beta Person", "employer": "B"}])
+    for net in (net_a, net_b):
+        import_seed_at_root(net)
     bootstrap_env = {
         "MYCELIUM_NETWORKS_CONFIG": str(config),
         "MYCELIUM_FRAMEWORK_ROOT": str(tmp_path / "fw"),
@@ -359,14 +377,12 @@ def test_two_network_roots_isolated_query_results(
     _write_network_seed(net_a, [{"name": "Iso A", "employer": "Co A"}])
     _write_network_seed(net_b, [{"name": "Iso B", "employer": "Co B"}])
 
-    apply_network_paths(NetworkPaths.from_root(net_a))
-    _reset_runtime_singletons()
+    _activate_network(net_a)
     resp_a = run_query(EntityQuery(entity_key="Iso A"), thread_id=_unique_thread_id("iso-a"))
     assert resp_a.results[0]["employer"] == "Co A"
     assert run_query(EntityQuery(entity_key="Iso B"), thread_id=_unique_thread_id("iso-a-miss")).results == []
 
-    apply_network_paths(NetworkPaths.from_root(net_b))
-    _reset_runtime_singletons()
+    _activate_network(net_b)
     reset_core_graph()
     resp_b = run_query(EntityQuery(entity_key="Iso B"), thread_id=_unique_thread_id("iso-b"))
     assert resp_b.results[0]["employer"] == "Co B"
@@ -452,7 +468,7 @@ def test_mcp_query_entity_reads_active_network_root(
     net = tmp_path / "mcp_query_net"
     _write_network_seed(net, [{"name": "MCP Query Person", "employer": "MQ"}])
     _isolated_network_env(monkeypatch, tmp_path, network_root=net)
-    _reset_runtime_singletons()
+    _activate_network(net)
 
     from mycelium_mcp.server import query_entity
 

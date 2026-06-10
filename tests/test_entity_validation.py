@@ -11,7 +11,6 @@ import pytest
 from agents.classification import reset_category_tree
 from agents.context import reset_context_builder
 from agents.entity_registry import get_entity_registry, reset_entity_registry
-from agents.seed import reset_seed_data
 from graphs.core import reset_core_graph, run_query
 from network_helpers import import_seed_for_test
 from models.state import EntityQuery
@@ -29,7 +28,7 @@ def crm_validation_env(
     monkeypatch: pytest.MonkeyPatch,
 ) -> CoreStorage:
     reset_storage()
-    reset_seed_data()
+    reset_entity_registry()
     reset_entity_registry()
     reset_context_builder()
     reset_core_graph()
@@ -75,7 +74,7 @@ def crm_validation_env(
     yield storage
 
     reset_storage()
-    reset_seed_data()
+    reset_entity_registry()
     reset_entity_registry()
     reset_context_builder()
     reset_core_graph()

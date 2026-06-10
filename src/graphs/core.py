@@ -1,4 +1,4 @@
-"""Core Mycelium LangGraph: seed resolution, context build, specialists, assembly.
+"""Core Mycelium LangGraph: registry resolution, context build, specialists, assembly.
 
 Flow: START → supervisor → validate_entity → metering_gate → build_context (if specialists)
 → invoke_specialists → assemble_response → END; or metering_gate → assemble_response.

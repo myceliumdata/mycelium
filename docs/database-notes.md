@@ -10,7 +10,7 @@
 | `name` | TEXT NOT NULL | Display name |
 | `employer` | TEXT | Optional |
 
-Queries resolve people from `<network_root>/seed.json` via `agents.seed` (not auto-loaded into SQLite on query). The legacy `seed` CLI subcommand can still load a JSON file into SQLite for compatibility.
+Queries resolve people from `<network_root>/entities.json` via the entity registry (not auto-loaded into SQLite on query). Optional `seed.json` is imported at bootstrap only (`refresh-example-network`, `network create`). The legacy `mycelium seed` CLI subcommand was removed in the seed-elimination phase.
 
 LangGraph checkpoints live under `<network_root>/checkpoints.sqlite` (see `MYCELIUM_CHECKPOINT_PATH` / network path resolver in `.env.example`).
 
@@ -29,13 +29,13 @@ The current code expects only `id`, `name`, and `employer`. With an old file you
 
 ```bash
 rm -f data/mycelium.db
-uv run mycelium query --person-key "Nichanan Kesonpat"  # CLI exits promptly (resource cleanup)
+uv run mycelium query --entity-key "Nichanan Kesonpat" --network crm
 ```
 
-The app recreates the schema and reloads seed data.
+The app recreates the schema. Re-run `./bin/refresh-example-network crm` if you need bootstrap entities imported.
 
 **Preserve data manually** — export any rows you care about, then delete `data/mycelium.db` and re-import into the new three-column shape (id, name, employer only). There is **no** built-in migration tool in Phase 1.
 
-**Checkpoints** — `data/checkpoints.sqlite` is independent. You can delete it if graph state from an older run causes issues; it does not affect CRM seed data.
+**Checkpoints** — `data/checkpoints.sqlite` is independent. You can delete it if graph state from an older run causes issues; it does not affect registry or bootstrap seed data.
 
 We do not ship automatic migrations yet. If you need long-term upgrade paths, track that as a follow-up task rather than expecting silent schema upgrades.

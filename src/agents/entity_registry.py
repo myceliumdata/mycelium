@@ -115,6 +115,9 @@ class EntityRegistry:
     def entity_count(self) -> int:
         return len(self._data.entities)
 
+    def list_entities(self) -> list[RegistryEntity]:
+        return list(self._data.entities.values())
+
     def lookup_by_bind_key(self, name: str, employer: str) -> RegistryEntity | None:
         key = make_bind_key(name, employer)
         entity_id = self._data.bind_index.get(key)

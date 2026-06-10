@@ -13,7 +13,7 @@ from agents.classification import reset_category_tree
 from agents.context import ContextBuilder, strip_bind_fields
 from agents.factory.agent_factory import get_agent_factory, reset_agent_factory
 from agents.registry import get_agent_registry, reset_agent_registry
-from agents.seed import reset_seed_data
+from agents.entity_registry import reset_entity_registry
 from graphs.core import reset_core_graph, run_query
 from network_helpers import import_seed_for_test
 from models.state import EntityQuery, MyceliumGraphState
@@ -31,7 +31,7 @@ def crm_boundary_env(
     monkeypatch: pytest.MonkeyPatch,
 ) -> CoreStorage:
     reset_storage()
-    reset_seed_data()
+    reset_entity_registry()
     reset_agent_registry()
     reset_agent_factory()
     reset_core_graph()
@@ -73,7 +73,7 @@ def crm_boundary_env(
     yield storage
 
     reset_storage()
-    reset_seed_data()
+    reset_entity_registry()
     reset_agent_registry()
     reset_agent_factory()
     reset_core_graph()
@@ -134,7 +134,7 @@ def test_build_context_uses_bind_and_strips_legacy_storage_fields(
     builder = ContextBuilder()
     ctx = builder.build_full_context(
         ["ent-1"],
-        seed_records=[
+        matched_records=[
             {
                 **bind_row,
                 "_registry": True,

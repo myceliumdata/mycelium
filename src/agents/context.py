@@ -71,9 +71,9 @@ class ContextBuilder:
         self,
         ids: list[str],
         *,
-        seed_records: list[dict[str, Any]] | None = None,
+        matched_records: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
-        resolved = self._resolve_identity_rows(ids, matched_records=seed_records)
+        resolved = self._resolve_identity_rows(ids, matched_records=matched_records)
         entity_id: str | None = None
         bind: dict[str, str | None] | None = None
         if len(resolved) == 1:

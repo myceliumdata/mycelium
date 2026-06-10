@@ -27,6 +27,7 @@ uv run mycelium query --entity-key "Nichanan Kesonpat"
 | Goal | Command |
 |------|---------|
 | **CRM example** (committed reference; wipe stale research before demos) | `./bin/refresh-example-network crm` |
+| **Empty-seed CRM** (no bootstrap people; growth from query binds) | `./bin/refresh-example-network empty-crm` |
 | **Custom domain** (your categories + specialists) | `uv run mycelium network create <name> --root <path> --seed <file> --prompt "..."` |
 | **Live demo UI** (network state while you query) | `./bin/restart-admin` → open `http://127.0.0.1:5173` |
 
@@ -48,7 +49,7 @@ uv run mycelium network create wheat_farm \
 ### CLI
 
 ```bash
-# Seed identity only (name + employer from your network's seed.json)
+# Registry identity only (name + employer from entities.json)
 uv run mycelium query --entity-key "Nichanan Kesonpat"
 
 # Request non-core attributes (merged into results when specialists have data)
@@ -79,7 +80,7 @@ Example (fresh network):
 
 ```text
 Network: crm (CRM example)
-Seed: ✅ (15)
+Entities: ✅ (15)
 Current ontology: ❌
 Existing specialists: ❌
 ```
@@ -177,11 +178,11 @@ Two networks in parallel (paths are examples):
 }
 ```
 
-You must include **`requested_attributes`** for non-core fields. Without it, responses contain seed identity only (`id`, `name`, `employer`).
+You must include **`requested_attributes`** for non-core fields. Without it, responses contain registry identity only (`id`, `name`, `employer`).
 
-**Attribute fan-out:** Each requested attribute is classified to a category (contact, social, professional, etc.) and routed to the matching specialist. Multiple attributes may invoke **multiple specialists** in one query (e.g. `["email", "linkedin"]` → contact + social). Core fields (`name`, `employer`) come from seed; everything else is specialist-owned.
+**Attribute fan-out:** Each requested attribute is classified to a category (contact, social, professional, etc.) and routed to the matching specialist. Multiple attributes may invoke **multiple specialists** in one query (e.g. `["email", "linkedin"]` → contact + social). Core fields (`name`, `employer`) come from the registry; everything else is specialist-owned.
 
-The MCP server reloads registry, categories, seed, and specialist modules from disk before each query; **restart MCP only after a code deploy or if reload fails** and results still disagree with a fresh CLI query. MCP returns the same `trace_id` as the CLI when LangSmith tracing is on (verify in the LangSmith UI under project `mycelium`). Call **`describe_network`** at connect time for the author `guide.md`, ontology, and usage policy. Other tools: `health_check`.
+The MCP server reloads the entity registry, categories, and specialist modules from disk before each query; **restart MCP only after a code deploy or if reload fails** and results still disagree with a fresh CLI query. MCP returns the same `trace_id` as the CLI when LangSmith tracing is on (verify in the LangSmith UI under project `mycelium`). Call **`describe_network`** at connect time for the author `guide.md`, ontology, and usage policy. Other tools: `health_check`.
 
 ### Admin daemon
 
@@ -201,20 +202,20 @@ Long-lived **HTTP on localhost** (default `http://127.0.0.1:8741`) — one proce
 | `GET /status` | Full status JSON (`?category=`, `?entity=` mirror CLI flags) |
 | `GET /capabilities` | Guide, ontology, policy (same payload as MCP `describe_network`) |
 
-After `./bin/refresh-example-network`, the daemon picks up wiped seed on the next `GET /status` (seed cache is reset per request). **Restart the daemon after a code deploy** or if specialist module counts look stale.
+After `./bin/refresh-example-network`, the daemon picks up registry changes on the next `GET /status` (entity registry is reset per request). When `seed.json` is present, refresh imports it into `entities.json` at bootstrap only — queries read the registry, not seed. **Restart the daemon after a code deploy** or if specialist module counts look stale.
 
 Compare daemon output to CLI:
 
 ```bash
-curl -s http://127.0.0.1:8741/status | jq '.seed_people_count, .ontology_present'
-uv run mycelium network status --network crm --json | jq '.seed_people_count, .ontology_present'
+curl -s http://127.0.0.1:8741/status | jq '.registry_entity_count, .ontology_present'
+uv run mycelium network status --network crm --json | jq '.registry_entity_count, .ontology_present'
 ```
 
 #### Admin UI
 
 Browser client in `admin-ui/` (`mycelium-admin-ui`) — **API-only** (no direct reads of `seed.json` or MCP). Restart the daemon after a Python code deploy; rebuild the SPA after frontend changes.
 
-**Default view** is scannable for demos: **Overview** shows ✅/❌ for seed count, categories, and specialists; specialist rows expand for storage detail. **Entity lookup** and **Network guide & ontology** start collapsed. The UI polls `/status` every 3s (silent) so specialists appear as MCP/CLI queries populate storage — no manual refresh button.
+**Default view** is scannable for demos: **Overview** shows ✅/❌ for entity count, categories, and specialists; specialist rows expand for storage detail. **Entity lookup** and **Network guide & ontology** start collapsed. The UI polls `/status` every 3s (silent) so specialists appear as MCP/CLI queries populate storage — no manual refresh button.
 
 **Development** (recommended — one command):
 
@@ -287,7 +288,7 @@ CLI and MCP return **`QueryResponse`** JSON:
       "email": "akalmans@example.com"
     }
   ],
-  "message": "Found record for Andrea Kalmans; assembled from seed and specialist contributions.",
+  "message": "Found record for Andrea Kalmans; assembled from registry and specialist contributions.",
   "debug": "…",
   "trace_id": null,
   "thread_id": "session-abc"
@@ -296,18 +297,19 @@ CLI and MCP return **`QueryResponse`** JSON:
 
 Every CLI and MCP query response includes **`outcome`** (machine-readable: `found`, `assembled`, `not_found`, `entity_key_unresolved`, or `error`) and **`suggestions`** (near-miss entity keys when `outcome` is `entity_key_unresolved`). Agents should branch on `outcome` before trusting `results`; use `message` for per-attribute status. MCP schema: `mycelium://schema/query-response`.
 
-- **`results`** — One dict per seed match. Always includes `"id"`. With `requested_attributes`, includes only those keys after specialist-first merge.
-- **`message`** — Human-readable status (seed found, research pending, N/A, etc.).
+- **`results`** — One dict per matched entity. Always includes `"id"`. With `requested_attributes`, includes only those keys after specialist-first merge.
+- **`message`** — Human-readable status (entity found, research pending, N/A, etc.).
 - **`thread_id`** — CLI `--thread-id` or MCP top-level `thread_id`; used for LangGraph checkpointing.
 - **`trace_id`** — Set when LangSmith tracing is enabled.
 
 ## How it works (summary)
 
-1. **Seed** — `<network_root>/seed.json` is the static origin (CRM example: 15 public-safe people). Runtime assigns stable UUIDs (`agents/seed.py`).
-2. **Supervisor** — Resolves `entity_key`, classifies attributes (`categories.json` under network root — runtime only; sample shape in [`docs/examples/sample-categories.json`](docs/examples/sample-categories.json)).
-3. **Agent factory** — Creates specialist modules on demand (`<network_root>/specialists/*_specialist.py`; CRM reference modules also live under `src/agents/specialists/`).
-4. **Graph** — `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` (or direct assemble for name-only / not found).
-5. **Research** — Specialists run sync LLM + Tavily on cache miss when keys are set; persist to `<network_root>/agents/<category>/storage.json`.
+1. **Bootstrap (optional)** — `<network_root>/seed.json` is a static fixture for refresh/create only (CRM example: 15 public-safe people). Import writes rows to `entities.json`; queries never read `seed.json`.
+2. **Registry** — `entities.json` is the runtime canonical store (uuid4 ids, `bind_index`). Query-time binds create rows (see `empty-crm` example).
+3. **Supervisor** — Resolves `entity_key` via registry, classifies attributes (`categories.json` under network root — runtime only; sample shape in [`docs/examples/sample-categories.json`](docs/examples/sample-categories.json)).
+4. **Agent factory** — Creates specialist modules on demand (`<network_root>/specialists/*_specialist.py`; CRM reference modules also live under `src/agents/specialists/`).
+5. **Graph** — `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` (or direct assemble for name-only / not found).
+6. **Research** — Specialists run sync LLM + Tavily on cache miss when keys are set; persist to `<network_root>/agents/<category>/storage.json`.
 
 Runtime agent data under your `network_root` (`agents/`, `specialists/`, `agent_registry.json`, `categories.json`) is local-only and never committed.
 
@@ -321,7 +323,7 @@ flowchart TD
     S -->|name only / not found| ASM
     ASM --> RES[QueryResponse JSON]
     Graph --> CP[(checkpoints.sqlite)]
-    Seed[(network_root/seed.json)] --> S
+    Entities[(network_root/entities.json)] --> S
     Store[(network_root/agents/)] --> BC
     Store --> INV
 ```
@@ -329,15 +331,16 @@ flowchart TD
 | Layer | Path | Role |
 |-------|------|------|
 | Models | `src/models/state.py` | `SeedRecord`, `EntityQuery`, `QueryResponse`, graph state |
-| Seed | `src/agents/seed.py`, `<network_root>/seed.json` | Static origin + stable UUID assignment |
-| Example | `examples/networks/crm/` | Committed CRM reference network |
-| Supervisor | `src/agents/supervisor.py` | Seed resolution, classification, specialist planning |
+| Registry | `src/agents/entity_registry.py`, `<network_root>/entities.json` | Canonical entity store + bind lookup |
+| Bootstrap | `<network_root>/seed.json` (optional) | Fixture imported at refresh/create only |
+| Example | `examples/networks/crm/`, `examples/networks/empty-crm/` | CRM reference + empty-seed growth demo |
+| Supervisor | `src/agents/supervisor.py` | Registry resolution, classification, specialist planning |
 | Classification | `src/agents/classification/` | Attribute → category map |
 | Factory | `src/agents/factory/` | Jinja template → generated specialists |
 | Research | `src/tools/research.py`, `src/tools/tavily.py` | Sync LLM + web search, persist fields |
 | Graph | `src/graphs/core.py` | LangGraph; async checkpointer (Studio), sync path (MCP) |
 | MCP | `src/mycelium_mcp/server.py` | `describe_network`, `query_entity`, `health_check` |
-| CLI | `src/main.py` | `mycelium query`, `mycelium network`, `mycelium seed` |
+| CLI | `src/main.py` | `mycelium query`, `mycelium network` |
 
 Full detail: [docs/architecture.md](docs/architecture.md). Research: [docs/plans/specialist-research-phase1.md](docs/plans/specialist-research-phase1.md), prompt context ([docs/README.md](docs/README.md#research-prompts-june-2026)).
 

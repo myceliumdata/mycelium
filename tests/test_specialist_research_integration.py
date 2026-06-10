@@ -11,9 +11,10 @@ import pytest
 
 from agents.classification import reset_category_tree
 from agents.context import reset_context_builder
-from agents.seed import get_seed_data, reset_seed_data
+from agents.entity_registry import reset_entity_registry
 from graphs.core import reset_core_graph, run_query
 from models.state import EntityQuery, QueryResponse
+from network_helpers import import_seed_for_test
 from storage.core import CoreStorage, get_storage, reset_storage
 from tools.research import ResearchRunResult
 
@@ -41,7 +42,7 @@ def research_integration_env(
 ) -> CoreStorage:
     """Isolated DB/seed/registry for end-to-end run_query with contact research."""
     reset_storage()
-    reset_seed_data()
+    reset_entity_registry()
     reset_context_builder()
     reset_core_graph()
     reset_category_tree()
@@ -64,6 +65,7 @@ def research_integration_env(
     categories_dst = tmp_path / "categories.json"
     monkeypatch.setenv("MYCELIUM_DB_PATH", str(db))
     monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
+    monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(tmp_path / "entities.json"))
     monkeypatch.setenv("MYCELIUM_CHECKPOINT_PATH", str(tmp_path / "cp.sqlite"))
     monkeypatch.setenv("MYCELIUM_CATEGORIES_PATH", str(categories_dst))
     reset_category_tree()
@@ -82,14 +84,12 @@ def research_integration_env(
     reset_agent_registry()
     reset_agent_factory()
     storage = get_storage()
-    storage.seed_from_file(seed)
-    reset_seed_data()
-    _ = get_seed_data()
+    import_seed_for_test(seed)
 
     yield storage
 
     reset_storage()
-    reset_seed_data()
+    reset_entity_registry()
     reset_context_builder()
     reset_core_graph()
     reset_category_tree()

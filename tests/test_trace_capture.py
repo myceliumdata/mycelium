@@ -12,7 +12,7 @@ import pytest
 from agents.context import reset_context_builder
 from agents.factory.agent_factory import reset_agent_factory
 from agents.registry import reset_agent_registry
-from agents.seed import reset_seed_data
+from agents.entity_registry import reset_entity_registry
 from graphs.core import (
     capture_langsmith_trace_id,
     get_last_invocation_trace_id,
@@ -41,7 +41,7 @@ def test_run_query_clears_trace_id_when_tracing_disabled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     reset_storage()
-    reset_seed_data()
+    reset_entity_registry()
     reset_context_builder()
     reset_agent_registry()
     reset_agent_factory()
@@ -67,7 +67,7 @@ def test_run_query_clears_trace_id_when_tracing_disabled(
     from storage.core import get_storage
 
     get_storage()
-    reset_seed_data()
+    reset_entity_registry()
     response = run_query(
         EntityQuery(entity_key="Test User"),
         thread_id="trace-test-thread",
@@ -84,7 +84,7 @@ def test_run_query_sets_trace_id_on_response_when_captured(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     reset_storage()
-    reset_seed_data()
+    reset_entity_registry()
     reset_context_builder()
     reset_agent_registry()
     reset_agent_factory()
@@ -115,7 +115,7 @@ def test_run_query_sets_trace_id_on_response_when_captured(
     from storage.core import get_storage
 
     get_storage()
-    reset_seed_data()
+    reset_entity_registry()
 
     def _set_trace_after_invoke(
         graph: object,

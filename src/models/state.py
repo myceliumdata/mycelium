@@ -47,7 +47,7 @@ class BillingPrincipal(BaseModel):
 
 
 class EntityQuery(BaseModel):
-    """Inbound JSON query for looking up a seed record (public interface).
+    """Inbound JSON query for looking up an entity (public interface).
 
     This model is query-only for the public interface (CLI, MCP, Studio).
     Data addition support will be re-introduced later via internal agent coordination.
@@ -74,7 +74,7 @@ class EntityQuery(BaseModel):
     }
 
     entity_key: str = Field(
-        description="Seed record UUID (``id``) or display name used for lookup.",
+        description="Registry entity UUID (``id``) or display name used for lookup.",
     )
     binding: dict[str, str] = Field(
         default_factory=dict,
@@ -113,9 +113,9 @@ class QueryResponse(BaseModel):
     outcome: str | None = Field(
         default=None,
         description=(
-            "Machine-readable query outcome on every response: found (seed identity only), "
+            "Machine-readable query outcome on every response: found (registry identity only), "
             "assembled (requested attributes merged), not_found, entity_key_unresolved "
-            "(near-miss suggestions), entity_unknown (no seed match, MVR fields needed), "
+            "(near-miss suggestions), entity_unknown (no registry match, MVR fields needed), "
             "entity_under_specified (partial binding), entity_bound_provisional "
             "(new registry bind), entity_validated (MVR validation passed), "
             "quote_required (metering: accept quote before research/delivery), "
@@ -145,7 +145,7 @@ class QueryResponse(BaseModel):
     results: list[dict[str, Any]] = Field(
         default_factory=list,
         description=(
-            "Plain dicts per matched seed record. Always includes id (stable UUID). "
+            "Plain dicts per matched registry entity. Always includes id (stable UUID). "
             "With no requested_attributes: id, name, employer. "
             "With requested_attributes: id plus only those keys after merge."
         ),
@@ -184,11 +184,10 @@ class MyceliumGraphState(BaseModel):
     - You must provide at least the top-level "query" key (an EntityQuery).
     - Everything else (route, seed_record, seed_records, response, etc.) is internal state
       produced by the graph — do not set them in the initial input.
-    - ``seed_records`` holds all matches for a lookup; ``seed_record`` is set only when
-      exactly one match exists (name ambiguity may yield multiple ``seed_records``).
+    - ``seed_records`` / ``seed_record`` hold typed matches for a lookup (field names
+      retained for LangGraph compatibility); ``matched_records`` mirrors registry rows.
     - ``matched_records``, ``context``, ``current_id``, and ``target_fields``
-      are internal bags for the seed-data-context redesign (visible in Studio/LangSmith
-      for debugging; populated by supervisor/context logic in later slices).
+      are internal bags for context assembly (visible in Studio/LangSmith for debugging).
     - Use the examples in EntityQuery (they will appear in Studio).
     - For thread persistence in Studio, set the thread ID in the
       Studio UI's Thread/Config panel (it flows into invocation_thread_id).
@@ -222,8 +221,7 @@ class MyceliumGraphState(BaseModel):
     matched_records: list[dict[str, Any]] = Field(
         default_factory=list,
         description=(
-            "Enriched seed records for matched entity lookup, including id "
-            "from the seed loader."
+            "Registry match rows for the current lookup, including stable id."
         ),
     )
     context: dict[str, Any] = Field(

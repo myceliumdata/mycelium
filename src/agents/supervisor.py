@@ -22,8 +22,8 @@ def _coerce(state: MyceliumGraphState | dict[str, Any]) -> MyceliumGraphState:
     return MyceliumGraphState.model_validate(state)
 
 
-def _identity_records_from_seed(matched: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Build public result dicts; ``id`` is the seed-loader UUID."""
+def _identity_records_from_match(matched: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Build public result dicts; ``id`` is the registry UUID."""
     records: list[dict[str, Any]] = []
     for rec in matched:
         pid = rec.get("id", "")
@@ -37,7 +37,7 @@ def _identity_records_from_seed(matched: list[dict[str, Any]]) -> list[dict[str,
     return records
 
 
-def _seed_records_from_seed(matched: list[dict[str, Any]]) -> list[SeedRecord]:
+def _seed_records_from_match(matched: list[dict[str, Any]]) -> list[SeedRecord]:
     return [
         SeedRecord(
             id=rec.get("id", ""),
@@ -206,7 +206,7 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
         return result
 
     matched = resolution.matches
-    seed_records = _seed_records_from_seed(matched)
+    seed_records = _seed_records_from_match(matched)
     ids = [m["id"] for m in matched if m.get("id")]
     if matched:
         audit_log.append(

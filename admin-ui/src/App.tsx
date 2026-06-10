@@ -327,9 +327,8 @@ export default function App() {
       {status && (
         <section className="card">
           <h2>Overview</h2>
-          <p className="status-line">✅ Seed ({status.seed_people_count})</p>
           <p className="status-line">
-            {status.registry_entity_count > 0 ? "✅" : "❌"} Registry (
+            {status.registry_entity_count > 0 ? "✅" : "❌"} Entities (
             {status.registry_entity_count})
           </p>
           <p className="status-line">

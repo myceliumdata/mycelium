@@ -11,9 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from agents.entity_registry import get_entity_registry
+from agents.entity_registry import get_entity_registry, reset_entity_registry
 from agents.entity_resolution import lookup_entities_by_key
-from agents.seed import reset_seed_data
 from network_helpers import import_seed_for_test
 from network.introspection import (
     build_network_status,
@@ -32,7 +31,7 @@ SAMPLE_CATEGORIES = REPO_ROOT / "docs" / "examples" / "sample-categories.json"
 def _configure_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, root: Path) -> None:
     monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(tmp_path / "missing.json"))
     apply_network_paths(NetworkPaths.from_root(root))
-    reset_seed_data()
+    reset_entity_registry()
 
 
 def _seed_only_root(tmp_path: Path) -> Path:
@@ -66,15 +65,16 @@ def test_format_category_examples_unit() -> None:
 
 
 @pytest.mark.smoke
-def test_status_demo_seed_only(
+def test_status_demo_entities_only(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     root = _seed_only_root(tmp_path)
     _configure_root(monkeypatch, tmp_path, root)
+    import_seed_for_test(root / "seed.json")
 
     text = format_status_demo(build_network_status())
-    assert "Seed: ✅ (15)" in text
+    assert "Entities: ✅ (15)" in text
     assert "Current ontology: ❌" in text
     assert "Existing specialists: ❌" in text
     assert "Root:" not in text
@@ -134,15 +134,16 @@ def test_status_verbose_has_root_and_agents(
 
 
 @pytest.mark.smoke
-def test_status_empty_network_seed_only(
+def test_status_empty_network_entities_only(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     root = _seed_only_root(tmp_path)
     _configure_root(monkeypatch, tmp_path, root)
+    import_seed_for_test(root / "seed.json")
 
     summary = build_network_status()
-    assert summary.seed_people_count == 15
+    assert summary.registry_entity_count == 15
     assert summary.ontology_present is False
     assert summary.specialists == []
 
@@ -213,9 +214,10 @@ def test_status_json_round_trip(
 ) -> None:
     root = _seed_only_root(tmp_path)
     _configure_root(monkeypatch, tmp_path, root)
+    import_seed_for_test(root / "seed.json")
 
     payload = status_to_dict(build_network_status())
-    assert payload["seed_people_count"] == 15
+    assert payload["registry_entity_count"] == 15
     assert payload["ontology_present"] is False
     assert isinstance(payload["specialists"], list)
 
@@ -226,6 +228,8 @@ def test_status_cli_json(
     tmp_path: Path,
 ) -> None:
     root = _seed_only_root(tmp_path)
+    _configure_root(monkeypatch, tmp_path, root)
+    import_seed_for_test(root / "seed.json")
     env = {
         **os.environ,
         "MYCELIUM_NETWORKS_CONFIG": str(tmp_path / "missing.json"),
@@ -252,7 +256,7 @@ def test_status_cli_json(
     )
     assert result.returncode == 0, result.stderr or result.stdout
     payload = json.loads(result.stdout)
-    assert payload["seed_people_count"] == 15
+    assert payload["registry_entity_count"] == 15
 
 
 @pytest.mark.smoke

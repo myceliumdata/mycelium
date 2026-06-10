@@ -68,8 +68,13 @@ def test_mcp_query_entity_round_trip_json(
     shutil.copy(repo / "examples" / "networks" / "crm" / "network.json", root / "network.json")
     monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(tmp_path / "missing.json"))
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(root))
+    monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(root / "entities.json"))
     monkeypatch.setenv("LANGCHAIN_TRACING_V2", "false")
     apply_network_paths(NetworkPaths.from_root(root))
+
+    from network_helpers import import_seed_for_test
+
+    import_seed_for_test(root / "seed.json")
 
     from mycelium_mcp.server import query_entity
 

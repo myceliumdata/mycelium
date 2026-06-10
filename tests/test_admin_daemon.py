@@ -159,7 +159,7 @@ def test_status_json_matches_introspection(
     assert response.status_code == 200
     expected = status_to_dict(build_network_status())
     assert response.json() == expected
-    assert response.json()["seed_people_count"] == 15
+    assert response.json()["registry_entity_count"] == 15
     assert response.json()["ontology_present"] is False
 
 
@@ -327,7 +327,7 @@ def test_serves_admin_ui_when_dist_present(
 
     status = client.get("/status")
     assert status.status_code == 200
-    assert status.json()["seed_people_count"] == 15
+    assert status.json()["registry_entity_count"] == 15
 
 
 @pytest.mark.smoke

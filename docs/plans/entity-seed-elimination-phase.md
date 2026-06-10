@@ -1,6 +1,6 @@
 # Seed elimination phase — slice map (14–18)
 
-**Status:** Queued for Cursor (June 2026) — prompts in `prompts/cursor/next/2026-06-10-1400` … `1800`  
+**Status:** Complete (June 2026) — Slices 14–18 + polish shipped  
 **Depends on:** Slice 13 (uuid4 + `entities.json` persistence)  
 **Goal:** Remove runtime reads of `seed.json`; bootstrap import only when file exists.
 
@@ -70,8 +70,8 @@
 
 ## Exit criteria (phase)
 
-- [ ] No `agents.seed` imports in `src/`
-- [ ] `refresh-example-network crm` populates `entities.json` from seed fixture
-- [ ] Empty network (no seed.json) works — Paul Murphy bind arc
-- [ ] Full `pytest` green
-- [ ] Admin UI shows entities, not seed
+- [x] No `agents.seed` imports in `src/`
+- [x] `refresh-example-network crm` populates `entities.json` from seed fixture
+- [x] Empty network (no seed.json) works — Paul Murphy bind arc (`empty-crm`)
+- [x] Full `pytest` green
+- [x] Admin UI shows entities, not seed
