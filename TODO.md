@@ -11,8 +11,9 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 **Priority order when back from break:**
 
 1. [x] **Hands-on: `empty-crm` example** — verified June 2026 (refresh → no seed/entities → Paul Murphy bind → 1 validated row; `network status` Entities ✅). Nit fixed: `network_metadata` no longer lets `MYCELIUM_NETWORK` override explicit `--network-dir`.
-2. [ ] **Historical assumptions review** — **Phase 1 done:** [`docs/plans/historical-assumptions-audit.md`](docs/plans/historical-assumptions-audit.md). **P2 done:** [`docs/plans/README.md`](docs/plans/README.md). Remaining Phase 2: optional `SeedRecord` rename slice, `network create` v2 (no required `--seed`), legacy module cleanup per audit §7.
-3. [x] **Project website copy** — Done (`../mycelium-website`, June 2026). Option A overhaul + copy pass deployed by Paul.
+2. [ ] **Historical assumptions review** — **Phase 1 done:** [`docs/plans/historical-assumptions-audit.md`](docs/plans/historical-assumptions-audit.md). **P2 done:** [`docs/plans/README.md`](docs/plans/README.md). Remaining after identity rename: `network create` v2 design, legacy module cleanup.
+3. [ ] **Identity vocabulary rename (breaking) — scheduled** — Cursor: [`prompts/cursor/next/2026-06-10-entity-identity-vocabulary-rename.md`](prompts/cursor/next/2026-06-10-entity-identity-vocabulary-rename.md). Spec: [`docs/plans/entity-identity-vocabulary-rename.md`](docs/plans/entity-identity-vocabulary-rename.md). Paul: move prompt to `in-progress/` and run Cursor.
+4. [x] **Project website copy** — Done (`../mycelium-website`, June 2026). Option A overhaul + copy pass deployed by Paul.
 
 ---
 
@@ -251,4 +252,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-10 (Slices 9–12 shipped; settlement protocol deferred)
+Last updated: 2026-06-10 (identity rename scheduled; empty-crm verified)
