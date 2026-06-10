@@ -1,0 +1,188 @@
+#!/usr/bin/env python3
+"""Demonstrate metering negotiation: bind → quote_required → accept quote_id."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+_SRC_ROOT = REPO_ROOT / "src"
+_VENV_PYTHON = REPO_ROOT / ".venv" / "bin" / "python3"
+
+
+def _bootstrap() -> None:
+    os.environ.setdefault("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
+    if _VENV_PYTHON.is_file():
+        try:
+            if Path(sys.executable).resolve() != _VENV_PYTHON.resolve():
+                os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON), *sys.argv])
+        except OSError:
+            pass
+    src = str(_SRC_ROOT)
+    if src not in sys.path:
+        sys.path.insert(0, src)
+
+
+_bootstrap()
+
+from graphs.core import reset_core_graph, run_query  # noqa: E402
+from models.state import EntityQuery  # noqa: E402
+from network.paths import NetworkPaths, apply_network_paths, resolve_network_root  # noqa: E402
+from storage.core import get_storage, reset_storage  # noqa: E402
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="bin/demo-metering-negotiation",
+        description=(
+            "Run the Paul Murphy metering arc: bind → quote_required → assembled. "
+            "Default network: crm-metering."
+        ),
+    )
+    parser.add_argument(
+        "--network",
+        default="crm-metering",
+        metavar="NAME",
+        help="Registered network name (default: crm-metering)",
+    )
+    parser.add_argument(
+        "--network-dir",
+        default=None,
+        metavar="DIR",
+        help="Network data root (overrides --network)",
+    )
+    parser.add_argument(
+        "--json-only",
+        action="store_true",
+        help="Print JSON only: each step as {step, input, output} (no prose labels)",
+    )
+    return parser
+
+
+def _emit_step(
+    label: str,
+    *,
+    query: EntityQuery,
+    response: dict[str, object],
+    json_only: bool,
+) -> None:
+    input_payload = query.model_dump(mode="json")
+    if json_only:
+        print(
+            json.dumps(
+                {"step": label, "input": input_payload, "output": response},
+                indent=2,
+            ),
+        )
+        return
+    print(f"\n=== {label} ===")
+    print("Input:")
+    print(json.dumps(input_payload, indent=2))
+    print("Output:")
+    print(json.dumps(response, indent=2))
+
+
+def _configure_network(
+    *,
+    network: str | None,
+    network_dir: str | None,
+) -> Path:
+    root = resolve_network_root(
+        cli_network_dir=network_dir,
+        cli_network_name=network if not network_dir else None,
+    )
+    apply_network_paths(NetworkPaths.from_root(root))
+    reset_storage()
+    reset_core_graph()
+    get_storage()
+    return root
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _build_parser().parse_args(argv)
+    try:
+        root = _configure_network(network=args.network, network_dir=args.network_dir)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        print(
+            "Bootstrap: ./bin/refresh-example-network crm-metering --yes",
+            file=sys.stderr,
+        )
+        return 1
+
+    if not args.json_only:
+        print(f"Network root: {root}")
+
+    bind_query = EntityQuery(
+        entity_key="Paul Murphy",
+        binding={"employer": "Acme Corp"},
+    )
+    bind = run_query(bind_query)
+    _emit_step(
+        "Step 1 — bind",
+        query=bind_query,
+        response=bind.model_dump(),
+        json_only=args.json_only,
+    )
+    if bind.outcome not in {"entity_validated", "found"}:
+        print(
+            f"Step 1 failed: expected entity_validated or found, got {bind.outcome!r}",
+            file=sys.stderr,
+        )
+        return 2
+
+    quote_query = EntityQuery(
+        entity_key="Paul Murphy",
+        binding={"employer": "Acme Corp"},
+        requested_attributes=["email"],
+    )
+    quoted = run_query(quote_query)
+    _emit_step(
+        "Step 2 — quote",
+        query=quote_query,
+        response=quoted.model_dump(),
+        json_only=args.json_only,
+    )
+    if quoted.outcome != "quote_required" or not quoted.quote:
+        print(
+            f"Step 2 failed: expected quote_required with quote, got {quoted.outcome!r}",
+            file=sys.stderr,
+        )
+        return 3
+
+    quote_id = str(quoted.quote["quote_id"])
+    accept_query = EntityQuery(
+        entity_key="Paul Murphy",
+        binding={"employer": "Acme Corp"},
+        requested_attributes=["email"],
+        quote_id=quote_id,
+    )
+    accepted = run_query(accept_query)
+    _emit_step(
+        "Step 3 — accept",
+        query=accept_query,
+        response=accepted.model_dump(),
+        json_only=args.json_only,
+    )
+    if accepted.outcome != "assembled":
+        print(
+            f"Step 3 failed: expected assembled, got {accepted.outcome!r}",
+            file=sys.stderr,
+        )
+        print(
+            "Tip: set OPENAI_API_KEY and TAVILY_API_KEY in .env for live research.",
+            file=sys.stderr,
+        )
+        return 4
+
+    if not args.json_only:
+        print("\nMetering negotiation demo completed successfully.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

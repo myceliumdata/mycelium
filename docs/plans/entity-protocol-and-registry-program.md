@@ -1,6 +1,6 @@
 # Entity protocol & registry — full program (slice map)
 
-**Status:** Approved by Paul (June 2026) — entity protocol Slices 1–8 shipped; **Slice 9** design locked; **Slice 10** metering implementation shipped; **Slice 11** payment settlement shipped.
+**Status:** Approved by Paul (June 2026) — entity protocol Slices 1–8 shipped; **Slices 9–12** metering program shipped (design, negotiation, settlement seam, test scaffolding). Settlement protocol (real x402) deferred.
 **Sources:**  
 - [`conversations/2026-06-08-entity-key-negotiation.md`](conversations/2026-06-08-entity-key-negotiation.md)  
 - [`conversations/2026-06-08-entity-registry-validation-growth.md`](conversations/2026-06-08-entity-registry-validation-growth.md)  
@@ -339,10 +339,40 @@ Fallback for CRM example: if `mvr` absent, default `bind_fields: ["name", "emplo
 
 ---
 
+### Slice 12 — Negotiation test scaffolding *(shipped)*
+
+**Detail:** [`entity-metering-negotiation-test-scaffolding.md`](entity-metering-negotiation-test-scaffolding.md)  
+**Cursor:** `prompts/cursor/done/2026-06-09-2300-entity-metering-negotiation-test-scaffolding/`
+
+| | |
+|--|--|
+| **Status** | **Shipped** — review approved |
+| **Ships** | `crm-metering` example, CLI bind/quote flags, admin quote panel, `bin/demo-metering-negotiation` |
+| **Not** | Real x402 / settlement protocol (separate `TODO.md` track) |
+
+**Depends on:** Slices 10–11.
+
+---
+
+### Slice 12 fix — Negotiation scaffolding nits *(shipped)*
+
+**Detail:** [`entity-metering-slice12-fix.md`](entity-metering-slice12-fix.md)  
+**Cursor:** `prompts/cursor/done/2026-06-09-2310-entity-metering-slice12-fix/`
+
+| | |
+|--|--|
+| **Status** | **Shipped** — review approved |
+| **Ships** | Demo sync checkpointer, admin demo docs, demo subprocess test, MCP queries README |
+
+**Depends on:** Slice 12.
+
+---
+
 ## Explicitly out of this program (separate tracks)
 
 | Item | Why deferred |
 |------|----------------|
+| **Settlement protocol** (real x402, wallets, HTTP gateway, rebate/pool) | Separate track on `TODO.md`; Slice 11 ships pluggable seam only |
 | Per-record query messages (multi-match) | Kevin Zhang disambiguation works via `results` today |
 | Long-running threads / suspend | Related but separate UX slice |
 | Inter-network handoff | Needs distributed discovery |
@@ -368,6 +398,8 @@ flowchart LR
   S10[10 Negotiation code]
   S11[11 Payment settlement]
   S11f[11 fix Payment nits]
+  S12[12 Negotiation test scaffolding]
+  S12f[12 fix Scaffolding nits]
 
   S1 --> S2
   S1 --> S3
@@ -380,6 +412,8 @@ flowchart LR
   S9 --> S10
   S10 --> S11
   S11 --> S11f
+  S11f --> S12
+  S12 --> S12f
 ```
 
 ---
@@ -435,8 +469,9 @@ After each slice lands in `prompts/cursor/done/`, Grok reviews `output.md` + dif
 | Slice 7 cleanup | Delete `core_identity.py`; clean slate specialist storage |
 | Slice 8 attribution | `attr_sources` + `last_researched_at` on registry (USP) |
 | Slice 8 deferred | Empty-seed demo, seed export, seed/grown linking → `TODO.md` |
-| Slices 9–10 | **Deferred** — metering after 1–8 ship; validation free for now |
-| Program scope | Slices 1–8 approved for implementation |
+| Slices 9–12 | **Shipped** — metering negotiation + settlement seam + `crm-metering` test scaffolding (June 2026) |
+| Settlement protocol | **Deferred** — real x402, wallets, HTTP gateway (separate `TODO.md` track) |
+| Program scope | Slices 1–12 approved and shipped |
 
 ---
 
@@ -444,5 +479,5 @@ After each slice lands in `prompts/cursor/done/`, Grok reviews `output.md` + dif
 
 | Role | Status |
 |------|--------|
-| Paul | **Approved Slices 1–8** (June 2026); 9–10 deferred |
+| Paul | **Approved Slices 1–12** (June 2026); settlement protocol deferred |
 | Grok | Handoff ready — Cursor starts Slice 1 |

@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from agents.runtime import refresh_runtime_from_disk
 from agents.seed import reset_seed_data
 from graphs.core import run_query
-from models.state import EntityQuery, QueryResponse
+from models.state import BillingPrincipal, EntityQuery, QueryResponse
 from network.introspection import (
     build_network_capabilities,
     build_network_status,
@@ -37,6 +37,10 @@ class AdminQueryRequest(BaseModel):
     requested_attributes: list[str] = Field(default_factory=list)
     binding: dict[str, str] = Field(default_factory=dict)
     thread_id: str | None = None
+    quote_id: str | None = None
+    provenance: bool = False
+    principal: BillingPrincipal | None = None
+
 
 _DEFAULT_HOST = "127.0.0.1"
 _DEFAULT_PORT = 8741
@@ -128,6 +132,9 @@ def create_app() -> FastAPI:
             entity_key=body.entity_key,
             requested_attributes=body.requested_attributes,
             binding=body.binding,
+            quote_id=body.quote_id,
+            provenance=body.provenance,
+            principal=body.principal,
         )
         thread_id = body.thread_id or f"admin-{uuid.uuid4()}"
         response: QueryResponse = run_query(query, thread_id=thread_id)

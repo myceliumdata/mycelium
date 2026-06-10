@@ -1,0 +1,5 @@
+{
+  "entity_key": "Paul Murphy",
+  "binding": { "employer": "Acme Corp" },
+  "requested_attributes": ["email"]
+}

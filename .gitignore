@@ -33,4 +33,5 @@ examples/networks/**/agents/
 tmp/
 
 admin-ui/node_modules/
+admin-ui/dist/
 .env.~*~

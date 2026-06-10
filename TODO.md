@@ -146,7 +146,7 @@ Backend shipped in entity protocol Slices 1–8; operator-facing admin work defe
 
 ### Protocol & conversation — Entity program (Slices 1–8 → Cursor)
 
-**Program index:** [`docs/plans/entity-protocol-and-registry-program.md`](docs/plans/entity-protocol-and-registry-program.md) — **Slices 1–8 + polish shipped** (June 2026). **Slices 9–10 (metering) deferred.** **Review:** blocking nits → fix slice; non-blocking → [`entity-protocol-polish-post8.md`](docs/plans/entity-protocol-polish-post8.md).
+**Program index:** [`docs/plans/entity-protocol-and-registry-program.md`](docs/plans/entity-protocol-and-registry-program.md) — **Slices 1–8 + polish shipped**; **Slices 9–12 metering shipped** (June 2026). **Review:** blocking nits → fix slice; non-blocking → [`entity-protocol-polish-post8.md`](docs/plans/entity-protocol-polish-post8.md).
 
 | Slice | Spec | Cursor prompt | Status |
 |-------|------|---------------|--------|
@@ -177,6 +177,9 @@ Backend shipped in entity protocol Slices 1–8; operator-facing admin work defe
 - [x] **Metering Slice 10 fix** — Shipped + review approved: [`entity-metering-slice10-fix.md`](docs/plans/entity-metering-slice10-fix.md), `prompts/cursor/done/2026-06-09-2110-entity-metering-slice10-fix/`.
 - [x] **Payment settlement — Slice 11** — Shipped + review approved: [`entity-metering-payment-implementation.md`](docs/plans/entity-metering-payment-implementation.md), `prompts/cursor/done/2026-06-09-2200-entity-metering-payment-slice11/`. Negotiation (10) ≠ settlement (11).
 - [x] **Metering Slice 11 fix** — Shipped + review approved: [`entity-metering-slice11-fix.md`](docs/plans/entity-metering-slice11-fix.md), `prompts/cursor/done/2026-06-09-2210-entity-metering-payment-slice11-fix/`.
+- [x] **Metering negotiation test scaffolding — Slice 12** — Shipped + review approved: [`entity-metering-negotiation-test-scaffolding.md`](docs/plans/entity-metering-negotiation-test-scaffolding.md), `prompts/cursor/done/2026-06-09-2300-entity-metering-negotiation-test-scaffolding/`. `crm-metering` example; CLI + admin + demo script. Paul hands-on verify done (June 2026).
+- [x] **Metering Slice 12 fix** — Shipped + review approved: [`entity-metering-slice12-fix.md`](docs/plans/entity-metering-slice12-fix.md), `prompts/cursor/done/2026-06-09-2310-entity-metering-slice12-fix/`. Demo checkpointer, admin docs, subprocess test, MCP queries README.
+- [ ] **Settlement protocol** (separate from entity program) — Real x402 `PaymentProvider`, fundable-wallet test harness, HTTP 402 query gateway, rebate/pool ledger, async quotes. Deferred from Slice 11; design backlog when blockchain / anonymous-agent economics land.
 - [ ] **Per-record query messages (multi-match)** — v1 keeps collective `message` when `entity_key` matches multiple seed records (e.g. two Kevin Zhangs); agent disambiguates via `results`. Revisit when non-person or other domains need per-record status in `message` (different attrs per match, async research diverging per id).
 - [x] **Thread checkpoint: new query on same `thread_id`** — fixed (`run_query` clears stale `response`; removed `assemble_response` short-circuit; smoke test `test_same_thread_new_query_rebuilds_response`). **Follow-up:** multi-turn merge semantics (reuse specialist cache across attributes on one thread without redundant research) still open.
 - [ ] **Long-running threads** — suspend and ask client for clarification (`thread_id` + checkpoints; bones exist).
@@ -232,4 +235,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-10 (metering Slice 11 + fix shipped)
+Last updated: 2026-06-10 (Slices 9–12 shipped; settlement protocol deferred)

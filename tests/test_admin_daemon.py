@@ -41,11 +41,55 @@ def _ontology_root(tmp_path: Path) -> Path:
     return root
 
 
+def _metering_network_json() -> dict[str, object]:
+    data = json.loads((EXAMPLE_CRM / "network.json").read_text(encoding="utf-8"))
+    metering = dict(data.get("metering") or {})
+    metering["enabled"] = True
+    metering["payment"] = {
+        "enabled": False,
+        "provider": "mock",
+        "require_paid_before_accept": True,
+    }
+    data["metering"] = metering
+    return data
+
+
 def _populated_root(tmp_path: Path) -> Path:
     root = tmp_path / "populated"
     root.mkdir()
     shutil.copy(EXAMPLE_CRM / "seed.json", root / "seed.json")
     shutil.copy(EXAMPLE_CRM / "network.json", root / "network.json")
+    shutil.copy(SAMPLE_CATEGORIES, root / "categories.json")
+    (root / "agent_registry.json").write_text(
+        json.dumps(
+            {
+                "version": "1.0",
+                "last_updated": "2026-06-03T00:00:00+00:00",
+                "agents": {
+                    "contact_specialist": {
+                        "name": "contact_specialist",
+                        "category": "contact",
+                        "description": "Contact specialist",
+                        "module_path": "dyn",
+                        "entrypoint": "run",
+                        "is_generated": True,
+                    },
+                },
+            },
+        ),
+        encoding="utf-8",
+    )
+    return root
+
+
+def _metering_root(tmp_path: Path) -> Path:
+    root = tmp_path / "metering"
+    root.mkdir()
+    shutil.copy(EXAMPLE_CRM / "seed.json", root / "seed.json")
+    (root / "network.json").write_text(
+        json.dumps(_metering_network_json(), indent=2),
+        encoding="utf-8",
+    )
     shutil.copy(SAMPLE_CATEGORIES, root / "categories.json")
     (root / "agent_registry.json").write_text(
         json.dumps(
@@ -321,6 +365,97 @@ def test_admin_query_registry_bind(
     payload = response.json()
     assert payload["outcome"] in {"entity_validated", "found"}
     assert payload["results"][0]["name"] == "Paul Murphy"
+
+
+@pytest.mark.smoke
+def test_admin_query_passes_quote_id(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from datetime import datetime, timezone
+    from typing import Any
+
+    from agents.classification import get_category_tree, reset_category_tree
+    from agents.factory.agent_factory import get_agent_factory, reset_agent_factory
+    from agents.registry import reset_agent_registry
+    from graphs.core import reset_core_graph
+    from tools.research import ResearchRunResult
+
+    root = _metering_root(tmp_path)
+    client = _client_for_root(monkeypatch, tmp_path, root)
+
+    reset_category_tree()
+    get_category_tree()
+    reset_agent_registry()
+    reset_agent_factory()
+    get_agent_factory().create_specialist(
+        "contact",
+        "contact_specialist",
+        "Direct contact info",
+        examples=["email", "phone"],
+        auto_commit=False,
+    )
+    reset_core_graph()
+
+    def _fake_run_field_research(
+        *,
+        category: str,
+        specialist_name: str,
+        person_id: str,
+        target_fields: list[str],
+        context: dict[str, Any],
+        storage: Any,
+        llm: Any | None = None,
+    ) -> ResearchRunResult:
+        _ = category, specialist_name, context, llm
+        data = storage.load()
+        rec = data.setdefault("records", {}).setdefault(person_id, {})
+        now = datetime.now(timezone.utc).isoformat()
+        for field in target_fields:
+            rec[field] = {
+                "status": "found",
+                "value": "paul.murphy@acme.example",
+                "confidence": 0.9,
+                "sources": ["https://example.com/paul"],
+                "researched_at": now,
+            }
+        storage.save(data)
+        return ResearchRunResult(fields_updated=list(target_fields), tool_calls_count=1)
+
+    monkeypatch.setattr("tools.research.is_research_available", lambda: True)
+    monkeypatch.setattr("tools.research.run_field_research", _fake_run_field_research)
+
+    client.post(
+        "/query",
+        json={
+            "entity_key": "Paul Murphy",
+            "binding": {"employer": "Acme Corp"},
+        },
+    )
+    quoted = client.post(
+        "/query",
+        json={
+            "entity_key": "Paul Murphy",
+            "binding": {"employer": "Acme Corp"},
+            "requested_attributes": ["email"],
+        },
+    )
+    assert quoted.status_code == 200
+    quote_payload = quoted.json()
+    assert quote_payload["outcome"] == "quote_required"
+    quote_id = quote_payload["quote"]["quote_id"]
+
+    accepted = client.post(
+        "/query",
+        json={
+            "entity_key": "Paul Murphy",
+            "binding": {"employer": "Acme Corp"},
+            "requested_attributes": ["email"],
+            "quote_id": quote_id,
+        },
+    )
+    assert accepted.status_code == 200
+    assert accepted.json()["outcome"] == "assembled"
 
 
 @pytest.mark.smoke

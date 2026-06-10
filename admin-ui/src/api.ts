@@ -84,6 +84,8 @@ export function runQuery(body: {
   requested_attributes?: string[];
   binding?: Record<string, string>;
   thread_id?: string;
+  quote_id?: string;
+  provenance?: boolean;
 }): Promise<QueryResponse> {
   return fetchJson<QueryResponse>("/query", {
     method: "POST",

@@ -1,0 +1,64 @@
+{
+  "people": [
+    {
+      "name": "Nichanan Kesonpat",
+      "employer": "1k(x)"
+    },
+    {
+      "name": "Aaron Holiday",
+      "employer": "645 Ventures"
+    },
+    {
+      "name": "Nnamdi Okike",
+      "employer": "645 Ventures"
+    },
+    {
+      "name": "Vardan Gattani",
+      "employer": "645 Ventures"
+    },
+    {
+      "name": "Levon Mdivanyan",
+      "employer": "HashCIB"
+    },
+    {
+      "name": "Vladimir Konovalov",
+      "employer": "HashCIB"
+    },
+    {
+      "name": "Yakov Barinsky",
+      "employer": "HashCIB"
+    },
+    {
+      "name": "Alex Davidov",
+      "employer": "Abstract Ventures"
+    },
+    {
+      "name": "David Kwon",
+      "employer": "Abstract Ventures"
+    },
+    {
+      "name": "Ramtin Naimi",
+      "employer": "Abstract Ventures"
+    },
+    {
+      "name": "Someone at Accel",
+      "employer": "Accel"
+    },
+    {
+      "name": "Jeff Fagnan",
+      "employer": "Accomplice"
+    },
+    {
+      "name": "Kevin Zhang",
+      "employer": "Bain Capital Ventures"
+    },
+    {
+      "name": "Andrea Kalmans",
+      "employer": "Lontra Ventures"
+    },
+    {
+      "name": "Kevin Zhang",
+      "employer": "Upfront Ventures"
+    }
+  ]
+}

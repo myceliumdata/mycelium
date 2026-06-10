@@ -90,6 +90,29 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         metavar="NAME",
         help="Registered network name (see: mycelium network list)",
     )
+    query_cmd.add_argument(
+        "--employer",
+        default=None,
+        metavar="NAME",
+        help="MVR bind field: sets binding.employer on EntityQuery",
+    )
+    query_cmd.add_argument(
+        "--binding-json",
+        default=None,
+        metavar="JSON",
+        help='Full binding object as JSON (overrides --employer), e.g. \'{"employer":"Acme Corp"}\'',
+    )
+    query_cmd.add_argument(
+        "--quote-id",
+        default=None,
+        metavar="ID",
+        help="Accepted quote id from a prior quote_required response (metering retry)",
+    )
+    query_cmd.add_argument(
+        "--provenance",
+        action="store_true",
+        help="Request query delivery with sources/audit trail (query_provenance meter)",
+    )
 
     network_cmd = sub.add_parser("network", help="Manage registered networks")
     network_sub = network_cmd.add_subparsers(dest="network_command", required=True)
@@ -246,6 +269,31 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def _resolve_thread_id(cli_thread_id: str | None) -> str:
     """Use caller-supplied thread id or generate one for this invocation."""
     return cli_thread_id if cli_thread_id else str(uuid.uuid4())
+
+
+def _binding_from_args(args: argparse.Namespace) -> dict[str, str]:
+    """Build EntityQuery.binding from --binding-json or --employer."""
+    if args.binding_json:
+        raw = json.loads(args.binding_json)
+        if not isinstance(raw, dict):
+            msg = "--binding-json must be a JSON object"
+            raise ValueError(msg)
+        return {str(key): str(value) for key, value in raw.items()}
+    if args.employer:
+        return {"employer": str(args.employer).strip()}
+    return {}
+
+
+def _entity_query_from_args(args: argparse.Namespace) -> EntityQuery:
+    """Map CLI query flags to EntityQuery."""
+    binding = _binding_from_args(args)
+    return EntityQuery(
+        entity_key=args.entity_key,
+        requested_attributes=list(args.attributes),
+        binding=binding,
+        quote_id=args.quote_id,
+        provenance=bool(args.provenance),
+    )
 
 
 def _print_response(response: QueryResponse) -> None:
@@ -407,10 +455,12 @@ def main(argv: list[str] | None = None) -> int:
 
         thread_id = _resolve_thread_id(args.thread_id)
 
-        query = EntityQuery(
-            entity_key=args.entity_key,
-            requested_attributes=list(args.attributes),
-        )
+        try:
+            query = _entity_query_from_args(args)
+        except (ValueError, json.JSONDecodeError) as exc:
+            console.print(f"[red]Error:[/red] {exc}")
+            return 2
+
         response = run_query(query, thread_id=thread_id)
         _print_response(response)
         return 0 if response.results else 1

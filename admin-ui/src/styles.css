@@ -78,6 +78,17 @@ header.app-header h1 {
   color: var(--text);
 }
 
+.badge.metering {
+  background: color-mix(in srgb, #c47f17 22%, transparent);
+  color: #9a5b00;
+}
+
+@media (prefers-color-scheme: dark) {
+  .badge.metering {
+    color: #f0b429;
+  }
+}
+
 .suggestion-list,
 .match-list {
   margin: 0.25rem 0 0.75rem;

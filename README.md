@@ -86,6 +86,30 @@ Existing specialists: ❌
 
 The CLI starts a **fresh process** each run and reloads registry/storage from disk. Network selection order: **`--network-dir`** → **`--network`** → **`MYCELIUM_NETWORK_ROOT`** → **`MYCELIUM_NETWORK`** → default from config. With no network configured, commands fail with a pointer to `./bin/refresh-example-network crm`.
 
+**Metering negotiation flags** (for `crm-metering` demo network):
+
+```bash
+uv run mycelium query --network crm-metering --entity-key "Paul Murphy" --employer "Acme Corp"
+uv run mycelium query --network crm-metering --entity-key "Paul Murphy" --employer "Acme Corp" --attributes email
+uv run mycelium query --network crm-metering --entity-key "Paul Murphy" --employer "Acme Corp" --attributes email --quote-id q_abc123
+uv run mycelium query --network crm-metering --entity-key "Paul Murphy" --binding-json '{"employer":"Acme Corp"}' --attributes email --provenance
+```
+
+### Testing metering negotiation
+
+Hands-on **`quote_required`** flow (negotiation only; payment disabled on `crm-metering`):
+
+| Surface | How |
+|---------|-----|
+| **Example network** | `./bin/refresh-example-network crm-metering --yes` |
+| **Demo script** | `./bin/demo-metering-negotiation` (bind → quote → accept) |
+| **CLI** | Flags above; full `QueryResponse` JSON on stdout |
+| **MCP** | `examples/networks/crm-metering/queries/` — see `queries/README.md` |
+| **Admin UI (default)** | `./bin/restart-admin crm-metering` → **http://127.0.0.1:5173/** (Vite dev, no `npm run build`) |
+| **Admin UI (alternate)** | `cd admin-ui && npm run build` then `./bin/restart-admin crm-metering --demo` → :8741 |
+
+The default **`crm`** example keeps `metering.enabled: false` — unchanged demos.
+
 ### Credentials vs network data
 
 **`.env` is framework-level** — set once per clone/machine (`cp .env.example .env`). API keys (`OPENAI_API_KEY`, `TAVILY_API_KEY`, LangSmith vars, etc.) are shared across all networks; they are **not** stored under `network_root` and are **not** part of `network register` / `network create`. Each network only owns its **data** (seed, categories, agents, DB, checkpoints). MCP: keep `cwd` on the framework repo; add `MYCELIUM_NETWORK_ROOT` or `MYCELIUM_NETWORK` per server — reuse the same API keys in each client `env` block. Detail: [docs/architecture.md](docs/architecture.md#framework-credentials-vs-network-data-june-2026).

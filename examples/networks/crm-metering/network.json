@@ -1,0 +1,26 @@
+{
+  "name": "crm-metering",
+  "display_name": "CRM metering demo",
+  "description": "CRM example with metering.enabled for hands-on quote_required negotiation demos.",
+  "mvr": {
+    "bind_fields": ["name", "employer"],
+    "name_source": "entity_key",
+    "description": "CRM people: display name plus current employer before bind and research."
+  },
+  "metering": {
+    "enabled": true,
+    "description": "Negotiation demo: quote_required before attribute research. Payment disabled — quote_id accepts without pay_quote.",
+    "default_funding_model": "marginal",
+    "meter_first_delivery": true,
+    "quote_provider": "builtin",
+    "principal": {
+      "marginal_optional": true,
+      "required_for_funding_models": ["sponsor_public", "pool"]
+    },
+    "payment": {
+      "enabled": false,
+      "provider": "mock",
+      "require_paid_before_accept": true
+    }
+  }
+}

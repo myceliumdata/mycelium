@@ -93,6 +93,23 @@ export interface CapabilitiesResponse {
   policy: Record<string, unknown>;
 }
 
+export interface QuoteLineItem {
+  kind: string;
+  meter: string;
+  amount_usd: number;
+  description: string;
+}
+
+export interface QuotePayload {
+  quote_id: string;
+  expires_at?: string;
+  total_usd?: number;
+  cache_state?: string;
+  funding_model?: string;
+  line_items?: QuoteLineItem[];
+  [key: string]: unknown;
+}
+
 export interface QueryResponse {
   outcome: string | null;
   required_fields: string[];
@@ -102,4 +119,5 @@ export interface QueryResponse {
   debug: string;
   trace_id: string | null;
   thread_id: string | null;
+  quote?: QuotePayload | null;
 }

@@ -18,6 +18,7 @@ from network.registry import list_networks
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
+EXAMPLE_CRM_METERING = REPO_ROOT / "examples" / "networks" / "crm-metering"
 _REFRESH_SCRIPT = REPO_ROOT / "bin" / "refresh-example-network"
 _RUNTIME_ARTIFACTS = (
     "categories.json",
@@ -52,6 +53,16 @@ def test_example_crm_layout() -> None:
     assert (EXAMPLE_CRM / "README.md").is_file()
     for runtime_artifact in _RUNTIME_ARTIFACTS:
         assert not (EXAMPLE_CRM / runtime_artifact).exists()
+
+
+@pytest.mark.smoke
+def test_example_crm_metering_layout() -> None:
+    assert (EXAMPLE_CRM_METERING / "seed.json").is_file()
+    assert (EXAMPLE_CRM_METERING / "network.json").is_file()
+    assert (EXAMPLE_CRM_METERING / "queries" / "02-quote-email.json").is_file()
+    meta = json.loads((EXAMPLE_CRM_METERING / "network.json").read_text(encoding="utf-8"))
+    assert meta["metering"]["enabled"] is True
+    assert meta["metering"]["payment"]["enabled"] is False
 
 
 @pytest.mark.smoke

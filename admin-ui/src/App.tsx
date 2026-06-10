@@ -21,6 +21,13 @@ function outcomeBadgeClass(outcome: string | null | undefined): string {
   ) {
     return "badge ok";
   }
+  if (
+    outcome === "quote_required" ||
+    outcome === "payment_required" ||
+    outcome === "principal_required"
+  ) {
+    return "badge metering";
+  }
   if (outcome === "error" || outcome === "not_found") {
     return "badge bad";
   }
@@ -55,6 +62,7 @@ export default function App() {
   const [queryEntityKey, setQueryEntityKey] = useState("");
   const [queryAttributes, setQueryAttributes] = useState("");
   const [queryEmployer, setQueryEmployer] = useState("");
+  const [queryQuoteId, setQueryQuoteId] = useState("");
   const [queryLoading, setQueryLoading] = useState(false);
   const [queryError, setQueryError] = useState<string | null>(null);
   const [queryResult, setQueryResult] = useState<QueryResponse | null>(null);
@@ -223,33 +231,52 @@ export default function App() {
     });
   };
 
-  const onQuerySubmit = (event: FormEvent) => {
-    event.preventDefault();
-    const key = queryEntityKey.trim();
-    if (!key) {
-      return;
-    }
-    setQueryLoading(true);
-    setQueryError(null);
-    void (async () => {
+  const runQueryRequest = useCallback(
+    async (quoteIdOverride?: string) => {
+      const key = queryEntityKey.trim();
+      if (!key) {
+        return;
+      }
+      setQueryLoading(true);
+      setQueryError(null);
       try {
         const binding =
           queryEmployer.trim() !== ""
             ? { employer: queryEmployer.trim() }
             : undefined;
+        const quoteId = (quoteIdOverride ?? queryQuoteId).trim();
         const result = await runQuery({
           entity_key: key,
           requested_attributes: parseAttributes(queryAttributes),
           binding,
+          quote_id: quoteId || undefined,
         });
         setQueryResult(result);
+        if (result.quote?.quote_id) {
+          setQueryQuoteId(String(result.quote.quote_id));
+        }
       } catch (err) {
         setQueryError(err instanceof Error ? err.message : String(err));
         setQueryResult(null);
       } finally {
         setQueryLoading(false);
       }
-    })();
+    },
+    [queryAttributes, queryEmployer, queryEntityKey, queryQuoteId],
+  );
+
+  const onQuerySubmit = (event: FormEvent) => {
+    event.preventDefault();
+    void runQueryRequest();
+  };
+
+  const onAcceptQuote = () => {
+    const quoteId = queryQuoteId.trim() || queryResult?.quote?.quote_id;
+    if (!quoteId) {
+      return;
+    }
+    setQueryQuoteId(String(quoteId));
+    void runQueryRequest(String(quoteId));
   };
 
   const applySuggestion = (suggestedKey: string) => {
@@ -266,6 +293,11 @@ export default function App() {
     status?.specialists.filter((spec) => spec.record_count > 0) ?? [];
 
   const ontologyCategories = capabilities?.ontology.categories ?? [];
+
+  const meteringPolicy = capabilities?.policy?.metering_policy as
+    | { enabled?: boolean }
+    | undefined;
+  const meteringEnabled = meteringPolicy?.enabled === true;
 
   const singleMatch =
     status?.entity_matches === 1 ? status.entity_match_summaries[0] : null;
@@ -303,6 +335,11 @@ export default function App() {
           <p className="status-line">
             {status.ontology_present ? "✅" : "❌"} Categories
           </p>
+          {meteringEnabled && (
+            <p className="status-line muted">
+              Metering enabled — attribute research may return quote_required.
+            </p>
+          )}
           {storedSpecialists.length > 0 ? (
             <>
               <p className="status-line">✅ Specialists</p>
@@ -377,6 +414,13 @@ export default function App() {
               onChange={(e) => setQueryEmployer(e.target.value)}
               aria-label="Binding employer"
             />
+            <input
+              type="text"
+              placeholder="Quote id (retry after quote_required)"
+              value={queryQuoteId}
+              onChange={(e) => setQueryQuoteId(e.target.value)}
+              aria-label="Quote id"
+            />
             <button type="submit" disabled={queryLoading}>
               {queryLoading ? "Running…" : "Run"}
             </button>
@@ -423,6 +467,47 @@ export default function App() {
               {queryResult.message && (
                 <p className="query-message">{queryResult.message}</p>
               )}
+              {(queryResult.outcome === "quote_required" ||
+                queryResult.outcome === "payment_required") &&
+                queryResult.quote && (
+                  <details className="nested-details quote-details" open>
+                    <summary className="disclosure-summary">Quote</summary>
+                    <p className="muted">
+                      quote_id:{" "}
+                      <code>{String(queryResult.quote.quote_id)}</code>
+                      {queryResult.quote.total_usd != null && (
+                        <>
+                          {" "}
+                          · total_usd {String(queryResult.quote.total_usd)}
+                        </>
+                      )}
+                      {queryResult.quote.cache_state && (
+                        <>
+                          {" "}
+                          · cache {String(queryResult.quote.cache_state)}
+                        </>
+                      )}
+                    </p>
+                    <pre className="query-json">
+                      {JSON.stringify(queryResult.quote, null, 2)}
+                    </pre>
+                    {queryResult.outcome === "quote_required" && (
+                      <button
+                        type="button"
+                        disabled={queryLoading}
+                        onClick={onAcceptQuote}
+                      >
+                        Accept quote
+                      </button>
+                    )}
+                    {queryResult.outcome === "payment_required" && (
+                      <p className="muted">
+                        Settlement required — call MCP{" "}
+                        <code>pay_quote</code> with this quote_id, then retry.
+                      </p>
+                    )}
+                  </details>
+                )}
               {queryResult.results.length > 0 && (
                 <pre className="query-json">
                   {JSON.stringify(queryResult.results, null, 2)}
