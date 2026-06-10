@@ -6,6 +6,25 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 ---
 
+## Next up (Paul — June 2026)
+
+**Priority order when back from break:**
+
+1. [ ] **Hands-on: `empty-crm` example** — smoke test passed in CI; confirm operator flow end-to-end:
+   - `./bin/refresh-example-network empty-crm --yes`
+   - Verify no `seed.json`, empty/absent `entities.json` after refresh
+   - Paul Murphy bind: `uv run mycelium query --network-dir … --entity-key "Paul Murphy" --employer "Acme Corp"`
+   - Confirm `entities.json` grows (1 row, validated), `network status` shows Entities ✅
+   - Optional: MCP `query_entity` with `examples/networks/empty-crm/queries/01-bind-paul-murphy.json`; admin UI poll
+2. [ ] **Historical assumptions review** — audit early-phase decisions that may be stale or problematic after later work (seed elimination, entity registry, networks, metering, etc.). Candidates:
+   - `docs/plans/*` and `prompts/resets/*` vs current `docs/architecture.md`
+   - Leftover vocabulary (`SeedRecord`, `seed_records` state fields, SQLite `people` table, `core_data` on disk)
+   - README/TODO items that still describe pre-registry or pre-network behavior
+   - Test fixtures and operator runbooks that assume runtime seed loading
+   - Decide: update docs, deprecate plans, or queue targeted cleanup slices
+
+---
+
 ## Demo (phase)
 
 Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 → 5 → 1200 + admin UI polish (v1–v3) + `restart-admin`: done** (June 2026). **MCP onboarding slices 1–4 done** (June 2026).
