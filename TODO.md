@@ -22,12 +22,13 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
    - README/TODO items that still describe pre-registry or pre-network behavior
    - Test fixtures and operator runbooks that assume runtime seed loading
    - Decide: update docs, deprecate plans, or queue targeted cleanup slices
-3. [ ] **Project website copy** — refresh public-facing site (myceliumdata) to match post–seed-elimination reality. Likely stale vs repo README/architecture:
-   - Bootstrap-only `seed.json` vs query-time `entities.json` / registry
-   - `empty-crm` growth-from-query story (not preloaded people)
-   - Entities-only operator surfaces (no seed people count)
-   - MCP `describe_network` + query-only public API
-   - Align quick start, diagrams, and feature bullets with `docs/architecture.md`
+3. [x] **Project website copy** — Option A overhaul shipped in `../mycelium-website` (June 2026). Review: `prompts/cursor/done/2026-06-10-website-overhaul-option-a/review.md`. Deploy `dist/` to refresh [myceliumdata.org](https://myceliumdata.org).
+
+---
+
+## Process (Grok + Paul)
+
+- **Website review after major pushes** — Whenever a significant framework chunk lands (phase exit, public API change, new examples, operator-surface changes), review [myceliumdata.org](https://myceliumdata.org) against `docs/architecture.md` and `README.md`. Repo: `../mycelium-website` (prompts in `prompts/cursor/next/`). If copy drifts, queue a website slice before the next public demo or release note.
 
 ---
 
