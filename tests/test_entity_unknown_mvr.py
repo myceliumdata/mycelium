@@ -11,8 +11,9 @@ from agents.classification import reset_category_tree
 from agents.context import reset_context_builder
 from agents.entity_registry import reset_entity_registry
 from agents.entity_resolution import resolve_entity_key
-from agents.seed import get_seed_data, reset_seed_data
+from agents.seed import reset_seed_data
 from graphs.core import reset_core_graph, run_query
+from network_helpers import import_seed_for_test
 from models.state import EntityQuery
 from network.introspection import build_network_capabilities
 from network.mvr import load_mvr
@@ -76,9 +77,7 @@ def crm_mvr_env(
     reset_agent_registry()
     reset_agent_factory()
     storage = get_storage()
-    storage.seed_from_file(seed)
-    reset_seed_data()
-    _ = get_seed_data()
+    import_seed_for_test(seed)
 
     yield storage
 

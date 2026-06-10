@@ -14,6 +14,7 @@ from agents.entity_registry import get_entity_registry, reset_entity_registry
 from agents.research_gate import RESEARCH_GATE_MESSAGE, is_research_gated, research_gate_allows
 from agents.seed import reset_seed_data
 from graphs.core import reset_core_graph, run_query
+from network_helpers import import_seed_for_test
 from models.state import EntityQuery, MyceliumGraphState
 from storage.core import CoreStorage, get_storage, reset_storage
 
@@ -67,8 +68,7 @@ def crm_gate_env(
     reset_agent_registry()
     reset_agent_factory()
     storage = get_storage()
-    reset_seed_data()
-    reset_entity_registry()
+    import_seed_for_test(seed)
     _ = get_entity_registry()
     monkeypatch.setenv("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
     reset_core_graph()

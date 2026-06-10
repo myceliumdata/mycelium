@@ -126,7 +126,7 @@ def validate_entity_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str
 
 
 def build_context_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
-    """Pull seed + all specialist storage for matched id(s) into state.context."""
+    """Pull entity + all specialist storage for matched id(s) into state.context."""
     current = _coerce(state)
     meta = _meta(current)
     ids = list(meta.get("ids") or [])
@@ -243,7 +243,7 @@ def invoke_specialists_node(state: MyceliumGraphState | dict[str, Any]) -> dict[
 
 
 def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
-    """Produce final QueryResponse from seed matches and specialist contributions."""
+    """Produce final QueryResponse from entity matches and specialist contributions."""
     current = _coerce(state)
     query = current.query
     thread_id = current.invocation_thread_id
@@ -393,7 +393,7 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
                 **id_kwargs,
                 **clf_kwargs,
             ),
-            "audit_log": ["assemble_response: seed identity response."],
+            "audit_log": ["assemble_response: entity identity response."],
         }
 
     merged_records: list[dict[str, Any]] = []

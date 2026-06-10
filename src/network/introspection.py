@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any
 
 from agents.entity_registry import RegistryEntity, get_entity_registry
-from agents.seed import get_seed_data
 from agents.specialists.base import category_slug
 from network.metering_policy import load_metering_policy
 from network.mvr import load_mvr
@@ -310,6 +309,18 @@ def _entity_field_statuses(
     return statuses
 
 
+def _seed_people_count(paths: NetworkPaths) -> int:
+    """Count rows in on-disk ``seed.json`` without loading runtime seed cache."""
+    if not paths.seed_path.is_file():
+        return 0
+    try:
+        payload = json.loads(paths.seed_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return 0
+    people = payload.get("people")
+    return len(people) if isinstance(people, list) else 0
+
+
 def _registry_entity_count() -> int:
     return get_entity_registry().entity_count()
 
@@ -433,7 +444,7 @@ def build_network_status(
         else "not created yet — run a query to bootstrap categories.json"
     )
 
-    seed_count = len(get_seed_data().people)
+    seed_count = _seed_people_count(paths)
     registry_agents = _read_registry_agents(paths)
     agent_map = _agent_category_map(categories_doc, registry_agents)
 

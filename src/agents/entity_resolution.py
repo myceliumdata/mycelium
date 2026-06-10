@@ -1,4 +1,4 @@
-"""Entity resolution: registry, seed, near-miss suggestions, and bind negotiation."""
+"""Entity resolution: registry, near-miss suggestions, and bind negotiation."""
 
 from __future__ import annotations
 
@@ -8,10 +8,11 @@ from difflib import SequenceMatcher
 from typing import Any, Literal
 
 from agents.entity_registry import (
+    EntityRegistry,
+    RegistryEntity,
     get_entity_registry,
     registry_entity_to_match,
 )
-from agents.seed import find_by_key, get_seed_data
 from models.state import EntityKeySuggestion, EntityQuery
 from network.mvr import load_mvr, normalize_binding
 
@@ -67,6 +68,31 @@ def is_provisional_registry_match(record: dict[str, Any]) -> bool:
     )
 
 
+def _iter_registry_entities(registry: EntityRegistry) -> list[RegistryEntity]:
+    return list(registry._data.entities.values())
+
+
+def lookup_entities_by_key(entity_key: str) -> list[dict[str, Any]]:
+    """Resolve by registry UUID or exact name (case-insensitive).
+
+    UUID match returns zero or one record. Name match may return multiple
+    records when the same name appears with different employers.
+    """
+    key = entity_key.strip()
+    if not key:
+        return []
+
+    registry = get_entity_registry()
+    if _is_uuid_shaped(key):
+        by_id = registry.lookup_by_id(key)
+        if by_id is not None:
+            return [registry_entity_to_match(by_id)]
+        return []
+
+    by_name = registry.lookup_by_name(key)
+    return [registry_entity_to_match(entity) for entity in by_name]
+
+
 def _rank_suggestions(entity_key: str) -> list[EntityKeySuggestion]:
     query_norm = normalize_name_for_comparison(entity_key)
     if not query_norm:
@@ -75,8 +101,8 @@ def _rank_suggestions(entity_key: str) -> list[EntityKeySuggestion]:
     query_first = _first_token(query_norm)
     candidates: list[EntityKeySuggestion] = []
 
-    for person in get_seed_data().people:
-        name = person.get("name") or ""
+    for entity in _iter_registry_entities(get_entity_registry()):
+        name = entity.name or ""
         candidate_norm = normalize_name_for_comparison(name)
         if not candidate_norm:
             continue
@@ -88,9 +114,9 @@ def _rank_suggestions(entity_key: str) -> list[EntityKeySuggestion]:
         candidates.append(
             EntityKeySuggestion(
                 entity_key=name,
-                id=person.get("id", ""),
+                id=entity.id,
                 name=name,
-                employer=person.get("employer"),
+                employer=entity.employer,
                 score=round(score, 4),
                 reason="sequence_ratio",
             ),
@@ -101,7 +127,7 @@ def _rank_suggestions(entity_key: str) -> list[EntityKeySuggestion]:
 
 
 def resolve_entity(query: EntityQuery) -> EntityResolution:
-    """Unified resolution: registry → seed → suggest → unknown / under_specified / bind."""
+    """Unified resolution: registry → suggest → unknown / under_specified / bind."""
     key = query.entity_key.strip()
     if not key:
         return EntityResolution(kind="none")
@@ -128,13 +154,6 @@ def resolve_entity(query: EntityQuery) -> EntityResolution:
                 matches=[registry_entity_to_match(by_id)],
             )
 
-    seed_matches = find_by_key(key)
-    if seed_matches:
-        kind: EntityResolutionKind = (
-            "multiple" if len(seed_matches) > 1 else "exact"
-        )
-        return EntityResolution(kind=kind, matches=seed_matches)
-
     if not _is_uuid_shaped(key) and not employer:
         by_name = registry.lookup_by_name(key)
         if len(by_name) == 1:
@@ -143,6 +162,11 @@ def resolve_entity(query: EntityQuery) -> EntityResolution:
                 matches=[registry_entity_to_match(by_name[0])],
             )
         if len(by_name) >= 2:
+            matches = [registry_entity_to_match(entity) for entity in by_name]
+            if not query.binding and all(
+                entity.source == "seed_bootstrap" for entity in by_name
+            ):
+                return EntityResolution(kind="multiple", matches=matches)
             required = mvr.required_bind_fields(key, binding)
             if query.binding:
                 return EntityResolution(
@@ -157,9 +181,10 @@ def resolve_entity(query: EntityQuery) -> EntityResolution:
     if _is_uuid_shaped(key):
         return EntityResolution(kind="none")
 
-    suggestions = _rank_suggestions(key)
-    if suggestions:
-        return EntityResolution(kind="suggest", suggestions=suggestions)
+    if not employer:
+        suggestions = _rank_suggestions(key)
+        if suggestions:
+            return EntityResolution(kind="suggest", suggestions=suggestions)
 
     required = mvr.required_bind_fields(key, binding)
     if required:
@@ -202,17 +227,7 @@ def resolve_entity_for_lookup(entity_key: str) -> EntityResolution:
                 kind="exact",
                 matches=[registry_entity_to_match(by_id)],
             )
-        seed_matches = find_by_key(key)
-        if seed_matches:
-            return EntityResolution(kind="exact", matches=seed_matches)
         return EntityResolution(kind="none")
-
-    seed_matches = find_by_key(key)
-    if seed_matches:
-        kind: EntityResolutionKind = (
-            "multiple" if len(seed_matches) > 1 else "exact"
-        )
-        return EntityResolution(kind=kind, matches=seed_matches)
 
     by_name = registry.lookup_by_name(key)
     if len(by_name) == 1:
@@ -221,6 +236,9 @@ def resolve_entity_for_lookup(entity_key: str) -> EntityResolution:
             matches=[registry_entity_to_match(by_name[0])],
         )
     if len(by_name) >= 2:
+        matches = [registry_entity_to_match(entity) for entity in by_name]
+        if all(entity.source == "seed_bootstrap" for entity in by_name):
+            return EntityResolution(kind="multiple", matches=matches)
         required = mvr.required_bind_fields(key, {})
         return EntityResolution(
             kind="unknown",

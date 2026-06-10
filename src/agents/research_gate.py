@@ -21,7 +21,10 @@ def research_gate_allows(
     if not matched:
         return False
     if len(matched) != 1:
-        return not matched[0].get("_registry")
+        return all(
+            not rec.get("_registry") or rec.get("_validation_state") == "validated"
+            for rec in matched
+        )
     rec = matched[0]
     entity_id = current_id or rec.get("id")
     if not entity_id:

@@ -23,6 +23,7 @@ from network.metering_policy import load_metering_policy
 from network.payment import PaymentError, settle_quote
 from network.quotes import get_quote_store, reset_quote_store
 from storage.core import CoreStorage, get_storage, reset_storage
+from network_helpers import import_seed_for_test
 from tools.research import ResearchRunResult
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -160,9 +161,7 @@ def crm_payment_env(
         auto_commit=False,
     )
     storage = get_storage()
-    storage.seed_from_file(seed)
-    reset_seed_data()
-    reset_entity_registry()
+    import_seed_for_test(seed)
     _ = get_entity_registry()
     monkeypatch.setenv("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
     reset_core_graph()

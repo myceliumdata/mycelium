@@ -15,6 +15,7 @@ from agents.factory.agent_factory import get_agent_factory, reset_agent_factory
 from agents.registry import get_agent_registry, reset_agent_registry
 from agents.seed import reset_seed_data
 from graphs.core import reset_core_graph, run_query
+from network_helpers import import_seed_for_test
 from models.state import EntityQuery, MyceliumGraphState
 from storage.core import CoreStorage, get_storage, reset_storage
 
@@ -65,8 +66,7 @@ def crm_boundary_env(
     reset_agent_registry()
     reset_agent_factory()
     storage = get_storage()
-    storage.seed_from_file(seed)
-    reset_seed_data()
+    import_seed_for_test(seed)
     monkeypatch.setenv("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
     reset_core_graph()
 

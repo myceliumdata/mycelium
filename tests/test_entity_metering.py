@@ -34,6 +34,7 @@ from network.quotes import (
     reset_quote_store,
 )
 from storage.core import CoreStorage, get_storage, reset_storage
+from network_helpers import import_seed_for_test
 from tools.research import ResearchRunResult
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -152,9 +153,7 @@ def crm_metering_env(
         auto_commit=False,
     )
     storage = get_storage()
-    storage.seed_from_file(seed)
-    reset_seed_data()
-    reset_entity_registry()
+    import_seed_for_test(seed)
     _ = get_entity_registry()
     monkeypatch.setenv("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
     reset_core_graph()
@@ -299,9 +298,10 @@ def test_metering_disabled_no_quote(
     monkeypatch.setenv("MYCELIUM_DB_PATH", str(tmp_path / "test.db"))
     monkeypatch.setenv("MYCELIUM_CHECKPOINT_PATH", str(tmp_path / "cp.sqlite"))
     monkeypatch.setenv("MYCELIUM_CATEGORIES_PATH", str(tmp_path / "categories.json"))
+    monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(tmp_path / "entities.json"))
     monkeypatch.setenv("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
     _mock_email_research(monkeypatch)
-    get_storage().seed_from_file(seed)
+    import_seed_for_test(seed)
     reset_core_graph()
     resp = run_query(EntityQuery(entity_key="Andrea Kalmans", requested_attributes=["email"]))
     assert resp.outcome == "assembled"

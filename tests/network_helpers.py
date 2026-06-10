@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 NETWORK_PATH_ENV_KEYS = (
     "MYCELIUM_NETWORK_ROOT",
     "MYCELIUM_SEED_PATH",
+    "MYCELIUM_ENTITIES_PATH",
     "MYCELIUM_AGENT_REGISTRY_PATH",
     "MYCELIUM_CATEGORIES_PATH",
     "MYCELIUM_AGENT_DATA_DIR",
@@ -21,3 +24,24 @@ def clear_network_path_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("MYCELIUM_NETWORK", raising=False)
     for key in NETWORK_PATH_ENV_KEYS:
         monkeypatch.delenv(key, raising=False)
+
+
+def import_seed_for_test(seed_path: Path) -> int:
+    """Import ``seed.json`` into ``entities.json`` after ``MYCELIUM_*`` env is set."""
+    from agents.entity_registry import reset_entity_registry
+    from network.seed_import import import_seed_file
+
+    reset_entity_registry()
+    return import_seed_file(seed_path)
+
+
+def import_seed_at_root(root: Path) -> int:
+    """Import ``root/seed.json`` when present (uses ``apply_network_paths``)."""
+    from agents.entity_registry import reset_entity_registry
+    from network.paths import NetworkPaths, apply_network_paths
+    from network.seed_import import import_seed_file
+
+    paths = NetworkPaths.from_root(root)
+    apply_network_paths(paths)
+    reset_entity_registry()
+    return import_seed_file(paths.seed_path)

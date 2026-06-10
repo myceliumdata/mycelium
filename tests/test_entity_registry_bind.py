@@ -13,8 +13,10 @@ from agents.classification import reset_category_tree
 from agents.context import reset_context_builder
 from agents.entity_registry import get_entity_registry, reset_entity_registry
 from agents.entity_resolution import resolve_entity
+from agents.entity_resolution import lookup_entities_by_key
 from agents.seed import reset_seed_data
 from graphs.core import reset_core_graph, run_query
+from network_helpers import import_seed_for_test
 from models.state import EntityQuery
 from storage.core import CoreStorage, get_storage, reset_storage
 
@@ -69,8 +71,7 @@ def crm_registry_env(
     reset_agent_registry()
     reset_agent_factory()
     storage = get_storage()
-    reset_seed_data()
-    reset_entity_registry()
+    import_seed_for_test(seed)
     _ = get_entity_registry()
     monkeypatch.setenv("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
     reset_core_graph()
@@ -346,7 +347,7 @@ def test_ensure_bound_entity_duplicate_preserves_source(
 
 
 @pytest.mark.smoke
-def test_seed_reload_stable_ids_with_persisted_registry(
+def test_lookup_entities_by_key_stable_after_reimport(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -366,18 +367,11 @@ def test_seed_reload_stable_ids_with_persisted_registry(
     monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
     monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(entities))
 
-    reset_entity_registry()
-    reset_seed_data()
-    first_id = __import__("agents.seed", fromlist=["find_by_key"]).find_by_key(
-        "Andrea Kalmans",
-    )[0]["id"]
+    import_seed_for_test(seed)
+    first_id = lookup_entities_by_key("Andrea Kalmans")[0]["id"]
 
-    reset_entity_registry()
-    get_entity_registry()
-    reset_seed_data()
-    second_id = __import__("agents.seed", fromlist=["find_by_key"]).find_by_key(
-        "Andrea Kalmans",
-    )[0]["id"]
+    import_seed_for_test(seed)
+    second_id = lookup_entities_by_key("Andrea Kalmans")[0]["id"]
 
     assert first_id == second_id
     assert entities.is_file()

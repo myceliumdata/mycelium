@@ -6,8 +6,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from agents.entity_resolution import lookup_entities_by_key
 from agents.responses import response_found, response_non_core, response_not_found
-from agents.seed import find_by_key
 from models.state import (
     MyceliumGraphState,
     QueryResponse,
@@ -54,6 +54,7 @@ def _rows_to_seed_records(rows: list[dict[str, Any]]) -> list[SeedRecord]:
 def evaluate_supervisor_turn(
     state: MyceliumGraphState,
     *,
+    entity_lookup: Callable[[str], list[dict[str, Any]]] | None = None,
     seed_lookup: Callable[[str], list[dict[str, Any]]] | None = None,
     thread_id: str | None = None,
     trace_id: str | None = None,
@@ -61,10 +62,10 @@ def evaluate_supervisor_turn(
     """
     Classify a query-only request and build the appropriate QueryResponse.
 
-    Seed lookups use ``agents.seed.find_by_key``; this function only coordinates
+    Entity lookups use ``lookup_entities_by_key``; this function only coordinates
     routing and selects response shapes (found, not-found, non-core).
     """
-    lookup = seed_lookup or find_by_key
+    lookup = entity_lookup or seed_lookup or lookup_entities_by_key
     query = state.query
     resolved_thread_id, resolved_trace_id = _resolve_invocation_ids(
         state,

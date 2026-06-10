@@ -12,7 +12,9 @@ from pathlib import Path
 import pytest
 
 from agents.entity_registry import get_entity_registry
-from agents.seed import find_by_key, reset_seed_data
+from agents.entity_resolution import lookup_entities_by_key
+from agents.seed import reset_seed_data
+from network_helpers import import_seed_for_test
 from network.introspection import (
     build_network_status,
     format_category_examples,
@@ -103,7 +105,8 @@ def test_status_demo_contact_has_record(
     shutil.copy(EXAMPLE_CRM / "seed.json", root / "seed.json")
     shutil.copy(SAMPLE_CATEGORIES, root / "categories.json")
     _configure_root(monkeypatch, tmp_path, root)
-    person_id = find_by_key("Andrea Kalmans")[0]["id"]
+    import_seed_for_test(root / "seed.json")
+    person_id = lookup_entities_by_key("Andrea Kalmans")[0]["id"]
     agents_dir = root / "agents" / "contact"
     agents_dir.mkdir(parents=True)
     (agents_dir / "storage.json").write_text(
@@ -174,7 +177,8 @@ def test_status_populated_network_storage(
         encoding="utf-8",
     )
     _configure_root(monkeypatch, tmp_path, root)
-    person_id = find_by_key("Andrea Kalmans")[0]["id"]
+    import_seed_for_test(root / "seed.json")
+    person_id = lookup_entities_by_key("Andrea Kalmans")[0]["id"]
     agents_dir = root / "agents" / "contact"
     agents_dir.mkdir(parents=True)
     (agents_dir / "storage.json").write_text(
@@ -322,6 +326,7 @@ def test_status_near_miss_suggestions(
 ) -> None:
     root = _seed_only_root(tmp_path)
     _configure_root(monkeypatch, tmp_path, root)
+    import_seed_for_test(root / "seed.json")
 
     summary = build_network_status(entity_key="Andrea Kalman")
     assert summary.entity_resolution_kind == "suggest"
@@ -340,7 +345,8 @@ def test_status_person_drill_down(
     shutil.copy(EXAMPLE_CRM / "seed.json", root / "seed.json")
     shutil.copy(SAMPLE_CATEGORIES, root / "categories.json")
     _configure_root(monkeypatch, tmp_path, root)
-    person_id = find_by_key("Andrea Kalmans")[0]["id"]
+    import_seed_for_test(root / "seed.json")
+    person_id = lookup_entities_by_key("Andrea Kalmans")[0]["id"]
     agents_dir = root / "agents" / "contact"
     agents_dir.mkdir(parents=True)
     (agents_dir / "storage.json").write_text(
