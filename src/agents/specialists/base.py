@@ -1,4 +1,9 @@
-"""Base for generated specialists. Provides storage helper + future upgrade hooks (see approved plan)."""
+"""Base for generated specialists. Provides storage helper + future upgrade hooks.
+
+Framework ``*_specialist.py`` modules under ``src/agents/specialists/`` are committed
+(import_module fallback + CI). Regenerate from ``specialist_agent.py.j2`` when the
+template changes.
+"""
 
 from __future__ import annotations
 

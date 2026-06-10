@@ -1,6 +1,6 @@
 # CI fix — commit framework fallback specialists
 
-**Status:** Queued for Cursor (June 2026)  
+**Status:** Shipped (June 2026)  
 **Trigger:** CI smoke failed on `538867e` / `650cd7d` — `test_specialist_entity_vocab` expects four modules under `src/agents/specialists/` that are **gitignored** and absent on GitHub runners.
 
 ## Problem

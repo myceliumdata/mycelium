@@ -17,8 +17,8 @@ htmlcov/
 # Retired legacy prototype shim — ignore leftover local runtime artifacts
 data/
 
-# AUTO-GENERATED specialists (recreated by AgentFactory on demand)
-src/agents/specialists/*_specialist.py
+# Framework src/agents/specialists/*_specialist.py are committed (CI + import_module fallback).
+# Regenerate from specialist_agent.py.j2 when the template changes.
 
 # Runtime artifacts under committed example networks (seed.json + network.json stay tracked)
 examples/networks/**/categories.json
