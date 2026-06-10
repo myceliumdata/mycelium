@@ -123,7 +123,7 @@ Plans with **runtime seed resolution** language (historical only):
 | Priority | Slice | Scope | Est. |
 |----------|-------|-------|------|
 | P1 | **TODO + doc hygiene** | Fix L49, L98, L209; optional `docs/plans/README.md` | 30 min |
-| P2 | **Plans index** | `docs/plans/README.md` — active vs historical, link architecture | 45 min |
+| P2 | **Plans index** | `docs/plans/README.md` — active vs historical, link architecture | **Done** (June 2026) |
 | P3 | **State field rename** (optional) | `seed_records` → `matched_records` in public MCP schema / graph export | Large; breaking |
 | P4 | **`network create` without `--seed`** | Launch v2; empty-crm proves growth path | Design + implementation |
 | P5 | **Unwired legacy module cleanup** | Remove or quarantine `person_prep`, stale enrich paths | Medium |
@@ -139,7 +139,8 @@ Plans with **runtime seed resolution** language (historical only):
 - [x] List intentional debt vs bugs
 - [x] Fix `network_metadata` explicit-root nit
 - [x] Hands-on `empty-crm` verified
-- [ ] Phase 2 slices queued in `prompts/cursor/next/` (Paul + Grok)
+- [x] `docs/plans/README.md` index (P2)
+- [ ] Phase 2 implementation slices queued (Paul + Grok)
 
 ---
 

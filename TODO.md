@@ -11,7 +11,7 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 **Priority order when back from break:**
 
 1. [x] **Hands-on: `empty-crm` example** — verified June 2026 (refresh → no seed/entities → Paul Murphy bind → 1 validated row; `network status` Entities ✅). Nit fixed: `network_metadata` no longer lets `MYCELIUM_NETWORK` override explicit `--network-dir`.
-2. [ ] **Historical assumptions review** — **Phase 1 done:** [`docs/plans/historical-assumptions-audit.md`](docs/plans/historical-assumptions-audit.md). Runtime/tests clean; living docs aligned; plans/resets historical. **Phase 2:** TODO hygiene (P1), `docs/plans/README.md` index (P2), optional rename/launch-v2 slices per audit §7.
+2. [ ] **Historical assumptions review** — **Phase 1 done:** [`docs/plans/historical-assumptions-audit.md`](docs/plans/historical-assumptions-audit.md). **P2 done:** [`docs/plans/README.md`](docs/plans/README.md). Remaining Phase 2: optional `SeedRecord` rename slice, `network create` v2 (no required `--seed`), legacy module cleanup per audit §7.
 3. [x] **Project website copy** — Done (`../mycelium-website`, June 2026). Option A overhaul + copy pass deployed by Paul.
 
 ---
