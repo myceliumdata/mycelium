@@ -66,7 +66,6 @@ def crm_validation_env(
     reset_agent_registry()
     reset_agent_factory()
     storage = get_storage()
-    storage.seed_from_file(seed)
     reset_seed_data()
     reset_entity_registry()
     _ = get_entity_registry()
@@ -100,7 +99,7 @@ def test_provisional_murphy_validates_identity_only(crm_validation_env: CoreStor
     assert response.message == "Core record validated."
     assert response.results[0]["employer"] == "Acme Corp"
     payload = json.loads(_entities_path().read_text(encoding="utf-8"))
-    entity = next(iter(payload["entities"].values()))
+    entity = payload["entities"][response.results[0]["id"]]
     assert entity["validation_state"] == "validated"
     assert entity["field_states"]["name"] == "validated"
     assert entity["field_states"]["employer"] == "validated"
@@ -133,7 +132,7 @@ def test_absurd_employer_fails_validation_stays_provisional(
     assert "validation failed" in response.message.lower()
     assert "employer" in response.message.lower()
     payload = json.loads(_entities_path().read_text(encoding="utf-8"))
-    entity = next(iter(payload["entities"].values()))
+    entity = payload["entities"][response.results[0]["id"]]
     assert entity["validation_state"] == "provisional"
 
 
@@ -164,5 +163,5 @@ def test_murphy_bind_plus_email_validates_then_assembles_same_turn(
     assert response.outcome == "assembled"
     assert "entity_validated" not in response.outcome
     payload = json.loads(_entities_path().read_text(encoding="utf-8"))
-    entity = next(iter(payload["entities"].values()))
+    entity = payload["entities"][response.results[0]["id"]]
     assert entity["validation_state"] == "validated"

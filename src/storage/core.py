@@ -14,7 +14,7 @@ import json
 import sqlite3
 from pathlib import Path
 
-from agents.seed import _assign_id
+from agents.entity_registry import get_entity_registry
 from models.state import SeedRecord
 
 _SCHEMA = """
@@ -50,8 +50,20 @@ class CoreStorage:
         payload = json.loads(seed_path.read_text(encoding="utf-8"))
         people = payload.get("people", [])
         inserted = 0
+        registry = get_entity_registry()
         for row in people:
-            pid = row.get("id") or _assign_id(row)
+            if row.get("id"):
+                pid = str(row["id"])
+            else:
+                name = str(row["name"]).strip()
+                employer = str(row.get("employer") or "").strip()
+                entity, _ = registry.ensure_bound_entity(
+                    name,
+                    employer,
+                    source="seed_bootstrap",
+                    validation_state="validated",
+                )
+                pid = entity.id
             person = SeedRecord.model_validate(
                 {
                     "id": pid,

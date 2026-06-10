@@ -3,9 +3,12 @@
 Each network's ``seed.json`` under ``network_root`` is the read-only origin of
 person records (name + employer only; no legacy ``id`` in the file). The CRM
 example lives at ``examples/networks/crm/seed.json``.
-Stable ``id`` (UUID, uuid5 from name|employer) is assigned at load time and is
-never written back into the static JSON. Supervisor and tests resolve people by
-name or ``id`` via :func:`find_by_key`.
+
+At load time each row is mirrored into ``entities.json`` via
+:meth:`EntityRegistry.ensure_bound_entity` (uuid4, ``source: seed_bootstrap``).
+IDs persist in the registry ``bind_index`` so MCP per-query seed reload keeps
+stable foreign keys for specialist storage. Supervisor and tests resolve people
+by name or ``id`` via :func:`find_by_key`.
 
 People seeding no longer flows through SQLite; see :mod:`storage.core` for
 checkpoints/history only in this phase.
@@ -14,7 +17,6 @@ checkpoints/history only in this phase.
 from __future__ import annotations
 
 import json
-import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -23,9 +25,6 @@ from typing import Any
 # support for seed file with pre-assigned UUIDs, cross-specialist peer retrieval
 # instead of supervisor context fan-out.
 
-_ID_NAMESPACE = uuid.NAMESPACE_DNS
-_ID_PREFIX = "mycelium-seed-v1:"
-
 
 def _default_seed_path() -> Path:
     from network.paths import runtime_path
@@ -33,15 +32,20 @@ def _default_seed_path() -> Path:
     return runtime_path("MYCELIUM_SEED_PATH")
 
 
-def _assign_id(record: dict[str, Any]) -> str:
-    """Stable UUID for a seed row (name|employer); does not mutate the JSON file."""
-    base = f"{record.get('name', '')}|{record.get('employer', '')}"
-    return str(uuid.uuid5(_ID_NAMESPACE, f"{_ID_PREFIX}{base}"))
-
-
 def _enrich_person(record: dict[str, Any]) -> dict[str, Any]:
+    """Attach registry-backed uuid4 id for a seed row."""
+    from agents.entity_registry import get_entity_registry
+
     enriched = dict(record)
-    enriched["id"] = _assign_id(record)
+    name = str(record.get("name") or "").strip()
+    employer = str(record.get("employer") or "").strip()
+    entity, _ = get_entity_registry().ensure_bound_entity(
+        name,
+        employer,
+        source="seed_bootstrap",
+        validation_state="validated",
+    )
+    enriched["id"] = entity.id
     return enriched
 
 

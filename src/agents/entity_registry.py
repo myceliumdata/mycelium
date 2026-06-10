@@ -135,8 +135,19 @@ class EntityRegistry:
             if _normalize_name_for_bind(entity.name) == target
         ]
 
-    def bind_provisional(self, name: str, employer: str) -> tuple[RegistryEntity, bool]:
-        """Create provisional entity or return existing row (duplicate bind)."""
+    def ensure_bound_entity(
+        self,
+        name: str,
+        employer: str,
+        *,
+        source: str,
+        validation_state: str,
+    ) -> tuple[RegistryEntity, bool]:
+        """Return entity for bind key; allocate uuid4 + persist if missing.
+
+        The bool is True when an existing row was returned (duplicate bind).
+        On hit, id/source/validation_state are not changed.
+        """
         key = make_bind_key(name, employer)
         existing_id = self._data.bind_index.get(key)
         if existing_id:
@@ -146,19 +157,33 @@ class EntityRegistry:
 
         now = datetime.now(timezone.utc).isoformat()
         entity_id = str(uuid.uuid4())
+        normalized_employer = employer.strip()
+        if validation_state == "provisional":
+            field_states = {"name": "provisional", "employer": "provisional"}
+        else:
+            field_states = {"name": "validated", "employer": "validated"}
         entity = RegistryEntity(
             id=entity_id,
             name=name.strip(),
-            employer=employer.strip(),
-            validation_state="provisional",
-            field_states={"name": "provisional", "employer": "provisional"},
-            source="query_bind",
+            employer=normalized_employer or None,
+            validation_state=validation_state,
+            field_states=field_states,
+            source=source,
             created_at=now,
         )
         self._data.entities[entity_id] = entity
         self._data.bind_index[key] = entity_id
         self._save()
         return entity, False
+
+    def bind_provisional(self, name: str, employer: str) -> tuple[RegistryEntity, bool]:
+        """Create provisional entity or return existing row (duplicate bind)."""
+        return self.ensure_bound_entity(
+            name,
+            employer,
+            source="query_bind",
+            validation_state="provisional",
+        )
 
     def promote_validated(self, entity_id: str) -> RegistryEntity:
         """Promote provisional entity and MVR field states to validated."""

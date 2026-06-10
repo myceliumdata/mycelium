@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 from agents.classification import get_category_tree, reset_category_tree
 from agents.factory.agent_factory import reset_agent_factory
 from agents.registry import get_agent_registry, reset_agent_registry
+from agents.entity_registry import get_entity_registry, reset_entity_registry
 from agents.seed import get_seed_data, reset_seed_data
 
 _GENERATED_SPECIALIST_MODULE_RE = re.compile(
@@ -24,6 +25,7 @@ _GENERATED_SPECIALIST_MODULE_RE = re.compile(
 _NETWORK_PATH_ENV_KEYS = (
     "MYCELIUM_NETWORK_ROOT",
     "MYCELIUM_SEED_PATH",
+    "MYCELIUM_ENTITIES_PATH",
     "MYCELIUM_AGENT_REGISTRY_PATH",
     "MYCELIUM_CATEGORIES_PATH",
     "MYCELIUM_AGENT_DATA_DIR",
@@ -67,6 +69,9 @@ def refresh_runtime_from_disk(*, reload_dotenv: bool = True) -> None:
 
     reset_category_tree()
     get_category_tree()
+
+    reset_entity_registry()
+    get_entity_registry()
 
     reset_seed_data()
     get_seed_data()

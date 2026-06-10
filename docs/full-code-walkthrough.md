@@ -70,7 +70,7 @@ Package: `mycelium_mcp` (renamed from `mcp` to avoid SDK collision).
 ## 6. Seed loader (`src/agents/seed.py`)
 
 - Reads `<network_root>/seed.json` (env `MYCELIUM_SEED_PATH` after path resolver runs).
-- Assigns stable UUID per row (uuid5 from name|employer); file holds name + employer only.
+- Enriches each row with uuid4 via `ensure_bound_entity` (persisted in `entities.json`); file holds name + employer only.
 - `find_by_key(entity_key)` — by UUID or exact name (0..N for ambiguous names).
 
 Committed example: `examples/networks/crm/seed.json`.

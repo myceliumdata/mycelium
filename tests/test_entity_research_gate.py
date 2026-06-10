@@ -67,7 +67,6 @@ def crm_gate_env(
     reset_agent_registry()
     reset_agent_factory()
     storage = get_storage()
-    storage.seed_from_file(seed)
     reset_seed_data()
     reset_entity_registry()
     _ = get_entity_registry()
@@ -125,7 +124,7 @@ def test_provisional_murphy_email_validation_fail_no_invoke(
     assert "validation failed" in response.message.lower()
     assert "invoke_specialists" not in response.debug
     payload = json.loads(_entities_path().read_text(encoding="utf-8"))
-    entity = next(iter(payload["entities"].values()))
+    entity = payload["entities"][response.results[0]["id"]]
     assert entity["validation_state"] == "provisional"
 
 
@@ -144,7 +143,7 @@ def test_provisional_murphy_email_validates_then_invokes_same_turn(
 
     assert response.outcome == "assembled"
     payload = json.loads(_entities_path().read_text(encoding="utf-8"))
-    entity = next(iter(payload["entities"].values()))
+    entity = payload["entities"][response.results[0]["id"]]
     assert entity["validation_state"] == "validated"
 
 

@@ -368,6 +368,22 @@ Fallback for CRM example: if `mvr` absent, default `bind_fields: ["name", "emplo
 
 ---
 
+### Slice 13 — Entity ID unification (uuid4 everywhere) *(shipped)*
+
+**Track:** Seed elimination step 1  
+**Detail:** [`entity-uuid4-unification-slice13.md`](entity-uuid4-unification-slice13.md)  
+**Cursor:** `prompts/cursor/done/2026-06-10-1000-entity-uuid4-unification-slice13/`
+
+| | |
+|--|--|
+| **Status** | **Shipped** |
+| **Ships** | `ensure_bound_entity` registry helper; seed loader uses uuid4 + `entities.json` persistence; MCP runtime resets registry; remove uuid5 |
+| **Not** | Remove runtime seed resolution (`find_by_key` / seed branch) — Slice 14 |
+
+**Depends on:** Slices 1–12.
+
+---
+
 ## Explicitly out of this program (separate tracks)
 
 | Item | Why deferred |

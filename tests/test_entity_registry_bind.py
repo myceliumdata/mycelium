@@ -69,7 +69,6 @@ def crm_registry_env(
     reset_agent_registry()
     reset_agent_factory()
     storage = get_storage()
-    storage.seed_from_file(seed)
     reset_seed_data()
     reset_entity_registry()
     _ = get_entity_registry()
@@ -111,8 +110,11 @@ def test_murphy_bind_creates_provisional_entity(crm_registry_env: CoreStorage) -
     assert response.message == "Core record validated."
     assert entities_path.is_file()
     payload = json.loads(entities_path.read_text(encoding="utf-8"))
-    assert len(payload["entities"]) == 1
     assert "paul murphy|acme corp" in payload["bind_index"]
+    murphy_id = payload["bind_index"]["paul murphy|acme corp"]
+    murphy = payload["entities"][murphy_id]
+    assert murphy["source"] == "query_bind"
+    assert murphy["validation_state"] == "validated"
 
 
 @pytest.mark.smoke
@@ -133,7 +135,7 @@ def test_repeat_bind_is_idempotent_found(crm_registry_env: CoreStorage) -> None:
 
     entities_path = Path(__import__("os").environ["MYCELIUM_ENTITIES_PATH"])
     payload = json.loads(entities_path.read_text(encoding="utf-8"))
-    assert len(payload["entities"]) == 1
+    assert payload["bind_index"]["paul murphy|acme corp"] == first_id
 
 
 @pytest.mark.smoke
@@ -178,7 +180,12 @@ def test_same_name_different_employers_get_two_ids(crm_registry_env: CoreStorage
     payload = json.loads(
         Path(__import__("os").environ["MYCELIUM_ENTITIES_PATH"]).read_text(),
     )
-    assert len(payload["entities"]) == 2
+    assert "paul murphy|acme corp" in payload["bind_index"]
+    assert "paul murphy|beta llc" in payload["bind_index"]
+    assert (
+        payload["bind_index"]["paul murphy|acme corp"]
+        != payload["bind_index"]["paul murphy|beta llc"]
+    )
 
 
 @pytest.mark.smoke
@@ -198,8 +205,8 @@ def test_murphy_bound_plus_email_no_specialist_invoke(
     payload = json.loads(
         Path(__import__("os").environ["MYCELIUM_ENTITIES_PATH"]).read_text(),
     )
-    entity = next(iter(payload["entities"].values()))
-    assert entity["validation_state"] == "validated"
+    murphy = payload["entities"][payload["bind_index"]["paul murphy|acme corp"]]
+    assert murphy["validation_state"] == "validated"
 
     entity_id = bound.results[0]["id"]
     follow_up = run_query(
@@ -210,7 +217,7 @@ def test_murphy_bound_plus_email_no_specialist_invoke(
 
 
 @pytest.mark.smoke
-def test_aaron_holiday_seed_path_no_registry_write(crm_registry_env: CoreStorage) -> None:
+def test_aaron_holiday_seed_creates_registry_mirror(crm_registry_env: CoreStorage) -> None:
     _ = crm_registry_env
     entities_path = Path(__import__("os").environ["MYCELIUM_ENTITIES_PATH"])
 
@@ -219,9 +226,15 @@ def test_aaron_holiday_seed_path_no_registry_write(crm_registry_env: CoreStorage
     )
 
     assert response.outcome == "assembled"
-    assert not entities_path.exists() or json.loads(
-        entities_path.read_text(encoding="utf-8"),
-    ).get("entities") == {}
+    assert entities_path.is_file()
+    payload = json.loads(entities_path.read_text(encoding="utf-8"))
+    aaron = next(
+        entity
+        for entity in payload["entities"].values()
+        if entity["name"] == "Aaron Holiday"
+    )
+    assert aaron["source"] == "seed_bootstrap"
+    assert aaron["validation_state"] == "validated"
 
 
 @pytest.mark.smoke
@@ -289,3 +302,82 @@ def test_missing_uuid_stays_not_found(crm_registry_env: CoreStorage) -> None:
     missing_id = str(uuid.uuid4())
     response = run_query(EntityQuery(entity_key=missing_id))
     assert response.outcome == "not_found"
+
+
+@pytest.mark.smoke
+def test_ensure_bound_entity_allocates_uuid4(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
+    monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(tmp_path / "entities.json"))
+    reset_entity_registry()
+    registry = get_entity_registry()
+    entity, duplicate = registry.ensure_bound_entity(
+        "Test Person",
+        "Acme",
+        source="seed_bootstrap",
+        validation_state="validated",
+    )
+    assert duplicate is False
+    uuid.UUID(entity.id)
+    assert entity.source == "seed_bootstrap"
+
+
+@pytest.mark.smoke
+def test_ensure_bound_entity_duplicate_preserves_source(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
+    monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(tmp_path / "entities.json"))
+    reset_entity_registry()
+    registry = get_entity_registry()
+    seed_row, _ = registry.ensure_bound_entity(
+        "Andrea Kalmans",
+        "Example Co",
+        source="seed_bootstrap",
+        validation_state="validated",
+    )
+    bind_row, duplicate = registry.bind_provisional("Andrea Kalmans", "Example Co")
+    assert duplicate is True
+    assert bind_row.id == seed_row.id
+    assert bind_row.source == "seed_bootstrap"
+
+
+@pytest.mark.smoke
+def test_seed_reload_stable_ids_with_persisted_registry(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seed = tmp_path / "seed.json"
+    seed.write_text(
+        json.dumps(
+            {
+                "people": [
+                    {"name": "Andrea Kalmans", "employer": "Example Co"},
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    entities = tmp_path / "entities.json"
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
+    monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
+    monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(entities))
+
+    reset_entity_registry()
+    reset_seed_data()
+    first_id = __import__("agents.seed", fromlist=["find_by_key"]).find_by_key(
+        "Andrea Kalmans",
+    )[0]["id"]
+
+    reset_entity_registry()
+    get_entity_registry()
+    reset_seed_data()
+    second_id = __import__("agents.seed", fromlist=["find_by_key"]).find_by_key(
+        "Andrea Kalmans",
+    )[0]["id"]
+
+    assert first_id == second_id
+    assert entities.is_file()

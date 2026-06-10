@@ -8,8 +8,10 @@ from pathlib import Path
 
 import pytest
 
+from agents.entity_registry import reset_entity_registry
 from agents.registry import get_agent_registry, reset_agent_registry
 from agents.runtime import evict_cached_specialist_modules, refresh_runtime_from_disk
+from agents.seed import find_by_key, reset_seed_data
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -22,6 +24,37 @@ def runtime_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     yield reg_path
     reset_agent_registry()
     evict_cached_specialist_modules()
+
+
+@pytest.mark.smoke
+def test_refresh_runtime_preserves_seed_entity_ids(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Seed ids stay stable across refresh_runtime_from_disk (MCP per-query reload)."""
+    seed = tmp_path / "seed.json"
+    seed.write_text(
+        json.dumps(
+            {"people": [{"name": "Andrea Kalmans", "employer": "Example Co"}]},
+        ),
+        encoding="utf-8",
+    )
+    entities = tmp_path / "entities.json"
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
+    monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
+    monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(entities))
+    monkeypatch.setenv("MYCELIUM_AGENT_REGISTRY_PATH", str(tmp_path / "agent_registry.json"))
+
+    reset_entity_registry()
+    reset_seed_data()
+    refresh_runtime_from_disk(reload_dotenv=False)
+    first_id = find_by_key("Andrea Kalmans")[0]["id"]
+
+    refresh_runtime_from_disk(reload_dotenv=False)
+    second_id = find_by_key("Andrea Kalmans")[0]["id"]
+
+    assert first_id == second_id
+    assert entities.is_file()
 
 
 @pytest.mark.smoke

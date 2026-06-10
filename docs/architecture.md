@@ -61,7 +61,7 @@ Data addition via the public API was removed in the June 2026 refactor (tasks 10
 
 - **Canonical seed:** `<network_root>/seed.json` — static JSON origin of person records (`people` array). Committed CRM example: `examples/networks/crm/seed.json` (public-safe subset). Bootstrap via `./bin/refresh-example-network crm` or `mycelium network create`. Rebuild ontology with `network create --force`; reset CRM demo state with `refresh-example-network`.
 - **Transform (maintainers):** `examples/networks/crm/prepare_seed.py` builds example `seed.json` from a CRM source file (name + employer only; no legacy `id` in the file). Full prototype data: git tag `prototype`.
-- **Loader:** `src/agents/seed.py` assigns stable `id` (uuid5 from name|employer) at load time on enriched records; public `results["id"]` is that UUID; supervisor resolves lookups via `find_by_key` (name or `id`).
+- **Loader:** `src/agents/seed.py` enriches seed rows via `ensure_bound_entity` (uuid4, persisted in `entities.json` `bind_index`); public `results["id"]` is that UUID; supervisor resolves lookups via `find_by_key` (name or `id`).
 - **No `core_data` specialist** — identity fields (name, employer) come from seed; specialists may override them later.
 
 ### Supervisor and graph (current)
