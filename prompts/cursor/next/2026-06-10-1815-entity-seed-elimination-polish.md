@@ -1,22 +1,39 @@
 # Task: Seed elimination — Polish (vocabulary + code nits)
 
-> **READY** — **Run after Slice 18 is reviewed and committed.** Move to `in-progress/` before starting.
+> **READY** — **Run after Slices 17–18 are reviewed** (may be uncommitted — Paul batches one commit stack after polish is approved). Move to `in-progress/` before starting.
 
 **Read these first (mandatory):**
 - `prompts/cursor/WORKFLOW.md`
 - [`docs/plans/entity-seed-elimination-phase.md`](../../docs/plans/entity-seed-elimination-phase.md) — phase context
+- Slice 18 review nits: `prompts/cursor/done/2026-06-10-1800-entity-seed-elimination-slice18/review.md`
 - Slice 17 review nits: `prompts/cursor/done/2026-06-10-1700-entity-seed-elimination-slice17/review.md`
 - Slice 16 review nits: `prompts/cursor/done/2026-06-10-1600-entity-seed-elimination-slice16/review.md`
 
-**Depends on:** Slice 18 shipped (admin UI, `seed_people_count` removal, README/architecture pass, full pytest green).
+**Depends on:** Slices 17–18 WIP in working tree (seed module deleted, entities-only operator surfaces, full pytest green).
 
-**Do not redo Slice 18 work.** If `seed_people_count` is already gone from API/UI/tests, skip those items.
+**Do not redo Slice 17–18 work.** If an item is already fixed, skip and note in `output.md`.
 
 ---
 
 ## Objective
 
-Clean up **remaining seed-runtime vocabulary** and small code-quality nits after the seed-elimination phase. Add a committed **empty-seed CRM example** (`empty-crm`) demonstrating query-time entity growth. No behavior changes unless required for renamed public docstrings; smoke must stay green.
+Clean up **remaining seed-runtime vocabulary** and small code-quality nits after the seed-elimination phase. Add a committed **empty-seed CRM example** (`empty-crm`) demonstrating query-time entity growth. Close the **Slice 16–18 review nit backlog** below. No behavior changes unless required for renamed public docstrings; smoke and full pytest must stay green.
+
+---
+
+## Nit backlog (from Grok reviews — implement in this slice)
+
+| Source | Nit | Polish item |
+|--------|-----|-------------|
+| Slice 18 | `src/main.py` help still says "seed record" | P1 |
+| Slice 18 | `admin-ui/dist/` stale vs `App.tsx` (Entities-only) | P8 — rebuild for `--demo`; **do not commit** dist |
+| Slice 18 | `src/mycelium.egg-info/PKG-INFO` stale curl (`seed_people_count`) | P8 — regen via editable install |
+| Slice 17 | `docs/full-code-walkthrough.md` still references `agents.seed` | P5 |
+| Slice 17 | CLI help strings | P1 |
+| Slice 16 | `build_full_context(..., seed_records=)` param name | P4 |
+| Slice 15 | `registry._data` peek in suggestions | P3 |
+| Slice 16 | `SeedRecord` / state field renames | **Deferred** — docstrings only (P2) |
+| TODO Q8b | Empty-seed committed example | P7 |
 
 ---
 
@@ -26,9 +43,9 @@ Update user-facing help/docstrings that still imply query-time seed loading:
 
 | File | Fix |
 |------|-----|
-| `src/main.py` | `query` / `network status` help: "entity" / "registry" not "seed record" |
+| `src/main.py` | `query` help ("Query a seed record" → entity/registry); `network status` help ("Drill down to one seed record" → entity); other subparser strings that imply query-time seed reads |
 | `src/mycelium_mcp/server.py` | `query_entity` docstring: entity lookup via registry |
-| `src/network/introspection.py` | Demo/verbose strings; remove any leftover `Seed:` lines if Slice 18 missed them |
+| `src/network/introspection.py` | Verify no `Seed:` in demo/verbose (Slice 18 should have fixed — grep and patch stragglers) |
 
 Keep `--seed` on `network create` (bootstrap fixture path) — that flag name is correct.
 
@@ -118,6 +135,18 @@ In `examples/networks/crm/README.md` and/or root `README.md` (only if Slice 18 d
 
 ---
 
+## P8 — Admin dist + package metadata (Slice 18 nits)
+
+| Task | Action |
+|------|--------|
+| **Admin `--demo` bundle** | Run `cd admin-ui && npm run build` so local `admin-ui/dist/` matches Entities-only `App.tsx`. Confirm Overview shows **Entities**, not Seed. |
+| **Do not commit `admin-ui/dist/`** | Project convention (`admin-ui/dist/` is gitignored; dev/restart-admin is canonical). Note build verification in `output.md`. |
+| **Stale `PKG-INFO`** | After README curl examples are final, run `uv pip install -e .` (or equivalent) so `src/mycelium.egg-info/PKG-INFO` reflects `registry_entity_count`. Commit egg-info **only if** repo already tracks it; otherwise note regen step for Paul. |
+
+Optional: `examples/networks/crm-metering/guide.md` — soften "CRM seed" wording to "bootstrap fixture" if misleading (one line).
+
+---
+
 ## Scope boundaries (strict)
 
 **May modify:**
@@ -132,7 +161,7 @@ In `examples/networks/crm/README.md` and/or root `README.md` (only if Slice 18 d
 - `tests/test_example_network.py` (empty-crm refresh smoke only)
 
 **Out of scope:**
-- Admin UI (`admin-ui/`) — Slice 18
+- `admin-ui/src/*` source changes — Slice 18 (P8 may **build** dist only, not edit TSX)
 - `docs/architecture.md` — Slice 18 (root `README.md` one-line cross-link OK per P7)
 - Renaming `SeedRecord` / `seed_records` state fields
 - `TODO.md`
@@ -145,7 +174,7 @@ If a rename would touch MCP JSON schema or LangGraph state exports: **stop** and
 ## Governance (mandatory)
 
 - **Do not edit `TODO.md`.**
-- In `output.md`, add **"For Grok + Paul"**: polish complete; `empty-crm` shipped; note to check off **Empty-seed network demo** on `TODO.md`; any deferred renames.
+- In `output.md`, add **"For Grok + Paul"**: polish complete; `empty-crm` shipped; note to check off **Empty-seed network demo** + **Slices 14–18** on `TODO.md`; phase plan exit checkboxes; **batch commit** 17+18+polish together (Paul holding commits until polish approved); admin dist rebuild verified; any deferred renames.
 - **No commit or push before review.**
 
 ### Stay in your lane (Cursor)
@@ -162,11 +191,12 @@ If a rename would touch MCP JSON schema or LangGraph state exports: **stop** and
 uv run ruff check src tests
 uv run pytest tests/test_example_network.py -m smoke -q
 uv run pytest -m smoke -q
-rg 'agents\.seed|get_seed_data|find_by_key' src/ tests/ docs/full-code-walkthrough.md docs/database-notes.md prompts/system/
+uv run pytest -q
+rg 'agents\.seed|get_seed_data|find_by_key|seed_people_count' src/ tests/ admin-ui/src/ docs/full-code-walkthrough.md docs/database-notes.md prompts/system/
 # expect no runtime-loader matches (bootstrap mentions of seed.json OK)
 ```
 
-Report smoke count in `output.md`. Full pytest optional unless you touched full-marked tests.
+Report smoke **and full pytest** counts in `output.md` (phase sign-off depends on full green after polish).
 
 ---
 
@@ -179,8 +209,8 @@ Report smoke count in `output.md`. Full pytest optional unless you touched full-
 ## Suggested commit message (after review)
 
 ```
-Polish seed-elimination vocabulary and empty-crm example (post-18).
+Polish seed-elimination vocabulary, empty-crm, and review nits.
 
-CLI/MCP/docstrings; list_entities; empty-crm example network;
-context matched_records param; no schema field renames.
+CLI/MCP/docstrings; list_entities; empty-crm; matched_records param;
+admin dist build verified; PKG-INFO regen noted.
 ```
