@@ -73,14 +73,24 @@ uv run pytest -q
 
 ## Governance (mandatory)
 
-- **Do not edit `TODO.md`.**
-- In `output.md`, **"For Grok + Paul"**: mark Slices 14–18 done; note API field removal (`seed_people_count`).
-- **No commit before review.**
+- **Do not edit `TODO.md`.** Roadmap updates are for Grok + Paul after review.
+- In `output.md`, add **"For Grok + Paul"**: recommend marking Slices 14–18 done; note API field removal (`seed_people_count`); paste full pytest summary.
+- **No commit or push before review.** Leave changes in the working tree only.
+
+### Stay in your lane (Cursor)
+
+You are the **implementer**, not the reviewer or planner. Slice 14 incorrectly drafted `review.md` as Grok — do **not** repeat that.
+
+- **Deliver only:** code, tests, in-scope docs, `prompt.md` + `output.md` under `prompts/cursor/done/<this-task>/`.
+- **Do not create** `review.md` — review and phase sign-off are **Grok + Paul only** (`prompts/cursor/WORKFLOW.md` §4).
+- **Do not** edit `TODO.md` or check exit-criteria boxes in `entity-seed-elimination-phase.md` — report pass/fail in `output.md` for Grok + Paul to apply.
+- **Do not** queue follow-up slices, rewrite the phase plan, or edit historical `prompts/cursor/done/` folders.
+- If full pytest fails: fix within scope or **stop** and document blockers in `output.md`; do not collapse remaining slices into this diff.
 
 ---
 
 ## Deliverables
 
-`prompts/cursor/done/2026-06-10-1800-entity-seed-elimination-slice18/` with `prompt.md`, `output.md`.
+`prompts/cursor/done/2026-06-10-1800-entity-seed-elimination-slice18/` with `prompt.md` and `output.md` **only** (no `review.md`).
 
 Include full pytest result summary in `output.md`.

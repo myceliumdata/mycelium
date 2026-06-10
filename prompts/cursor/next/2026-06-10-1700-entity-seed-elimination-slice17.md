@@ -68,14 +68,26 @@ Update `tests/conftest.py` session cleanup: `reset_entity_registry` not `reset_s
 
 ## Governance (mandatory)
 
-- **Do not edit `TODO.md`.**
-- **No commit before review.**
+- **Do not edit `TODO.md`.** Roadmap updates are for Grok + Paul after review.
+- In `output.md`, add **"For Grok + Paul"**: slice status, follow-on notes, suggested commit message.
+- **No commit or push before review.** Leave changes in the working tree only.
+
+### Stay in your lane (Cursor)
+
+You are the **implementer**, not the reviewer or planner. Slice 14 incorrectly drafted `review.md` as Grok — do **not** repeat that.
+
+- **Deliver only:** code, tests (within scope), `prompt.md` + `output.md` under `prompts/cursor/done/<this-task>/`.
+- **Do not create** `review.md` — review is **Grok + Paul only** (`prompts/cursor/WORKFLOW.md` §4).
+- **Do not** edit `TODO.md`, mark the phase complete in plan docs, or queue new prompts.
+- **Do not** touch admin UI, README, or architecture — that is Slice 18.
+- Fix only test/seed migration within this slice; do not "finish the phase" in one pass.
+- If you must go outside scope to keep the system working: **stop**, document in `output.md`, do not make the out-of-scope changes.
 
 ---
 
 ## Deliverables
 
-`prompts/cursor/done/2026-06-10-1700-entity-seed-elimination-slice17/` with `prompt.md`, `output.md`.
+`prompts/cursor/done/2026-06-10-1700-entity-seed-elimination-slice17/` with `prompt.md` and `output.md` **only** (no `review.md`).
 
 ---
 
