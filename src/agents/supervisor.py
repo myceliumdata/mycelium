@@ -125,7 +125,7 @@ def _target_fields_for_agent(
 
 def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     """
-    Resolve entity (registry + seed), classify requested attributes, plan specialists.
+    Resolve entity via registry, classify requested attributes, plan specialists.
 
     Does not build the full cross-specialist context or final QueryResponse —
     graph nodes ``build_context``, ``invoke_specialists``, and ``assemble_response``
@@ -209,9 +209,8 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
     seed_records = _seed_records_from_seed(matched)
     ids = [m["id"] for m in matched if m.get("id")]
     if matched:
-        source = "registry" if matched[0].get("_registry") else "seed"
         audit_log.append(
-            f"Supervisor: resolved via {source}, match count={len(matched)} "
+            f"Supervisor: resolved via registry, match count={len(matched)} "
             f"for {query.entity_key!r}.",
         )
         if resolution.duplicate_bind:

@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from agents.entity_registry import get_entity_registry, registry_entity_to_match
 from agents.registry import get_agent_registry
-from agents.seed import get_seed_data
 from agents.specialists.base import SpecialistStorage
 
 BIND_FIELDS = frozenset({"name", "employer"})
@@ -65,7 +65,7 @@ def planner_context(
 
 
 class ContextBuilder:
-    """Synchronous context assembly from resolution rows + specialist JSON stores."""
+    """Synchronous context assembly from registry rows + specialist JSON stores."""
 
     def build_full_context(
         self,
@@ -73,7 +73,7 @@ class ContextBuilder:
         *,
         seed_records: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
-        resolved = self._resolve_seed_rows(ids, seed_records=seed_records)
+        resolved = self._resolve_identity_rows(ids, matched_records=seed_records)
         entity_id: str | None = None
         bind: dict[str, str | None] | None = None
         if len(resolved) == 1:
@@ -108,14 +108,18 @@ class ContextBuilder:
             "specialists": specialist_part,
         }
 
-    def _resolve_seed_rows(
+    def _resolve_identity_rows(
         self,
         ids: list[str],
         *,
-        seed_records: list[dict[str, Any]] | None,
+        matched_records: list[dict[str, Any]] | None,
     ) -> list[dict[str, Any]]:
-        if seed_records is not None:
-            return [r for r in seed_records if isinstance(r, dict)]
-        data = get_seed_data()
-        by_id = {p["id"]: p for p in data.people if p.get("id")}
-        return [by_id[pid] for pid in ids if pid in by_id]
+        if matched_records is not None:
+            return [row for row in matched_records if isinstance(row, dict)]
+        registry = get_entity_registry()
+        rows: list[dict[str, Any]] = []
+        for entity_id in ids:
+            entity = registry.lookup_by_id(entity_id)
+            if entity is not None:
+                rows.append(registry_entity_to_match(entity))
+        return rows

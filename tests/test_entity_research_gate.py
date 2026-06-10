@@ -157,7 +157,13 @@ def test_seed_andrea_kalmans_email_invokes(crm_gate_env: CoreStorage) -> None:
     assert response.outcome == "assembled"
     assert research_gate_allows(
         current_id=response.results[0]["id"],
-        matched=[{"id": response.results[0]["id"], "_registry": False}],
+        matched=[
+            {
+                "id": response.results[0]["id"],
+                "_registry": True,
+                "_validation_state": "validated",
+            },
+        ],
     )
 
 

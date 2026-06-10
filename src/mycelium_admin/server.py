@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from agents.runtime import refresh_runtime_from_disk
-from agents.seed import reset_seed_data
+from agents.entity_registry import reset_entity_registry
 from graphs.core import run_query
 from models.state import BillingPrincipal, EntityQuery, QueryResponse
 from network.introspection import (
@@ -59,8 +59,8 @@ def _admin_port() -> int:
 
 
 def _refresh_read_cache() -> None:
-    """Drop cached seed so GET /status reflects on-disk seed.json after refresh."""
-    reset_seed_data()
+    """Drop cached entity registry so GET /status reflects on-disk entities.json."""
+    reset_entity_registry()
 
 
 def bootstrap_admin() -> dict[str, str | None]:

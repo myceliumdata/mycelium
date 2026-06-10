@@ -1,4 +1,4 @@
-"""Research gate: specialists/Tavily only on validated or seed entities (Slice 6)."""
+"""Research gate: specialists/Tavily only on validated registry entities (Slice 6)."""
 
 from __future__ import annotations
 
@@ -18,20 +18,10 @@ def research_gate_allows(
     matched: list[dict[str, Any]],
 ) -> bool:
     """True when attribute research may invoke specialists."""
+    _ = current_id
     if not matched:
         return False
-    if len(matched) != 1:
-        return all(
-            not rec.get("_registry") or rec.get("_validation_state") == "validated"
-            for rec in matched
-        )
-    rec = matched[0]
-    entity_id = current_id or rec.get("id")
-    if not entity_id:
-        return False
-    if rec.get("_registry"):
-        return rec.get("_validation_state") == "validated"
-    return True
+    return all(rec.get("_validation_state") == "validated" for rec in matched)
 
 
 def is_research_gated(state: MyceliumGraphState) -> bool:

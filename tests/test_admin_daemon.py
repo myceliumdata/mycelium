@@ -9,8 +9,10 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from agents.seed import find_by_key, reset_seed_data
+from agents.entity_registry import reset_entity_registry
+from agents.entity_resolution import lookup_entities_by_key
 from mycelium_admin.server import bootstrap_admin, create_app
+from network_helpers import import_seed_for_test
 from network.introspection import build_network_status, status_to_dict
 from network.paths import NO_NETWORK_CONFIGURED_MSG, NetworkPaths, apply_network_paths
 
@@ -22,7 +24,7 @@ SAMPLE_CATEGORIES = REPO_ROOT / "docs" / "examples" / "sample-categories.json"
 def _configure_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, root: Path) -> None:
     monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(tmp_path / "missing.json"))
     apply_network_paths(NetworkPaths.from_root(root))
-    reset_seed_data()
+    reset_entity_registry()
 
 
 def _seed_only_root(tmp_path: Path) -> Path:
@@ -121,6 +123,8 @@ def _client_for_root(
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(root))
     monkeypatch.delenv("MYCELIUM_NETWORK", raising=False)
     _configure_root(monkeypatch, tmp_path, root)
+    if (root / "seed.json").is_file():
+        import_seed_for_test(root / "seed.json")
     bootstrap_admin()
     return TestClient(create_app())
 
@@ -168,8 +172,8 @@ def test_status_entity_drill_down(
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(root))
     monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(tmp_path / "missing.json"))
     apply_network_paths(NetworkPaths.from_root(root))
-    reset_seed_data()
-    person_id = find_by_key("Andrea Kalmans")[0]["id"]
+    import_seed_for_test(root / "seed.json")
+    person_id = lookup_entities_by_key("Andrea Kalmans")[0]["id"]
     agents_dir = root / "agents" / "contact"
     agents_dir.mkdir(parents=True)
     (agents_dir / "storage.json").write_text(
@@ -207,25 +211,48 @@ def test_status_entity_drill_down(
 
 
 @pytest.mark.smoke
-def test_status_reflects_seed_change_without_restart(
+def test_status_reflects_entities_change_without_restart(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     root = _seed_only_root(tmp_path)
+    import_seed_for_test(root / "seed.json")
     client = _client_for_root(monkeypatch, tmp_path, root)
 
     first = client.get("/status")
     assert first.status_code == 200
-    assert first.json()["seed_people_count"] == 15
+    assert first.json()["registry_entity_count"] == 15
 
-    (root / "seed.json").write_text(
-        json.dumps({"people": [{"name": "Solo Person", "employer": "Test Co"}]}),
+    (root / "entities.json").write_text(
+        json.dumps(
+            {
+                "version": "1.0",
+                "last_updated": "2026-06-10T12:00:00+00:00",
+                "entities": {
+                    "solo-id": {
+                        "id": "solo-id",
+                        "name": "Solo Person",
+                        "employer": "Test Co",
+                        "validation_state": "validated",
+                        "field_states": {
+                            "name": "validated",
+                            "employer": "validated",
+                        },
+                        "attr_sources": {},
+                        "last_researched_at": {},
+                        "source": "seed_bootstrap",
+                        "created_at": "2026-06-10T12:00:00+00:00",
+                    },
+                },
+                "bind_index": {"solo person|test co": "solo-id"},
+            },
+        ),
         encoding="utf-8",
     )
 
     second = client.get("/status")
     assert second.status_code == 200
-    assert second.json()["seed_people_count"] == 1
+    assert second.json()["registry_entity_count"] == 1
 
 
 @pytest.mark.smoke

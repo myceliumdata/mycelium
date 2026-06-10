@@ -147,6 +147,31 @@ def test_build_context_uses_bind_and_strips_legacy_storage_fields(
     assert "seed" not in ctx
 
 
+@pytest.mark.smoke
+def test_build_context_resolves_bind_from_registry_by_id(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agents.entity_registry import get_entity_registry, reset_entity_registry
+
+    entities = tmp_path / "entities.json"
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
+    monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(entities))
+    reset_entity_registry()
+    registry = get_entity_registry()
+    entity, _ = registry.ensure_bound_entity(
+        "Paul Murphy",
+        "Acme Corp",
+        source="query_bind",
+        validation_state="validated",
+    )
+
+    ctx = ContextBuilder().build_full_context([entity.id])
+
+    assert ctx["entity_id"] == entity.id
+    assert ctx["bind"] == {"name": "Paul Murphy", "employer": "Acme Corp"}
+
+
 def test_strip_bind_fields_ignores_legacy_keys() -> None:
     stripped = strip_bind_fields(
         {
