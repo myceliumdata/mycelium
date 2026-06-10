@@ -16,7 +16,7 @@
 
 ## Objective
 
-Clean up **remaining seed-runtime vocabulary** and small code-quality nits after the seed-elimination phase. No behavior changes unless required for renamed public docstrings; smoke must stay green.
+Clean up **remaining seed-runtime vocabulary** and small code-quality nits after the seed-elimination phase. Add a committed **empty-seed CRM example** (`empty-crm`) demonstrating query-time entity growth. No behavior changes unless required for renamed public docstrings; smoke must stay green.
 
 ---
 
@@ -79,13 +79,42 @@ Slice 18 updates `README.md` and `docs/architecture.md`. This polish pass hits *
 
 ---
 
-## P6 — Optional example README
+## P6 — Example README tweaks
 
 | File | Fix |
 |------|-----|
 | `examples/networks/crm/README.md` | Clarify `seed.json` is bootstrap fixture; runtime uses `entities.json` |
 
 Only if still misleading after Slice 18.
+
+---
+
+## P7 — Empty-seed example network (`empty-crm`)
+
+**Deferred since Slice 8 (Q8b); now feasible post seed-elimination.** Committed example with **no `seed.json`** — entities appear only via query bind (Paul Murphy arc).
+
+### Create `examples/networks/empty-crm/`
+
+| File | Content |
+|------|---------|
+| `network.json` | Same CRM MVR/bind rules as `examples/networks/crm/network.json`; `name`: `empty-crm`; `display_name`: e.g. "CRM (empty seed)"; `metering.enabled`: false |
+| `guide.md` | Operator-facing: no preloaded people; first bind creates `entities.json` rows; Paul Murphy @ Acme Corp walkthrough |
+| `README.md` | Maintainer notes: contrast with `crm` (bootstrap import vs growth-from-query); `refresh-example-network empty-crm` usage |
+
+**Do not** add `seed.json`, `entities.json`, or runtime artifacts (`categories.json`, `agents/`, DB files).
+
+Optional: `queries/01-bind-paul-murphy.json` with `EntityQuery`-shaped JSON for docs/MCP demos (mirror `crm-metering/queries/` style).
+
+### Smoke test
+
+Add to `tests/test_example_network.py` (smoke):
+
+- `refresh_example_network("empty-crm", ...)` → success; **no** `entities.json` **or** empty `entities` / zero `registry_entity_count` after refresh
+- Do not require a full `run_query` integration test here unless trivial with existing fixtures
+
+### Doc cross-links
+
+In `examples/networks/crm/README.md` and/or root `README.md` (only if Slice 18 did not already): one line pointing to `empty-crm` for the no-seed growth demo.
 
 ---
 
@@ -99,13 +128,15 @@ Only if still misleading after Slice 18.
 - `docs/full-code-walkthrough.md`, `docs/database-notes.md`
 - `prompts/system/CORE_PROMPT.md`, `prompts/system/PROJECT_BRIEF.md`
 - `examples/networks/crm/README.md` (optional)
+- `examples/networks/empty-crm/` (new — P7)
+- `tests/test_example_network.py` (empty-crm refresh smoke only)
 
 **Out of scope:**
 - Admin UI (`admin-ui/`) — Slice 18
-- `README.md`, `docs/architecture.md` — Slice 18
+- `docs/architecture.md` — Slice 18 (root `README.md` one-line cross-link OK per P7)
 - Renaming `SeedRecord` / `seed_records` state fields
 - `TODO.md`
-- New features
+- `network create` without `--seed` (separate v2 track)
 
 If a rename would touch MCP JSON schema or LangGraph state exports: **stop** and document in `output.md`.
 
@@ -114,7 +145,7 @@ If a rename would touch MCP JSON schema or LangGraph state exports: **stop** and
 ## Governance (mandatory)
 
 - **Do not edit `TODO.md`.**
-- In `output.md`, add **"For Grok + Paul"**: polish complete; any deferred renames.
+- In `output.md`, add **"For Grok + Paul"**: polish complete; `empty-crm` shipped; note to check off **Empty-seed network demo** on `TODO.md`; any deferred renames.
 - **No commit or push before review.**
 
 ### Stay in your lane (Cursor)
@@ -129,6 +160,7 @@ If a rename would touch MCP JSON schema or LangGraph state exports: **stop** and
 
 ```bash
 uv run ruff check src tests
+uv run pytest tests/test_example_network.py -m smoke -q
 uv run pytest -m smoke -q
 rg 'agents\.seed|get_seed_data|find_by_key' src/ tests/ docs/full-code-walkthrough.md docs/database-notes.md prompts/system/
 # expect no runtime-loader matches (bootstrap mentions of seed.json OK)
@@ -147,8 +179,8 @@ Report smoke count in `output.md`. Full pytest optional unless you touched full-
 ## Suggested commit message (after review)
 
 ```
-Polish seed-elimination vocabulary and registry list_entities (post-18).
+Polish seed-elimination vocabulary and empty-crm example (post-18).
 
-CLI/MCP/docstrings; full-code-walkthrough and system prompts;
+CLI/MCP/docstrings; list_entities; empty-crm example network;
 context matched_records param; no schema field renames.
 ```
