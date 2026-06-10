@@ -23,7 +23,8 @@ from agents.seed import reset_seed_data
 from graphs.core import run_query
 from models.state import BillingPrincipal, EntityQuery, MyceliumGraphState
 from network.entitlements import EntitlementRecord, get_entitlement_store, reset_entitlement_store
-from network.metering_policy import load_metering_policy
+from network.metering_policy import MeteringPolicy, load_metering_policy
+from network.paths import NetworkPaths
 from network.quotes import (
     BuiltinQuoteProvider,
     WorkloadSpec,
@@ -39,6 +40,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SAMPLE_CATEGORIES = REPO_ROOT / "docs" / "examples" / "sample-categories.json"
 EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
 EXAMPLE_CRM_SEED = EXAMPLE_CRM / "seed.json"
+
+
+def _load_default_metering_policy(tmp_path: Path) -> MeteringPolicy:
+    """Load CRM default metering policy without a host network registry."""
+    return load_metering_policy(paths=NetworkPaths.from_root(tmp_path))
 
 
 def _write_metering_network_json(
@@ -171,7 +177,7 @@ def crm_metering_env(
 def test_load_metering_policy_defaults_disabled(tmp_path: Path) -> None:
     network = tmp_path / "network.json"
     network.write_text('{"name": "x"}', encoding="utf-8")
-    policy = load_metering_policy(paths=__import__("network.paths").NetworkPaths.from_root(tmp_path))
+    policy = load_metering_policy(paths=NetworkPaths.from_root(tmp_path))
     assert policy.enabled is False
     assert policy.meter_first_delivery is True
 
@@ -184,8 +190,8 @@ def test_scope_hash_changes_with_provenance() -> None:
 
 
 @pytest.mark.smoke
-def test_builtin_quote_miss_includes_production_and_consumption() -> None:
-    policy = load_metering_policy()
+def test_builtin_quote_miss_includes_production_and_consumption(tmp_path: Path) -> None:
+    policy = _load_default_metering_policy(tmp_path)
     workload = WorkloadSpec(
         entity_id="e1",
         requested_attributes=["email"],
@@ -205,8 +211,8 @@ def test_builtin_quote_miss_includes_production_and_consumption() -> None:
 
 
 @pytest.mark.smoke
-def test_builtin_quote_hit_marginal_consumption_only() -> None:
-    policy = load_metering_policy()
+def test_builtin_quote_hit_marginal_consumption_only(tmp_path: Path) -> None:
+    policy = _load_default_metering_policy(tmp_path)
     workload = WorkloadSpec(
         entity_id="e1",
         requested_attributes=["email"],
@@ -245,7 +251,7 @@ def test_quote_store_accept(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     path = tmp_path / "quotes.json"
     monkeypatch.setenv("MYCELIUM_QUOTES_PATH", str(path))
     reset_quote_store()
-    policy = load_metering_policy()
+    policy = _load_default_metering_policy(tmp_path)
     workload = WorkloadSpec(entity_id="e1", requested_attributes=["email"], scope_hash="sha256:x")
     quote = BuiltinQuoteProvider().quote(
         workload=workload,
@@ -262,8 +268,8 @@ def test_quote_store_accept(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
 
 
 @pytest.mark.smoke
-def test_principal_required_for_sponsor_public() -> None:
-    policy = load_metering_policy()
+def test_principal_required_for_sponsor_public(tmp_path: Path) -> None:
+    policy = _load_default_metering_policy(tmp_path)
     err = principal_required_error("sponsor_public", policy, None)
     assert err is not None
     err_ok = principal_required_error(
@@ -484,8 +490,8 @@ def test_build_workload_spec_from_state() -> None:
 
 
 @pytest.mark.smoke
-def test_provenance_meter_on_quote() -> None:
-    policy = load_metering_policy()
+def test_provenance_meter_on_quote(tmp_path: Path) -> None:
+    policy = _load_default_metering_policy(tmp_path)
     base = WorkloadSpec(entity_id="e1", requested_attributes=["email"], provenance=False)
     base = base.model_copy(update={"scope_hash": compute_scope_hash(base)})
     with_prov = base.model_copy(update={"provenance": True})
