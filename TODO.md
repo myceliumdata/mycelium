@@ -12,7 +12,7 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 1. [x] **Hands-on: `empty-crm` example** — verified June 2026 (refresh → no seed/entities → Paul Murphy bind → 1 validated row; `network status` Entities ✅). Nit fixed: `network_metadata` no longer lets `MYCELIUM_NETWORK` override explicit `--network-dir`.
 2. [ ] **Historical assumptions review** — **Phase 1 done:** [`docs/plans/historical-assumptions-audit.md`](docs/plans/historical-assumptions-audit.md). **P2 done:** [`docs/plans/README.md`](docs/plans/README.md). **In flight:** identity rename (Cursor). **Queued next:** [`network create` optional `--seed`](docs/plans/network-create-optional-seed.md). Remaining: legacy module cleanup.
-3. [ ] **Identity vocabulary rename (breaking) — in progress (Cursor)** — `SeedRecord` → `IdentityRecord`, MCP schema URI, graph state fields. Spec: [`docs/plans/entity-identity-vocabulary-rename.md`](docs/plans/entity-identity-vocabulary-rename.md). Handoff: `prompts/cursor/in-progress/` or `next/2026-06-10-entity-identity-vocabulary-rename.md`. **Next in queue:** [`2026-06-10-network-create-optional-seed.md`](prompts/cursor/next/2026-06-10-network-create-optional-seed.md).
+3. [ ] **Identity vocabulary rename (breaking) — review: Approved + fix slice** — Core rename done (300 tests). **Blocking:** regen `src/agents/specialists/*` (`SeedRecord` still lazy-imported). Fix: [`2026-06-10-entity-identity-vocabulary-rename-fix.md`](prompts/cursor/next/2026-06-10-entity-identity-vocabulary-rename-fix.md). Review: [`prompts/cursor/done/2026-06-10-entity-identity-vocabulary-rename/review.md`](prompts/cursor/done/2026-06-10-entity-identity-vocabulary-rename/review.md). **Do not commit until fix reviewed.** Then: [`network-create-optional-seed`](prompts/cursor/next/2026-06-10-network-create-optional-seed.md).
 4. [x] **Project website copy** — Done (`../mycelium-website`, June 2026). Option A overhaul + copy pass deployed by Paul.
 
 ---
@@ -252,4 +252,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-10 (identity rename in progress — Cursor; network create v2 queued)
+Last updated: 2026-06-10 (identity rename reviewed — fix slice queued; hold commit)
