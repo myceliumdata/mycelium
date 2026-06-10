@@ -11,10 +11,12 @@ from pathlib import Path
 
 import pytest
 
+from agents.entity_registry import reset_entity_registry
 from agents.seed import find_by_key, get_seed_data, reset_seed_data
 from network.example import refresh_example_network
 from network.paths import NetworkPaths, apply_network_paths, resolve_network_root
 from network.registry import list_networks
+from network.seed_import import import_seed_file
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
@@ -126,6 +128,48 @@ def test_refresh_example_network_empty_root(tmp_path: Path) -> None:
     assert not (target / "prepare_seed.py").exists()
     for runtime_artifact in _RUNTIME_ARTIFACTS:
         assert not (target / runtime_artifact).exists()
+
+
+@pytest.mark.smoke
+def test_refresh_crm_imports_seed_into_entities(tmp_path: Path) -> None:
+    target = tmp_path / "crm-live"
+    result = refresh_example_network("crm", root=target, register=False, yes=True)
+    assert result.declined is False
+
+    entities_path = target / "entities.json"
+    assert entities_path.is_file()
+    payload = json.loads(entities_path.read_text(encoding="utf-8"))
+    assert len(payload["entities"]) == 15
+    assert len(payload["bind_index"]) == 15
+
+
+@pytest.mark.smoke
+def test_import_seed_file_idempotent(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seed = tmp_path / "seed.json"
+    shutil.copy(EXAMPLE_CRM / "seed.json", seed)
+    entities = tmp_path / "entities.json"
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
+    monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(entities))
+    reset_entity_registry()
+
+    first_count = import_seed_file(seed)
+    payload_after_first = json.loads(entities.read_text(encoding="utf-8"))
+    reset_entity_registry()
+    second_count = import_seed_file(seed)
+    payload_after_second = json.loads(entities.read_text(encoding="utf-8"))
+
+    assert first_count == 15
+    assert second_count == 15
+    assert len(payload_after_first["entities"]) == 15
+    assert payload_after_first == payload_after_second
+
+
+@pytest.mark.smoke
+def test_import_seed_file_missing_returns_zero(tmp_path: Path) -> None:
+    assert import_seed_file(tmp_path / "missing-seed.json") == 0
 
 
 @pytest.mark.smoke

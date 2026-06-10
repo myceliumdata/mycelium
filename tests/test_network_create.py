@@ -207,6 +207,10 @@ def test_create_network_happy_path_writes_artifacts(
     assert result.registered is True
     assert result.specialists_count == 3
     assert (root / "seed.json").is_file()
+    assert (root / "entities.json").is_file()
+    entities = json.loads((root / "entities.json").read_text(encoding="utf-8"))
+    assert len(entities["entities"]) == 1
+    assert "happy person|h" in entities["bind_index"]
     assert (root / "categories.json").is_file()
     assert (root / "agent_registry.json").is_file()
     assert (root / "network.json").is_file()

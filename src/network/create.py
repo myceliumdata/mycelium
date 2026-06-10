@@ -17,9 +17,11 @@ from pydantic import BaseModel
 from agents.factory.agent_factory import AgentFactory
 from agents.registry import AgentRegistryData
 from agents.specialists.base import SpecialistStorage
+from agents.entity_registry import reset_entity_registry
 from network.ontology import SkeletonOntologyResult, generate_skeleton_ontology
 from network.paths import NetworkPaths, apply_network_paths, framework_root
 from network.registry import register_network
+from network.seed_import import import_seed_file
 
 _NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _DEFAULT_ONTOLOGY_MODEL = "gpt-4o-mini"
@@ -258,6 +260,9 @@ def create_network(
             {agent.name for agent in ontology.agents},
         )
     shutil.copy2(seed_file, paths.seed_path)
+    apply_network_paths(paths)
+    reset_entity_registry()
+    import_seed_file(paths.seed_path)
     _write_categories(paths, ontology.categories)
     _write_agent_registry(paths, ontology.agents)
     _render_specialists(ontology, paths)

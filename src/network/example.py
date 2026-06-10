@@ -8,8 +8,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from network.paths import framework_root
+from agents.entity_registry import reset_entity_registry
+from network.paths import NetworkPaths, apply_network_paths, framework_root
 from network.registry import load_network_registry, register_network
+from network.seed_import import import_seed_file
 
 _SKIP_NAMES = frozenset(
     {
@@ -177,6 +179,12 @@ def refresh_example_network(
         wiped = True
     live_root.mkdir(parents=True, exist_ok=True)
     copied = copy_example_network(name, live_root)
+
+    seed_path = live_root / "seed.json"
+    if seed_path.is_file():
+        apply_network_paths(NetworkPaths.from_root(live_root))
+        reset_entity_registry()
+        import_seed_file(seed_path)
 
     if register:
         registry_name = resolve_registry_name(name, live_root)
