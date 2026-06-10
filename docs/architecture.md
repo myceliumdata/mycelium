@@ -111,10 +111,10 @@ Legacy **enrich**, **validator**, and **person_prep** remain on disk as unwired 
 
 ## Current Data Model (Phase 1 — Strictly Minimal Core)
 
-The core `SeedRecord` record is deliberately tiny:
+The core `IdentityRecord` record is deliberately tiny:
 
 ```python
-class SeedRecord(BaseModel):
+class IdentityRecord(BaseModel):
     id: str
     name: str
     employer: str | None = None
@@ -123,7 +123,7 @@ class SeedRecord(BaseModel):
 **Identity rules:**
 - Bootstrap seed provides `name`, `employer` only; runtime and public `results["id"]` use the stable UUID from `entities.json` (assigned on import via `ensure_bound_entity`).
 - `name` and `employer` are specialist-owned like any other attribute when requested (no privileged core filter).
-- There is no `extra` field on `SeedRecord`.
+- There is no `extra` field on `IdentityRecord`.
 
 ---
 

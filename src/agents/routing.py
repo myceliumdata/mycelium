@@ -9,9 +9,9 @@ from typing import Any
 from agents.entity_resolution import lookup_entities_by_key
 from agents.responses import response_found, response_non_core, response_not_found
 from models.state import (
+    IdentityRecord,
     MyceliumGraphState,
     QueryResponse,
-    SeedRecord,
     normalized_requested_attributes,
 )
 
@@ -21,8 +21,8 @@ class SupervisorDecision:
     """Outcome of one supervisor evaluation turn (query-only public paths)."""
 
     response: QueryResponse
-    seed_records: list[SeedRecord] = field(default_factory=list)
-    seed_record: SeedRecord | None = None
+    identity_records: list[IdentityRecord] = field(default_factory=list)
+    identity_record: IdentityRecord | None = None
     thread_id: str | None = None
     trace_id: str | None = None
 
@@ -39,9 +39,9 @@ def _resolve_invocation_ids(
     return resolved_thread, resolved_trace
 
 
-def _rows_to_seed_records(rows: list[dict[str, Any]]) -> list[SeedRecord]:
+def _rows_to_identity_records(rows: list[dict[str, Any]]) -> list[IdentityRecord]:
     return [
-        SeedRecord(
+        IdentityRecord(
             id=str(row.get("id") or ""),
             name=str(row.get("name") or ""),
             employer=row.get("employer"),
@@ -77,29 +77,29 @@ def evaluate_supervisor_turn(
         "trace_id": resolved_trace_id,
     }
 
-    seed_records = _rows_to_seed_records(lookup(query.entity_key))
-    if not seed_records:
+    identity_records = _rows_to_identity_records(lookup(query.entity_key))
+    if not identity_records:
         return SupervisorDecision(
             response=response_not_found(query, **id_kwargs),
             thread_id=resolved_thread_id,
             trace_id=resolved_trace_id,
         )
 
-    single = seed_records[0] if len(seed_records) == 1 else None
+    single = identity_records[0] if len(identity_records) == 1 else None
     requested = normalized_requested_attributes(query.requested_attributes)
     if requested:
         return SupervisorDecision(
-            response=response_non_core(query, seed_records, requested, **id_kwargs),
-            seed_records=seed_records,
-            seed_record=single,
+            response=response_non_core(query, identity_records, requested, **id_kwargs),
+            identity_records=identity_records,
+            identity_record=single,
             thread_id=resolved_thread_id,
             trace_id=resolved_trace_id,
         )
 
     return SupervisorDecision(
-        response=response_found(query, seed_records, **id_kwargs),
-        seed_records=seed_records,
-        seed_record=single,
+        response=response_found(query, identity_records, **id_kwargs),
+        identity_records=identity_records,
+        identity_record=single,
         thread_id=resolved_thread_id,
         trace_id=resolved_trace_id,
     )

@@ -15,7 +15,7 @@ from agents.responses import (
     response_not_found,
 )
 from network.mvr import MvrPolicy
-from models.state import EntityKeySuggestion, EntityQuery, QueryResponse, SeedRecord
+from models.state import EntityKeySuggestion, EntityQuery, IdentityRecord, QueryResponse
 from mycelium_mcp.server import _neutral_json_schema
 
 
@@ -32,7 +32,7 @@ def _assert_outcome(response: QueryResponse, expected: str) -> None:
             response_found,
             {
                 "query": EntityQuery(entity_key="Ada"),
-                "seed_records": [SeedRecord(id="p1", name="Ada", employer="Lab")],
+                "identity_records": [IdentityRecord(id="p1", name="Ada", employer="Lab")],
             },
             "found",
         ),
@@ -61,7 +61,7 @@ def _assert_outcome(response: QueryResponse, expected: str) -> None:
             response_non_core,
             {
                 "query": EntityQuery(entity_key="Ada", requested_attributes=["email"]),
-                "seed_records": [SeedRecord(id="p1", name="Ada", employer="Lab")],
+                "identity_records": [IdentityRecord(id="p1", name="Ada", employer="Lab")],
                 "attributes": ["email"],
             },
             "assembled",

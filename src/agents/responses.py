@@ -13,7 +13,7 @@ from models.state import (
     EntityKeySuggestion,
     EntityQuery,
     QueryResponse,
-    SeedRecord,
+    IdentityRecord,
     normalized_requested_attributes,
 )
 from network.mvr import MvrPolicy, load_mvr
@@ -267,15 +267,15 @@ def build_query_message(
 
 
 def _build_identity_results(
-    seed_records: list[SeedRecord] | None = None,
+    identity_records: list[IdentityRecord] | None = None,
     *,
     base_records: list[dict[str, Any]] | None = None,
     requested: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     if base_records is not None:
         records = list(base_records)
-    elif seed_records:
-        records = [record.core_dict() for record in seed_records]
+    elif identity_records:
+        records = [record.core_dict() for record in identity_records]
     else:
         records = []
     return shape_results(records, requested)
@@ -321,7 +321,7 @@ def _required_fields_phrase(required_fields: list[str]) -> str:
 
 def response_found(
     query: EntityQuery,
-    seed_records: list[SeedRecord] | None = None,
+    identity_records: list[IdentityRecord] | None = None,
     *,
     base_records: list[dict[str, Any]] | None = None,
     classifications: list[dict[str, Any]] | None = None,
@@ -331,7 +331,7 @@ def response_found(
     thread_id: str | None = None,
 ) -> QueryResponse:
     records = _build_identity_results(
-        seed_records,
+        identity_records,
         base_records=base_records,
         requested=query.requested_attributes,
     )
@@ -748,7 +748,7 @@ def response_research_gated(
 
 def response_non_core(
     query: EntityQuery,
-    seed_records: list[SeedRecord] | None = None,
+    identity_records: list[IdentityRecord] | None = None,
     attributes: list[str] | None = None,
     *,
     base_records: list[dict[str, Any]] | None = None,
@@ -759,7 +759,7 @@ def response_non_core(
 ) -> QueryResponse:
     attrs = normalized_requested_attributes(attributes or query.requested_attributes)
     records = _build_identity_results(
-        seed_records,
+        identity_records,
         base_records=base_records,
         requested=attrs or query.requested_attributes,
     )

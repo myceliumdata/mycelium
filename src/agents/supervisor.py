@@ -10,7 +10,7 @@ from agents.context import planner_context
 from agents.research_gate import research_gate_allows
 from agents.factory.agent_factory import get_agent_factory
 from agents.registry import get_agent_registry
-from models.state import MyceliumGraphState, SeedRecord
+from models.state import MyceliumGraphState
 
 # Context pull + specialist calls run in graph nodes (build_context, invoke_specialists).
 # TODO: peer retrieval replaces supervisor-provided full context union.
@@ -37,27 +37,8 @@ def _identity_records_from_match(matched: list[dict[str, Any]]) -> list[dict[str
     return records
 
 
-def _seed_records_from_match(matched: list[dict[str, Any]]) -> list[SeedRecord]:
-    return [
-        SeedRecord(
-            id=rec.get("id", ""),
-            name=rec.get("name", ""),
-            employer=rec.get("employer"),
-        )
-        for rec in matched
-    ]
-
-
 def _short_circuit_context() -> dict[str, Any]:
-    return {
-        "seed": [],
-        "specialists": {},
-        "_meta": {
-            "ids": [],
-            "specialists_to_invoke": [],
-            "contributions": [],
-        },
-    }
+    return planner_context(matched=[], ids=[], specialists_to_invoke=[])
 
 
 def _collect_specialists_to_invoke(
@@ -206,7 +187,6 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
         return result
 
     matched = resolution.matches
-    seed_records = _seed_records_from_match(matched)
     ids = [m["id"] for m in matched if m.get("id")]
     if matched:
         audit_log.append(
@@ -259,9 +239,5 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
         result["classifications"] = classifications
     if len(matched) == 1:
         result["current_id"] = matched[0]["id"]
-    if seed_records:
-        result["seed_records"] = seed_records
-        if len(seed_records) == 1:
-            result["seed_record"] = seed_records[0]
 
     return result

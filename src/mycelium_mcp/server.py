@@ -18,7 +18,7 @@ os.environ["MYCELIUM_USE_SYNC_CHECKPOINTER"] = "1"
 
 from agents.runtime import refresh_runtime_from_disk
 from graphs.core import run_query
-from models.state import BillingPrincipal, EntityQuery, QueryResponse, SeedRecord
+from models.state import BillingPrincipal, EntityQuery, IdentityRecord, QueryResponse
 from network.introspection import build_network_capabilities, format_mcp_instructions
 from storage.core import get_storage
 
@@ -92,7 +92,7 @@ def _serialize_response(response: QueryResponse) -> str:
     return response.model_dump_json(indent=2)
 
 
-def _neutral_json_schema(model: type[EntityQuery] | type[QueryResponse] | type[SeedRecord]) -> dict[str, Any]:
+def _neutral_json_schema(model: type[EntityQuery] | type[QueryResponse] | type[IdentityRecord]) -> dict[str, Any]:
     """Export JSON Schema with network-neutral titles for MCP schema resources."""
     schema = model.model_json_schema()
     schema["title"] = model.__name__
@@ -104,8 +104,8 @@ def _neutral_json_schema(model: type[EntityQuery] | type[QueryResponse] | type[S
             "required_fields (MVR gaps when entity_unknown), results (attribute values), "
             "message (status narrative), debug, trace_id, thread_id."
         )
-    elif model is SeedRecord:
-        schema.setdefault("description", "Seed identity record (id, name, employer).")
+    elif model is IdentityRecord:
+        schema.setdefault("description", "Registry identity record (id, name, employer).")
     return schema
 
 
@@ -376,10 +376,10 @@ def health_check() -> str:
         )
 
 
-@mcp.resource("mycelium://schema/seed-record")
-def seed_record_schema() -> str:
-    """JSON schema for core SeedRecord identity fields."""
-    return json.dumps(_neutral_json_schema(SeedRecord), indent=2)
+@mcp.resource("mycelium://schema/identity-record")
+def identity_record_schema() -> str:
+    """JSON schema for core IdentityRecord fields."""
+    return json.dumps(_neutral_json_schema(IdentityRecord), indent=2)
 
 
 @mcp.resource("mycelium://schema/entity-query")

@@ -7,10 +7,10 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from models.state import SeedRecord
+from models.state import IdentityRecord
 
 
-def ensure_id(record: SeedRecord) -> SeedRecord:
+def ensure_id(record: IdentityRecord) -> IdentityRecord:
     """Assign a stable id when preparing a new core record (legacy addition path)."""
     if record.id:
         return record

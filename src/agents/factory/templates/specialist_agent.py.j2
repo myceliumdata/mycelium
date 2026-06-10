@@ -413,10 +413,10 @@ def {{ agent_name }}(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
         "target_fields": owned,
     }
     if identity_records and len(identity_records) == 1:
-        from models.state import SeedRecord
+        from models.state import IdentityRecord
 
         ir = identity_records[0]
-        payload["seed_record"] = SeedRecord(
+        payload["identity_record"] = IdentityRecord(
             id=ir.get("id", ""),
             name=ir.get("name", ""),
             employer=ir.get("employer"),

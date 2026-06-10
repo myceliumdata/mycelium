@@ -33,10 +33,10 @@ From `docs/architecture.md` and `prompts/system/CORE_PROMPT.md`:
 
 ## 3. Data model & contracts (`src/models/state.py`)
 
-- **`SeedRecord`**: `id`, `name`, `employer` only.
+- **`IdentityRecord`**: `id`, `name`, `employer` only.
 - **`EntityQuery`** (query-only): `entity_key`, `requested_attributes`. No `provided_data`.
 - **`QueryResponse`**: `results`, `message`, `debug`, `trace_id`, `thread_id`.
-- **`MyceliumGraphState`**: `query` required at input; internal fields (`route`, `seed_record`, `response`, `audit_log`, classifications, etc.).
+- **`MyceliumGraphState`**: `query` required at input; internal fields (`route`, `identity_record`, `response`, `audit_log`, classifications, etc.).
 
 ---
 

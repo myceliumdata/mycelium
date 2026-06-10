@@ -8,11 +8,11 @@ from typing import Annotated, Any
 from pydantic import BaseModel, Field
 
 
-class SeedRecord(BaseModel):
-    """Identity record from seed (``<network_root>/seed.json``).
+class IdentityRecord(BaseModel):
+    """Registry identity record (``id``, ``name``, ``employer``).
 
-    ``id`` is the stable UUID from the seed loader.
-    ``name`` and ``employer`` live in the seed but may be overridden by specialists.
+    ``id`` is the stable UUID from ``entities.json`` (assigned on import).
+    ``name`` and ``employer`` may be overridden by specialists.
     """
 
     id: str = ""
@@ -24,12 +24,12 @@ class SeedRecord(BaseModel):
 
 
 class EntityKeySuggestion(BaseModel):
-    """Near-miss seed name suggestion when entity_key has no exact match."""
+    """Near-miss registry name suggestion when entity_key has no exact match."""
 
     entity_key: str = Field(
-        description="Retry key — seed display name (canonical for re-query).",
+        description="Retry key — registry display name (canonical for re-query).",
     )
-    id: str = Field(description="Stable seed UUID for the suggested record.")
+    id: str = Field(description="Stable registry UUID for the suggested record.")
     name: str
     employer: str | None = None
     score: float = Field(description="Similarity score 0.0–1.0 (sequence_ratio).")
@@ -182,10 +182,11 @@ class MyceliumGraphState(BaseModel):
 
     In LangGraph Studio (visual editor or JSON input):
     - You must provide at least the top-level "query" key (an EntityQuery).
-    - Everything else (route, seed_record, seed_records, response, etc.) is internal state
+    - Everything else (route, identity_record, identity_records, response, etc.) is internal state
       produced by the graph — do not set them in the initial input.
-    - ``seed_records`` / ``seed_record`` hold typed matches for a lookup (field names
-      retained for LangGraph compatibility); ``matched_records`` mirrors registry rows.
+    - ``matched_records`` is the canonical registry match list (dict rows).
+    - ``identity_records`` / ``identity_record`` are optional typed mirrors for Studio
+      (specialists may set ``identity_record`` when a single match is resolved).
     - ``matched_records``, ``context``, ``current_id``, and ``target_fields``
       are internal bags for context assembly (visible in Studio/LangSmith for debugging).
     - Use the examples in EntityQuery (they will appear in Studio).
@@ -203,8 +204,8 @@ class MyceliumGraphState(BaseModel):
         ),
     )
     response: QueryResponse | None = None
-    seed_record: SeedRecord | None = None
-    seed_records: list[SeedRecord] = Field(default_factory=list)
+    identity_record: IdentityRecord | None = None
+    identity_records: list[IdentityRecord] = Field(default_factory=list)
     classifications: list[dict[str, Any]] = Field(
         default_factory=list,
         description=(
@@ -214,7 +215,7 @@ class MyceliumGraphState(BaseModel):
     )
     # Context / id fields added in the seed-data-context redesign
     # (see RESTART_PROMPT_FOR_PLAN.md and docs/plans/seed-data-context-architecture.md).
-    # These are the mechanism by which the supervisor passes seed + cross-specialist
+    # These are the mechanism by which the supervisor passes identity + cross-specialist
     # data to specialists.
     # TODO (future): specialists retrieve needed context from peers instead of
     # supervisor providing the full union.
@@ -228,8 +229,8 @@ class MyceliumGraphState(BaseModel):
         default_factory=dict,
         description=(
             "Supervisor-built context for matched record(s): "
-            "{'seed': {...}, 'specialists': {'contact': {...}, ...}}. "
-            "Specialist values override seed."
+            "{'entity_id', 'bind', 'specialists': {...}, '_meta': {...}}. "
+            "Specialist values override bind fields when requested."
         ),
     )
     current_id: str | None = Field(

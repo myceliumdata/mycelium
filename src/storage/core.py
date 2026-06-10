@@ -16,7 +16,7 @@ import sqlite3
 from pathlib import Path
 
 from agents.entity_registry import get_entity_registry
-from models.state import SeedRecord
+from models.state import IdentityRecord
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS people (
@@ -65,7 +65,7 @@ class CoreStorage:
                     validation_state="validated",
                 )
                 pid = entity.id
-            person = SeedRecord.model_validate(
+            person = IdentityRecord.model_validate(
                 {
                     "id": pid,
                     "name": row["name"],
@@ -76,7 +76,7 @@ class CoreStorage:
                 inserted += 1
         return inserted
 
-    def upsert_person(self, person: SeedRecord, *, on_conflict: str = "replace") -> bool:
+    def upsert_person(self, person: IdentityRecord, *, on_conflict: str = "replace") -> bool:
         """Insert or update a person. Returns False if ignored on conflict."""
         existing = self.get_person_by_id(person.id)
         if existing and on_conflict == "ignore":
@@ -95,14 +95,14 @@ class CoreStorage:
         self._conn.commit()
         return True
 
-    def get_person_by_id(self, record_id: str) -> SeedRecord | None:
+    def get_person_by_id(self, record_id: str) -> IdentityRecord | None:
         row = self._conn.execute(
             "SELECT * FROM people WHERE id = ?",
             (record_id,),
         ).fetchone()
         return self._row_to_person(row) if row else None
 
-    def find_persons(self, entity_key: str) -> list[SeedRecord]:
+    def find_persons(self, entity_key: str) -> list[IdentityRecord]:
         """Resolve by id or exact name (case-insensitive).
 
         Id match returns zero or one person. Name match may return multiple records
@@ -120,8 +120,8 @@ class CoreStorage:
         return [self._row_to_person(row) for row in rows]
 
     @staticmethod
-    def _row_to_person(row: sqlite3.Row) -> SeedRecord:
-        return SeedRecord(
+    def _row_to_person(row: sqlite3.Row) -> IdentityRecord:
+        return IdentityRecord(
             id=row["id"],
             name=row["name"],
             employer=row["employer"],

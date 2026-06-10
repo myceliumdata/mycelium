@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from models.state import EntityQuery, QueryResponse, SeedRecord
+from models.state import EntityQuery, IdentityRecord, QueryResponse
 
 
 def _collect_descriptions(schema: dict) -> list[str]:
@@ -38,9 +38,9 @@ def test_query_response_schema_title() -> None:
 
 
 @pytest.mark.smoke
-def test_seed_record_schema_title() -> None:
-    schema = SeedRecord.model_json_schema()
-    assert schema.get("title") == "SeedRecord"
+def test_identity_record_schema_title() -> None:
+    schema = IdentityRecord.model_json_schema()
+    assert schema.get("title") == "IdentityRecord"
 
 
 @pytest.mark.smoke

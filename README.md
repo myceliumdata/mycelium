@@ -330,7 +330,7 @@ flowchart TD
 
 | Layer | Path | Role |
 |-------|------|------|
-| Models | `src/models/state.py` | `SeedRecord`, `EntityQuery`, `QueryResponse`, graph state |
+| Models | `src/models/state.py` | `IdentityRecord`, `EntityQuery`, `QueryResponse`, graph state |
 | Registry | `src/agents/entity_registry.py`, `<network_root>/entities.json` | Canonical entity store + bind lookup |
 | Bootstrap | `<network_root>/seed.json` (optional) | Fixture imported at refresh/create only |
 | Example | `examples/networks/crm/`, `examples/networks/empty-crm/` | CRM reference + empty-seed growth demo |

@@ -40,7 +40,7 @@ from models.state import EntityQuery, MyceliumGraphState, QueryResponse
 # type models.state.*" warnings when resuming threads).
 _CHECKPOINT_MSGPACK_ALLOWLIST: tuple[tuple[str, str], ...] = (
     ("models.state", "MyceliumGraphState"),
-    ("models.state", "SeedRecord"),
+    ("models.state", "IdentityRecord"),
     ("models.state", "EntityQuery"),
     ("models.state", "QueryResponse"),
     ("models.state", "EntityKeySuggestion"),

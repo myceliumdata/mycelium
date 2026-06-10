@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 from pathlib import Path
 from typing import Any
 
@@ -174,6 +175,45 @@ def test_framework_specialist_template_uses_bind_not_seed(
     assert len(paths) == 4
     for path in paths:
         _assert_specialist_source_uses_bind_not_seed(path.read_text(encoding="utf-8"))
+
+
+_FRAMEWORK_SPECIALIST_NAMES = (
+    "contact_specialist",
+    "demographic_specialist",
+    "professional_specialist",
+    "social_specialist",
+)
+
+
+@pytest.mark.smoke
+def test_framework_specialists_on_disk_use_identity_record_vocab() -> None:
+    """Committed framework fallback modules must not reference SeedRecord / seed_record."""
+    specialists_dir = (
+        Path(__file__).resolve().parent.parent / "src" / "agents" / "specialists"
+    )
+    paths = [specialists_dir / f"{name}.py" for name in _FRAMEWORK_SPECIALIST_NAMES]
+    assert all(path.is_file() for path in paths), "framework specialists missing on disk"
+    for path in paths:
+        text = path.read_text(encoding="utf-8")
+        assert "SeedRecord" not in text
+        assert 'payload["seed_record"]' not in text
+        assert "IdentityRecord" in text
+        assert 'payload["identity_record"]' in text
+
+
+@pytest.mark.smoke
+def test_framework_demographic_specialist_import_module_single_match(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """import_module path: single-match invoke sets identity_record without ImportError."""
+    monkeypatch.setattr("tools.research.is_research_available", lambda: False)
+    mod = importlib.import_module("agents.specialists.demographic_specialist")
+    fn = getattr(mod, "demographic_specialist")
+    state = _minimal_state(requested=["age"])
+    result = fn(state)
+    assert result["specialist_contrib"]["id"] == "test-uuid"
+    assert result.get("identity_record") is not None
+    assert result["identity_record"].name == "Jane"
 
 
 @pytest.mark.smoke

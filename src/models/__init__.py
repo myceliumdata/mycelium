@@ -4,7 +4,7 @@ from models.state import (
     EntityQuery,
     MyceliumGraphState,
     QueryResponse,
-    SeedRecord,
+    IdentityRecord,
     normalized_requested_attributes,
 )
 
@@ -12,6 +12,6 @@ __all__ = [
     "EntityQuery",
     "MyceliumGraphState",
     "QueryResponse",
-    "SeedRecord",
+    "IdentityRecord",
     "normalized_requested_attributes",
 ]
