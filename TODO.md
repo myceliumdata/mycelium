@@ -11,8 +11,8 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 **Priority order when back from break:**
 
 1. [x] **Hands-on: `empty-crm` example** — verified June 2026 (refresh → no seed/entities → Paul Murphy bind → 1 validated row; `network status` Entities ✅). Nit fixed: `network_metadata` no longer lets `MYCELIUM_NETWORK` override explicit `--network-dir`.
-2. [ ] **Historical assumptions review** — **Phase 1 done:** [`docs/plans/historical-assumptions-audit.md`](docs/plans/historical-assumptions-audit.md). **P2 done:** [`docs/plans/README.md`](docs/plans/README.md). Remaining after identity rename: `network create` v2 design, legacy module cleanup.
-3. [ ] **Identity vocabulary rename (breaking) — scheduled** — Cursor: [`prompts/cursor/next/2026-06-10-entity-identity-vocabulary-rename.md`](prompts/cursor/next/2026-06-10-entity-identity-vocabulary-rename.md). Spec: [`docs/plans/entity-identity-vocabulary-rename.md`](docs/plans/entity-identity-vocabulary-rename.md). Paul: move prompt to `in-progress/` and run Cursor.
+2. [ ] **Historical assumptions review** — **Phase 1 done:** [`docs/plans/historical-assumptions-audit.md`](docs/plans/historical-assumptions-audit.md). **P2 done:** [`docs/plans/README.md`](docs/plans/README.md). **In flight:** identity rename (Cursor). **Queued next:** [`network create` optional `--seed`](docs/plans/network-create-optional-seed.md). Remaining: legacy module cleanup.
+3. [ ] **Identity vocabulary rename (breaking) — in progress (Cursor)** — `SeedRecord` → `IdentityRecord`, MCP schema URI, graph state fields. Spec: [`docs/plans/entity-identity-vocabulary-rename.md`](docs/plans/entity-identity-vocabulary-rename.md). Handoff: `prompts/cursor/in-progress/` or `next/2026-06-10-entity-identity-vocabulary-rename.md`. **Next in queue:** [`2026-06-10-network-create-optional-seed.md`](prompts/cursor/next/2026-06-10-network-create-optional-seed.md).
 4. [x] **Project website copy** — Done (`../mycelium-website`, June 2026). Option A overhaul + copy pass deployed by Paul.
 
 ---
@@ -215,7 +215,7 @@ Backend shipped in entity protocol Slices 1–8; operator-facing admin work defe
 
 ### Network launch v2 (design — Paul + Grok)
 
-- [ ] **Seed from Queries** — Slice 8 covers growth + attribution; empty-seed `network create` deferred (see empty-seed demo above). *v1 `network create` still requires `--seed`.*
+- [ ] **Optional `--seed` on `network create`** — queued: [`docs/plans/network-create-optional-seed.md`](docs/plans/network-create-optional-seed.md), Cursor [`2026-06-10-network-create-optional-seed.md`](prompts/cursor/next/2026-06-10-network-create-optional-seed.md). Runs after identity rename. `refresh-example-network` auto-bootstraps when example ships `seed.json`.
 
 ## Future / deferred
 
@@ -252,4 +252,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-10 (identity rename scheduled; empty-crm verified)
+Last updated: 2026-06-10 (identity rename in progress — Cursor; network create v2 queued)
