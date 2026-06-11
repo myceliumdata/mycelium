@@ -16,13 +16,13 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 3. [x] **Identity vocabulary rename (breaking)** — Done (`538867e`). Reviews: [`rename`](prompts/cursor/done/2026-06-10-entity-identity-vocabulary-rename/review.md), [`fix`](prompts/cursor/done/2026-06-10-entity-identity-vocabulary-rename-fix/review.md).
 4. [x] **Network create optional `--seed`** — Done (reviewed, 305 tests). Review: [`network-create-optional-seed`](prompts/cursor/done/2026-06-10-network-create-optional-seed/review.md).
 5. [x] **Project website copy** — Done (`../mycelium-website`, June 2026). Option A overhaul + copy pass deployed by Paul.
-6. [x] **Contributor doc hygiene (P1)** — [`docs/onboarding.md`](docs/onboarding.md); audit Phase 2 closed; website copy pass queued in **mycelium-website** (`2026-06-11-post-cleanup-onboarding-copy-pass.md`).
+6. [x] **Contributor doc hygiene (P1)** — [`docs/onboarding.md`](docs/onboarding.md); audit Phase 2 closed; website copy pass done in **mycelium-website** (`cd7e796`).
 
 ---
 
 ## Process (Grok + Paul)
 
-- **Website review after major pushes** — Whenever a significant framework chunk lands, review [myceliumdata.org](https://myceliumdata.org) against `docs/architecture.md` and `docs/onboarding.md`. Queue work in **`../mycelium-website/prompts/cursor/next/`** (not this repo). Current queue: post-cleanup onboarding copy pass (June 2026).
+- **Website review after major pushes** — Whenever a significant framework chunk lands, review [myceliumdata.org](https://myceliumdata.org) against `docs/architecture.md` and `docs/onboarding.md`. Queue work in **`../mycelium-website/prompts/cursor/next/`** (not this repo).
 
 ---
 

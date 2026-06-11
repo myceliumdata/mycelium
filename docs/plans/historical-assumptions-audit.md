@@ -117,7 +117,7 @@ Historical admin/CLI labels may still say **"Seed"** for bootstrap fixture row c
 - [x] `docs/plans/README.md` index
 - [x] Phase 2 implementation slices completed
 - [x] Contributor onboarding doc
-- [ ] Website copy pass (mycelium-website — queued)
+- [x] Website copy pass (mycelium-website — `cd7e796`, June 2026)
 
 ---
 
