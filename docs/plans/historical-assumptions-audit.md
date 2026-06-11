@@ -1,10 +1,10 @@
-# Historical assumptions audit (Phase 1)
+# Historical assumptions audit
 
-**Status:** Phase 1 complete (June 2026)  
+**Status:** Phase 1 + Phase 2 complete (June 2026)  
 **Author:** Grok + automated grep  
-**Source of truth:** `docs/architecture.md`, `README.md` (June 2026, post seed-elimination)
+**Source of truth:** `docs/architecture.md`, `docs/onboarding.md`, `README.md`
 
-**Purpose:** Find early-phase decisions and docs that are stale, misleading, or problematic after entity registry, networks, metering, and seed elimination. Phase 1 is inventory + recommendations; Phase 2 is targeted cleanup slices.
+**Purpose:** Find early-phase decisions and docs that were stale, misleading, or problematic after entity registry, networks, metering, and seed elimination. Phase 1 was inventory; Phase 2 was targeted cleanup slices.
 
 ---
 
@@ -12,15 +12,29 @@
 
 | Area | Verdict |
 |------|---------|
-| **Runtime `src/`** | Clean: no `agents.seed`, `get_seed_data`, `find_by_key`, or `seed_people_count` |
-| **Tests** | Clean: fixtures use `import_seed_file` / `network_helpers`; no runtime seed loader |
-| **Living docs** (`architecture.md`, `README.md`, `full-code-walkthrough.md`, `prompts/system/`) | Mostly aligned; minor SQLite/legacy notes intentional |
-| **`docs/plans/*`** | Many slice specs describe pre-elimination resolution order; **keep as historical** unless actively referenced |
-| **`prompts/resets/*`, `prompts/cursor/done/*`** | Historical by definition; do not rewrite |
-| **`TODO.md`** | A few operator lines still say “seed” where “registry” is meant |
-| **Intentional debt** | `SeedRecord` / `seed_records` state fields; SQLite `people` table; unwired `core_data` era modules on disk |
+| **Runtime `src/`** | Clean: no `agents.seed`, legacy ingest modules, or SQLite `people` API |
+| **Tests** | Fixtures use `import_seed_file` / `network_helpers`; smoke guards on removed APIs |
+| **Living docs** | Aligned; [`onboarding.md`](../onboarding.md) added for new contributors |
+| **`docs/plans/*`** | Historical slice specs — index in [`README.md`](README.md) |
+| **`prompts/resets/*`, `prompts/cursor/done/*`** | Historical; do not rewrite |
+| **Intentional vocabulary** | `seed.json` = bootstrap fixture filename; CLI status may still label bootstrap row count "Seed" |
 
-**No blocking runtime lies found.** Risk is **operator and integrator confusion** from old plans, TODO wording, and deferred renames.
+**No blocking runtime lies.** Remaining risk is integrator confusion from old slice plans — mitigated by onboarding doc + plans index.
+
+---
+
+## Phase 2 completed (June 2026)
+
+| Priority | Slice | Status |
+|----------|-------|--------|
+| P1 | TODO + doc hygiene | **Done** — onboarding doc, README/plans links, audit refresh |
+| P2 | Plans index | **Done** |
+| P3 | State field rename (`IdentityRecord` / `matched_records`) | **Done** (`538867e`) |
+| P4 | `network create` optional `--seed` | **Done** |
+| P5 | Unwired legacy module cleanup | **Done** — enrich/validator/person_prep removed |
+| P6 | SQLite `people` deprecation | **Done** — slim `CoreStorage`; see [`legacy-ingest-and-storage-reference.md`](../legacy-ingest-and-storage-reference.md) |
+
+Handoffs: [`2026-06-10-legacy-ingest-storage-removal`](../../prompts/cursor/done/2026-06-10-legacy-ingest-storage-removal/).
 
 ---
 
@@ -29,70 +43,44 @@
 Verified absent in `src/` and `tests/`:
 
 - `agents.seed`, `get_seed_data`, `reset_seed_data`, `find_by_key` (seed module)
-- `seed_people_count`
+- `agents.enrich`, `agents.validator`, `agents.person_prep`
+- `seed_from_file`, `find_persons`, SQLite `people` DDL
 
-**Intentional seed vocabulary (deferred rename):**
+**Current graph vocabulary:**
 
 | Symbol | Location | Notes |
 |--------|----------|-------|
-| `SeedRecord` | `models/state.py` | Pydantic model; name kept for schema stability |
-| `seed_records` / `seed_record` | graph state, supervisor, MCP schema resource | LangGraph/MCP compatibility |
-| `mycelium://schema/seed-record` | MCP | Schema URI; rename is breaking |
+| `IdentityRecord` | `models/state.py`, MCP | Renamed from `SeedRecord` (June 2026) |
+| `matched_records` | graph state, supervisor | Canonical match list |
+| `mycelium://schema/identity-record` | MCP | Schema URI |
 
-**Unwired legacy on disk (documented, not in graph):**
-
-- `src/agents/person_prep.py`, enrich/validator paths referenced in walkthrough
-- `tests/test_core_data_agent.py` — skip-only placeholder
-
-**Fixed this session:**
-
-- `network_metadata(root=...)` no longer lets `MYCELIUM_NETWORK` env override an explicit `--network-dir` root; reads registry match → `network.json` `name` instead.
+**Bootstrap only:** `import_seed_file`, `seed.json`, optional `--seed` on `network create`.
 
 ---
 
 ## 2. Operator surfaces & TODO wording
 
-| Item | File | Issue | Recommendation |
-|------|------|-------|----------------|
-| Admin status line | `TODO.md` L98 | “seed + entities.json” | → “registry (`entities.json`)" |
-| Network status bullet | `TODO.md` L49 | “seed, ontology, specialists” | → “entities, ontology, specialists” |
-| Multi-match note | `TODO.md` L209 | “seed records” | → “registry rows” |
-| Demo slice 39 | `TODO.md` L39 | “✅ Seed (N)” in admin polish | Historical done item; optional footnote |
+Historical admin/CLI labels may still say **"Seed"** for bootstrap fixture row counts (`network status`, admin overview). That is a **display label**, not the removed runtime seed loader. New docs use **entities / registry** for identity.
 
 ---
 
 ## 3. Living documentation
 
-| Doc | Status | Notes |
-|-----|--------|-------|
-| `docs/architecture.md` | **Current** | Bootstrap vs registry; query-only API; metering layers |
-| `README.md` | **Current** | Post polish; bootstrap/empty-crm/examples |
-| `docs/full-code-walkthrough.md` | **Current** | Registry resolution; notes legacy modules |
-| `docs/database-notes.md` | **Current** | SQLite legacy called out; entities.json canonical |
-| `prompts/system/CORE_PROMPT.md` | **Current** | Bootstrap fixture wording |
-| `prompts/system/PROJECT_BRIEF.md` | **Current** | June 2026 blurb |
-
-**Minor intentional legacy mentions:** SQLite `people` table, `SeedRecord` type name in architecture/walkthrough (accurate as implemented).
+| Doc | Status |
+|-----|--------|
+| `docs/onboarding.md` | **New** — contributor entry point |
+| `docs/architecture.md` | Current |
+| `README.md` | Current |
+| `docs/full-code-walkthrough.md` | Current |
+| `docs/database-notes.md` | Current (no `people` table) |
+| `docs/legacy-ingest-and-storage-reference.md` | Archival only |
+| `docs/plans/README.md` | Active vs historical index |
 
 ---
 
 ## 4. Historical plans (`docs/plans/`)
 
-**Do not bulk-edit.** These are slice specs and design conversations. Stale content is expected.
-
-Plans with **runtime seed resolution** language (historical only):
-
-- `entity-protocol-and-registry-program.md` — lookup order included seed `find_by_key`
-- `entity-registry-bind-phase4.md`, `entity-key-suggestions-phase1.md`
-- `entity-uuid4-unification-slice13.md`, `entity-seed-elimination-slice14`–`18.md` (slice specs; phase doc marked **Complete**)
-- `seed-data-context-architecture.md` — references `agents/seed.py` timeline
-- `agent-factory-phase2.md`, `classification-engine-phase1.md` — pre-redesign supervisor/`core_data` (some have historical notes; good)
-
-**Recommendation:** Add `docs/plans/README.md` (Phase 2) with:
-
-- “Authoritative today: `docs/architecture.md`”
-- “Slice plans are point-in-time; completed phases may describe removed code”
-- Index of **active** vs **archived** plan families
+**Do not bulk-edit.** Stale seed-resolution or `core_data` language is expected in completed slice specs. Use [`README.md`](README.md) **Active backlogs** for work that may still guide implementation.
 
 ---
 
@@ -100,56 +88,42 @@ Plans with **runtime seed resolution** language (historical only):
 
 | Path | Treatment |
 |------|-----------|
-| `prompts/resets/2026-06-07_redesign_reset.md` | Archive; describes seed loader and `core_data` removal |
-| `prompts/resets/2026-06-05_mvp_current.md` | Archive |
-| `prompts/cursor/done/*` | Never rewrite; reviews may reference old counts |
+| `prompts/resets/*` | Archive |
+| `prompts/cursor/done/*` | Never rewrite |
 
 ---
 
-## 6. Product assumptions to revisit (design, not bugs)
+## 6. Product assumptions — resolved (June 2026)
 
-| Assumption | Then | Now | Question for Paul |
-|------------|------|-----|-------------------|
-| Person-shaped seed only | v1 `--seed` validates `people[]` | Still true; `network create` requires `--seed` | Priority for generic entity seed / empty `network create`? |
-| SQLite `people` table | Core identity store | Legacy; queries use `entities.json` | Remove SQLite people path entirely or keep for migration story? |
-| `SeedRecord` naming | Seed-era graph state | Registry rows; name deferred | Schedule breaking rename slice or keep indefinitely? |
-| `core_data` as special | Privileged CRM table | Eliminated; supervisor + registry | Delete unwired `person_prep` / enrich docs from walkthrough? |
-| Cars / generic domain marketing | Vision | CRM is **example** only | Website updated; framework README already generic networks |
-
----
-
-## 7. Recommended Phase 2 slices (priority order)
-
-| Priority | Slice | Scope | Est. |
-|----------|-------|-------|------|
-| P1 | **TODO + doc hygiene** | Fix L49, L98, L209; optional `docs/plans/README.md` | 30 min |
-| P2 | **Plans index** | `docs/plans/README.md` — active vs historical, link architecture | **Done** (June 2026) |
-| P3 | **State field rename** (optional) | `seed_records` → `matched_records` in public MCP schema / graph export | Large; breaking |
-| P4 | **`network create` without `--seed`** | Launch v2; empty-crm proves growth path | Design + implementation |
-| P5 | **Unwired legacy module cleanup** | Remove or quarantine `person_prep`, stale enrich paths | Medium |
-| P6 | **SQLite people deprecation** | Document-only or remove `storage/core` people seeding paths | Medium |
+| Assumption | Resolution |
+|------------|------------|
+| Person-shaped seed only | Still true for `--seed` validation; **optional** — `empty-crm` proves bind-only growth |
+| SQLite `people` table | **Removed**; identity is `entities.json` only |
+| `SeedRecord` naming | **Renamed** to `IdentityRecord` / `matched_records` |
+| `core_data` / enrich path | **Removed** from repo; archival doc only |
+| Public ingest API | Removed 2025; future internal data addition is greenfield design |
+| Website copy | Separate **mycelium-website** repo; queue copy pass after framework pushes |
 
 ---
 
-## 8. Phase 1 exit criteria
+## 7. Exit criteria
 
 - [x] Grep runtime/tests for seed loader removal
 - [x] Spot-check living docs vs architecture
-- [x] Classify `docs/plans` stale content (historical, keep)
-- [x] List intentional debt vs bugs
+- [x] Classify `docs/plans` stale content
+- [x] List intentional debt vs bugs (debt cleared in Phase 2)
 - [x] Fix `network_metadata` explicit-root nit
 - [x] Hands-on `empty-crm` verified
-- [x] `docs/plans/README.md` index (P2)
-- [ ] Phase 2 implementation slices queued (Paul + Grok)
+- [x] `docs/plans/README.md` index
+- [x] Phase 2 implementation slices completed
+- [x] Contributor onboarding doc
+- [ ] Website copy pass (mycelium-website — queued)
 
 ---
 
-## For Paul
+## Website follow-up
 
-1. Confirm **P1 TODO hygiene** — Grok can apply in one commit.
-2. **`docs/plans/README.md`** — worth doing before onboarding another contributor?
-3. **`SeedRecord` / `seed_records` rename** — breaking; defer or schedule?
-4. **`network create` without `--seed`** — next launch track after empty-crm?
+Framework changes that may need public copy updates: identity rename, legacy removal, optional `--seed`, 307 tests. Handoff: **mycelium-website** `prompts/cursor/next/2026-06-11-post-cleanup-onboarding-copy-pass.md`.
 
 ---
 

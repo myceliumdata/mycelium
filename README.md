@@ -1,6 +1,8 @@
 # Mycelium
 
-**Download the framework** (this repo), then **run named networks** at paths you choose. Each **network** is an isolated data namespace (seed, ontology, specialist registry, storage, checkpoints). The **supervisor** and specialist agents operate inside one network at a time.
+**Download the framework** (this repo), then **run named networks** at paths you choose. Each **network** is an isolated data namespace (`entities.json`, optional bootstrap `seed.json`, ontology, specialist storage, checkpoints). The **supervisor** and specialist agents operate inside one network at a time.
+
+**New contributors:** [`docs/onboarding.md`](docs/onboarding.md) — terminology, read order, and repo layout.
 
 A fresh clone has **no live network** until you bootstrap. Run **`./bin/refresh-example-network crm`** (copies the committed CRM example to `~/mycelium-networks/crm` and registers it as default). Register named networks in **`~/.config/mycelium/networks.json`** (override with **`MYCELIUM_NETWORKS_CONFIG`**) so you can use **`--network <name>`** without repeating paths. Pre-networks snapshot: git tag **`prototype`**.
 
@@ -398,4 +400,4 @@ mycelium/
 
 **Implemented (June 2026):** Query-only CLI/MCP, seed-data-context graph, classification engine, agent factory, **specialist research Phase 1** (synchronous LLM + Tavily), **research prompt context enrichment** (MVR bind disambiguation + peer specialist findings in prompts), **Networks Phases 1–5** (path resolver, name registry, CRM example, integration testing, **`network create`** with per-network `specialists/` and skeleton ontology — slices `1500`–`1800`), public repo under [myceliumdata](https://github.com/myceliumdata).
 
-**Roadmap:** Query-as-seed launch (v2), inter-network handoff (Phase 6), per-network LangSmith projects — see [TODO.md](TODO.md) and [docs/plans/networks-terminology.md](docs/plans/networks-terminology.md).
+**Roadmap:** Operator surfaces (attribute correction, re-research), research robustness, inter-network handoff — see [TODO.md](TODO.md) and [docs/plans/networks-terminology.md](docs/plans/networks-terminology.md).

@@ -6,6 +6,7 @@ Design specs, slice maps, and backlogs for Mycelium. **Maintained by Grok + Paul
 
 | Need | Document |
 |------|----------|
+| **New contributors** | [`docs/onboarding.md`](../onboarding.md) |
 | **Current architecture** | [`docs/architecture.md`](../architecture.md) |
 | **Operator quick start** | [`README.md`](../../README.md) |
 | **Code orientation** | [`docs/full-code-walkthrough.md`](../full-code-walkthrough.md) |
@@ -119,4 +120,4 @@ Archived Paul + Grok threads: [`conversations/README.md`](conversations/README.m
 
 ---
 
-*Last updated: June 2026 (Phase 2 legacy ingest/storage removal done).*
+*Last updated: June 2026 (onboarding doc; historical-assumptions audit closed).*

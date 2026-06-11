@@ -1,8 +1,9 @@
 # Mycelium — TODO
 
 Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does not edit; see `prompts/cursor/WORKFLOW.md`).  
-**Source of truth for architecture:** `docs/architecture.md`.  
-**Implementation handoffs:** `prompts/cursor/next/` per `prompts/cursor/WORKFLOW.md`.
+**New contributors:** start at [`docs/onboarding.md`](docs/onboarding.md).  
+**Architecture:** [`docs/architecture.md`](docs/architecture.md).  
+**Framework Cursor handoffs:** `prompts/cursor/next/`. **Website handoffs:** sibling repo `mycelium-website/prompts/cursor/next/`.
 
 ---
 
@@ -15,12 +16,13 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 3. [x] **Identity vocabulary rename (breaking)** — Done (`538867e`). Reviews: [`rename`](prompts/cursor/done/2026-06-10-entity-identity-vocabulary-rename/review.md), [`fix`](prompts/cursor/done/2026-06-10-entity-identity-vocabulary-rename-fix/review.md).
 4. [x] **Network create optional `--seed`** — Done (reviewed, 305 tests). Review: [`network-create-optional-seed`](prompts/cursor/done/2026-06-10-network-create-optional-seed/review.md).
 5. [x] **Project website copy** — Done (`../mycelium-website`, June 2026). Option A overhaul + copy pass deployed by Paul.
+6. [x] **Contributor doc hygiene (P1)** — [`docs/onboarding.md`](docs/onboarding.md); audit Phase 2 closed; website copy pass queued in **mycelium-website** (`2026-06-11-post-cleanup-onboarding-copy-pass.md`).
 
 ---
 
 ## Process (Grok + Paul)
 
-- **Website review after major pushes** — Whenever a significant framework chunk lands (phase exit, public API change, new examples, operator-surface changes), review [myceliumdata.org](https://myceliumdata.org) against `docs/architecture.md` and `README.md`. Repo: `../mycelium-website` (prompts in `prompts/cursor/next/`). If copy drifts, queue a website slice before the next public demo or release note.
+- **Website review after major pushes** — Whenever a significant framework chunk lands, review [myceliumdata.org](https://myceliumdata.org) against `docs/architecture.md` and `docs/onboarding.md`. Queue work in **`../mycelium-website/prompts/cursor/next/`** (not this repo). Current queue: post-cleanup onboarding copy pass (June 2026).
 
 ---
 
@@ -54,7 +56,7 @@ Operator tooling for Paul’s demos (and future remote admin). **Slices 1 → 4 
 
 ### Admin UI polish — **done** (`2026-06-08-2000`, `3b36a4e`)
 
-- [x] **Scannable overview** — ✅/❌ Seed, Ontology, Specialists; ontology in guide card; collapsed secondary panels; 3s silent `/status` poll.
+- [x] **Scannable overview** — ✅/❌ Seed, Ontology, Specialists *(historical UI labels; "Seed" = bootstrap fixture count, not runtime seed loader)*; ontology in guide card; collapsed secondary panels; 3s silent `/status` poll.
 
 ### `bin/restart-admin` — **done** (`2026-06-08-2100`, `df32d09`)
 
@@ -253,4 +255,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-11 (Phase 2 legacy removal done)
+Last updated: 2026-06-11 (onboarding doc + P1 hygiene; website copy pass queued in mycelium-website)
