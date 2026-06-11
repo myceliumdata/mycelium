@@ -11,7 +11,7 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 **Priority order when back from break:**
 
 1. [x] **Hands-on: `empty-crm` example** — verified June 2026 (refresh → no seed/entities → Paul Murphy bind → 1 validated row; `network status` Entities ✅). Nit fixed: `network_metadata` no longer lets `MYCELIUM_NETWORK` override explicit `--network-dir`.
-2. [ ] **Historical assumptions review** — **Phase 1 done:** [`docs/plans/historical-assumptions-audit.md`](docs/plans/historical-assumptions-audit.md). **P2 done:** [`docs/plans/README.md`](docs/plans/README.md). Remaining: legacy module cleanup (Phase 2).
+2. [ ] **Historical assumptions review** — **Phase 1 done:** [`docs/plans/historical-assumptions-audit.md`](docs/plans/historical-assumptions-audit.md). **P2 queued:** legacy ingest + SQLite people removal — [`2026-06-10-legacy-ingest-storage-removal.md`](prompts/cursor/next/2026-06-10-legacy-ingest-storage-removal.md). Paul: delete code, keep [`docs/legacy-ingest-and-storage-reference.md`](docs/legacy-ingest-and-storage-reference.md) (Cursor creates).
 3. [x] **Identity vocabulary rename (breaking)** — Done (`538867e`). Reviews: [`rename`](prompts/cursor/done/2026-06-10-entity-identity-vocabulary-rename/review.md), [`fix`](prompts/cursor/done/2026-06-10-entity-identity-vocabulary-rename-fix/review.md).
 4. [x] **Network create optional `--seed`** — Done (reviewed, 305 tests). Review: [`network-create-optional-seed`](prompts/cursor/done/2026-06-10-network-create-optional-seed/review.md).
 5. [x] **Project website copy** — Done (`../mycelium-website`, June 2026). Option A overhaul + copy pass deployed by Paul.
@@ -253,4 +253,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-10 (CI fix shipped; Phase 2 legacy cleanup next)
+Last updated: 2026-06-10 (Phase 2 legacy removal queued for Cursor)
