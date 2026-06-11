@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Mirror .github/workflows/ci.yml locally (lint + admin-ui build + smoke tests).
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+echo "==> uv sync --all-extras"
+uv sync --all-extras
+
+echo "==> admin-ui: npm ci && npm run build"
+(cd admin-ui && npm ci && npm run build)
+
+echo "==> ruff"
+uv run ruff check src tests bin/
+
+echo "==> smoke tests"
+export LANGCHAIN_TRACING_V2=false
+uv run pytest -m smoke -q
+
+echo "CI local: all steps passed."

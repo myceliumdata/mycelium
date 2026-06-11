@@ -124,6 +124,15 @@ When Cursor finishes:
 - We review the contents of `prompts/cursor/done/<name>/`
 - Grok adds `review.md` with: **Approved** / **Approved + fix slice** / **Approved + polish nits**
 
+**Grok: run full CI locally before approve + commit (mandatory).**  
+Mirrors `.github/workflows/ci.yml` — do not rely on `pytest -q` alone; CI also builds `admin-ui` and runs **smoke** tests only.
+
+```bash
+./bin/ci-local
+```
+
+Record pass/fail and counts in `review.md` (e.g. `281 smoke passed`, ruff clean, admin-ui build ok). If CI local fails, verdict is **not Approved** until fixed. Optionally also run `LANGCHAIN_TRACING_V2=false uv run pytest -q` for major slices; that is extra, not a substitute for `ci-local`.
+
 **Entity protocol program — nit triage (Paul, June 2026):**
 
 | Severity | Grok action |

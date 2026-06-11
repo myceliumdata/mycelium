@@ -372,6 +372,7 @@ Visual debugging via local dev server + tunnel. Studio requires a **configured n
 ## Development
 
 ```bash
+./bin/ci-local                       # full CI locally (Grok review gate; mirrors GitHub CI)
 uv run pytest -m smoke -q          # frequent dev checks
 uv run pytest -q                     # full suite before major merges
 uv run ruff check src tests bin/
