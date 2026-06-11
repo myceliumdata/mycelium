@@ -22,7 +22,7 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 ## Process (Grok + Paul)
 
-- **Website review after major pushes** — Whenever a significant framework chunk lands, review [myceliumdata.org](https://myceliumdata.org) against `docs/architecture.md` and `docs/onboarding.md`. Queue work in **`../mycelium-website/prompts/cursor/next/`** (not this repo).
+- **Website review after major pushes** — Whenever a significant framework chunk lands, review [myceliumdata.org](https://myceliumdata.org) against `docs/architecture.md` and `docs/onboarding.md`. Queue work in **`../mycelium-website/prompts/cursor/next/`** (not this repo). **Paul pushes and deploys** the public website repo; Grok/Cursor do not.
 
 ---
 

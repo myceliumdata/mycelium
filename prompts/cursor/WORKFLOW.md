@@ -133,6 +133,9 @@ Mirrors `.github/workflows/ci.yml` — do not rely on `pytest -q` alone; CI also
 
 Record pass/fail and counts in `review.md` (e.g. `281 smoke passed`, ruff clean, admin-ui build ok). If CI local fails, verdict is **not Approved** until fixed. Optionally also run `LANGCHAIN_TRACING_V2=false uv run pytest -q` for major slices; that is extra, not a substitute for `ci-local`.
 
+**Website repo (`mycelium-website`) — push policy (Paul, June 2026):**  
+Grok and Cursor may commit website changes **locally** and write `review.md`, but **do not `git push`** to `origin` on the public website repo. Paul reviews locally and pushes when ready. Deploy (Cloudflare Pages, etc.) is also Paul's step.
+
 **Entity protocol program — nit triage (Paul, June 2026):**
 
 | Severity | Grok action |
