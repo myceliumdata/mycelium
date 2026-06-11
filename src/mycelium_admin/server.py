@@ -72,7 +72,7 @@ def bootstrap_admin() -> dict[str, str | None]:
     root = resolve_network_root()
     paths = NetworkPaths.from_root(root)
     apply_network_paths(paths)
-    get_storage(db_path=paths.db_path, seed_path=paths.seed_path)
+    get_storage(db_path=paths.db_path)
     _NETWORK_INFO = network_metadata(root=paths.root)
     return _NETWORK_INFO
 

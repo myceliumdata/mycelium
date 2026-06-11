@@ -11,7 +11,7 @@ Design specs, slice maps, and backlogs for Mycelium. **Maintained by Grok + Paul
 | **Code orientation** | [`docs/full-code-walkthrough.md`](../full-code-walkthrough.md) |
 | **Roadmap checklist** | [`TODO.md`](../../TODO.md) |
 | **Stale-assumption audit** | [`historical-assumptions-audit.md`](historical-assumptions-audit.md) |
-| **Removed ingest/storage (memory)** | [`legacy-ingest-and-storage-reference.md`](../legacy-ingest-and-storage-reference.md) *(Cursor creates during Phase 2 cleanup)* |
+| **Removed ingest/storage (memory)** | [`legacy-ingest-and-storage-reference.md`](../legacy-ingest-and-storage-reference.md) |
 
 **Important:** Most files in this directory are **point-in-time slice specs**. Completed phases may describe code that was later removed (e.g. `agents.seed`, `core_data`, runtime seed resolution). Treat them as **history**, not runtime truth, unless the plan is listed under **Active backlogs** below.
 
@@ -98,7 +98,7 @@ Implementation handoffs live in `prompts/cursor/done/<slug>/` with `prompt.md`, 
 |-----|-------|
 | [`research-robustness-backlog.md`](research-robustness-backlog.md) | Post-2010 research hardening |
 | [`historical-assumptions-audit.md`](historical-assumptions-audit.md) | Phase 1 audit; Phase 2 cleanup recommendations |
-| [`legacy-ingest-storage-removal.md`](legacy-ingest-storage-removal.md) | **Queued** — delete legacy ingest + SQLite `people`; archival doc only |
+| [`legacy-ingest-storage-removal.md`](legacy-ingest-storage-removal.md) | **Done** — legacy ingest + SQLite `people` removed; see archival doc |
 
 Deferred product tracks are listed in **`TODO.md`** (settlement protocol, operator edit/re-research, `network create` v2, seed export, etc.).
 
@@ -119,4 +119,4 @@ Archived Paul + Grok threads: [`conversations/README.md`](conversations/README.m
 
 ---
 
-*Last updated: June 2026 (Phase 2 legacy ingest/storage removal queued).*
+*Last updated: June 2026 (Phase 2 legacy ingest/storage removal done).*

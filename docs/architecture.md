@@ -105,7 +105,7 @@ Future real x402 settlement may read `MYCELIUM_X402_FACILITATOR_URL` for facilit
 
 Generated specialists (`src/agents/specialists/*_specialist.py`, Agent Factory template) implement three scenarios: has data, **synchronous** field research on cache miss (when `OPENAI_API_KEY` + `TAVILY_API_KEY` are set), or pending / N/A. Research runs via `tools.research.run_field_research` and Tavily `web_search` (`src/tools/tavily.py`). See `docs/plans/seed-data-context-architecture.md`, `docs/plans/specialist-research-phase1.md`, and Cursor slices `2026-06-09-1100`–`1400`.
 
-Legacy **enrich**, **validator**, and **person_prep** remain on disk as unwired legacy; queries do not depend on them.
+Pre–registry ingest (`enrich`, `validator`, `person_prep`) and the SQLite `people` table were removed June 2026. See [`docs/legacy-ingest-and-storage-reference.md`](legacy-ingest-and-storage-reference.md).
 
 ---
 
@@ -148,9 +148,9 @@ Phase 1 adds a **Classification Engine** (cached lookup in `src/agents/classific
 
 - **Entities (queries):** `<network_root>/entities.json` via `EntityRegistry` — seed is bootstrap-only when present.
 - **Specialists:** per-category JSON under `<network_root>/agents/<category>/` (`SpecialistStorage` in `src/agents/specialists/base.py`), keyed by `id` (UUID).
-- **SQLite:** `<network_root>/mycelium.db` (legacy `people` table; checkpoints/history only in this phase) and `<network_root>/checkpoints.sqlite` (LangGraph checkpointer).
+- **SQLite:** `<network_root>/checkpoints.sqlite` (LangGraph checkpointer). Optional `<network_root>/mycelium.db` — empty bootstrap file only; no identity tables.
 
-See `src/storage/core.py` (DB retained for checkpointer-era compatibility; people auto-seed disabled by default).
+See `src/storage/core.py` (path bootstrap for MCP/admin startup).
 
 ---
 

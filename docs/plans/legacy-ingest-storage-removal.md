@@ -1,6 +1,6 @@
 # Legacy ingest & SQLite people removal (Phase 2)
 
-**Status:** Queued for Cursor (June 2026)  
+**Status:** Done (June 2026)  
 **Decision (Paul):** Delete unwired legacy code from the repo. Do **not** preserve implementation for reuse — future ingestion, validation, and alternative storage will be designed from first principles. Keep one **short archival doc** describing how the old paths worked.
 
 ---

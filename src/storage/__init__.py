@@ -1,4 +1,4 @@
-"""SQLite storage for minimal core CRM people."""
+"""SQLite path bootstrap (``mycelium.db``); identity is in ``entities.json``."""
 
 from storage.core import CoreStorage, get_storage
 

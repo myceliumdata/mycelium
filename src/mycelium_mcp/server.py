@@ -63,10 +63,7 @@ def _bootstrap() -> None:
     paths = NetworkPaths.from_root(resolve_network_root())
     apply_network_paths(paths)
     _apply_mcp_instructions()
-    get_storage(
-        db_path=paths.db_path,
-        seed_path=paths.seed_path,
-    )
+    get_storage(db_path=paths.db_path)
 
 
 def _parse_query_payload(query_json: str) -> tuple[EntityQuery, str]:

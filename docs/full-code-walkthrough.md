@@ -7,7 +7,6 @@
 - **Networks:** Framework repo + user-chosen **`network_root`** paths. Committed CRM example at `examples/networks/crm/`; bootstrap with `./bin/refresh-example-network crm`. See `docs/plans/networks-terminology.md`.
 - **Public API** = queries only (`EntityQuery`: `entity_key`, `requested_attributes`). No CLI `ingest`, no MCP `submit_person_data`, no `provided_data`.
 - **Graph:** `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` (or direct assemble for name-only / not found). Identity from `entities.json` + specialist storage.
-- **Legacy on disk:** `core_data`, `enrich`/`validator`/`person_prep` — unwired; not in the public graph.
 - See `docs/architecture.md` for the authoritative architecture; this doc is a walkthrough.
 
 ---
@@ -26,7 +25,7 @@ From `docs/architecture.md` and `prompts/system/CORE_PROMPT.md`:
 
 - Handoffs: `prompts/cursor/next/` → `in-progress/` → `done/<slug>/` (see `prompts/cursor/WORKFLOW.md`).
 - `src/network/`: path resolver, name registry, `network_metadata` for MCP `health_check`.
-- `src/agents/`: `supervisor`, `dispatch`, `classification`, `factory`, `entity_registry`, legacy modules (unwired).
+- `src/agents/`: `supervisor`, `dispatch`, `classification`, `factory`, `entity_registry`.
 - `src/graphs/core.py`, `src/models/state.py`, `src/storage/core.py`, `src/mycelium_mcp/server.py`, `src/main.py`.
 
 ---
