@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from agents.factory.agent_factory import AgentFactory, get_agent_factory, reset_agent_factory
+from agents.specialist_fields import current_status
 from agents.registry import get_agent_registry, reset_agent_registry
 from models.state import MyceliumGraphState, EntityQuery
 
@@ -99,7 +100,7 @@ def test_create_specialist_writes_files_and_registers(
     assert "Classified email as contact" in result_pending["response"].message
     assert "not currently available but may be in the future" not in result_pending["response"].message
     stored = json.loads(storage_path.read_text(encoding="utf-8"))
-    assert stored["records"][test_id]["email"]["status"] == "pending"
+    assert current_status(stored["records"][test_id]["email"]) == "pending"
 
 
 @pytest.mark.smoke

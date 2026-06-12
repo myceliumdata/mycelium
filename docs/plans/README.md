@@ -97,9 +97,11 @@ Implementation handoffs live in `prompts/cursor/done/<slug>/` with `prompt.md`, 
 
 | Doc | Topic |
 |-----|-------|
-| [`attribute-provenance-program1.md`](attribute-provenance-program1.md) | **Complete** (June 2026) — extended attr `versions[]`; hard cutover |
+| [`attribute-provenance-program1.md`](attribute-provenance-program1.md) | **Complete** (June 2026) — extended attr `versions[]`; hard cutover; pushed |
 | [`attribute-provenance-program1-polish.md`](attribute-provenance-program1-polish.md) | Program 1 polish — done |
-| [`attribute-provenance-and-storage.md`](attribute-provenance-and-storage.md) | Architecture — entity/index/protocol split; Program 2 MVR/entity deferred |
+| [`attribute-provenance-and-storage.md`](attribute-provenance-and-storage.md) | Architecture — entity/index/protocol split; Program 2 MVR/entity **next** |
+| [`next-chunk-prep.md`](next-chunk-prep.md) | **Paul + Grok** — gate + Program 2 decisions before next Cursor work |
+| [`../manual-checks/2026-06-12-program1-post-push-gate.md`](../manual-checks/2026-06-12-program1-post-push-gate.md) | **BLOCKED** — 3 manual checks before next code |
 | [`research-robustness-backlog.md`](research-robustness-backlog.md) | Post-2010 research hardening |
 | [`historical-assumptions-audit.md`](historical-assumptions-audit.md) | Phase 1 audit; Phase 2 cleanup recommendations |
 | [`legacy-ingest-storage-removal.md`](legacy-ingest-storage-removal.md) | **Done** — legacy ingest + SQLite `people` removed; see archival doc |
@@ -123,4 +125,4 @@ Archived Paul + Grok threads: [`conversations/README.md`](conversations/README.m
 
 ---
 
-*Last updated: June 2026 (onboarding doc; historical-assumptions audit closed).*
+*Last updated: June 2026 (Program 1 pushed; manual gate + next-chunk prep).*

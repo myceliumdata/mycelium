@@ -34,6 +34,7 @@ export interface EntityFieldStatus {
   field_kind?: string;
   attr_source?: string | null;
   last_researched_at?: string | null;
+  versions?: Array<Record<string, unknown>>;
 }
 
 export interface EntityMatchSummary {

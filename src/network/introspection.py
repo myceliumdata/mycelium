@@ -9,6 +9,12 @@ from pathlib import Path
 from typing import Any
 
 from agents.entity_registry import RegistryEntity, get_entity_registry
+from agents.specialist_fields import (
+    current_status,
+    current_value,
+    is_versioned_field,
+    validate_versioned_field,
+)
 from agents.specialists.base import category_slug
 from network.metering_policy import load_metering_policy
 from network.mvr import load_mvr
@@ -46,6 +52,7 @@ class EntityFieldStatus:
     field_kind: str = "extended"
     attr_source: str | None = None
     last_researched_at: str | None = None
+    versions: tuple[dict[str, Any], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -110,6 +117,13 @@ def _specialists_dir() -> Path:
     return Path(os.getenv("MYCELIUM_SPECIALISTS_DIR", "src/agents/specialists"))
 
 
+def _field_versions(entry: Any) -> tuple[dict[str, Any], ...]:
+    if isinstance(entry, dict) and is_versioned_field(entry):
+        raw = entry.get("versions") or []
+        return tuple(item for item in raw if isinstance(item, dict))
+    return ()
+
+
 def _storage_file(paths: NetworkPaths, category: str) -> Path:
     return paths.agents_dir / category_slug(category) / "storage.json"
 
@@ -146,16 +160,20 @@ def _analyze_storage(paths: NetworkPaths, category: str) -> SpecialistSummary:
                         continue
                     for field_name, value in record.items():
                         fields_tracked.add(field_name)
-                        if isinstance(value, dict) and "status" in value:
-                            status = str(value.get("status", "")).lower()
-                            if status == "pending":
-                                pending += 1
-                            elif status == "na":
-                                na += 1
-                            elif status == "found" or value.get("value"):
-                                found += 1
-                        elif value not in (None, ""):
-                            found += 1
+                        if isinstance(value, dict):
+                            validate_versioned_field(
+                                value,
+                                field_name=field_name,
+                                category=category,
+                            )
+                            if is_versioned_field(value):
+                                status = current_status(value)
+                                if status == "pending":
+                                    pending += 1
+                                elif status == "na":
+                                    na += 1
+                                elif status == "found":
+                                    found += 1
         except (OSError, json.JSONDecodeError):
             pass
 
@@ -288,11 +306,18 @@ def _entity_field_statuses(
         for field_name, value in sorted(record.items()):
             status = "empty"
             display_value: str | None = None
+            versions: tuple[dict[str, Any], ...] = ()
             if isinstance(value, dict):
-                raw_status = value.get("status")
-                status = str(raw_status) if raw_status else "empty"
-                raw_value = value.get("value")
-                display_value = str(raw_value) if raw_value is not None else None
+                validate_versioned_field(
+                    value,
+                    field_name=field_name,
+                    category=category,
+                )
+                if is_versioned_field(value):
+                    status = current_status(value)
+                    raw_value = current_value(value)
+                    display_value = str(raw_value) if raw_value is not None else None
+                    versions = _field_versions(value)
             elif value not in (None, ""):
                 status = "found"
                 display_value = str(value)
@@ -303,6 +328,7 @@ def _entity_field_statuses(
                     agent=agent_name,
                     status=status,
                     value=display_value,
+                    versions=versions,
                 ),
             )
     return statuses
@@ -407,6 +433,7 @@ def _entity_fields_for_match(
                     last_researched_at=registry_entity.last_researched_at.get(
                         item.field,
                     ),
+                    versions=item.versions,
                 ),
             )
         fields.extend(enriched)
@@ -560,6 +587,41 @@ _POLICY_MULTI_MATCH = (
     "networks). The message summarizes status collectively unless per-record "
     "messaging is added later."
 )
+_POLICY_QUERY_PROVENANCE = (
+    "Set provenance=true on EntityQuery to attach structured version history on "
+    "QueryResponse.provenance for requested extended attributes (bind fields omitted). "
+    "Default results[] stay flat; provenance.entities[].attributes.<field> carries "
+    "current_version_id and versions[] copied from specialist storage."
+)
+_QUERY_PROVENANCE_EXAMPLE: dict[str, Any] = {
+    "provenance": {
+        "entities": [
+            {
+                "id": "550e8400-e29b-41d4-a716-446655440000",
+                "attributes": {
+                    "linkedin": {
+                        "current_version_id": "v1",
+                        "versions": [
+                            {
+                                "id": "v1",
+                                "at": "2026-06-11T12:00:00+00:00",
+                                "status": "found",
+                                "value": "https://linkedin.com/in/example",
+                                "confidence": 0.9,
+                                "sources": [{"url": "https://linkedin.com/in/example"}],
+                                "actor": {
+                                    "kind": "research",
+                                    "category": "social",
+                                    "specialist": "social_specialist",
+                                },
+                            },
+                        ],
+                    },
+                },
+            },
+        ],
+    },
+}
 _GUIDE_MISSING_NOTE = "Network author has not provided guide.md yet."
 
 
@@ -651,6 +713,12 @@ def build_network_capabilities() -> dict[str, Any]:
                     "principal",
                     "provenance",
                 ],
+                "response_provenance": {
+                    "description": _POLICY_QUERY_PROVENANCE,
+                    "response_field": "provenance",
+                    "request_flag": "provenance",
+                    "example": _QUERY_PROVENANCE_EXAMPLE,
+                },
             },
         },
     }
@@ -671,7 +739,8 @@ def format_mcp_instructions(capabilities: dict[str, Any]) -> str:
         "When payment is enabled: quote_required → **`pay_quote`** → query_entity+quote_id. "
         "Responses are **`QueryResponse`** "
         "(`outcome`, `quote`, `suggestions`, `required_fields`, `results`, `message`, "
-        "`debug`, `trace_id`, `thread_id`); read **`message`** for per-attribute status. "
+        "`provenance` when request `provenance=true`, `debug`, `trace_id`, `thread_id`); "
+        "read **`message`** for per-attribute status. "
         "On **`outcome: entity_key_unresolved`**, retry with a **`suggestions[].entity_key`**. "
         "On **`entity_unknown`**, supply **`binding`** per MVR **`required_fields`**. "
         "Use **`health_check`** for server liveness and network binding. "

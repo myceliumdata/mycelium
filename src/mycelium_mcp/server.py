@@ -99,7 +99,8 @@ def _neutral_json_schema(model: type[EntityQuery] | type[QueryResponse] | type[I
         schema["description"] = (
             "Query outcome: outcome (machine-readable), suggestions (near-miss retries), "
             "required_fields (MVR gaps when entity_unknown), results (attribute values), "
-            "message (status narrative), debug, trace_id, thread_id."
+            "message (status narrative), provenance (version history when request "
+            "provenance=true), debug, trace_id, thread_id."
         )
     elif model is IdentityRecord:
         schema.setdefault("description", "Registry identity record (id, name, employer).")

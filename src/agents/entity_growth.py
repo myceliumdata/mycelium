@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from agents.entity_registry import get_entity_registry
+from agents.specialist_fields import current_version, is_versioned_field, validate_versioned_field
 from agents.specialists.base import SpecialistStorage
 
 _UPDATED_FIELDS_RE = re.compile(r"updated=(\[[^\]]*\])")
@@ -69,8 +70,11 @@ def apply_registry_research_attribution(
         for field in researched_fields:
             entry = record.get(field) if isinstance(record, dict) else None
             timestamp = fallback_ts
-            if isinstance(entry, dict) and entry.get("researched_at"):
-                timestamp = str(entry["researched_at"])
+            if isinstance(entry, dict) and is_versioned_field(entry):
+                validate_versioned_field(entry, field_name=field, category=str(category))
+                version = current_version(entry)
+                if version and version.get("at"):
+                    timestamp = str(version["at"])
             updates[field] = (str(category), timestamp)
 
     if not updates:

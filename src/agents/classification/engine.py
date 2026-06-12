@@ -309,6 +309,16 @@ class CategoryTree:
             self._load()
         return self._data.categories.copy()
 
+    def mapped_category(self, attribute: str) -> str | None:
+        """Return category slug for a normalized attribute, or None if unmapped/unknown."""
+        if self._data is None:
+            self._load()
+        normalized = attribute.strip().lower()
+        cat_name = self._data.attribute_map.get(normalized)
+        if not cat_name or cat_name == _UNKNOWN_MAP_SENTINEL:
+            return None
+        return str(cat_name)
+
     def refresh_from_llm(
         self,
         attributes: list[str],

@@ -522,6 +522,6 @@ def test_specialist_storage_init_load_save_strategy(tmp_path: Path) -> None:
     storage.save({"records": {"p1": {"email": "a@b"}}})
     assert storage.load()["records"]["p1"]["email"] == "a@b"
     strategy = storage.get_strategy()
-    assert strategy["strategy"] == "flat_json_v1"
+    assert strategy["strategy"] == "versioned_provenance_v1"
     with pytest.raises(NotImplementedError):
         storage.migrate_to("minisql_v1")

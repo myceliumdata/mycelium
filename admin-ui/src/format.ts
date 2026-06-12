@@ -24,3 +24,24 @@ export function networkLabel(
   }
   return displayName || networkName || "network";
 }
+
+/** Human-readable timestamp for admin version history and researched-at columns. */
+export function formatTimestamp(raw: unknown): string {
+  if (raw == null || raw === "") {
+    return "—";
+  }
+  const text = String(raw);
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) {
+    return text;
+  }
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZoneName: "short",
+  });
+}

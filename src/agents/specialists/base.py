@@ -71,20 +71,20 @@ class SpecialistStorage:
         self.base_dir.mkdir(parents=True, exist_ok=True)
         if not self.strategy_file.exists():
             strategy = {
-                "strategy": "flat_json_v1",
-                "version": "1.0",
+                "strategy": "versioned_provenance_v1",
+                "version": "2.0",
                 "bind_field_ownership": "registry_or_seed",
                 "stored_fields": "extended_attributes_only",
                 "notes": (
-                    "name and employer are read-only bind fields from entity resolution; "
-                    "do not persist them in storage.json (legacy keys are ignored on read)."
+                    "Extended attributes use versioned_provenance_v1 (versions[] per field). "
+                    "Flat v1 field blobs are invalid — refresh the network to reset. "
+                    "Bind fields (name, employer) are not persisted in storage.json."
                 ),
                 "last_migrated": None,
                 "upgrade_path": {
-                    "flat_json_v1": {
+                    "versioned_provenance_v1": {
                         "description": (
-                            "Simple per-agent JSON file. Suitable for small-to-medium "
-                            "specialist datasets."
+                            "Append-only versions[] per extended attribute with actor and sources."
                         ),
                         "next_candidates": ["minisql_v1"],
                     },
@@ -134,7 +134,7 @@ class SpecialistStorage:
         return json.loads(self.strategy_file.read_text(encoding="utf-8"))
 
     def current_strategy(self) -> str:
-        return self.get_strategy().get("strategy", "flat_json_v1")
+        return self.get_strategy().get("strategy", "versioned_provenance_v1")
 
     def migrate_to(self, target: str) -> None:
         """Future hook for agent self-managed storage evolution.

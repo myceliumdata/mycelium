@@ -14,6 +14,7 @@ from agents.entity_resolution import lookup_entities_by_key
 from mycelium_admin.server import bootstrap_admin, create_app
 from network_helpers import import_seed_for_test
 from network.introspection import build_network_status, status_to_dict
+from versioned_storage_fixtures import versioned_found
 from network.paths import NO_NETWORK_CONFIGURED_MSG, NetworkPaths, apply_network_paths
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -182,10 +183,10 @@ def test_status_entity_drill_down(
                 "version": "1.0",
                 "records": {
                     person_id: {
-                        "email": {
-                            "status": "found",
-                            "value": "akalmans@example.com",
-                        },
+                        "email": versioned_found(
+                            at="2026-06-11T05:00:00+00:00",
+                            value="akalmans@example.com",
+                        ),
                     },
                 },
             },
@@ -206,6 +207,8 @@ def test_status_entity_drill_down(
     assert email["field_kind"] == "extended"
     assert email["status"] == "found"
     assert email["value"] == "akalmans@example.com"
+    assert email["versions"]
+    assert email["versions"][0]["id"] == "v1"
     bind_fields = [item for item in fields if item["field_kind"] == "bind"]
     assert {item["field"] for item in bind_fields} == {"name", "employer"}
 

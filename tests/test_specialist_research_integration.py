@@ -17,6 +17,7 @@ from models.state import EntityQuery, QueryResponse
 from network_helpers import import_seed_for_test
 from storage.core import CoreStorage, get_storage, reset_storage
 from tools.research import ResearchRunResult
+from versioned_storage_fixtures import versioned_found, versioned_na
 
 
 def _assert_single_person_assembled(
@@ -127,13 +128,12 @@ def test_run_query_email_returns_found_in_same_response_when_research_mocked(
         data = storage.load()
         rec = data.setdefault("records", {}).setdefault(person_id, {})
         now = datetime.now(timezone.utc).isoformat()
-        rec["email"] = {
-            "status": "found",
-            "value": "test.user@example.com",
-            "confidence": 0.92,
-            "sources": ["https://example.com/contact"],
-            "researched_at": now,
-        }
+        rec["email"] = versioned_found(
+            at=now,
+            value="test.user@example.com",
+            confidence=0.92,
+            sources=["https://example.com/contact"],
+        )
         storage.save(data)
         return ResearchRunResult(fields_updated=["email"], tool_calls_count=1)
 
@@ -180,11 +180,10 @@ def test_run_query_email_na_in_same_response_when_research_mocked(
         now = datetime.now(timezone.utc).isoformat()
         data = storage.load()
         rec = data.setdefault("records", {}).setdefault(person_id, {})
-        rec["email"] = {
-            "status": "na",
-            "reason": "No public email found for this person",
-            "researched_at": now,
-        }
+        rec["email"] = versioned_na(
+            at=now,
+            reason="No public email found for this person",
+        )
         storage.save(data)
         return ResearchRunResult(fields_updated=["email"], tool_calls_count=1)
 

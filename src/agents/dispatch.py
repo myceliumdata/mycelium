@@ -37,7 +37,12 @@ from agents.supervisor import (
     _identity_records_from_match,
     _target_fields_for_agent,
 )
-from models.state import MyceliumGraphState, normalized_requested_attributes
+from models.state import (
+    EntityQuery,
+    MyceliumGraphState,
+    QueryResponse,
+    normalized_requested_attributes,
+)
 
 
 def _coerce(state: MyceliumGraphState | dict[str, Any]) -> MyceliumGraphState:
@@ -242,6 +247,16 @@ def invoke_specialists_node(state: MyceliumGraphState | dict[str, Any]) -> dict[
     return {"context": ctx, "audit_log": logs, "route": None}
 
 
+def _attach_provenance(
+    response: QueryResponse,
+    query: EntityQuery,
+    matched: list[dict[str, Any]],
+) -> QueryResponse:
+    from agents.query_provenance import apply_query_provenance
+
+    return apply_query_provenance(response, query, matched)
+
+
 def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     """Produce final QueryResponse from entity matches and specialist contributions."""
     current = _coerce(state)
@@ -345,8 +360,9 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
         }
 
     if is_research_gated(current):
+        gated = response_research_gated(query, matched[0], **id_kwargs)
         return {
-            "response": response_research_gated(query, matched[0], **id_kwargs),
+            "response": _attach_provenance(gated, query, matched),
             "audit_log": ["assemble_response: research gate (provisional + attrs)."],
         }
 
@@ -385,14 +401,15 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
                 message = (
                     f"Already bound provisional record for {name}{employer_phrase}."
                 )
+        resp = response_found(
+            query,
+            base_records=identity_records,
+            message=message,
+            **id_kwargs,
+            **clf_kwargs,
+        )
         return {
-            "response": response_found(
-                query,
-                base_records=identity_records,
-                message=message,
-                **id_kwargs,
-                **clf_kwargs,
-            ),
+            "response": _attach_provenance(resp, query, matched),
             "audit_log": ["assemble_response: entity identity response."],
         }
 
@@ -428,7 +445,10 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
     else:
         audit = "assemble_response: requested attrs, no contributions."
 
-    return {"response": resp, "audit_log": [audit]}
+    return {
+        "response": _attach_provenance(resp, query, matched),
+        "audit_log": [audit],
+    }
 
 
 # Legacy name used by older graph wiring (replaced by invoke_specialists_node).

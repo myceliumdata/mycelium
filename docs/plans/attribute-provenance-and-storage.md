@@ -1,7 +1,7 @@
 # Attribute provenance, storage, and entity model — architecture
 
-**Status:** Architecture doc (June 2026) — **Program 1 locked**; Program 2 deferred  
-**Program 1 (active):** [`attribute-provenance-program1.md`](attribute-provenance-program1.md)  
+**Status:** Architecture doc (June 2026) — **Program 1 complete** (pushed June 2026); Program 2 next  
+**Program 1:** [`attribute-provenance-program1.md`](attribute-provenance-program1.md) — **shipped**  
 **Depends on:** Entity protocol Slices 1–8, seed elimination, Slice 8 attribution  
 **Blocks:** Operator attribute correction (after Program 2), full unified write API  
 **Related:** `TODO.md` — Program 1 queue, Program 2 MVR/entity
@@ -210,8 +210,8 @@ Program 3 (TBD): Operator write surfaces.
 
 | Program | Scope | Status |
 |---------|--------|--------|
-| **1 — Provenance** | Extended attrs: `versions[]`, research append, admin read, `provenance=true` | **Locked** — [`attribute-provenance-program1.md`](attribute-provenance-program1.md) |
-| **2 — MVR / entity** | Specialist-owned MVR, `bind_versions[]`, index replace policy | Deferred after Program 1 |
+| **1 — Provenance** | Extended attrs: `versions[]`, research append, admin read, `provenance=true` | **Complete** (June 2026) — [`attribute-provenance-program1.md`](attribute-provenance-program1.md) |
+| **2 — MVR / entity** | Specialist-owned MVR, `bind_versions[]`, index replace policy | **Next** — see [`next-chunk-prep.md`](next-chunk-prep.md) |
 | **3 — Operator write** | Admin edit, re-research policy | After Program 2 |
 
 ---

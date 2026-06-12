@@ -9,6 +9,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from agents.classification import get_category_tree, reset_category_tree
+from agents.specialist_fields import current_status, current_value, pending_last_error
+from versioned_storage_fixtures import versioned_found, versioned_na, versioned_pending
 from agents.specialists.base import SpecialistStorage
 from network.mvr import MvrPolicy
 from tools.research import (
@@ -136,32 +138,34 @@ def test_build_research_prompts_flattened_peer_context_renders_header() -> None:
         context={
             "entity_id": "uuid-angela",
             "bind": {"name": "Angela Murphy", "employer": "TalentCare"},
-            "storage": {"spouse": {"status": "pending", "started_at": "2026-06-09T00:00:00+00:00"}},
+            "storage": {
+                "spouse": versioned_pending(started_at="2026-06-09T00:00:00+00:00"),
+            },
             "specialists": {
                 "contact": {
-                    "email": {
-                        "status": "found",
-                        "value": "a@talentcare.us",
-                        "sources": ["https://rocketreach.co/angela"],
-                    },
-                    "address": {
-                        "status": "na",
-                        "reason": "No public address",
-                    },
+                    "email": versioned_found(
+                        at="2026-06-09T00:00:00+00:00",
+                        value="a@talentcare.us",
+                        sources=["https://rocketreach.co/angela"],
+                    ),
+                    "address": versioned_na(
+                        at="2026-06-09T00:00:00+00:00",
+                        reason="No public address",
+                    ),
                 },
                 "social": {
-                    "twitter": {
-                        "status": "found",
-                        "value": "https://x.com/AngelaYMurphy",
-                        "sources": ["https://x.com/AngelaYMurphy"],
-                    },
+                    "twitter": versioned_found(
+                        at="2026-06-09T00:00:00+00:00",
+                        value="https://x.com/AngelaYMurphy",
+                        sources=["https://x.com/AngelaYMurphy"],
+                    ),
                 },
                 "demographic": {
-                    "city": {
-                        "status": "found",
-                        "value": "Austin, TX",
-                        "sources": ["https://example.com/profile"],
-                    },
+                    "city": versioned_found(
+                        at="2026-06-09T00:00:00+00:00",
+                        value="Austin, TX",
+                        sources=["https://example.com/profile"],
+                    ),
                 },
             },
         },
@@ -193,11 +197,16 @@ def test_build_research_prompts_nested_peer_shape_still_works() -> None:
             "specialists": {
                 "professional": {
                     "uuid-peer": {
-                        "title": {"status": "found", "value": "VP Sales"},
+                        "title": versioned_found(
+                            at="2026-06-09T00:00:00+00:00",
+                            value="VP Sales",
+                        ),
                     },
                 },
                 "relationships": {
-                    "uuid-peer": {"spouse": {"status": "pending"}},
+                    "uuid-peer": {
+                        "spouse": versioned_pending(started_at="2026-06-09T00:00:00+00:00"),
+                    },
                 },
             },
         },
@@ -222,8 +231,15 @@ def test_build_research_prompts_omits_na_peer_fields_from_header() -> None:
             "storage": {},
             "specialists": {
                 "contact": {
-                    "email": {"status": "found", "value": "jane@example.com", "sources": ["https://x.com"]},
-                    "phone": {"status": "na", "reason": "not listed"},
+                    "email": versioned_found(
+                        at="2026-06-09T00:00:00+00:00",
+                        value="jane@example.com",
+                        sources=["https://x.com"],
+                    ),
+                    "phone": versioned_na(
+                        at="2026-06-09T00:00:00+00:00",
+                        reason="not listed",
+                    ),
                 },
             },
         },
@@ -260,11 +276,14 @@ def test_low_confidence_persists_na_record() -> None:
         ),
         allowed={"email"},
         min_confidence=0.6,
+        category="contact",
+        specialist_name="contact_specialist",
     )
     assert err is None
     assert record is not None
     assert record["status"] == "na"
     assert "reason" in record
+    assert record["actor"]["category"] == "contact"
 
 
 @pytest.mark.smoke
@@ -279,12 +298,14 @@ def test_good_proposal_persists_found() -> None:
         ),
         allowed={"email"},
         min_confidence=research_min_confidence(),
+        category="contact",
+        specialist_name="contact_specialist",
     )
     assert err is None
     assert record is not None
     assert record["status"] == "found"
     assert record["value"] == "user@example.com"
-    assert record["sources"]
+    assert record["sources"][0]["url"]
 
 
 @pytest.mark.smoke
@@ -299,6 +320,8 @@ def test_rejects_field_not_in_target_fields() -> None:
         ),
         allowed={"email"},
         min_confidence=0.6,
+        category="contact",
+        specialist_name="contact_specialist",
     )
     assert record is None
     assert err and "target_fields" in err
@@ -335,8 +358,9 @@ def test_run_field_research_unavailable_marks_pending(
     assert result.errors
     assert "unavailable" in result.errors[0].lower()
     data = storage.load()
-    assert data["records"][pid]["email"]["status"] == "pending"
-    assert "last_error" in data["records"][pid]["email"]
+    entry = data["records"][pid]["email"]
+    assert current_status(entry) == "pending"
+    assert pending_last_error(entry)
 
 
 @pytest.mark.smoke
@@ -405,8 +429,8 @@ def test_run_field_research_mock_llm_persists_found(
     assert result.tool_calls_count == 1
     data = storage.load()
     entry = data["records"][pid]["email"]
-    assert entry["status"] == "found"
-    assert entry["value"] == "ada@lab.com"
+    assert current_status(entry) == "found"
+    assert current_value(entry) == "ada@lab.com"
     audit = data.get("meta", {}).get("research_audit", [])
     assert audit and audit[-1]["tool_calls_count"] == 1
     assert audit[-1]["context_bind"] == {"name": "Ada", "employer": "Lab"}
@@ -435,14 +459,17 @@ def test_persist_proposal_missing_field_marks_pending(
         proposal,
         allowed={"email", "phone"},
         min_confidence=0.6,
+        category="contact",
+        specialist_name="contact_specialist",
     )
     assert "email" in updated
     assert errors
     data = storage.load()
     phone = data["records"][pid]["phone"]
-    assert phone["status"] == "pending"
-    assert phone.get("last_error")
-    assert "phone" in phone["last_error"].lower() or "proposal" in phone["last_error"].lower()
+    assert current_status(phone) == "pending"
+    assert pending_last_error(phone)
+    err_text = pending_last_error(phone).lower()
+    assert "phone" in err_text or "proposal" in err_text
 
 
 @pytest.mark.smoke
@@ -475,8 +502,8 @@ def test_run_field_research_timeout_marks_pending(
     )
     assert any("timed out" in e.lower() for e in result.errors)
     entry = storage.load()["records"][pid]["email"]
-    assert entry["status"] == "pending"
-    assert "timed out" in entry["last_error"].lower()
+    assert current_status(entry) == "pending"
+    assert "timed out" in pending_last_error(entry).lower()
 
 
 @pytest.mark.smoke
@@ -503,7 +530,7 @@ def test_run_field_research_null_proposal_marks_all_pending(
         llm=MagicMock(),
     )
     data = storage.load()["records"][pid]
-    assert data["email"]["status"] == "pending"
-    assert data["phone"]["status"] == "pending"
-    assert data["email"].get("last_error")
-    assert data["phone"].get("last_error")
+    assert current_status(data["email"]) == "pending"
+    assert current_status(data["phone"]) == "pending"
+    assert pending_last_error(data["email"])
+    assert pending_last_error(data["phone"])

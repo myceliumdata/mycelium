@@ -17,6 +17,17 @@ from typing import Any, Literal
 import jinja2
 from pydantic import BaseModel, Field
 
+from agents.specialist_fields import (
+    append_version,
+    current_status,
+    current_value,
+    current_version,
+    ensure_versioned_for_write,
+    field_has_value,
+    is_versioned_field,
+    research_actor,
+    update_current_pending,
+)
 from agents.specialists.base import SpecialistStorage
 from network.mvr import MvrPolicy, load_mvr
 from tools.tavily import create_tavily_search_tool, is_web_search_available
@@ -149,8 +160,11 @@ def _looks_like_field_record_map(records: dict[str, Any]) -> bool:
     if not records:
         return False
     for value in records.values():
-        if not isinstance(value, dict) or "status" not in value:
+        if not isinstance(value, dict):
             return False
+        if is_versioned_field(value) or "status" in value:
+            continue
+        return False
     return True
 
 
@@ -169,7 +183,7 @@ def _trim_peer_fields(row: dict[str, Any]) -> dict[str, Any]:
     return {
         key: value
         for key, value in row.items()
-        if isinstance(value, dict) and value.get("status") == "found"
+        if isinstance(value, dict) and field_has_value(value)
     }
 
 
@@ -204,13 +218,17 @@ def peer_display_for_prompt(peer_specialists: dict[str, Any]) -> dict[str, list[
     for cat, fields in peer_specialists.items():
         lines: list[dict[str, str]] = []
         for peer_field, record in fields.items():
-            if not isinstance(record, dict) or record.get("status") != "found":
+            if not isinstance(record, dict) or not field_has_value(record):
                 continue
-            value = str(record.get("value") or "").strip()
+            value = str(current_value(record) or "").strip()
             if not value:
                 continue
-            sources = record.get("sources") or []
-            source = str(sources[0]).strip() if sources else ""
+            version = current_version(record) if is_versioned_field(record) else record
+            sources = (version or {}).get("sources") or record.get("sources") or []
+            if sources and isinstance(sources[0], dict):
+                source = str(sources[0].get("url") or "").strip()
+            else:
+                source = str(sources[0]).strip() if sources else ""
             lines.append({"field": peer_field, "value": value, "source": source})
         if lines:
             display[cat] = lines
@@ -384,41 +402,47 @@ def _validate_and_build_record(
     *,
     allowed: set[str],
     min_confidence: float,
+    category: str,
+    specialist_name: str,
 ) -> tuple[dict[str, Any] | None, str | None]:
-    """Return (storage record, error message)."""
+    """Return (version body for append, error message)."""
     field = proposal.field.strip().lower()
     if field not in allowed:
         return None, f"rejected field not in target_fields: {proposal.field!r}"
 
     now = datetime.now(timezone.utc).isoformat()
     conf = float(proposal.confidence)
-    sources = [s.strip() for s in proposal.sources if s and str(s).strip()]
+    sources = [{"url": s.strip()} for s in proposal.sources if s and str(s).strip()]
+    actor = research_actor(category=category, specialist_name=specialist_name)
 
     if proposal.status == "found":
         value = (proposal.value or "").strip()
         if not value:
             return {
+                "at": now,
                 "status": "na",
                 "reason": "Model returned found but value was empty",
-                "researched_at": now,
+                "actor": actor,
             }, None
         if conf < min_confidence:
             reason = proposal.reason or (
                 f"Confidence {conf:.2f} below threshold {min_confidence}"
             )
-            return {"status": "na", "reason": reason, "researched_at": now}, None
+            return {"at": now, "status": "na", "reason": reason, "actor": actor}, None
         if not sources:
             return {
+                "at": now,
                 "status": "na",
                 "reason": "found status requires at least one source URL",
-                "researched_at": now,
+                "actor": actor,
             }, None
         return {
+            "at": now,
             "status": "found",
             "value": value,
             "confidence": conf,
             "sources": sources,
-            "researched_at": now,
+            "actor": actor,
         }, None
 
     reason = (proposal.reason or "").strip()
@@ -427,7 +451,33 @@ def _validate_and_build_record(
             reason = f"Confidence {conf:.2f} below threshold {min_confidence}"
         else:
             reason = "Insufficient evidence from search results"
-    return {"status": "na", "reason": reason, "researched_at": now}, None
+    return {"at": now, "status": "na", "reason": reason, "actor": actor}, None
+
+
+def _write_pending(
+    entry: dict[str, Any] | None,
+    *,
+    at: str,
+    last_error: str,
+    started_at: str | None,
+    category: str,
+    specialist_name: str,
+) -> dict[str, Any]:
+    """Append or in-place update pending per P1-11."""
+    shell = ensure_versioned_for_write(entry)
+    version = current_version(shell)
+    actor = research_actor(category=category, specialist_name=specialist_name)
+    if version is not None and version.get("status") == "pending":
+        return update_current_pending(shell, at=at, last_error=last_error)
+    started = started_at or at
+    body = {
+        "at": at,
+        "status": "pending",
+        "started_at": started,
+        "last_error": last_error,
+        "actor": actor,
+    }
+    return append_version(shell, body)
 
 
 def _mark_pending(
@@ -436,6 +486,8 @@ def _mark_pending(
     fields: list[str],
     *,
     last_error: str,
+    category: str,
+    specialist_name: str,
 ) -> None:
     data = storage.load()
     records = data.setdefault("records", {})
@@ -443,13 +495,24 @@ def _mark_pending(
     now = datetime.now(timezone.utc).isoformat()
     for fld in fields:
         existing = rec.get(fld)
-        if isinstance(existing, dict) and existing.get("status") == "found":
+        if field_has_value(existing):
             continue
-        rec[fld] = {
-            "status": "pending",
-            "started_at": existing.get("started_at", now) if isinstance(existing, dict) else now,
-            "last_error": last_error,
-        }
+        started = None
+        if isinstance(existing, dict):
+            if is_versioned_field(existing):
+                version = current_version(existing)
+                if version is not None:
+                    started = str(version.get("started_at") or version.get("at") or "")
+            else:
+                started = str(existing.get("started_at") or "")
+        rec[fld] = _write_pending(
+            existing if isinstance(existing, dict) else None,
+            at=now,
+            last_error=last_error,
+            started_at=started,
+            category=category,
+            specialist_name=specialist_name,
+        )
     storage.save(data)
 
 
@@ -484,17 +547,42 @@ def _append_research_audit(
     audit.append(entry)
 
 
-def _pending_record(
+def _pending_started_at(entry: Any) -> str | None:
+    if not isinstance(entry, dict):
+        return None
+    if is_versioned_field(entry):
+        version = current_version(entry)
+        if version is None:
+            return None
+        return str(version.get("started_at") or version.get("at") or "") or None
+    raw = entry.get("started_at")
+    return str(raw) if raw else None
+
+
+def _persist_field_version(
+    existing: Any,
+    version_body: dict[str, Any],
     *,
-    last_error: str,
-    started_at: str | None = None,
+    category: str,
+    specialist_name: str,
 ) -> dict[str, Any]:
-    now = datetime.now(timezone.utc).isoformat()
-    return {
-        "status": "pending",
-        "started_at": started_at or now,
-        "last_error": last_error,
-    }
+    """Apply P1-11 transition rules for one field entry."""
+    if field_has_value(existing):
+        return existing if isinstance(existing, dict) else ensure_versioned_for_write(None)
+    shell = ensure_versioned_for_write(existing)
+    current = current_version(shell)
+    new_status = version_body.get("status")
+    if current is None:
+        return append_version(shell, version_body)
+    current_status_value = current.get("status")
+    if current_status_value == "pending" and new_status == "pending":
+        return update_current_pending(
+            shell,
+            at=str(version_body.get("at") or ""),
+            last_error=str(version_body.get("last_error") or ""),
+        )
+    _ = category, specialist_name
+    return append_version(shell, version_body)
 
 
 def _persist_proposal(
@@ -504,52 +592,81 @@ def _persist_proposal(
     *,
     allowed: set[str],
     min_confidence: float,
+    category: str,
+    specialist_name: str,
 ) -> tuple[list[str], list[str]]:
     data = storage.load()
     records = data.setdefault("records", {})
     rec = records.setdefault(person_id, {})
     updated: list[str] = []
     errors: list[str] = []
+    now = datetime.now(timezone.utc).isoformat()
 
     proposals_by_field = {p.field.strip().lower(): p for p in proposal.fields}
     for fld in sorted(allowed):
         existing = rec.get(fld)
-        started = (
-            existing.get("started_at")
-            if isinstance(existing, dict)
-            else None
-        )
+        started = _pending_started_at(existing)
         fp = proposals_by_field.get(fld)
         if fp is None:
             msg = f"No proposal returned for field {fld!r}"
             errors.append(msg)
-            rec[fld] = _pending_record(last_error=msg, started_at=started)
+            rec[fld] = _write_pending(
+                existing if isinstance(existing, dict) else None,
+                at=now,
+                last_error=msg,
+                started_at=started,
+                category=category,
+                specialist_name=specialist_name,
+            )
             continue
-        record, err = _validate_and_build_record(
-            fp, allowed=allowed, min_confidence=min_confidence,
+        version_body, err = _validate_and_build_record(
+            fp,
+            allowed=allowed,
+            min_confidence=min_confidence,
+            category=category,
+            specialist_name=specialist_name,
         )
         if err:
             errors.append(err)
-            rec[fld] = _pending_record(
+            rec[fld] = _write_pending(
+                existing if isinstance(existing, dict) else None,
+                at=now,
                 last_error=err,
                 started_at=started,
+                category=category,
+                specialist_name=specialist_name,
             )
             continue
-        if record is not None:
-            rec[fld] = record
-            updated.append(fld)
+        if version_body is not None:
+            rec[fld] = _persist_field_version(
+                existing,
+                version_body,
+                category=category,
+                specialist_name=specialist_name,
+            )
+            if current_status(rec[fld]) in ("found", "na"):
+                updated.append(fld)
 
     for fld in sorted(allowed):
         entry = rec.get(fld)
-        if isinstance(entry, dict) and entry.get("status") in ("found", "na"):
+        status = current_status(entry) if isinstance(entry, dict) else "empty"
+        if status in ("found", "na"):
             continue
-        if isinstance(entry, dict) and entry.get("status") == "pending":
-            if entry.get("last_error"):
+        if status == "pending" and isinstance(entry, dict):
+            version = current_version(entry)
+            if version and version.get("last_error"):
                 continue
         msg = f"Field {fld!r} missing after research persist"
         errors.append(msg)
-        started = entry.get("started_at") if isinstance(entry, dict) else None
-        rec[fld] = _pending_record(last_error=msg, started_at=started)
+        started = _pending_started_at(entry)
+        rec[fld] = _write_pending(
+            entry if isinstance(entry, dict) else None,
+            at=now,
+            last_error=msg,
+            started_at=started,
+            category=category,
+            specialist_name=specialist_name,
+        )
 
     storage.save(data)
     return updated, errors
@@ -598,6 +715,8 @@ def _execute_research(
             person_id,
             allowed_list,
             last_error="; ".join(errors) or "research LLM failed",
+            category=category,
+            specialist_name=specialist_name,
         )
         return ResearchRunResult(errors=errors, tool_calls_count=tool_calls_count)
 
@@ -607,6 +726,8 @@ def _execute_research(
         proposal,
         allowed=set(allowed_list),
         min_confidence=min_conf,
+        category=category,
+        specialist_name=specialist_name,
     )
     errors.extend(persist_errors)
 
@@ -650,7 +771,14 @@ def run_field_research(
         msg = "research unavailable: OPENAI_API_KEY and/or TAVILY_API_KEY missing"
         allowed = _normalize_fields(target_fields)
         if allowed:
-            _mark_pending(storage, person_id, allowed, last_error=msg)
+            _mark_pending(
+                storage,
+                person_id,
+                allowed,
+                last_error=msg,
+                category=category,
+                specialist_name=specialist_name,
+            )
         return ResearchRunResult(errors=[msg])
 
     timeout = research_timeout_sec()
@@ -674,5 +802,12 @@ def run_field_research(
             msg = f"research timed out after {timeout}s"
             allowed = _normalize_fields(target_fields)
             if allowed:
-                _mark_pending(storage, person_id, allowed, last_error=msg)
+                _mark_pending(
+                    storage,
+                    person_id,
+                    allowed,
+                    last_error=msg,
+                    category=category,
+                    specialist_name=specialist_name,
+                )
             return ResearchRunResult(errors=[msg])

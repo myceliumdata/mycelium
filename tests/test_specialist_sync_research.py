@@ -13,7 +13,9 @@ import pytest
 from agents.factory.agent_factory import get_agent_factory, reset_agent_factory
 from agents.registry import get_agent_registry, reset_agent_registry
 from models.state import MyceliumGraphState, EntityQuery
+from agents.specialist_fields import current_status, current_value, current_version
 from tools.research import ResearchRunResult
+from versioned_storage_fixtures import versioned_found, versioned_na, versioned_pending
 
 
 def _setup_contact_specialist(
@@ -67,13 +69,12 @@ def test_contact_email_sync_research_persists_found_not_pending(
         data = storage.load()
         rec = data.setdefault("records", {}).setdefault(person_id, {})
         now = datetime.now(timezone.utc).isoformat()
-        rec["email"] = {
-            "status": "found",
-            "value": "jane@example.com",
-            "confidence": 0.9,
-            "sources": ["https://example.com/jane"],
-            "researched_at": now,
-        }
+        rec["email"] = versioned_found(
+            at=now,
+            value="jane@example.com",
+            confidence=0.9,
+            sources=["https://example.com/jane"],
+        )
         storage.save(data)
         return ResearchRunResult(fields_updated=["email"], tool_calls_count=1)
 
@@ -98,8 +99,9 @@ def test_contact_email_sync_research_persists_found_not_pending(
     assert "not currently available" not in result["response"].message
 
     stored = json.loads(storage_path.read_text(encoding="utf-8"))
-    assert stored["records"][test_id]["email"]["status"] == "found"
-    assert stored["records"][test_id]["email"]["value"] == "jane@example.com"
+    email_entry = stored["records"][test_id]["email"]
+    assert current_status(email_entry) == "found"
+    assert current_value(email_entry) == "jane@example.com"
 
 
 @pytest.mark.smoke
@@ -126,17 +128,18 @@ def test_contact_pre_marks_pending_before_research_runs(
         _ = category, specialist_name, context, llm
         data = storage.load()
         entry = data["records"][person_id]["email"]
+        version = current_version(entry)
         seen_pending_before_complete = (
-            entry.get("status") == "pending" and bool(entry.get("started_at"))
+            current_status(entry) == "pending"
+            and bool((version or {}).get("started_at"))
         )
         now = datetime.now(timezone.utc).isoformat()
-        data["records"][person_id]["email"] = {
-            "status": "found",
-            "value": "pre@example.com",
-            "confidence": 0.9,
-            "sources": ["https://example.com"],
-            "researched_at": now,
-        }
+        data["records"][person_id]["email"] = versioned_found(
+            at=now,
+            value="pre@example.com",
+            confidence=0.9,
+            sources=["https://example.com"],
+        )
         storage.save(data)
         return ResearchRunResult(fields_updated=["email"], tool_calls_count=0)
 
@@ -152,7 +155,7 @@ def test_contact_pre_marks_pending_before_research_runs(
     fn(state)
     assert seen_pending_before_complete
     stored = json.loads(storage_path.read_text(encoding="utf-8"))
-    assert stored["records"][test_id]["email"]["status"] == "found"
+    assert current_status(stored["records"][test_id]["email"]) == "found"
 
 
 @pytest.mark.smoke
@@ -181,13 +184,12 @@ def test_contact_retries_pending_with_last_error(
         assert target_fields == ["email"]
         now = datetime.now(timezone.utc).isoformat()
         data = storage.load()
-        data["records"][test_id]["email"] = {
-            "status": "found",
-            "value": "retry@example.com",
-            "confidence": 0.9,
-            "sources": ["https://example.com"],
-            "researched_at": now,
-        }
+        data["records"][test_id]["email"] = versioned_found(
+            at=now,
+            value="retry@example.com",
+            confidence=0.9,
+            sources=["https://example.com"],
+        )
         storage.save(data)
         return ResearchRunResult(fields_updated=["email"])
 
@@ -199,11 +201,10 @@ def test_contact_retries_pending_with_last_error(
             {
                 "records": {
                     test_id: {
-                        "email": {
-                            "status": "pending",
-                            "started_at": "2020-01-01T00:00:00+00:00",
-                            "last_error": "previous failure",
-                        },
+                        "email": versioned_pending(
+                            started_at="2020-01-01T00:00:00+00:00",
+                            last_error="previous failure",
+                        ),
                     },
                 },
             },
@@ -251,13 +252,12 @@ def test_contact_retries_pending_without_last_error_when_no_age_gate(
         call_count += 1
         now = datetime.now(timezone.utc).isoformat()
         data = storage.load()
-        data["records"][test_id]["email"] = {
-            "status": "found",
-            "value": "retry@example.com",
-            "confidence": 0.9,
-            "sources": ["https://example.com"],
-            "researched_at": now,
-        }
+        data["records"][test_id]["email"] = versioned_found(
+            at=now,
+            value="retry@example.com",
+            confidence=0.9,
+            sources=["https://example.com"],
+        )
         storage.save(data)
         return ResearchRunResult(fields_updated=["email"])
 
@@ -269,10 +269,9 @@ def test_contact_retries_pending_without_last_error_when_no_age_gate(
             {
                 "records": {
                     test_id: {
-                        "email": {
-                            "status": "pending",
-                            "started_at": "2026-06-09T07:31:20.937912+00:00",
-                        },
+                        "email": versioned_pending(
+                            started_at="2026-06-09T07:31:20.937912+00:00",
+                        ),
                     },
                 },
             },
@@ -307,18 +306,16 @@ def test_contact_mixed_found_and_na_message(
             {
                 "records": {
                     test_id: {
-                        "email": {
-                            "status": "found",
-                            "value": "mix@example.com",
-                            "confidence": 0.9,
-                            "sources": ["https://example.com"],
-                            "researched_at": now,
-                        },
-                        "phone": {
-                            "status": "na",
-                            "reason": "No public phone listed",
-                            "researched_at": now,
-                        },
+                        "email": versioned_found(
+                            at=now,
+                            value="mix@example.com",
+                            confidence=0.9,
+                            sources=["https://example.com"],
+                        ),
+                        "phone": versioned_na(
+                            at=now,
+                            reason="No public phone listed",
+                        ),
                     },
                 },
             },
@@ -377,10 +374,22 @@ def test_research_context_includes_peers_excludes_own_category(
         "bind": {"name": "Jane"},
         "specialists": {
             "contact": {
-                entity_id: {"email": {"status": "found", "value": "jane@example.com"}},
+                entity_id: {
+                    "email": versioned_found(
+                        at="2026-06-09T00:00:00+00:00",
+                        value="jane@example.com",
+                    ),
+                },
             },
             "professional": {
-                entity_id: {"title": {"status": "found", "value": "CEO"}},
+                entity_id: {
+                    "title": versioned_found(
+                        at="2026-06-09T00:00:00+00:00",
+                        value="CEO",
+                        category="professional",
+                        specialist_name="professional_specialist",
+                    ),
+                },
             },
         },
     }
@@ -388,7 +397,7 @@ def test_research_context_includes_peers_excludes_own_category(
     peers = out.get("specialists", {})
     assert "professional" in peers
     assert "contact" not in peers
-    assert peers["professional"]["title"]["value"] == "CEO"
+    assert current_value(peers["professional"]["title"]) == "CEO"
 
 
 @pytest.mark.smoke

@@ -22,6 +22,7 @@ from network.introspection import (
     status_to_dict,
 )
 from network.paths import NetworkPaths, apply_network_paths
+from versioned_storage_fixtures import versioned_found, versioned_pending
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
@@ -188,10 +189,10 @@ def test_status_populated_network_storage(
                 "version": "1.0",
                 "records": {
                     person_id: {
-                        "email": {
-                            "status": "found",
-                            "value": "akalmans@example.com",
-                        },
+                        "email": versioned_found(
+                            at="2026-06-10T12:00:00+00:00",
+                            value="akalmans@example.com",
+                        ),
                     },
                 },
             },
@@ -357,7 +358,13 @@ def test_status_person_drill_down(
         json.dumps(
             {
                 "version": "1.0",
-                "records": {person_id: {"email": {"status": "pending"}}},
+                "records": {
+                    person_id: {
+                        "email": versioned_pending(
+                            started_at="2026-06-10T12:00:00+00:00",
+                        ),
+                    },
+                },
             },
         ),
         encoding="utf-8",
@@ -368,3 +375,120 @@ def test_status_person_drill_down(
     assert "Entity lookup:" in demo
     assert "email (contact/contact_specialist): pending" in demo
     assert summary.entity_matches == 1
+
+
+@pytest.mark.smoke
+def test_status_entity_fields_include_versions_json(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "populated"
+    root.mkdir()
+    shutil.copy(EXAMPLE_CRM / "seed.json", root / "seed.json")
+    shutil.copy(SAMPLE_CATEGORIES, root / "categories.json")
+    (root / "agent_registry.json").write_text(
+        json.dumps(
+            {
+                "version": "1.0",
+                "last_updated": "2026-06-03T00:00:00+00:00",
+                "agents": {
+                    "contact_specialist": {
+                        "name": "contact_specialist",
+                        "category": "contact",
+                        "description": "Contact specialist",
+                        "module_path": "dyn",
+                        "entrypoint": "run",
+                        "is_generated": True,
+                    },
+                },
+            },
+        ),
+        encoding="utf-8",
+    )
+    _configure_root(monkeypatch, tmp_path, root)
+    import_seed_for_test(root / "seed.json")
+    person_id = lookup_entities_by_key("Andrea Kalmans")[0]["id"]
+    agents_dir = root / "agents" / "contact"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "storage.json").write_text(
+        json.dumps(
+            {
+                "version": "1.0",
+                "records": {
+                    person_id: {
+                        "email": versioned_found(
+                            at="2026-06-11T05:00:00+00:00",
+                            value="akalmans@example.com",
+                        ),
+                    },
+                },
+            },
+        ),
+        encoding="utf-8",
+    )
+
+    payload = status_to_dict(build_network_status(entity_key="Andrea Kalmans"))
+    email = next(
+        item for item in payload["entity_fields"] if item["field"] == "email"
+    )
+    assert email["status"] == "found"
+    assert email["versions"]
+    assert email["versions"][0]["id"] == "v1"
+    assert email["versions"][0]["value"] == "akalmans@example.com"
+    bind_rows = [item for item in payload["entity_fields"] if item["field_kind"] == "bind"]
+    assert bind_rows
+
+
+@pytest.mark.smoke
+def test_status_flat_v1_field_fails_loud_on_drill_down(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "flat-v1"
+    root.mkdir()
+    shutil.copy(EXAMPLE_CRM / "seed.json", root / "seed.json")
+    shutil.copy(SAMPLE_CATEGORIES, root / "categories.json")
+    (root / "agent_registry.json").write_text(
+        json.dumps(
+            {
+                "version": "1.0",
+                "last_updated": "2026-06-03T00:00:00+00:00",
+                "agents": {
+                    "contact_specialist": {
+                        "name": "contact_specialist",
+                        "category": "contact",
+                        "description": "Contact specialist",
+                        "module_path": "dyn",
+                        "entrypoint": "run",
+                        "is_generated": True,
+                    },
+                },
+            },
+        ),
+        encoding="utf-8",
+    )
+    _configure_root(monkeypatch, tmp_path, root)
+    import_seed_for_test(root / "seed.json")
+    person_id = lookup_entities_by_key("Andrea Kalmans")[0]["id"]
+    agents_dir = root / "agents" / "contact"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "storage.json").write_text(
+        json.dumps(
+            {
+                "version": "1.0",
+                "records": {
+                    person_id: {
+                        "email": {
+                            "status": "found",
+                            "value": "legacy@example.com",
+                            "researched_at": "2026-06-01T00:00:00+00:00",
+                        },
+                    },
+                },
+            },
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="deprecated flat field format"):
+        build_network_status(entity_key="Andrea Kalmans")

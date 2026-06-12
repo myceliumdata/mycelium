@@ -305,3 +305,92 @@ pre.guide {
 .empty {
   color: var(--muted);
 }
+
+.version-history-row td {
+  padding-top: 0;
+  padding-bottom: 0.75rem;
+  background: color-mix(in srgb, var(--border) 14%, transparent);
+}
+
+.version-history {
+  display: block;
+  font-size: 0.88rem;
+}
+
+.version-history > summary {
+  color: var(--accent);
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+}
+
+.version-history > summary::-webkit-details-marker {
+  display: none;
+}
+
+.version-history > summary::before {
+  content: "▸ ";
+  color: var(--muted);
+}
+
+.version-history[open] > summary::before {
+  content: "▾ ";
+}
+
+.version-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.version-card {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+}
+
+.version-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.version-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.version-time {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.version-detail {
+  margin: 0.35rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.version-label {
+  display: inline-block;
+  min-width: 3.5rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-right: 0.35rem;
+}
+
+.version-source-link {
+  display: block;
+  color: var(--accent);
+  word-break: break-all;
+}
+
+.version-source-link + .version-source-link {
+  margin-top: 0.2rem;
+}

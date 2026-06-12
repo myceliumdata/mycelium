@@ -201,4 +201,10 @@ Extend `EntityFieldStatus` (or parallel JSON field `versions`) so `GET /status?e
 
 Each slice: `./bin/ci-local` or full pytest before review. Slice 1+ must keep smoke green with **v2-only** test fixtures.
 
-*Last updated: June 2026*
+## Post-ship notes (June 2026)
+
+- Pushed to `origin/main` with admin version-history UI polish (full-width cards, formatted timestamps, `reason` display).
+- Manual integration gate before next code: [`docs/manual-checks/2026-06-12-program1-post-push-gate.md`](../manual-checks/2026-06-12-program1-post-push-gate.md).
+- Next program prep: [`docs/plans/next-chunk-prep.md`](next-chunk-prep.md).
+
+*Last updated: June 2026 (shipped)*

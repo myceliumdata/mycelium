@@ -175,6 +175,13 @@ class QueryResponse(BaseModel):
             "Used to correlate follow-up calls in the same session."
         ),
     )
+    provenance: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "Structured attribute versions when query.provenance=true; "
+            "omitted or null otherwise."
+        ),
+    )
 
 
 class MyceliumGraphState(BaseModel):

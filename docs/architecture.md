@@ -147,7 +147,7 @@ Phase 1 adds a **Classification Engine** (cached lookup in `src/agents/classific
 ## Storage (current)
 
 - **Entities (queries):** `<network_root>/entities.json` via `EntityRegistry` — seed is bootstrap-only when present.
-- **Specialists:** per-category JSON under `<network_root>/agents/<category>/` (`SpecialistStorage` in `src/agents/specialists/base.py`), keyed by `id` (UUID).
+- **Specialists:** per-category JSON under `<network_root>/agents/<category>/` (`SpecialistStorage` in `src/agents/specialists/base.py`), keyed by `id` (UUID). Extended attributes use **`versioned_provenance_v1`**: each field stores `versions[]` + `current_version_id` (append-only provenance). Deprecated flat v1 field blobs are invalid — refresh the network or delete `agents/<category>/storage.json` to reset. Research writes may still **wrap** a legacy flat **pending** blob into versioned `v1` once (`ensure_versioned_for_write`) so in-flight retries can complete; all other flat shapes fail loud on read. Admin `/status` and `mycelium network status --json` expose full `versions[]` per extended field on entity drill-down (bind fields omit history). Admin UI renders version history in a full-width sub-row below each extended field (status badges, short timestamps, `reason` / `last_error`, source links).
 - **SQLite:** `<network_root>/checkpoints.sqlite` (LangGraph checkpointer). Optional `<network_root>/mycelium.db` — empty bootstrap file only; no identity tables.
 
 See `src/storage/core.py` (path bootstrap for MCP/admin startup).
@@ -219,10 +219,11 @@ Core storage holds only `id`, `name`, and `employer`. Callers send a query-only 
 
 ### Response fields (query outcomes)
 
-All external responses use the minimalist **`QueryResponse`** (`results`, `message`, `debug`, `trace_id`, `thread_id`):
+All external responses use the minimalist **`QueryResponse`** (`results`, `message`, `provenance`, `debug`, `trace_id`, `thread_id`):
 
 - **`results`** — One dict per match. Always includes `"id"` (stable UUID). With no `requested_attributes`: `id`, `name`, `employer`. With `requested_attributes`: `id` plus only those keys after specialist-first merge (specialist value wins; seed provisional while pending). No `person_id` field.
 - **`message`** — Primary channel: found / not-found / per-attribute status. Visiting agents read natural-language sentences built from supervisor classifications: **researching** (in-scope, pending), **unavailable** (researched, no value), **out_of_scope** (`category == "unknown"` — never "researching" wording). Found attribute values appear only in `results`, not repeated in `message`. Multi-match uses a collective prefix (`Found N records for 'key'.`).
+- **`provenance`** — Optional structured version history. **`EntityQuery.provenance`** (request flag, default `false`) controls whether this block is populated; it is unrelated to the response field name. When `true` and the outcome delivers results (`assembled` / `found`) with requested extended attributes, `provenance.entities[]` lists each match `id` and per-attribute `current_version_id` + `versions[]` copied from specialist storage (bind fields `name` / `employer` omitted). Default flat `results[]` is unchanged. Metering may charge a `query_provenance` line when enabled. See [`attribute-provenance-program1.md`](plans/attribute-provenance-program1.md).
 - **`debug`** — Internal context (original `entity_key`, `requested_attributes`, outcome tags). Callers should not depend on it.
 - **`trace_id`** — LangSmith trace identifier for this graph invocation when `LANGCHAIN_TRACING_V2` is enabled; otherwise `null`. Lets operators and developers jump from a JSON response to the matching trace in LangSmith for debugging. When creating your LangSmith API key, select **Personal Access Token (PAT)** (prefix `lsv2_pt_`). `LANGCHAIN_PROJECT` (default "mycelium") names the tracing project in the LangSmith UI — it will be created automatically on first use; no manual pre-creation required. See README.md for full setup steps.
 - **`thread_id`** — Conversation/session identifier for this request. CLI and MCP callers may pass a stable `thread_id` to tie follow-up queries to the same LangGraph checkpoint thread; when omitted, the runtime generates one per invocation.
