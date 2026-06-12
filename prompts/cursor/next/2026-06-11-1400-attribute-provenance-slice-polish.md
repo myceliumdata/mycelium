@@ -31,7 +31,7 @@ Work through rows in [`attribute-provenance-program1-polish.md`](../../docs/plan
 | **P4** | Add smoke test: P1-11 in-place pending retry preserves `started_at` |
 | **P5** | Remove flat v1 fallbacks from `specialist_fields` read helpers (`current_value`, `field_has_value`, `current_status`, etc.) — versioned-only |
 
-**P6:** If Slice 2/3 `review.md` added rows to the polish doc, address those too.
+**P6–P10:** Slice 2/3 review rows in polish doc (P7–P10 from Slice 2; P6 from Slice 3 if any).
 
 ---
 
