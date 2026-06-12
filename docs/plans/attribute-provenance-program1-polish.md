@@ -1,6 +1,6 @@
 # Program 1 — Polish backlog (post Slice 3)
 
-**Status:** Queued after Slice 3 review  
+**Status:** Complete (June 2026)  
 **Cursor prompt:** `prompts/cursor/next/2026-06-11-1400-attribute-provenance-slice-polish.md`  
 **Program:** [`attribute-provenance-program1.md`](attribute-provenance-program1.md)
 
@@ -34,9 +34,9 @@ Non-blocking nits from Grok review of Slices 1–3. One polish pass after Progra
 
 ## Exit criteria
 
-- [ ] P1–P12 addressed
-- [ ] `./bin/ci-local` green
-- [ ] No new flat v1 read/write tolerance outside explicit tests for rejection behavior
+- [x] P1–P12 addressed (`2026-06-11-1400` polish, review approved)
+- [x] `./bin/ci-local` green (296 smoke)
+- [x] No new flat v1 read/write tolerance outside explicit tests for rejection behavior
 
 ---
 

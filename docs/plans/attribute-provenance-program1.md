@@ -1,6 +1,6 @@
 # Program 1 — Extended attribute provenance (versioned storage)
 
-**Status:** Locked (Paul, June 2026)  
+**Status:** **Complete** (Slices 1–3 + polish, June 2026)  
 **Architecture:** [`attribute-provenance-and-storage.md`](attribute-provenance-and-storage.md) (Program 2 = MVR/entity — **deferred**)  
 **Breaking changes:** Yes — flat `flat_json_v1` field blobs are **removed**; no lazy migration.
 
