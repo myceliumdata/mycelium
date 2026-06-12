@@ -51,4 +51,4 @@ Move this file to `prompts/cursor/done/2026-06-11-1100-attribute-provenance-slic
 
 ## Review gate
 
-Grok reviews before Slice 2 is queued.
+Grok reviews before Slice 2 starts. Slices 2–3 prompts are in `next/` with **BLOCKED until prior slice approved** headers — do not claim them until this slice has `review.md` Approved.
