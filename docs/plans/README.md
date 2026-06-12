@@ -97,7 +97,8 @@ Implementation handoffs live in `prompts/cursor/done/<slug>/` with `prompt.md`, 
 
 | Doc | Topic |
 |-----|-------|
-| [`attribute-provenance-program1.md`](attribute-provenance-program1.md) | **Locked** — extended attr `versions[]`; slices 1–3; hard cutover (no lazy migration) |
+| [`attribute-provenance-program1.md`](attribute-provenance-program1.md) | **Locked** — extended attr `versions[]`; slices 1–3 + polish P; hard cutover (no lazy migration) |
+| [`attribute-provenance-program1-polish.md`](attribute-provenance-program1-polish.md) | Program 1 polish backlog (post Slice 3) |
 | [`attribute-provenance-and-storage.md`](attribute-provenance-and-storage.md) | Architecture — entity/index/protocol split; Program 2 MVR/entity deferred |
 | [`research-robustness-backlog.md`](research-robustness-backlog.md) | Post-2010 research hardening |
 | [`historical-assumptions-audit.md`](historical-assumptions-audit.md) | Phase 1 audit; Phase 2 cleanup recommendations |

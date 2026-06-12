@@ -181,8 +181,9 @@ Extend `EntityFieldStatus` (or parallel JSON field `versions`) so `GET /status?e
 | **1** | [`attribute-provenance-program1-slice1.md`](attribute-provenance-program1-slice1.md) | `2026-06-11-1100-attribute-provenance-slice1` | `specialist_fields.py`, research append, `entity_growth`, strategy bump, tests |
 | **2** | [`attribute-provenance-program1-slice2.md`](attribute-provenance-program1-slice2.md) | `2026-06-11-1200-attribute-provenance-slice2` | Template + regen specialists, introspection + admin types |
 | **3** | [`attribute-provenance-program1-slice3.md`](attribute-provenance-program1-slice3.md) | `2026-06-11-1300-attribute-provenance-slice3` | `QueryResponse.provenance`, MCP schema, docs |
+| **P** | [`attribute-provenance-program1-polish.md`](attribute-provenance-program1-polish.md) | `2026-06-11-1400-attribute-provenance-slice-polish` | Post-review nits P1–P5; hard-cutover hygiene |
 
-**Order:** 1 → 2 → 3 (each reviewed before the next).
+**Order:** 1 → 2 → 3 → P (each reviewed before the next; polish after Slice 3).
 
 ---
 

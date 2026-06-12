@@ -206,7 +206,7 @@ Backend shipped in entity protocol Slices 1–8; operator-facing admin work defe
 
 ### Entity program — deferred follow-ups (Paul + Grok)
 
-- [ ] **Program 1 — Extended attribute provenance** — **Locked** (hard cutover, no lazy migration). Plan: [`docs/plans/attribute-provenance-program1.md`](docs/plans/attribute-provenance-program1.md). Cursor: `prompts/cursor/next/2026-06-11-1100-attribute-provenance-slice1.md` → slices 2–3 after review. Architecture (Program 2 MVR/entity): [`attribute-provenance-and-storage.md`](docs/plans/attribute-provenance-and-storage.md).
+- [ ] **Program 1 — Extended attribute provenance** — **Locked** (hard cutover, no lazy migration). Plan: [`docs/plans/attribute-provenance-program1.md`](docs/plans/attribute-provenance-program1.md). Cursor: slices `1100` (done, approved) → `1200` → `1300` → polish `1400`. Nits: [`attribute-provenance-program1-polish.md`](docs/plans/attribute-provenance-program1-polish.md). Architecture (Program 2 MVR/entity): [`attribute-provenance-and-storage.md`](docs/plans/attribute-provenance-and-storage.md).
 - [ ] **Search indices (follow-up)** — v1: `bind_index` (+ optional `name_index`) on `entities.json`, maintained atomically on write. **Later:** specialists maintain domain-specific indices (e.g. email → id, linkedin slug → id). Design session when scaling beyond CRM-scale entity counts.
 - [ ] **Operator attribute correction** — Research can return wrong values (e.g. Paul Murphy @ Ormi Labs → LinkedIn `paul-murphy-003360` is not Paul). Operators need to **view and update** extended attributes in specialist storage (LinkedIn, email, etc.): correct value, mark source as operator override, prevent naive re-research from overwriting without policy. Surfaces: admin UI edit on entity field drill-down (primary); optional CLI/MCP operator tool later. **Depends on** attribute provenance design (above). Ties to attribution (`attr_sources` / provenance) and re-research/staleness policy.
 - [ ] **Operator force re-research** — Mechanism to **retry** a specialist lookup for a specific entity + attribute (not only edit the stored value). Today retries are automatic for `pending` / `last_error` (env-gated age); operators need an explicit **“try again”** that clears or supersedes a stuck/failed/wrong result and re-invokes research. Optional **operator context** on retry (hint text, known URL, disambiguation notes) passed into the research prompt / `_research_context` so the agent has more to work with. Distinct from attribute correction (manual override) and from naive re-query (same thread may hit cache). Surfaces: admin UI action on entity field drill-down (primary); optional CLI/MCP operator tool. Policy: how hints merge with bind + storage; provenance marks forced retry vs automatic.
@@ -224,6 +224,7 @@ Backend shipped in entity protocol Slices 1–8; operator-facing admin work defe
 
 ## Future / deferred
 
+- [ ] **Toolbox** — TBD (Paul + Grok).
 - [ ] **Agent tools review** — today specialists get one LangChain tool (`web_search` via Tavily in `src/tools/research.py`); real networks will need dozens (structured lookups, enrichment APIs, calculators, file/DB access, handoffs, etc.). Paul + Grok: catalog required tools by domain, decide framework vs per-network tool packs, registry/discovery pattern, credential boundaries, and how factory-generated specialists bind tools — before scaling ontology/specialist count.
 - [ ] **Per-network LangSmith projects (design discussion)** — framework-level `LANGCHAIN_PROJECT` today; optional `mycelium-<network>` per root; wire on `network create` later.
 - [ ] **Non-person seed schemas** — v1 `--seed` validates person-shaped `people` array; generic entity seed for vehicles/organisms/artifacts deferred.
@@ -257,4 +258,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-11 (onboarding doc + P1 hygiene; website copy pass queued in mycelium-website)
+Last updated: 2026-06-11 (Toolbox queued; attribute provenance Program 1 in flight)

@@ -119,4 +119,4 @@ Move this file to `prompts/cursor/done/2026-06-11-1300-attribute-provenance-slic
 
 ## Review gate
 
-Grok reviews before Program 1 closeout and Program 2 design.
+Grok reviews before polish slice P (`1400`). Program 1 closeout after polish approved.
