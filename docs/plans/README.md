@@ -99,9 +99,10 @@ Implementation handoffs live in `prompts/cursor/done/<slug>/` with `prompt.md`, 
 |-----|-------|
 | [`attribute-provenance-program1.md`](attribute-provenance-program1.md) | **Complete** (June 2026) — extended attr `versions[]`; hard cutover; pushed |
 | [`attribute-provenance-program1-polish.md`](attribute-provenance-program1-polish.md) | Program 1 polish — done |
-| [`attribute-provenance-and-storage.md`](attribute-provenance-and-storage.md) | Architecture — entity/index/protocol split; Program 2 MVR/entity **next** |
+| [`attribute-provenance-and-storage.md`](attribute-provenance-and-storage.md) | Architecture — entity/index/protocol split; **Program 2 blocked** until MVR redesign completes |
 | [`mvr-redesign-program.md`](mvr-redesign-program.md) | **Active** — MVR vs lookup; two-step `delivery_id`; slices M1–M10 |
 | [`mvr-best-practices.md`](mvr-best-practices.md) | Operator guide for per-network MVR design |
+| [`mvr-redesign-entity-query-examples.md`](mvr-redesign-entity-query-examples.md) | Step-1 / step-2 JSON examples (target protocol) |
 | [`next-chunk-prep.md`](next-chunk-prep.md) | Handoff notes; Program 2 after MVR redesign |
 | [`../manual-checks/2026-06-12-program1-post-push-gate.md`](../manual-checks/2026-06-12-program1-post-push-gate.md) | **CLEAR** (2026-06-13) — Program 1 integration verified |
 | [`research-robustness-backlog.md`](research-robustness-backlog.md) | Post-2010 research hardening |
@@ -127,4 +128,4 @@ Archived Paul + Grok threads: [`conversations/README.md`](conversations/README.m
 
 ---
 
-*Last updated: June 2026 (MVR redesign program locked; M1 queued).*
+*Last updated: June 2026 (MVR redesign M1 docs landed; M2 queued).*

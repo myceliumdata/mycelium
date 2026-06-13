@@ -53,7 +53,7 @@ This is a deliberate departure from earlier thinking that treated the core CRM t
 
 ### Public interface: query-only (June 2026)
 
-The **CLI** (`query`) and **MCP** (`describe_network`, `query_entity`, `health_check`) expose **lookups only**. `EntityQuery` has `entity_key` and optional `requested_attributes` — no `provided_data` on the public model. MCP **`describe_network`** returns author `guide.md`, ontology categories, and framework policy (connect-time onboarding).
+The **CLI** (`query`) and **MCP** (`describe_network`, `query_entity`, `health_check`) expose **lookups only**. Today `EntityQuery` uses `entity_key` and optional `binding` / `requested_attributes` — no `provided_data` on the public model. **Target:** `id` or `lookup` plus two-step `delivery_id` ([MVR redesign](#mvr-redesign-target-protocol)). MCP **`describe_network`** returns author `guide.md`, ontology categories, framework policy, and the locked target-protocol narrative (runtime unchanged until M2–M9).
 
 Data addition via the public API was removed in the June 2026 refactor (tasks 1000–1050). It will return later as **internal agent coordination**, not as a direct caller-supplied payload.
 
@@ -61,7 +61,7 @@ Data addition via the public API was removed in the June 2026 refactor (tasks 10
 
 - **Optional fixture:** `<network_root>/seed.json` — static `people` array for bootstrap only (not read at query time). Committed CRM example: `examples/networks/crm/seed.json`. Import via `./bin/refresh-example-network crm` or `mycelium network create` when the file is present (`network/seed_import.py` → `entities.json`).
 - **Transform (maintainers):** `examples/networks/crm/prepare_seed.py` builds example `seed.json` from a CRM source file (name + employer only; no legacy `id` in the file). Full prototype data: git tag `prototype`.
-- **Runtime store:** `entities.json` holds canonical entities (uuid4 ids, `bind_index`). `ensure_bound_entity` assigns stable ids on import; supervisor resolves lookups via `lookup_entities_by_key` / `resolve_entity` (registry only).
+- **Runtime store:** `entities.json` holds canonical entities (uuid4 ids, `bind_index`). `ensure_bound_entity` assigns stable ids on import; supervisor resolves lookups via `lookup_entities_by_key` / `resolve_entity` (registry only). **Target:** per-field indexes + `lookup` map resolution (M4); identity references use `id` only (R1).
 - **No `core_data` specialist** — identity fields (name, employer) come from the registry; specialists may override them later.
 
 ### Supervisor and graph (current)
@@ -199,15 +199,75 @@ Users download the **framework** (this repo: `src/`, `bin/`, docs, tests) and ru
 
 CLI and MCP call `load_dotenv()` at startup from the **framework** working directory. **`MYCELIUM_NETWORK_ROOT`** / **`MYCELIUM_NETWORK`** select which data directory to use; they do not hold secrets. Launching or registering a network does **not** copy or create a `.env` inside `network_root`.
 
-**MCP:** `cwd` = framework repo; per-server `env` sets only network selection (plus the same shared API keys as other servers on that host). Person lookups use **`entity_key`** against that network’s seed and specialist storage — not env vars.
+**MCP:** `cwd` = framework repo; per-server `env` sets only network selection (plus the same shared API keys as other servers on that host). Person lookups today use **`entity_key`** against that network’s registry and specialist storage — not env vars. **Target (MVR redesign):** `id` or `lookup` map, then two-step `delivery_id` — see [MVR redesign (target)](#mvr-redesign-target-protocol) below.
 
 Future (not v1): per-network LangSmith project names, optional credential profiles — see `TODO.md`.
 
 ---
 
-## Public query flow (current)
+## MVR redesign (target protocol)
 
-Core storage holds only `id`, `name`, and `employer`. Callers send a query-only **`EntityQuery`** (`entity_key`, optional `requested_attributes`). The graph state always includes `MyceliumGraphState.query`; LangSmith trace input therefore always shows a `query` section even for internal-only operations.
+**Status:** Locked design; **runtime still uses legacy `entity_key` / `binding`** until slices M2–M9 ship.  
+**Program:** [`docs/plans/mvr-redesign-program.md`](plans/mvr-redesign-program.md) · **Operator guide:** [`docs/plans/mvr-best-practices.md`](plans/mvr-best-practices.md) · **Examples:** [`docs/plans/mvr-redesign-entity-query-examples.md`](plans/mvr-redesign-entity-query-examples.md)
+
+**Program 2** (versioned bind storage / `bind_versions[]`) is **blocked** until this program completes.
+
+### Three separated concerns
+
+| Concern | Meaning |
+|---------|---------|
+| **Identity** | Stable **`id` (UUID)** only — no name string as primary key |
+| **Lookup** | Find candidate rows by **partial field match** (AND within `lookup`) |
+| **MVR** | Per-network **minimum field set** to **create** a new entity and **run extended research** |
+
+Today these are conflated in `EntityQuery.entity_key`, `binding`, and `network.json` `mvr.name_source`. The redesign removes `entity_key`, `binding`, and `name_source`.
+
+### Two-step delivery (like quotes)
+
+1. **Step 1 — Resolve:** send `id` **or** `lookup` (AND within map); optional `requested_attributes` and `provenance` **on this step only**. Response: `total_matches`, empty `results[]`, and `delivery.delivery_id` (+ `quote` when `metering.enabled`).
+2. **Step 2 — Deliver:** send `delivery_id` (+ `quote_id` when metered). Response: `assembled` / `found` with full `results[]` (and research when attrs were bound on step 1).
+
+No `deliver: true` flag. `delivery_id` and `quote_id` TTL default **5 minutes** (`MYCELIUM_DELIVERY_TTL_SEC`, `MYCELIUM_QUOTE_TTL_SEC`).
+
+### Target `EntityQuery` fields
+
+| Field | Step | Role |
+|-------|------|------|
+| `id` | 1 | UUID — resolve one entity (still returns `delivery_id`) |
+| `lookup` | 1 | `{ field: value }` — AND match; keys ⊆ `mvr.bind_fields` |
+| `requested_attributes` | 1 only | Extended attrs; bound into `delivery_id` / quote workload |
+| `provenance` | 1 only | Bound into delivery scope |
+| `delivery_id` | 2 | From step 1 |
+| `quote_id` | 2 | When metering accepted |
+
+**Removed:** `entity_key`, `binding`. **`name_source`** removed from `network.json` — `name` is a normal MVR field in `lookup` and stored rows.
+
+### Target outcomes
+
+| Outcome | When |
+|---------|------|
+| `lookup_resolved` | Step 1; count + `delivery_id`; free delivery available |
+| `quote_required` | Step 1; metering on; need `quote_id` + `delivery_id` to deliver |
+| `not_found` | 0 matches, unknown `id`, or expired/invalid tokens |
+| `assembled` / `found` | Step 2 delivery (and research when attrs bound) |
+
+Legacy outcomes (`entity_unknown`, `entity_key_unresolved`, `entity_bound_provisional`, …) are retired with the old protocol in M7–M9.
+
+### Create flow (0 matches)
+
+Partial `lookup` with 0 matches → `not_found` (no create). Full MVR in step-1 `lookup` + `requested_attributes` → provisional create on deliver path (slice M7). See program doc for batch and metering rules.
+
+### Indexes (target)
+
+One inverted index per MVR field on `entities.json` (normalized value → `[uuid, …]`). Compound indexes deferred (Program 2 / operator).
+
+---
+
+## Public query flow (current runtime)
+
+Core storage holds only `id`, `name`, and `employer`. Callers send a query-only **`EntityQuery`** (`entity_key`, optional `binding`, optional `requested_attributes`). The graph state always includes `MyceliumGraphState.query`; LangSmith trace input therefore always shows a `query` section even for internal-only operations.
+
+> **Migration:** This section describes **today’s** protocol. Implementers and MCP clients should plan for the [MVR redesign (target protocol)](#mvr-redesign-target-protocol) above.
 
 ### Flow summary
 
@@ -299,4 +359,4 @@ See `TODO.md` for follow-ups.
 
 ---
 
-**Last major update:** June 2026 (seed-data-context redesign + Phase 1 sync specialist research + MVR/peer research prompts)
+**Last major update:** June 2026 (MVR redesign target protocol documented M1; Program 1 provenance complete; seed-data-context + sync specialist research)

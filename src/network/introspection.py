@@ -593,6 +593,37 @@ _POLICY_QUERY_PROVENANCE = (
     "Default results[] stay flat; provenance.entities[].attributes.<field> carries "
     "current_version_id and versions[] copied from specialist storage."
 )
+# Target protocol (MVR redesign M2–M9). Runtime still uses entity_key/binding until then.
+_POLICY_MVR_REDESIGN_TARGET = (
+    "Target query protocol (shipping MVR redesign slices M2–M9): Step 1 — send id OR "
+    "lookup (AND within map); optional requested_attributes and provenance on step 1 "
+    "only. Response lookup_resolved with total_matches, empty results[], and "
+    "delivery.delivery_id (plus quote when metering.enabled). Step 2 — send delivery_id "
+    "and optional quote_id only; receive assembled/found with full results[]. Identity "
+    "is UUID id only; MVR bind_fields gate create + research. See docs/plans/"
+    "mvr-redesign-program.md and mvr-best-practices.md."
+)
+_MVR_REDESIGN_STEP1_EXAMPLE: dict[str, Any] = {
+    "request": {
+        "lookup": {"employer": "IBM"},
+        "requested_attributes": ["linkedin"],
+        "provenance": False,
+    },
+    "response": {
+        "outcome": "lookup_resolved",
+        "total_matches": 237,
+        "results": [],
+        "delivery": {"delivery_id": "d_…", "expires_at": "…"},
+        "quote": None,
+    },
+}
+_MVR_REDESIGN_STEP2_EXAMPLE: dict[str, Any] = {
+    "request": {"delivery_id": "d_…", "quote_id": "q_…"},
+    "response": {
+        "outcome": "assembled",
+        "results": [{"id": "…", "name": "…", "employer": "…", "linkedin": "…"}],
+    },
+}
 _QUERY_PROVENANCE_EXAMPLE: dict[str, Any] = {
     "provenance": {
         "entities": [
@@ -719,6 +750,27 @@ def build_network_capabilities() -> dict[str, Any]:
                     "request_flag": "provenance",
                     "example": _QUERY_PROVENANCE_EXAMPLE,
                 },
+                "protocol_status": "legacy entity_key until MVR redesign M9",
+                "target_protocol": {
+                    "description": _POLICY_MVR_REDESIGN_TARGET,
+                    "shipping": "MVR redesign program slices M2–M9",
+                    "docs": [
+                        "docs/plans/mvr-redesign-program.md",
+                        "docs/plans/mvr-best-practices.md",
+                        "docs/plans/mvr-redesign-entity-query-examples.md",
+                    ],
+                    "step1_example": _MVR_REDESIGN_STEP1_EXAMPLE,
+                    "step2_example": _MVR_REDESIGN_STEP2_EXAMPLE,
+                    "target_fields_step1": ["id", "lookup", "requested_attributes", "provenance"],
+                    "target_fields_step2": ["delivery_id", "quote_id"],
+                    "target_outcomes": [
+                        "lookup_resolved",
+                        "quote_required",
+                        "not_found",
+                        "assembled",
+                        "found",
+                    ],
+                },
             },
         },
     }
@@ -744,6 +796,8 @@ def format_mcp_instructions(capabilities: dict[str, Any]) -> str:
         "On **`outcome: entity_key_unresolved`**, retry with a **`suggestions[].entity_key`**. "
         "On **`entity_unknown`**, supply **`binding`** per MVR **`required_fields`**. "
         "Use **`health_check`** for server liveness and network binding. "
+        "Target protocol (MVR redesign, shipping M2–M9): two-step resolve via id or lookup "
+        "→ delivery_id → deliver; see describe_network policy.target_protocol. "
         "Registry, categories, seed, and specialists reload from disk before each query — "
         "restart MCP only after code deploy or if reload fails."
     )

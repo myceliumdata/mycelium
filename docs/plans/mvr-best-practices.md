@@ -5,6 +5,14 @@
 
 ---
 
+## Current runtime vs target
+
+**Today (until MVR redesign M9):** clients send `entity_key`, optional `binding`, and optional `requested_attributes` in a single step. Outcomes include `entity_unknown`, `entity_key_unresolved`, and `entity_bound_provisional`.
+
+**Target:** two-step `delivery_id` protocol documented in [`mvr-redesign-program.md`](mvr-redesign-program.md). Step-1 outcome `lookup_resolved` replaces the single-step identity handshake for resolve. Examples: [`mvr-redesign-entity-query-examples.md`](mvr-redesign-entity-query-examples.md).
+
+---
+
 ## What MVR is
 
 **Minimum Viable Record** — the field set **your network** requires before Mycelium will:

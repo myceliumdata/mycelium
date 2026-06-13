@@ -44,7 +44,8 @@ def test_build_network_capabilities_with_guide_and_ontology(
     assert caps["ontology"]["categories"][0]["description"]
     assert caps["policy"]["query"]["tool"] == "query_entity"
     assert "response_provenance" in caps["policy"]["query"]
-    assert "provenance" in caps["policy"]["query"]["response_provenance"]["example"]
+    assert "target_protocol" in caps["policy"]["query"]
+    assert caps["policy"]["query"]["target_protocol"]["shipping"]
     assert "guide_note" not in caps
 
 
