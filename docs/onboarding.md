@@ -45,7 +45,8 @@ You are here (step 1). Then:
 uv sync --all-extras
 cp .env.example .env   # OPENAI_API_KEY + TAVILY_API_KEY for research demos
 ./bin/refresh-example-network crm
-uv run mycelium query --entity-key "Nichanan Kesonpat"
+uv run mycelium query --network crm \
+  --lookup-json '{"name": "Nichanan Kesonpat", "employer": "1k(x)"}'
 ./bin/ci-local         # same gate as GitHub CI before you open a PR
 ```
 

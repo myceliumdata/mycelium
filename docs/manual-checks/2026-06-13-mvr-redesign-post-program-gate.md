@@ -59,7 +59,7 @@ uv run mycelium query --network crm \
 
 **Pass criteria:**
 
-- Step 1: `outcome` = `lookup_resolved`, `total_matches` = 1, `results` = `[]`, `delivery.delivery_id` present
+- Step 1: `outcome` = `lookup_resolved`, `total_matches` = 1, `results` = `[]`, `delivery.delivery_id` present, no `delivery.create_on_deliver`, `message` mentions registry match + step 2
 - Step 2: `outcome` = `found`, `results[0].name` = `Nichanan Kesonpat`
 
 ---
@@ -125,13 +125,16 @@ Confirms M10 admin-ui migration (P22) against the **deployed** CRM network.
 
 Open **http://127.0.0.1:5173/** → **Run query**:
 
-1. Name `Nichanan Kesonpat`, employer `1k(x)` → **Run** → expect `lookup_resolved`; `delivery_id` auto-fills
-2. Clear name/employer (or leave them) → **Run** again with only `delivery_id` → expect `found`
+1. Name `Nichanan Kesonpat`, employer `1k(x)` → **Run** → expect `lookup_resolved`; `total_matches: 1`; lookup fields clear; `delivery_id` pre-filled
+2. **Run** again (delivery path; lookup fields empty) → expect `found`
 
 **Pass criteria:**
 
 - No request errors about `entity_key`
-- Step 2 shows identity in results table
+- Step 1: no `(full MVR)` suffix (existing match)
+- Step 2 shows identity in results; form tokens cleared
+
+**Optional — create-pending:** Road Runner @ Acme → step 1 `total_matches: 0 (full MVR)`, `delivery.create_on_deliver: true`; step 2 `found` with new row
 
 ---
 

@@ -325,7 +325,7 @@ CLI and MCP return **`QueryResponse`** JSON:
 }
 ```
 
-Every CLI and MCP query response includes **`outcome`** (machine-readable: `lookup_resolved`, `quote_required`, `found`, `assembled`, `not_found`, or `error`). Step 1 returns `delivery` + `total_matches`; step 2 returns full `results[]`. Agents should branch on `outcome` before trusting `results`; use `message` for per-attribute status. MCP schema: `mycelium://schema/query-response`.
+Every CLI and MCP query response includes **`outcome`** (machine-readable: `lookup_resolved`, `quote_required`, `found`, `assembled`, `not_found`, or `error`). Step 1 returns `delivery` + `total_matches`; when step 2 will create a new entity, `delivery.create_on_deliver` is `true` (omitted for existing matches). Step 2 returns full `results[]`. Agents should branch on `outcome` and `delivery.create_on_deliver` before trusting `results`; use `message` for step-1 deliver guidance and per-attribute status. MCP schema: `mycelium://schema/query-response`. Examples: [`docs/plans/mvr-redesign-entity-query-examples.md`](docs/plans/mvr-redesign-entity-query-examples.md).
 
 - **`results`** — One dict per matched entity. Always includes `"id"`. With `requested_attributes`, includes only those keys after specialist-first merge.
 - **`message`** — Human-readable status (entity found, research pending, N/A, etc.).

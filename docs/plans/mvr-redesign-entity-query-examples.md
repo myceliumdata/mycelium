@@ -31,7 +31,7 @@ These examples show the **locked target** two-step protocol.
     "expires_at": "2026-06-13T10:05:00+00:00"
   },
   "quote": null,
-  "message": "Resolved 237 matches for lookup.",
+  "message": "237 registry matches. Use delivery_id on step 2 to deliver.",
   "debug": {}
 }
 ```
@@ -123,16 +123,66 @@ Batch: N matches from step 1 → step 2 returns N rows in `results[]`; metering 
 
 ## Create (0 matches, full MVR)
 
-**Step 1 request:**
+**Step 1 request** (identity-only create — no attrs):
 
 ```json
 {
-  "lookup": { "name": "Paul Murphy", "employer": "Acme Corp" },
-  "requested_attributes": ["email"]
+  "lookup": { "name": "Road Runner", "employer": "Acme Corp" }
 }
 ```
 
-When no row matches and `lookup` contains the full MVR field set, the network may create a provisional entity on the deliver path (slice M7). Partial lookup with 0 matches → `not_found` only (no create).
+**Step 1 response:**
+
+```json
+{
+  "outcome": "lookup_resolved",
+  "total_matches": 0,
+  "results": [],
+  "delivery": {
+    "delivery_id": "d_…",
+    "expires_at": "2026-06-13T10:05:00+00:00",
+    "create_on_deliver": true
+  },
+  "quote": null,
+  "message": "No registry match. Full MVR lookup — step 2 will create a provisional entity, then deliver."
+}
+```
+
+`delivery.create_on_deliver` is **omitted** (not `false`) when step 2 delivers existing registry rows. Admin UI may show `total_matches: 0 (full MVR)` for create-pending step 1.
+
+**Step 2 request:** `{ "delivery_id": "d_…" }` → `found` with new provisional row in `results[]`.
+
+With `requested_attributes` on step 1, the same create-pending step-1 shape applies; step 2 runs validation + research (`assembled` when attrs merge).
+
+Partial lookup with 0 matches → `not_found` only (no create).
+
+---
+
+## Existing match (step 1)
+
+**Request:**
+
+```json
+{
+  "lookup": { "name": "Nichanan Kesonpat", "employer": "1k(x)" }
+}
+```
+
+**Response:**
+
+```json
+{
+  "outcome": "lookup_resolved",
+  "total_matches": 1,
+  "results": [],
+  "delivery": {
+    "delivery_id": "d_…",
+    "expires_at": "2026-06-13T10:05:00+00:00"
+  },
+  "quote": null,
+  "message": "1 registry match. Use delivery_id on step 2 to deliver."
+}
+```
 
 ---
 
@@ -146,4 +196,4 @@ When no row matches and `lookup` contains the full MVR field set, the network ma
 
 ---
 
-*Last updated: June 2026 (MVR redesign M1)*
+*Last updated: June 2026 (post-program: `create_on_deliver`, step-1 messages)*

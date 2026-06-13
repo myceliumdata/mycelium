@@ -240,7 +240,7 @@ Previously conflated in `entity_key`, `binding`, and `mvr.name_source` — all r
 
 ### Two-step delivery (like quotes)
 
-1. **Step 1 — Resolve:** send `id` **or** `lookup` (AND within map); optional `requested_attributes` and `provenance` **on this step only**. Response: `total_matches`, empty `results[]`, and `delivery.delivery_id` (+ `quote` when `metering.enabled`).
+1. **Step 1 — Resolve:** send `id` **or** `lookup` (AND within map); optional `requested_attributes` and `provenance` **on this step only**. Response: `total_matches`, empty `results[]`, and `delivery.delivery_id` (`delivery.create_on_deliver: true` only when step 2 will create from full MVR with 0 registry hits; omitted otherwise) (+ `quote` when `metering.enabled`).
 2. **Step 2 — Deliver:** send `delivery_id` (+ `quote_id` when metered). Response: `assembled` / `found` with full `results[]` (and research when attrs were bound on step 1).
 
 No `deliver: true` flag. `delivery_id` and `quote_id` TTL default **5 minutes** (`MYCELIUM_DELIVERY_TTL_SEC`, `MYCELIUM_QUOTE_TTL_SEC`).
@@ -271,7 +271,9 @@ Legacy outcomes (`entity_unknown`, `entity_key_unresolved`, `entity_bound_provis
 
 ### Create flow (0 matches) — M7
 
-Partial `lookup` with 0 matches → `not_found` (no create). Full MVR in step-1 `lookup` **plus** `requested_attributes` → step-1 returns `lookup_resolved` with `total_matches=0` and a `delivery_id` scoped for provisional create; step-2 deliver calls `bind_provisional` from scope `lookup` then runs attribute research when attrs were bound. `name` is supplied in `lookup` like any other MVR bind field.
+Partial `lookup` with 0 matches → `not_found` (no create). Full MVR in step-1 `lookup` with 0 registry matches → step-1 returns `lookup_resolved` with `total_matches=0`, `delivery.create_on_deliver: true`, and a `delivery_id` scoped for provisional create; step-2 deliver calls `bind_provisional` from scope `lookup` then runs attribute research when attrs were bound on step 1. `requested_attributes` are optional for identity-only create (no research on step 2 unless attrs were requested). `name` is supplied in `lookup` like any other MVR bind field.
+
+**Step-1 `message` (aligned with JSON):** existing match — e.g. `1 registry match. Use delivery_id on step 2 to deliver.`; create pending — `No registry match. Full MVR lookup — step 2 will create a provisional entity, then deliver.`
 
 ### Batch deliver (N entities) — M8
 
@@ -279,7 +281,7 @@ Multi-match step-1 scopes carry `entity_ids[]` (N > 1). Step-2 deliver hydrates 
 
 ### Public surfaces (CLI, MCP, admin) — M9
 
-CLI `query`, MCP `query_entity`, and admin `POST /query` use the **target protocol only** — no `entity_key` / `binding` on public entry points. Example query JSON under `examples/networks/*/queries/` documents two-step resolve → deliver. Admin UI (`admin-ui/`) uses lookup fields + stored `delivery_id` (M10).
+CLI `query`, MCP `query_entity`, and admin `POST /query` use the **target protocol only** — no `entity_key` / `binding` on public entry points. Public JSON uses `QueryResponse.public_dict()` / `public_json()` — omits `delivery.create_on_deliver` unless true; preserves explicit `null` on other optional fields (e.g. `quote`). Example query JSON under `examples/networks/*/queries/` documents two-step resolve → deliver. Admin UI (`admin-ui/`) uses lookup fields + stored `delivery_id` (M10); shows `total_matches: 0 (full MVR)` when `create_on_deliver` is true.
 
 ### Legacy graph path — M10
 
@@ -307,7 +309,8 @@ Core storage holds `id`, `name`, and `employer` on registry rows. Callers send a
 | **Resolve (step 1)** | `id` or `lookup`; optional `requested_attributes`, `provenance` | `target_resolve` → `assemble_response` | `lookup_resolved` or `quote_required`; `total_matches`; `delivery.delivery_id`; empty `results[]` |
 | **Deliver identity (step 2)** | `delivery_id` (+ `quote_id` when metered) | `target_resolve` → `supervisor` → … → `assemble_response` | `found`; full identity `results[]` |
 | **Deliver with attrs (step 2)** | `delivery_id` (+ `quote_id` when metered); attrs bound on step 1 | `target_resolve` → `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` | `assembled`; `results[]` with requested attrs merged per row |
-| **Miss / invalid** | bad `id`, partial lookup with 0 matches, expired tokens | `target_resolve` → `assemble_response` | `not_found` |
+| **Miss / invalid** | bad `id`, partial lookup with 0 matches (not full MVR), expired tokens | `target_resolve` → `assemble_response` | `not_found` |
+| **Create pending (step 1)** | full MVR `lookup`, 0 registry matches | `target_resolve` → `assemble_response` | `lookup_resolved`; `total_matches=0`; `delivery.create_on_deliver: true` |
 
 ### Response fields (query outcomes)
 
