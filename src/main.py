@@ -29,7 +29,13 @@ from network.introspection import (
     status_to_dict,
 )
 from network.paths import NetworkPaths, apply_network_paths, resolve_network_root
-from network.registry import list_networks, register_network, set_default_network
+from network.registry import (
+    list_networks,
+    network_root_status,
+    register_network,
+    set_default_network,
+    unregister_network,
+)
 from storage.core import get_storage, reset_storage
 from utils.langsmith import get_langsmith_trace_url
 
@@ -171,6 +177,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
 
     network_sub.add_parser("list", help="List registered networks")
+
+    unregister_cmd = network_sub.add_parser(
+        "unregister",
+        help="Remove a stale or unused network registration",
+    )
+    unregister_cmd.add_argument("name", help="Registered network name")
 
     status_cmd = network_sub.add_parser(
         "status",
@@ -356,9 +368,38 @@ def _run_network_command(args: argparse.Namespace) -> int:
                     "Register one: [dim]mycelium network register <name> --root <path>[/dim]",
                 )
                 return 0
+            stale = 0
             for entry in entries:
-                marker = " (default)" if entry.default else ""
-                console.print(f"{entry.name}\t{entry.root}{marker}")
+                markers: list[str] = []
+                if entry.default:
+                    markers.append("default")
+                status = network_root_status(entry.root)
+                if status != "ok":
+                    markers.append(status)
+                    stale += 1
+                suffix = f" ({', '.join(markers)})" if markers else ""
+                line = f"{entry.name}\t{entry.root}{suffix}"
+                if status == "missing":
+                    console.print(f"[dim]{line}[/dim]")
+                elif status == "uninitialized":
+                    console.print(f"[yellow]{line}[/yellow]")
+                else:
+                    console.print(line)
+            if stale:
+                console.print(
+                    "[dim]Stale entries: mycelium network unregister <name> "
+                    "or re-register with --root[/dim]",
+                )
+            return 0
+
+        if args.network_command == "unregister":
+            removed = unregister_network(args.name)
+            if removed is None:
+                console.print(f"[red]Unknown network:[/red] {args.name}")
+                return 1
+            console.print(
+                f"Unregistered [bold]{removed.name}[/bold] → {removed.root}",
+            )
             return 0
 
         if args.network_command == "use":

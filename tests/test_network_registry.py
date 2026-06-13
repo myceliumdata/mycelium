@@ -11,9 +11,11 @@ from network.paths import resolve_network_root
 from network.registry import (
     list_networks,
     load_network_registry,
+    network_root_status,
     networks_config_path,
     register_network,
     set_default_network,
+    unregister_network,
 )
 
 
@@ -200,3 +202,72 @@ def test_register_rejects_duplicate_on_save_validation(
 
     with pytest.raises(ValueError, match="Duplicate network name"):
         load_network_registry()
+
+
+@pytest.mark.smoke
+def test_network_root_status_missing_and_uninitialized(tmp_path: Path) -> None:
+    missing = tmp_path / "gone"
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    initialized = tmp_path / "ready"
+    initialized.mkdir()
+    (initialized / "network.json").write_text("{}", encoding="utf-8")
+
+    assert network_root_status(missing) == "missing"
+    assert network_root_status(empty) == "uninitialized"
+    assert network_root_status(initialized) == "ok"
+
+
+@pytest.mark.smoke
+def test_resolve_registered_network_missing_root_raises(
+    networks_config: Path,
+    tmp_path: Path,
+) -> None:
+    stale_root = tmp_path / "stale"
+    networks_config.write_text(
+        json.dumps(
+            {
+                "version": "1",
+                "networks": [
+                    {
+                        "name": "stale_net",
+                        "root": str(stale_root.resolve()),
+                        "default": True,
+                    },
+                ],
+            },
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="missing path"):
+        resolve_network_root(cli_network_name="stale_net")
+
+
+@pytest.mark.smoke
+def test_unregister_network_removes_entry_and_reassigns_default(
+    networks_config: Path,
+    tmp_path: Path,
+) -> None:
+    root_a = tmp_path / "a"
+    root_b = tmp_path / "b"
+    root_a.mkdir()
+    root_b.mkdir()
+    (root_a / "network.json").write_text("{}", encoding="utf-8")
+    (root_b / "network.json").write_text("{}", encoding="utf-8")
+    register_network("net_a", root_a, default=True)
+    register_network("net_b", root_b)
+
+    removed = unregister_network("net_a")
+    assert removed is not None
+    assert removed.name == "net_a"
+    entries = list_networks()
+    assert len(entries) == 1
+    assert entries[0].name == "net_b"
+    assert entries[0].default is True
+
+
+@pytest.mark.smoke
+def test_unregister_unknown_network_returns_none(networks_config: Path) -> None:
+    assert unregister_network("missing") is None

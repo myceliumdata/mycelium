@@ -7,7 +7,11 @@ import os
 import tempfile
 from pathlib import Path
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+NetworkRootStatus = Literal["ok", "missing", "uninitialized"]
 
 
 class NetworkEntry(BaseModel):
@@ -92,6 +96,28 @@ def list_networks() -> list[NetworkEntry]:
     return load_network_registry()
 
 
+def network_root_status(root: str | Path) -> NetworkRootStatus:
+    """Return whether a registered root exists and looks like a network."""
+    path = Path(root).expanduser()
+    if not path.is_dir():
+        return "missing"
+    if not (path / "network.json").is_file():
+        return "uninitialized"
+    return "ok"
+
+
+def _ensure_registered_root_exists(entry: NetworkEntry) -> Path:
+    """Resolve a registry entry root or raise when the path is missing."""
+    root = _normalize_root(entry.root)
+    if network_root_status(root) == "missing":
+        raise ValueError(
+            f"Registered network {entry.name!r} points to a missing path: {root}. "
+            f"Run: mycelium network unregister {entry.name} "
+            f"or mycelium network register {entry.name} --root <path>",
+        )
+    return root
+
+
 def resolve_root_by_name(name: str) -> Path | None:
     """Look up a registered network root by name."""
     target = name.strip()
@@ -99,15 +125,36 @@ def resolve_root_by_name(name: str) -> Path | None:
         return None
     for entry in load_network_registry():
         if entry.name == target:
-            return _normalize_root(entry.root)
+            return _ensure_registered_root_exists(entry)
     return None
+
+
+def unregister_network(name: str) -> NetworkEntry | None:
+    """Remove a network entry from the user config. Returns removed entry or None."""
+    clean_name = name.strip()
+    if not clean_name:
+        raise ValueError("Network name must not be empty")
+    data = _load_registry_data()
+    removed: NetworkEntry | None = None
+    kept: list[NetworkEntry] = []
+    for entry in data.networks:
+        if entry.name == clean_name:
+            removed = entry
+        else:
+            kept.append(entry)
+    if removed is None:
+        return None
+    if removed.default and kept:
+        kept[0] = NetworkEntry(name=kept[0].name, root=kept[0].root, default=True)
+    _save_registry_data(NetworksRegistryData(version=data.version, networks=kept))
+    return removed
 
 
 def default_network_root() -> Path | None:
     """Return the root path of the default registered network, if any."""
     for entry in load_network_registry():
         if entry.default:
-            return _normalize_root(entry.root)
+            return _ensure_registered_root_exists(entry)
     return None
 
 
