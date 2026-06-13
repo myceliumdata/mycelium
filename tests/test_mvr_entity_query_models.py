@@ -114,6 +114,26 @@ def test_query_response_lookup_resolved_serializes() -> None:
     }
     assert "create_on_deliver" not in payload["delivery"]
     assert payload["results"] == []
+    assert "quote" in payload
+    assert payload["quote"] is None
+
+
+@pytest.mark.smoke
+def test_public_dict_preserves_explicit_null_top_level_fields() -> None:
+    response = QueryResponse(
+        outcome="found",
+        total_matches=None,
+        delivery=None,
+        quote=None,
+        provenance=None,
+        results=[{"id": "u1", "name": "Ada"}],
+        message="Found record for Ada.",
+    )
+    payload = response.public_dict()
+    assert payload["quote"] is None
+    assert payload["total_matches"] is None
+    assert payload["delivery"] is None
+    assert payload["provenance"] is None
 
 
 @pytest.mark.smoke

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import operator
 import os
 from typing import Annotated, Any
@@ -70,6 +71,16 @@ class DeliveryPayload(BaseModel):
         if scope.create_on_deliver:
             return payload.model_copy(update={"create_on_deliver": True})
         return payload
+
+    def public_dict(self) -> dict[str, Any]:
+        """Public JSON shape: omit create_on_deliver unless true."""
+        data: dict[str, Any] = {
+            "delivery_id": self.delivery_id,
+            "expires_at": self.expires_at,
+        }
+        if self.create_on_deliver is True:
+            data["create_on_deliver"] = True
+        return data
 
 
 class EntityQuery(BaseModel):
@@ -293,12 +304,15 @@ class QueryResponse(BaseModel):
     )
 
     def public_dict(self) -> dict[str, Any]:
-        """Serialize for CLI, MCP, and admin — omit null optional fields."""
-        return self.model_dump(exclude_none=True)
+        """Serialize for CLI, MCP, and admin; delivery omits create_on_deliver unless true."""
+        data = self.model_dump()
+        if self.delivery is not None:
+            data["delivery"] = self.delivery.public_dict()
+        return data
 
     def public_json(self, *, indent: int | None = 2) -> str:
-        """JSON for public surfaces; omits null optional fields (e.g. create_on_deliver)."""
-        return self.model_dump_json(exclude_none=True, indent=indent)
+        """JSON for public surfaces; delivery omits create_on_deliver unless true."""
+        return json.dumps(self.public_dict(), indent=indent)
 
 
 class MyceliumGraphState(BaseModel):
