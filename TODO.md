@@ -206,7 +206,7 @@ Backend shipped in entity protocol Slices 1–8; operator-facing admin work defe
 
 ### Entity program — deferred follow-ups (Paul + Grok)
 
-- [ ] **MVR redesign program** — **Locked** (June 2026). Plan: [`docs/plans/mvr-redesign-program.md`](docs/plans/mvr-redesign-program.md); best practices: [`docs/plans/mvr-best-practices.md`](docs/plans/mvr-best-practices.md). UUID-only `id`; `lookup` (partial OK, AND); two-step **`delivery_id`** (+ **`quote_id`** if metered); attrs step 1 only; TTL 5m. Cursor: M1 queued (`2026-06-13-1000`). **Before Program 2.**
+- [x] **MVR redesign program** — **Complete** (June 2026, pushed). M1–M10 + post-program polish (`create_on_deliver`, admin two-step UX). Plan: [`docs/plans/mvr-redesign-program.md`](docs/plans/mvr-redesign-program.md); gate: [`docs/manual-checks/2026-06-13-mvr-redesign-post-program-gate.md`](docs/manual-checks/2026-06-13-mvr-redesign-post-program-gate.md). **Program 2** next.
 - [x] **Program 1 — Extended attribute provenance** — **Complete** (June 2026). Slices 1–3 + polish `1400` shipped: versioned storage, admin history, `QueryResponse.provenance`. Plan: [`docs/plans/attribute-provenance-program1.md`](docs/plans/attribute-provenance-program1.md). Program 2 (MVR/entity): [`attribute-provenance-and-storage.md`](docs/plans/attribute-provenance-and-storage.md).
 - [ ] **Search indices (follow-up)** — MVR redesign v1: per-field indexes on `entities.json` for **partial lookup** (e.g. `employer` → `[ids]`, composite `bind_index` for full MVR match). Maintained atomically on write. **Later:** specialists maintain domain-specific indices (e.g. email → id, linkedin slug → id). Design session when scaling beyond CRM-scale entity counts.
 - [ ] **Query / search any field (future)** — Product requirement: clients can query on **any** attribute field, not only MVR/bind/indexed fields. v1 MVR redesign: lookup on indexed MVR subset + UUID identity; this item tracks general-field search (extended attrs, specialist storage scan or secondary indices, optional query restrictions per network). Deferred until after MVR redesign + index story matures.
@@ -260,4 +260,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-13 (MVR redesign program locked; M1 queued; manual gate clear)
+Last updated: 2026-06-13 (MVR redesign M1–M10 shipped; manual gate clear; Program 2 next)

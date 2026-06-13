@@ -1,6 +1,6 @@
 # Manual checks — MVR redesign post-program gate (M1–M10)
 
-**Status:** ⏳ **PENDING** — run before `git push origin main`
+**Status:** ✅ **CLEAR** (2026-06-13) — Paul manual gate passed; shipped `origin/main`
 
 **Context:** MVR redesign shipped locally (M1–M10 + post-program polish). Target two-step protocol on CLI, MCP, admin API, and admin UI; `delivery.create_on_deliver` on step 1. Automated coverage: `./bin/ci-local` (360+ smoke).
 
