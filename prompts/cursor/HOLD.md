@@ -1,20 +1,20 @@
 # Cursor queue
 
-**Active:** MVR redesign slice **M10** in `prompts/cursor/next/2026-06-13-1900-mvr-redesign-slice-m10.md` (after M9 approved + committed locally)
+**Active:** None — **MVR redesign program complete** (M1–M10 reviewed and committed locally)
 
-**Program:** [`docs/plans/mvr-redesign-program.md`](../../docs/plans/mvr-redesign-program.md) (slices M1–M10) — **final slice**
+**Program:** [`docs/plans/mvr-redesign-program.md`](../../docs/plans/mvr-redesign-program.md)
 
-Program 2 (versioned bind storage) waits until MVR redesign ships.
+Program 2 (versioned bind storage) may start after Paul pushes and signs off.
 
-**Git:** Grok commits approved slices locally on `mycelium`; push `origin` only when Paul explicitly asks (after program complete). See `WORKFLOW.md` §4.
+**Git:** 13 local commits ahead of `origin/main` (M4–M10 + polish backlog). Push when Paul explicitly asks. See `WORKFLOW.md` §4.
 
 ---
 
 ## Cursor: when you finish a slice
 
 1. `./bin/ci-local` green
-2. `done/<slice>/` with `prompt.md` + `output.md` — code on disk matches `output.md`
-3. Remove your prompt from **`in-progress/`** and **`next/`** (no stale duplicate)
+2. `done/<slice>/` with `prompt.md` + `output.md`
+3. Remove prompt from **`in-progress/`** and **`next/`**
 4. **Do not commit or push**
 5. Tell Paul: **"slice ready for review"**
 

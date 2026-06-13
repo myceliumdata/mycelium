@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from models.state import BillingPrincipal
 from network.entitlements import get_entitlement_store
+from network.env_util import env_int
 from network.metering_policy import MeteringPolicy
 from network.paths import runtime_path
 
@@ -88,18 +89,8 @@ def meter_query_provenance_usd() -> float:
     return _env_float("MYCELIUM_METER_QUERY_PROVENANCE_USD", 0.15)
 
 
-def _env_int(name: str, default: int) -> int:
-    raw = os.getenv(name, "").strip()
-    if not raw:
-        return default
-    try:
-        return int(raw)
-    except ValueError:
-        return default
-
-
 def quote_ttl_seconds() -> int:
-    return _env_int("MYCELIUM_QUOTE_TTL_SEC", 300)
+    return env_int("MYCELIUM_QUOTE_TTL_SEC", 300)
 
 
 def quote_is_expired(quote: Quote, *, now: datetime | None = None) -> bool:

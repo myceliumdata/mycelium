@@ -1,4 +1,4 @@
 {
-  "delivery_id": "<delivery_id-from-step-2>",
-  "quote_id": "<quote_id-from-step-2>"
+  "delivery_id": "<delivery_id-from-step-2-quote>",
+  "quote_id": "<quote_id-from-step-2-quote>"
 }

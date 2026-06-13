@@ -80,9 +80,10 @@ export function fetchCapabilities(): Promise<CapabilitiesResponse> {
 }
 
 export function runQuery(body: {
-  entity_key: string;
+  id?: string;
+  lookup?: Record<string, string>;
+  delivery_id?: string;
   requested_attributes?: string[];
-  binding?: Record<string, string>;
   thread_id?: string;
   quote_id?: string;
   provenance?: boolean;

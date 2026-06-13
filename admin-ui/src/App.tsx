@@ -24,7 +24,8 @@ function outcomeBadgeClass(outcome: string | null | undefined): string {
   if (
     outcome === "found" ||
     outcome === "assembled" ||
-    outcome === "entity_validated"
+    outcome === "entity_validated" ||
+    outcome === "lookup_resolved"
   ) {
     return "badge ok";
   }
@@ -191,9 +192,10 @@ export default function App() {
   const [guideCardOpen, setGuideCardOpen] = useState(false);
   const [queryPanelOpen, setQueryPanelOpen] = useState(false);
 
-  const [queryEntityKey, setQueryEntityKey] = useState("");
+  const [queryName, setQueryName] = useState("");
   const [queryAttributes, setQueryAttributes] = useState("");
   const [queryEmployer, setQueryEmployer] = useState("");
+  const [queryDeliveryId, setQueryDeliveryId] = useState("");
   const [queryQuoteId, setQueryQuoteId] = useState("");
   const [queryLoading, setQueryLoading] = useState(false);
   const [queryError, setQueryError] = useState<string | null>(null);
@@ -365,25 +367,42 @@ export default function App() {
 
   const runQueryRequest = useCallback(
     async (quoteIdOverride?: string) => {
-      const key = queryEntityKey.trim();
-      if (!key) {
-        return;
+      const name = queryName.trim();
+      const employer = queryEmployer.trim();
+      const deliveryId = queryDeliveryId.trim();
+      const quoteId = (quoteIdOverride ?? queryQuoteId).trim();
+      const attrs = parseAttributes(queryAttributes);
+
+      let body: Parameters<typeof runQuery>[0];
+      if (deliveryId && quoteId) {
+        body = { delivery_id: deliveryId, quote_id: quoteId };
+      } else if (deliveryId && !name && !employer && attrs.length === 0) {
+        body = { delivery_id: deliveryId };
+      } else {
+        if (!name && !employer) {
+          return;
+        }
+        const lookup: Record<string, string> = {};
+        if (name) {
+          lookup.name = name;
+        }
+        if (employer) {
+          lookup.employer = employer;
+        }
+        body = {
+          lookup,
+          requested_attributes: attrs.length > 0 ? attrs : undefined,
+        };
       }
+
       setQueryLoading(true);
       setQueryError(null);
       try {
-        const binding =
-          queryEmployer.trim() !== ""
-            ? { employer: queryEmployer.trim() }
-            : undefined;
-        const quoteId = (quoteIdOverride ?? queryQuoteId).trim();
-        const result = await runQuery({
-          entity_key: key,
-          requested_attributes: parseAttributes(queryAttributes),
-          binding,
-          quote_id: quoteId || undefined,
-        });
+        const result = await runQuery(body);
         setQueryResult(result);
+        if (result.delivery?.delivery_id) {
+          setQueryDeliveryId(String(result.delivery.delivery_id));
+        }
         if (result.quote?.quote_id) {
           setQueryQuoteId(String(result.quote.quote_id));
         }
@@ -394,7 +413,13 @@ export default function App() {
         setQueryLoading(false);
       }
     },
-    [queryAttributes, queryEmployer, queryEntityKey, queryQuoteId],
+    [
+      queryAttributes,
+      queryDeliveryId,
+      queryEmployer,
+      queryName,
+      queryQuoteId,
+    ],
   );
 
   const onQuerySubmit = (event: FormEvent) => {
@@ -412,7 +437,7 @@ export default function App() {
   };
 
   const applySuggestion = (suggestedKey: string) => {
-    setQueryEntityKey(suggestedKey);
+    setQueryName(suggestedKey);
     setEntityInput(suggestedKey);
     setEntityKey(suggestedKey);
     void fetchStatusNow({
@@ -526,10 +551,17 @@ export default function App() {
           <form className="row-actions query-form" onSubmit={onQuerySubmit}>
             <input
               type="search"
-              placeholder="Entity key"
-              value={queryEntityKey}
-              onChange={(e) => setQueryEntityKey(e.target.value)}
-              aria-label="Query entity key"
+              placeholder="Name (lookup)"
+              value={queryName}
+              onChange={(e) => setQueryName(e.target.value)}
+              aria-label="Query lookup name"
+            />
+            <input
+              type="text"
+              placeholder="Employer (lookup)"
+              value={queryEmployer}
+              onChange={(e) => setQueryEmployer(e.target.value)}
+              aria-label="Query lookup employer"
             />
             <input
               type="text"
@@ -540,10 +572,10 @@ export default function App() {
             />
             <input
               type="text"
-              placeholder="Binding employer (optional)"
-              value={queryEmployer}
-              onChange={(e) => setQueryEmployer(e.target.value)}
-              aria-label="Binding employer"
+              placeholder="Delivery id (from step 1)"
+              value={queryDeliveryId}
+              onChange={(e) => setQueryDeliveryId(e.target.value)}
+              aria-label="Delivery id"
             />
             <input
               type="text"
@@ -565,6 +597,17 @@ export default function App() {
                   {queryResult.outcome ?? "—"}
                 </span>
               </p>
+              {queryResult.total_matches != null && (
+                <p className="muted">
+                  total_matches: {queryResult.total_matches}
+                </p>
+              )}
+              {queryResult.delivery?.delivery_id && (
+                <p className="muted">
+                  delivery_id:{" "}
+                  <code>{String(queryResult.delivery.delivery_id)}</code>
+                </p>
+              )}
               {queryResult.required_fields.length > 0 && (
                 <p>
                   <strong>Required fields:</strong>{" "}

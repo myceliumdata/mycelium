@@ -22,11 +22,14 @@ def normalize_field_index_value(value: str) -> str:
 
 
 def _entity_field_value(entity: RegistryEntity, field: str) -> str | None:
+    """Read a bind-field value from a registry row (supports all ``RegistryEntity`` attrs)."""
     key = field.strip().lower()
     if key == "name":
         raw = entity.name
     elif key == "employer":
         raw = entity.employer
+    elif hasattr(entity, key):
+        raw = getattr(entity, key)
     else:
         return None
     if raw is None or not str(raw).strip():

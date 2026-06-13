@@ -23,11 +23,11 @@ Or manually (two-step):
 uv run mycelium query --network crm-metering \
   --lookup-json '{"name":"Paul Murphy","employer":"Acme Corp"}'
 
-# 2 — Quote (bind email into delivery scope)
+# 2 — Quote (lookup + attributes → quote_required)
 uv run mycelium query --network crm-metering \
-  --delivery-id d_xxxxxxxxxxxx --attributes email
+  --lookup-json '{"name":"Paul Murphy","employer":"Acme Corp"}' --attributes email
 
-# 3 — Accept (paste quote_id from step 2 JSON)
+# 3 — Accept (paste delivery_id and quote_id from step 2 JSON)
 uv run mycelium query --network crm-metering \
   --delivery-id d_xxxxxxxxxxxx --quote-id q_xxxxxxxxxxxx
 ```

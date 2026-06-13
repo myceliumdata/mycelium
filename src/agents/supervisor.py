@@ -10,7 +10,14 @@ from agents.context import planner_context
 from agents.research_gate import research_gate_allows
 from agents.factory.agent_factory import get_agent_factory
 from agents.registry import get_agent_registry
-from models.state import MyceliumGraphState, entity_query_is_delivery_step, graph_requested_attributes
+from agents.responses import response_not_found
+from models.state import (
+    MyceliumGraphState,
+    entity_query_is_delivery_step,
+    entity_query_is_legacy_entity_key_step,
+    graph_requested_attributes,
+    legacy_entity_key_allowed,
+)
 
 # Context pull + specialist calls run in graph nodes (build_context, invoke_specialists).
 # TODO: peer retrieval replaces supervisor-provided full context union.
@@ -118,6 +125,26 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
     current = _coerce(state)
     query = current.query
     audit_log = ["Supervisor: evaluating query."]
+
+    if entity_query_is_legacy_entity_key_step(query) and not legacy_entity_key_allowed():
+        audit_log.append(
+            "Supervisor: legacy entity_key path disabled — use lookup or id.",
+        )
+        return {
+            "response": response_not_found(
+                query,
+                message=(
+                    "Legacy entity_key protocol retired on public surfaces. "
+                    "Use lookup or id for step 1, then delivery_id for step 2."
+                ),
+            ),
+            "matched_records": [],
+            "entity_resolution_kind": "unknown",
+            "entity_suggestions": [],
+            "context": _short_circuit_context(),
+            "audit_log": audit_log,
+            "route": None,
+        }
 
     if entity_query_is_delivery_step(query) and current.matched_records:
         matched = current.matched_records

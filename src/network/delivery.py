@@ -11,21 +11,12 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from network.env_util import env_int
 from network.paths import runtime_path
 
 
-def _env_int(name: str, default: int) -> int:
-    raw = os.getenv(name, "").strip()
-    if not raw:
-        return default
-    try:
-        return int(raw)
-    except ValueError:
-        return default
-
-
 def delivery_ttl_seconds() -> int:
-    return _env_int("MYCELIUM_DELIVERY_TTL_SEC", 300)
+    return env_int("MYCELIUM_DELIVERY_TTL_SEC", 300)
 
 
 class DeliveryScope(BaseModel):

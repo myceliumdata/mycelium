@@ -7,10 +7,13 @@ test has completed and printed its output.
 """
 from __future__ import annotations
 
+import os
 import shutil
 from pathlib import Path
 
 import pytest
+
+os.environ.setdefault("MYCELIUM_ALLOW_LEGACY_ENTITY_KEY", "1")
 
 from agents.entity_registry import reset_entity_registry
 from agents.classification import reset_category_tree

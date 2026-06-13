@@ -51,6 +51,7 @@ from agents.supervisor import (
     _target_fields_for_agent,
 )
 from models.state import (
+    EntityQuery,
     MyceliumGraphState,
     QueryResponse,
     entity_query_is_delivery_step,
@@ -63,7 +64,7 @@ from network.metering_policy import load_metering_policy
 
 
 def _target_metering_block_response(
-    query,
+    query: EntityQuery,
     scope: DeliveryScope,
     gate,
     *,

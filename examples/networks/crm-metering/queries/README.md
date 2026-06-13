@@ -10,6 +10,6 @@ Call **`describe_network`** first, then paste each JSON into **`query_entity`** 
 | 2 | `02-quote-email.json` | `quote_required` — copy `delivery.delivery_id` and `quote.quote_id` |
 | 3 | `03-deliver-quote.json` | Replace placeholders → `assembled` |
 
-Step 2 binds attrs into the delivery scope; step 3 delivers with `delivery_id` + `quote_id` only.
+Step 3 replaces placeholders with `delivery_id` and `quote_id` from the step-2 `quote_required` response.
 
 Step 3 needs API keys in `.env` for live email research on a cold network.

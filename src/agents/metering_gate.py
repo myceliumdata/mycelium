@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import os
 import uuid
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Literal
 
 from agents.entity_registry import get_entity_registry
-from models.state import MyceliumGraphState, entity_query_is_delivery_step, graph_provenance_requested, graph_requested_attributes
+from models.state import BillingPrincipal, MyceliumGraphState, entity_query_is_delivery_step, graph_provenance_requested, graph_requested_attributes
 from network.entitlements import EntitlementRecord, get_entitlement_store
 from network.metering_policy import MeteringPolicy, load_metering_policy
 from network.payment import payment_bypassed, settle_quote
@@ -20,6 +21,72 @@ from network.quotes import (
     principal_required_error,
     quote_payload,
 )
+
+AcceptQuoteKind = Literal["accepted", "payment_required", "mismatch"]
+
+
+@dataclass(frozen=True)
+class AcceptQuoteResult:
+    kind: AcceptQuoteKind
+    accepted_quote: dict[str, Any] | None = None
+    payment_quote: dict[str, Any] | None = None
+    write_entitlement: bool = False
+
+
+def accept_quote_for_workload(
+    *,
+    quote_id: str,
+    workload: WorkloadSpec,
+    cache_state: CacheState,
+    policy: MeteringPolicy,
+    principal: BillingPrincipal | None,
+) -> AcceptQuoteResult:
+    """Try to accept ``quote_id`` when its workload hash matches."""
+    resolved_quote_id = quote_id.strip()
+    if not resolved_quote_id:
+        return AcceptQuoteResult(kind="mismatch")
+
+    store = get_quote_store()
+    stored = store.get(resolved_quote_id)
+    if stored is None or stored.workload.scope_hash != workload.scope_hash:
+        return AcceptQuoteResult(kind="mismatch")
+
+    payment_policy = policy.payment
+    require_paid = (
+        payment_policy.enabled and payment_policy.require_paid_before_accept
+    )
+    if (
+        require_paid
+        and stored.status == "pending"
+        and not payment_bypassed(payment_policy)
+    ):
+        return AcceptQuoteResult(
+            kind="payment_required",
+            payment_quote=quote_payload(stored),
+        )
+    if (
+        require_paid
+        and stored.status == "pending"
+        and payment_bypassed(payment_policy)
+    ):
+        settle_quote(
+            resolved_quote_id,
+            principal=principal,
+            provider_name=payment_policy.provider,
+        )
+    accepted = store.accept(
+        resolved_quote_id,
+        require_paid=require_paid and not payment_bypassed(payment_policy),
+    )
+    if accepted is None:
+        return AcceptQuoteResult(kind="mismatch")
+
+    write_production = cache_state in {"miss", "partial"}
+    return AcceptQuoteResult(
+        kind="accepted",
+        accepted_quote=quote_payload(accepted),
+        write_entitlement=write_production,
+    )
 
 
 def auto_accept_quotes_enabled() -> bool:
@@ -164,50 +231,32 @@ def metering_gate_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, 
         }
 
     store = get_quote_store()
-    payment_policy = policy.payment
-    require_paid = (
-        payment_policy.enabled and payment_policy.require_paid_before_accept
-    )
     if current.query.quote_id:
-        stored = store.get(current.query.quote_id)
-        if stored is not None and stored.workload.scope_hash == workload.scope_hash:
-            if (
-                require_paid
-                and stored.status == "pending"
-                and not payment_bypassed(payment_policy)
-            ):
-                return {
-                    "pending_quote": quote_payload(stored),
-                    "metering_payment_required": True,
-                    "audit_log": [
-                        f"metering_gate: payment_required {stored.quote_id}.",
-                    ],
-                }
-            if (
-                require_paid
-                and stored.status == "pending"
-                and payment_bypassed(payment_policy)
-            ):
-                settle_quote(
-                    stored.quote_id,
-                    principal=principal,
-                    provider_name=payment_policy.provider,
-                )
-            accepted = store.accept(
-                current.query.quote_id,
-                require_paid=require_paid and not payment_bypassed(payment_policy),
-            )
-            if accepted is not None:
-                write_production = cache_state in {"miss", "partial"}
-                return {
-                    "pending_quote": None,
-                    "metering_payment_required": False,
-                    "metering_accepted_quote": quote_payload(accepted),
-                    "metering_write_entitlement": write_production,
-                    "audit_log": [
-                        f"metering_gate: accepted quote {accepted.quote_id}.",
-                    ],
-                }
+        accepted_result = accept_quote_for_workload(
+            quote_id=current.query.quote_id,
+            workload=workload,
+            cache_state=cache_state,
+            policy=policy,
+            principal=principal,
+        )
+        if accepted_result.kind == "payment_required" and accepted_result.payment_quote:
+            return {
+                "pending_quote": accepted_result.payment_quote,
+                "metering_payment_required": True,
+                "audit_log": [
+                    f"metering_gate: payment_required {current.query.quote_id}.",
+                ],
+            }
+        if accepted_result.kind == "accepted" and accepted_result.accepted_quote:
+            return {
+                "pending_quote": None,
+                "metering_payment_required": False,
+                "metering_accepted_quote": accepted_result.accepted_quote,
+                "metering_write_entitlement": accepted_result.write_entitlement,
+                "audit_log": [
+                    f"metering_gate: accepted quote {current.query.quote_id}.",
+                ],
+            }
 
     issued = store.issue(quote)
     return {

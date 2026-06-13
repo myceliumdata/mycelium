@@ -30,6 +30,7 @@ from agents.specialist_fields import (
 )
 from agents.specialists.base import SpecialistStorage
 from network.mvr import MvrPolicy, load_mvr
+from network.env_util import env_int
 from tools.tavily import create_tavily_search_tool, is_web_search_available
 
 _RESEARCH_TEMPLATE_DIR = (
@@ -72,26 +73,16 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
-def _env_int(name: str, default: int) -> int:
-    raw = os.getenv(name, "").strip()
-    if not raw:
-        return default
-    try:
-        return int(raw)
-    except ValueError:
-        return default
-
-
 def research_min_confidence() -> float:
     return _env_float("MYCELIUM_RESEARCH_MIN_CONFIDENCE", 0.6)
 
 
 def research_max_tool_rounds() -> int:
-    return _env_int("MYCELIUM_RESEARCH_MAX_TOOL_ROUNDS", 3)
+    return env_int("MYCELIUM_RESEARCH_MAX_TOOL_ROUNDS", 3)
 
 
 def research_timeout_sec() -> int:
-    return _env_int("MYCELIUM_RESEARCH_TIMEOUT_SEC", 120)
+    return env_int("MYCELIUM_RESEARCH_TIMEOUT_SEC", 120)
 
 
 def research_model() -> str:

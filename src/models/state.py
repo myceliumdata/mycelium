@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import operator
+import os
 from typing import Annotated, Any
 
 from pydantic import BaseModel, Field, model_validator
@@ -82,7 +83,10 @@ class EntityQuery(BaseModel):
 
     id: str | None = Field(
         default=None,
-        description="Step 1: stable registry UUID to resolve (returns delivery_id).",
+        description=(
+            "Step 1: stable registry entity UUID (not delivery_id or quote_id). "
+            "Returns delivery_id for step 2."
+        ),
     )
     lookup: dict[str, str] = Field(
         default_factory=dict,
@@ -169,6 +173,23 @@ def entity_query_is_target_resolve_step(query: EntityQuery) -> bool:
     return bool((query.id or "").strip()) or bool(query.lookup)
 
 
+def entity_query_is_legacy_entity_key_step(query: EntityQuery) -> bool:
+    """Return True for deprecated step-1 entity_key resolution (internal tests only)."""
+    if entity_query_is_delivery_step(query) or entity_query_is_target_resolve_step(query):
+        return False
+    return bool((query.entity_key or "").strip())
+
+
+def legacy_entity_key_allowed() -> bool:
+    """True when MYCELIUM_ALLOW_LEGACY_ENTITY_KEY enables internal graph tests."""
+    return os.getenv("MYCELIUM_ALLOW_LEGACY_ENTITY_KEY", "").lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
 class QueryResponse(BaseModel):
     """Lightweight response for external consumers (CLI + MCP agents)."""
 
@@ -177,14 +198,13 @@ class QueryResponse(BaseModel):
         description=(
             "Machine-readable query outcome on every response: lookup_resolved (step 1; "
             "total_matches + delivery_id), found (registry identity only), "
-            "assembled (requested attributes merged), not_found, entity_key_unresolved "
-            "(near-miss suggestions), entity_unknown (no registry match, MVR fields needed), "
-            "entity_under_specified (partial binding), entity_bound_provisional "
-            "(new registry bind), entity_validated (MVR validation passed), "
+            "assembled (requested attributes merged), not_found, "
             "quote_required (metering: accept quote before research/delivery), "
             "payment_required (metering: pay_quote before quote_id unlocks work), "
             "principal_required (metering: billing principal missing for funding model), "
-            "or error (internal failure). Mirrors debug outcome=."
+            "or error (internal failure). Legacy outcomes (entity_key_unresolved, "
+            "entity_unknown, entity_bound_provisional, …) remain for internal "
+            "entity_key graph tests only. Mirrors debug outcome=."
         ),
     )
     total_matches: int | None = Field(

@@ -110,8 +110,15 @@ export interface QuotePayload {
   [key: string]: unknown;
 }
 
+export interface DeliveryPayload {
+  delivery_id: string;
+  expires_at: string;
+}
+
 export interface QueryResponse {
   outcome: string | null;
+  total_matches?: number | null;
+  delivery?: DeliveryPayload | null;
   required_fields: string[];
   suggestions: EntityKeySuggestion[];
   results: Record<string, unknown>[];

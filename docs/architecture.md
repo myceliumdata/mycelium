@@ -207,7 +207,7 @@ Future (not v1): per-network LangSmith project names, optional credential profil
 
 ## MVR redesign (target protocol)
 
-**Status:** Locked design; **dual-path runtime** — step-1 `id`/`lookup` via `target_resolve` (M4); legacy `entity_key` until M7–M9.  
+**Status:** Shipped (M1–M10, June 2026) — target two-step protocol on all public surfaces.  
 **Program:** [`docs/plans/mvr-redesign-program.md`](plans/mvr-redesign-program.md) · **Operator guide:** [`docs/plans/mvr-best-practices.md`](plans/mvr-best-practices.md) · **Examples:** [`docs/plans/mvr-redesign-entity-query-examples.md`](plans/mvr-redesign-entity-query-examples.md)
 
 **M3 (models):** `EntityQuery` and `QueryResponse` accept target fields with Pydantic step-1/step-2 validation.
@@ -271,7 +271,16 @@ Multi-match step-1 scopes carry `entity_ids[]` (N > 1). Step-2 deliver hydrates 
 
 ### Public surfaces (CLI, MCP, admin) — M9
 
-CLI `query`, MCP `query_entity`, and admin `POST /query` use the **target protocol only** — no `entity_key` / `binding` on public entry points. Example query JSON under `examples/networks/*/queries/` documents two-step resolve → deliver. Legacy `entity_key` remains on `EntityQuery` for internal graph smoke tests until M10 cleanup.
+CLI `query`, MCP `query_entity`, and admin `POST /query` use the **target protocol only** — no `entity_key` / `binding` on public entry points. Example query JSON under `examples/networks/*/queries/` documents two-step resolve → deliver. Admin UI (`admin-ui/`) uses lookup fields + stored `delivery_id` (M10).
+
+### Legacy graph path — M10
+
+Internal smoke tests may still call `EntityQuery(entity_key=…)` when `MYCELIUM_ALLOW_LEGACY_ENTITY_KEY=1` (pytest default). Public entry points reject legacy keys; supervisor returns `not_found` when the flag is unset.
+
+### Operator notes — M10
+
+- `delivery_id` and `quote_id` expire after **5 minutes** by default (`MYCELIUM_DELIVERY_TTL_SEC`, `MYCELIUM_QUOTE_TTL_SEC`). Abandoned quotes leave orphan delivery scopes until TTL — safe to ignore.
+- Batch step-2 deliver invokes specialists **sequentially** per entity (N×M); parallelize only if profiling requires it.
 
 ### Indexes (target)
 

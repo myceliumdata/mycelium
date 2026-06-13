@@ -194,7 +194,38 @@ def partition_attribute_buckets(
             buckets["out_of_scope"].append(attr)
             continue
 
-        status = _contrib_status_for_attr(contributions, attr)
+        if len(shaped_records) > 1:
+            statuses: list[str | None] = []
+            for rec in shaped_records:
+                entity_id = str(rec.get("id") or "") or None
+                statuses.append(
+                    _contrib_status_for_attr(
+                        contributions,
+                        attr,
+                        entity_id=entity_id,
+                    ),
+                )
+            if any(status == "pending" for status in statuses):
+                buckets["researching"].append(attr)
+            elif statuses and all(status == "na" for status in statuses):
+                buckets["unavailable"].append(attr)
+            elif statuses and all(status == "found" for status in statuses):
+                buckets["found"].append(attr)
+            elif any(
+                rec.get(attr) not in (None, "", "N/A", "pending")
+                for rec in shaped_records
+            ):
+                buckets["found"].append(attr)
+            else:
+                buckets["researching"].append(attr)
+            continue
+
+        entity_id = str(shaped_records[0].get("id") or "") or None
+        status = _contrib_status_for_attr(
+            contributions,
+            attr,
+            entity_id=entity_id,
+        )
         if status == "na":
             buckets["unavailable"].append(attr)
         elif status == "pending":

@@ -106,7 +106,10 @@ def normalized_lookup_values(lookup: dict[str, str]) -> dict[str, str]:
 
 
 def is_full_mvr_lookup(lookup: dict[str, str], mvr: MvrPolicy) -> bool:
-    """True when lookup supplies every MVR bind field with a non-empty value."""
+    """True when lookup supplies every MVR bind field with a non-empty value.
+
+    Empty strings and whitespace-only values are ignored (treated as absent).
+    """
     required = {field.strip().lower() for field in mvr.bind_fields if field.strip()}
     provided = set(normalized_lookup_values(lookup).keys())
     return required.issubset(provided)

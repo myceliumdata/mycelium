@@ -6,13 +6,13 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from agents.metering_gate import (
+    accept_quote_for_workload,
     metering_bypassed,
     resolve_cache_state,
 )
 from models.state import BillingPrincipal, DeliveryPayload, EntityQuery, normalized_requested_attributes
 from network.delivery import DeliveryScope
 from network.metering_policy import MeteringPolicy, load_metering_policy
-from network.payment import payment_bypassed, settle_quote
 from network.quotes import (
     BuiltinQuoteProvider,
     CacheState,
@@ -136,46 +136,28 @@ def run_target_metering_gate(
         return TargetMeteringResult(kind="free", cache_state=cache_state)
 
     store = get_quote_store()
-    payment_policy = policy.payment
-    require_paid = (
-        payment_policy.enabled and payment_policy.require_paid_before_accept
-    )
     resolved_quote_id = (quote_id or query.quote_id or "").strip()
     if resolved_quote_id:
-        stored = store.get(resolved_quote_id)
-        if stored is not None and stored.workload.scope_hash == workload.scope_hash:
-            if (
-                require_paid
-                and stored.status == "pending"
-                and not payment_bypassed(payment_policy)
-            ):
-                return TargetMeteringResult(
-                    kind="payment_required",
-                    quote=quote_payload(stored),
-                    cache_state=cache_state,
-                )
-            if (
-                require_paid
-                and stored.status == "pending"
-                and payment_bypassed(payment_policy)
-            ):
-                settle_quote(
-                    resolved_quote_id,
-                    principal=principal,
-                    provider_name=payment_policy.provider,
-                )
-            accepted = store.accept(
-                resolved_quote_id,
-                require_paid=require_paid and not payment_bypassed(payment_policy),
+        accepted_result = accept_quote_for_workload(
+            quote_id=resolved_quote_id,
+            workload=workload,
+            cache_state=cache_state,
+            policy=policy,
+            principal=principal,
+        )
+        if accepted_result.kind == "payment_required" and accepted_result.payment_quote:
+            return TargetMeteringResult(
+                kind="payment_required",
+                quote=accepted_result.payment_quote,
+                cache_state=cache_state,
             )
-            if accepted is not None:
-                write_production = cache_state in {"miss", "partial"}
-                return TargetMeteringResult(
-                    kind="accepted",
-                    accepted_quote=quote_payload(accepted),
-                    write_entitlement=write_production,
-                    cache_state=cache_state,
-                )
+        if accepted_result.kind == "accepted" and accepted_result.accepted_quote:
+            return TargetMeteringResult(
+                kind="accepted",
+                accepted_quote=accepted_result.accepted_quote,
+                write_entitlement=accepted_result.write_entitlement,
+                cache_state=cache_state,
+            )
 
     issued = store.issue(quote)
     return TargetMeteringResult(
