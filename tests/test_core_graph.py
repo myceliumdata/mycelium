@@ -44,7 +44,6 @@ def temp_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> CoreStorage
                 "name": "crm",
                 "mvr": {
                     "bind_fields": ["name", "employer"],
-                    "name_source": "entity_key",
                 },
             },
         ),

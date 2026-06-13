@@ -95,7 +95,6 @@ def test_load_mvr_from_network_json(crm_mvr_env: CoreStorage) -> None:
     _ = crm_mvr_env
     policy = load_mvr()
     assert policy.bind_fields == ["name", "employer"]
-    assert policy.name_source == "entity_key"
     assert policy.required_fields_for_entity_key("Paul Murphy") == ["employer"]
 
 

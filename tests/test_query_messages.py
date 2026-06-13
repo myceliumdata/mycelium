@@ -58,7 +58,6 @@ def query_message_env(
                 "name": "crm",
                 "mvr": {
                     "bind_fields": ["name", "employer"],
-                    "name_source": "entity_key",
                 },
             },
         ),

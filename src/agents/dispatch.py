@@ -33,7 +33,11 @@ from agents.responses import (
     response_research_gated,
     response_validation_failed,
 )
-from agents.target_deliver import delivery_scope_has_attributes, load_delivery_scope
+from agents.target_deliver import (
+    delivery_scope_has_attributes,
+    hydrate_matches_for_deliver,
+    load_delivery_scope,
+)
 from agents.target_metering import (
     delivery_payload_from_scope,
     run_target_metering_gate,
@@ -128,7 +132,7 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
     if entity_query_is_delivery_step(query):
         delivery_id = (query.delivery_id or "").strip()
         loaded = load_delivery_scope(delivery_id)
-        if loaded.kind != "loaded" or not loaded.scope or not loaded.matched_records:
+        if loaded.kind == "not_found" or loaded.scope is None:
             return {
                 "response": response_not_found(
                     query,
@@ -138,8 +142,18 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
                 "audit_log": ["target_resolve: deliver not_found (missing or expired scope)."],
             }
 
-        scope = loaded.scope
-        matched = loaded.matched_records
+        try:
+            scope, matched, resolution_kind = hydrate_matches_for_deliver(loaded)
+        except ValueError:
+            return {
+                "response": response_not_found(
+                    query,
+                    message=f"No valid delivery for delivery_id {delivery_id!r}.",
+                    **id_kwargs,
+                ),
+                "audit_log": ["target_resolve: deliver not_found (scope hydration failed)."],
+            }
+
         policy = load_metering_policy()
         metering_state: dict[str, Any] = {}
         if step2_should_quote(policy):
@@ -150,11 +164,12 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
                 principal=query.principal,
                 require_quote=True,
             )
+            match_count = len(scope.entity_ids) or (1 if scope.create_on_deliver else 0)
             blocked = _target_metering_block_response(
                 query,
                 scope,
                 gate,
-                total_matches=len(scope.entity_ids),
+                total_matches=match_count,
                 id_kwargs=id_kwargs,
             )
             if blocked is not None:
@@ -162,10 +177,10 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
             metering_state = _target_metering_entitlement_state(gate)
 
         if delivery_scope_has_attributes(scope):
-            return {
+            result: dict[str, Any] = {
                 **metering_state,
                 "matched_records": matched,
-                "entity_resolution_kind": "exact",
+                "entity_resolution_kind": resolution_kind,
                 "delivery_scope_attrs": list(scope.requested_attributes),
                 "delivery_scope_provenance": bool(scope.provenance),
                 "audit_log": [
@@ -173,6 +188,9 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
                     f"{scope.requested_attributes!r} entity_count={len(matched)}.",
                 ],
             }
+            if len(matched) == 1:
+                result["current_id"] = matched[0].get("id")
+            return result
 
         identity_records = _identity_records_from_match(matched)
         message = None
@@ -198,7 +216,7 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
         return {"audit_log": ["target_resolve: legacy entity_key path — defer to supervisor."]}
 
     resolved = resolve_target_step1(query)
-    if resolved.kind != "resolved" or not resolved.entity_ids:
+    if resolved.kind == "not_found":
         if (query.id or "").strip():
             message = f"No record found for id {(query.id or '').strip()!r}."
         else:
@@ -208,7 +226,19 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
             "audit_log": ["target_resolve: not_found (no delivery issued)."],
         }
 
-    delivery = issue_target_delivery(query, resolved.entity_ids)
+    if resolved.kind not in {"resolved", "create_pending"} or (
+        resolved.kind == "resolved" and not resolved.entity_ids
+    ):
+        return {
+            "response": response_not_found(query, message="Resolve failed.", **id_kwargs),
+            "audit_log": ["target_resolve: not_found (unexpected resolve kind)."],
+        }
+
+    delivery = issue_target_delivery(
+        query,
+        resolved.entity_ids,
+        create_on_deliver=resolved.create_on_deliver,
+    )
     total = len(resolved.entity_ids)
     scope = get_delivery_store().get(delivery.delivery_id)
     if scope is None:
@@ -644,6 +674,7 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
         contributions=contributions,
         audit_log=current.audit_log,
         debug_extra=debug_extra,
+        requested_attributes=requested,
         **id_kwargs,
     )
     if contributions:

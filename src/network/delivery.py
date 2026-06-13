@@ -35,6 +35,10 @@ class DeliveryScope(BaseModel):
     lookup: dict[str, Any] = Field(default_factory=dict)
     requested_attributes: list[str] = Field(default_factory=list)
     provenance: bool = False
+    create_on_deliver: bool = Field(
+        default=False,
+        description="Step-2 should bind a provisional registry row from lookup (0 step-1 matches).",
+    )
 
 
 class DeliveriesDocument(BaseModel):
@@ -70,6 +74,7 @@ def issue_delivery(
     lookup: dict[str, Any] | None = None,
     requested_attributes: list[str] | None = None,
     provenance: bool = False,
+    create_on_deliver: bool = False,
     now: datetime | None = None,
 ) -> DeliveryScope:
     """Create a new delivery scope with ``d_`` id and configured TTL."""
@@ -83,6 +88,7 @@ def issue_delivery(
         lookup=dict(lookup or {}),
         requested_attributes=list(requested_attributes or []),
         provenance=bool(provenance),
+        create_on_deliver=bool(create_on_deliver),
     )
 
 

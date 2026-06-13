@@ -9,7 +9,6 @@ from typing import Any
 from network.paths import NetworkPaths, resolve_network_root
 
 _DEFAULT_BIND_FIELDS = ["name", "employer"]
-_DEFAULT_NAME_SOURCE = "entity_key"
 _DEFAULT_DESCRIPTION = (
     "CRM people: display name plus current employer before bind and research."
 )
@@ -20,15 +19,11 @@ class MvrPolicy:
     """Per-network bind requirements before entity research (Slice 3)."""
 
     bind_fields: list[str]
-    name_source: str
     description: str
 
     def allowed_binding_keys(self) -> set[str]:
-        """MVR bind field keys accepted in ``EntityQuery.binding``."""
-        allowed = {field.strip().lower() for field in self.bind_fields if field.strip()}
-        if self.name_source == "entity_key":
-            allowed.discard("name")
-        return allowed
+        """MVR bind field keys accepted in ``EntityQuery.binding`` (legacy)."""
+        return {field.strip().lower() for field in self.bind_fields if field.strip()}
 
     def required_fields_for_entity_key(self, entity_key: str) -> list[str]:
         """Return MVR bind fields not satisfied by the current query."""
@@ -41,7 +36,7 @@ class MvrPolicy:
     ) -> list[str]:
         """Return MVR bind fields not yet satisfied by entity_key + binding."""
         satisfied: set[str] = set()
-        if self.name_source == "entity_key" and entity_key.strip():
+        if entity_key.strip():
             satisfied.add("name")
         for field, value in binding.items():
             if value.strip():
@@ -51,7 +46,6 @@ class MvrPolicy:
     def summary(self) -> dict[str, Any]:
         return {
             "bind_fields": list(self.bind_fields),
-            "name_source": self.name_source,
             "description": self.description,
         }
 
@@ -59,7 +53,6 @@ class MvrPolicy:
 def _crm_default_mvr() -> MvrPolicy:
     return MvrPolicy(
         bind_fields=list(_DEFAULT_BIND_FIELDS),
-        name_source=_DEFAULT_NAME_SOURCE,
         description=_DEFAULT_DESCRIPTION,
     )
 
@@ -73,15 +66,11 @@ def _parse_mvr_block(raw: Any) -> MvrPolicy | None:
     fields = [str(item).strip() for item in bind_fields if str(item).strip()]
     if not fields:
         return None
-    name_source = raw.get("name_source")
-    if not isinstance(name_source, str) or not name_source.strip():
-        name_source = _DEFAULT_NAME_SOURCE
     description = raw.get("description")
     if not isinstance(description, str) or not description.strip():
         description = _DEFAULT_DESCRIPTION
     return MvrPolicy(
         bind_fields=fields,
-        name_source=name_source.strip(),
         description=description.strip(),
     )
 
@@ -101,6 +90,39 @@ def normalize_binding(
         if text:
             normalized[field] = text
     return normalized
+
+
+def normalized_lookup_values(lookup: dict[str, str]) -> dict[str, str]:
+    """Map lookup keys to lower-case bind field names with stripped values."""
+    normalized: dict[str, str] = {}
+    for key, value in lookup.items():
+        field = key.strip().lower()
+        if not field:
+            continue
+        text = value.strip() if isinstance(value, str) else ""
+        if text:
+            normalized[field] = text
+    return normalized
+
+
+def is_full_mvr_lookup(lookup: dict[str, str], mvr: MvrPolicy) -> bool:
+    """True when lookup supplies every MVR bind field with a non-empty value."""
+    required = {field.strip().lower() for field in mvr.bind_fields if field.strip()}
+    provided = set(normalized_lookup_values(lookup).keys())
+    return required.issubset(provided)
+
+
+def can_create_on_zero_matches(
+    lookup: dict[str, str],
+    requested_attributes: list[str],
+    *,
+    mvr: MvrPolicy | None = None,
+) -> bool:
+    """True when 0-match lookup may create on step-2 deliver (full MVR + attrs)."""
+    from models.state import normalized_requested_attributes as norm_attrs
+
+    policy = mvr if mvr is not None else load_mvr()
+    return is_full_mvr_lookup(lookup, policy) and bool(norm_attrs(requested_attributes))
 
 
 def load_mvr(*, paths: NetworkPaths | None = None) -> MvrPolicy:

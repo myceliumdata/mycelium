@@ -80,7 +80,6 @@ def _assert_outcome(response: QueryResponse, expected: str) -> None:
                 "query": EntityQuery(entity_key="Paul Murphy", requested_attributes=["email"]),
                 "mvr": MvrPolicy(
                     bind_fields=["name", "employer"],
-                    name_source="entity_key",
                     description="test",
                 ),
             },

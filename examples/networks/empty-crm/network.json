@@ -4,7 +4,6 @@
   "description": "CRM MVR rules with no bootstrap seed — entities grow from query-time binds only.",
   "mvr": {
     "bind_fields": ["name", "employer"],
-    "name_source": "entity_key",
     "description": "CRM people: display name plus current employer before bind and research."
   },
   "metering": {

@@ -70,7 +70,6 @@ def _write_network_seed(root: Path, people: list[dict[str, str | None]]) -> None
                 "name": root.name,
                 "mvr": {
                     "bind_fields": ["name", "employer"],
-                    "name_source": "entity_key",
                 },
             },
             indent=2,

@@ -261,9 +261,9 @@ No `deliver: true` flag. `delivery_id` and `quote_id` TTL default **5 minutes** 
 
 Legacy outcomes (`entity_unknown`, `entity_key_unresolved`, `entity_bound_provisional`, …) are retired with the old protocol in M7–M9.
 
-### Create flow (0 matches)
+### Create flow (0 matches) — M7
 
-Partial `lookup` with 0 matches → `not_found` (no create). Full MVR in step-1 `lookup` + `requested_attributes` → provisional create on deliver path (slice M7). See program doc for batch and metering rules.
+Partial `lookup` with 0 matches → `not_found` (no create). Full MVR in step-1 `lookup` **plus** `requested_attributes` → step-1 returns `lookup_resolved` with `total_matches=0` and a `delivery_id` scoped for provisional create; step-2 deliver calls `bind_provisional` from scope `lookup` then runs attribute research when attrs were bound. **`name_source`** is removed — `name` is supplied in `lookup` like any other MVR bind field. Legacy `entity_key` resolution remains until M9 (CLI/MCP migration).
 
 ### Indexes (target)
 

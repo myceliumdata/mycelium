@@ -40,7 +40,6 @@ def _write_network_root(tmp_path: Path) -> None:
                 "name": "crm",
                 "mvr": {
                     "bind_fields": ["name", "employer"],
-                    "name_source": "entity_key",
                 },
             },
         ),

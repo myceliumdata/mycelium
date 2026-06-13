@@ -205,9 +205,14 @@ def build_query_message(
     classifications: list[dict[str, Any]],
     contributions: list[dict[str, Any]],
     audit_log: list[str] | None = None,
+    requested_attributes: list[str] | None = None,
 ) -> tuple[str, dict[str, list[str]]]:
     """Build classification-aware QueryResponse.message and attribute buckets."""
-    requested = normalized_requested_attributes(query.requested_attributes)
+    requested = normalized_requested_attributes(
+        requested_attributes
+        if requested_attributes is not None
+        else query.requested_attributes
+    )
 
     if not records:
         return f"No record found for {query.entity_key!r}.", {
@@ -835,9 +840,14 @@ def response_assembled(
     trace_id: str | None = None,
     thread_id: str | None = None,
     debug_extra: dict[str, Any] | None = None,
+    requested_attributes: list[str] | None = None,
 ) -> QueryResponse:
     """Final response after specialist contributions merged in assemble_response."""
-    requested = normalized_requested_attributes(query.requested_attributes)
+    requested = normalized_requested_attributes(
+        requested_attributes
+        if requested_attributes is not None
+        else query.requested_attributes
+    )
     records = shape_results(merged_records, requested)
     clfs = classifications or []
     contribs = contributions or []
@@ -847,6 +857,7 @@ def response_assembled(
         classifications=clfs,
         contributions=contribs,
         audit_log=audit_log,
+        requested_attributes=requested,
     )
     extra = {**(debug_extra or {}), **buckets}
     if clfs:

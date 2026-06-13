@@ -84,7 +84,6 @@ def test_build_research_prompts_custom_mvr_account_id_disambiguation(
 ) -> None:
     custom_mvr = MvrPolicy(
         bind_fields=["name", "account_id"],
-        name_source="entity_key",
         description="Custom network",
     )
     monkeypatch.setattr("tools.research.load_mvr", lambda **kwargs: custom_mvr)
@@ -122,7 +121,7 @@ def test_build_research_prompts_whitespace_bind_value_treated_as_absent() -> Non
     assert "Bind disambiguation (mandatory)" not in system
     disamb = bind_disambiguators(
         {"bind": {"name": "Jane", "employer": "   "}},
-        MvrPolicy(bind_fields=["name", "employer"], name_source="entity_key", description=""),
+        MvrPolicy(bind_fields=["name", "employer"], description=""),
     )
     assert has_extra_bind_disambiguators(disamb) is False
 

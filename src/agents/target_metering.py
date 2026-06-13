@@ -51,6 +51,7 @@ def workload_from_delivery_scope(scope: DeliveryScope) -> WorkloadSpec:
         entity_id=scope.entity_ids[0] if len(scope.entity_ids) == 1 else "",
         requested_attributes=attrs,
         provenance=bool(scope.provenance),
+        create_on_deliver=bool(scope.create_on_deliver),
     )
     return workload.model_copy(update={"scope_hash": compute_scope_hash(workload)})
 

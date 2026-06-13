@@ -203,7 +203,7 @@ class QueryResponse(BaseModel):
         default_factory=list,
         description=(
             "MVR bind fields still needed when outcome is entity_unknown or "
-            "entity_under_specified (excludes name when name_source is entity_key)."
+            "entity_under_specified (legacy entity_key path; name may come from entity_key)."
         ),
     )
     suggestions: list[EntityKeySuggestion] = Field(

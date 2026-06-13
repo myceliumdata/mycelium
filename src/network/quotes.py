@@ -26,6 +26,7 @@ class WorkloadSpec(BaseModel):
     entity_ids: list[str] = Field(default_factory=list)
     requested_attributes: list[str] = Field(default_factory=list)
     provenance: bool = False
+    create_on_deliver: bool = False
     scope_hash: str = ""
 
 
@@ -122,6 +123,7 @@ def compute_scope_hash(workload: WorkloadSpec) -> str:
             "entity_ids": sorted(workload.entity_ids),
             "requested_attributes": sorted(workload.requested_attributes),
             "provenance": workload.provenance,
+            "create_on_deliver": workload.create_on_deliver,
         }
     else:
         payload = {
@@ -172,11 +174,12 @@ class BuiltinQuoteProvider:
         principal: BillingPrincipal | None,
     ) -> Quote:
         _ = principal
-        entity_count = (
-            len(workload.entity_ids)
-            if workload.entity_ids
-            else (1 if workload.entity_id else 1)
-        )
+        if workload.create_on_deliver and not workload.entity_ids:
+            entity_count = 1
+        elif workload.entity_ids:
+            entity_count = len(workload.entity_ids)
+        else:
+            entity_count = 1 if workload.entity_id else 1
         research_usd = meter_research_usd() * entity_count
         query_usd = (
             meter_query_provenance_usd()

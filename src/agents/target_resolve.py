@@ -1,4 +1,4 @@
-"""Step-1 target protocol resolve (MVR redesign M4)."""
+"""Step-1 target protocol resolve (MVR redesign M4/M7)."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from typing import Any
 from agents.entity_registry import get_entity_registry
 from models.state import DeliveryPayload, EntityQuery
 from network.delivery import get_delivery_store, issue_delivery
+from network.mvr import can_create_on_zero_matches
 
 
 @dataclass(frozen=True)
@@ -16,6 +17,7 @@ class TargetResolveResult:
     entity_ids: list[str]
     lookup_snapshot: dict[str, Any]
     delivery: DeliveryPayload | None = None
+    create_on_deliver: bool = False
 
 
 def resolve_target_step1(query: EntityQuery) -> TargetResolveResult:
@@ -39,6 +41,13 @@ def resolve_target_step1(query: EntityQuery) -> TargetResolveResult:
     if query.lookup:
         entity_ids = registry.lookup_by_target_lookup(query.lookup)
         if not entity_ids:
+            if can_create_on_zero_matches(query.lookup, query.requested_attributes):
+                return TargetResolveResult(
+                    kind="create_pending",
+                    entity_ids=[],
+                    lookup_snapshot=dict(query.lookup),
+                    create_on_deliver=True,
+                )
             return TargetResolveResult(
                 kind="not_found",
                 entity_ids=[],
@@ -53,7 +62,12 @@ def resolve_target_step1(query: EntityQuery) -> TargetResolveResult:
     return TargetResolveResult(kind="not_found", entity_ids=[], lookup_snapshot={})
 
 
-def issue_target_delivery(query: EntityQuery, entity_ids: list[str]) -> DeliveryPayload:
+def issue_target_delivery(
+    query: EntityQuery,
+    entity_ids: list[str],
+    *,
+    create_on_deliver: bool = False,
+) -> DeliveryPayload:
     """Issue and persist a delivery scope for a resolved step-1 query."""
     scope = issue_delivery(
         entity_ids=entity_ids,
@@ -64,6 +78,7 @@ def issue_target_delivery(query: EntityQuery, entity_ids: list[str]) -> Delivery
         ),
         requested_attributes=list(query.requested_attributes),
         provenance=bool(query.provenance),
+        create_on_deliver=create_on_deliver,
     )
     get_delivery_store().put(scope)
     return DeliveryPayload(
