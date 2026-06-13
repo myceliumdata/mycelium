@@ -84,6 +84,7 @@ class NetworkPaths:
     db_path: Path
     entitlements_path: Path
     quotes_path: Path
+    deliveries_path: Path
     credits_path: Path
 
     @classmethod
@@ -101,6 +102,7 @@ class NetworkPaths:
             db_path=resolved / "mycelium.db",
             entitlements_path=resolved / "entitlements.json",
             quotes_path=resolved / "quotes.json",
+            deliveries_path=resolved / "deliveries.json",
             credits_path=resolved / "credits.json",
         )
 
@@ -116,6 +118,7 @@ _RUNTIME_ENV_FIELDS: dict[str, str] = {
     "MYCELIUM_DB_PATH": "db_path",
     "MYCELIUM_ENTITLEMENTS_PATH": "entitlements_path",
     "MYCELIUM_QUOTES_PATH": "quotes_path",
+    "MYCELIUM_DELIVERIES_PATH": "deliveries_path",
     "MYCELIUM_CREDITS_PATH": "credits_path",
 }
 

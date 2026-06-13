@@ -172,7 +172,7 @@ Introduce a **two-step delivery protocol** (like quotes): resolve → **`deliver
 | `DeliveryStore` | 5 min | `delivery_id` → `entity_ids[]`, lookup snapshot, `requested_attributes`, `provenance` |
 | `QuoteStore` | **5 min** (change from 1h) | `quote_id` → workload referencing `delivery_id` |
 
-Env: `MYCELIUM_DELIVERY_TTL_SEC`, `MYCELIUM_QUOTE_TTL_SEC` (default `300`).
+Env: `MYCELIUM_DELIVERY_TTL_SEC`, `MYCELIUM_QUOTE_TTL_SEC` (default `300`). Store files: `<network_root>/deliveries.json`, `<network_root>/quotes.json` (override via `MYCELIUM_DELIVERIES_PATH`, `MYCELIUM_QUOTES_PATH`).
 
 ---
 
