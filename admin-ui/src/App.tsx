@@ -398,21 +398,28 @@ export default function App() {
       setQueryLoading(true);
       setQueryError(null);
       try {
-        let result = await runQuery(body);
-        if (
-          result.outcome === "lookup_resolved" &&
-          result.delivery?.delivery_id &&
-          !deliveryId
-        ) {
-          const deliverId = String(result.delivery.delivery_id);
-          setQueryDeliveryId(deliverId);
-          result = await runQuery({ delivery_id: deliverId });
-        }
+        const result = await runQuery(body);
         setQueryResult(result);
-        if (result.delivery?.delivery_id) {
+
+        const terminalOutcome =
+          result.outcome === "found" ||
+          result.outcome === "assembled" ||
+          result.outcome === "entity_validated";
+
+        if (terminalOutcome) {
+          setQueryDeliveryId("");
+          setQueryQuoteId("");
+        } else if (result.delivery?.delivery_id) {
           setQueryDeliveryId(String(result.delivery.delivery_id));
+          setQueryName("");
+          setQueryEmployer("");
+          setQueryAttributes("");
         }
-        if (result.quote?.quote_id) {
+        if (
+          result.quote?.quote_id &&
+          (result.outcome === "quote_required" ||
+            result.outcome === "payment_required")
+        ) {
           setQueryQuoteId(String(result.quote.quote_id));
         }
       } catch (err) {
@@ -559,35 +566,35 @@ export default function App() {
           </summary>
           <form className="row-actions query-form" onSubmit={onQuerySubmit}>
             <input
-              type="text"
+              type="search"
               placeholder="Name (lookup)"
               value={queryName}
               onChange={(e) => setQueryName(e.target.value)}
               aria-label="Query lookup name"
             />
             <input
-              type="text"
+              type="search"
               placeholder="Employer (lookup)"
               value={queryEmployer}
               onChange={(e) => setQueryEmployer(e.target.value)}
               aria-label="Query lookup employer"
             />
             <input
-              type="text"
+              type="search"
               placeholder="Attributes (email, linkedin)"
               value={queryAttributes}
               onChange={(e) => setQueryAttributes(e.target.value)}
               aria-label="Requested attributes"
             />
             <input
-              type="text"
+              type="search"
               placeholder="Delivery id (from step 1)"
               value={queryDeliveryId}
               onChange={(e) => setQueryDeliveryId(e.target.value)}
               aria-label="Delivery id"
             />
             <input
-              type="text"
+              type="search"
               placeholder="Quote id (retry after quote_required)"
               value={queryQuoteId}
               onChange={(e) => setQueryQuoteId(e.target.value)}
@@ -611,12 +618,17 @@ export default function App() {
                   total_matches: {queryResult.total_matches}
                 </p>
               )}
-              {queryResult.delivery?.delivery_id && (
-                <p className="muted">
-                  delivery_id:{" "}
-                  <code>{String(queryResult.delivery.delivery_id)}</code>
-                </p>
-              )}
+              {queryResult.delivery?.delivery_id &&
+                (queryResult.outcome === "lookup_resolved" ||
+                  queryResult.outcome === "quote_required" ||
+                  queryResult.outcome === "payment_required") && (
+                  <p className="muted">
+                    delivery_id:{" "}
+                    <code>{String(queryResult.delivery.delivery_id)}</code>
+                    {" · "}
+                    Run again to deliver (delivery id is pre-filled).
+                  </p>
+                )}
               {queryResult.required_fields.length > 0 && (
                 <p>
                   <strong>Required fields:</strong>{" "}
