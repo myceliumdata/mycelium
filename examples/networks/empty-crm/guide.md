@@ -4,27 +4,29 @@ This network uses the same CRM **minimum viable record** rules as the **`crm`** 
 
 ## First bind walkthrough (two-step)
 
-1. **Resolve** with a full MVR lookup (name + employer):
+1. **Resolve** with a full MVR lookup (name + employer). Request extended attributes on **step 1 only**:
 
    ```json
    {
      "lookup": {
        "name": "Paul Murphy",
        "employer": "Acme Corp"
-     }
+     },
+     "requested_attributes": ["email"]
    }
    ```
 
    Response: `lookup_resolved` (or `quote_required` on metered networks) with
-   `delivery.delivery_id`. Mycelium creates a provisional row in `entities.json`,
-   runs core validation, and promotes it when MVR passes.
+   `delivery.delivery_id` and `delivery.create_on_deliver: true` (0 registry matches).
+   Step 1 does **not** create a registry row — it only issues a delivery scope.
 
-2. **Deliver** with the returned `delivery_id` (and `quote_id` when metered):
+2. **Deliver** with the returned `delivery_id` (and `quote_id` when metered). Step 2
+   creates the provisional row, runs core validation, and invokes specialists for
+   attrs bound on step 1:
 
    ```json
    {
-     "delivery_id": "d_…",
-     "requested_attributes": ["email"]
+     "delivery_id": "d_…"
    }
    ```
 

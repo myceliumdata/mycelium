@@ -7,16 +7,16 @@ Committed **reference network** with CRM MVR/bind rules but **no `seed.json`**. 
 ```bash
 ./bin/refresh-example-network empty-crm --root ~/mycelium-networks/empty-crm --yes
 
-# Step 1 — resolve lookup (creates the first registry row)
+# Step 1 — resolve lookup (issues delivery_id; create_on_deliver when 0 matches)
 uv run mycelium query --network-dir ~/mycelium-networks/empty-crm \
   --lookup-json '{"name":"Paul Murphy","employer":"Acme Corp"}'
 
-# Step 2 — deliver (paste delivery_id from step 1)
+# Step 2 — deliver (paste delivery_id from step 1; creates the first registry row)
 uv run mycelium query --network-dir ~/mycelium-networks/empty-crm \
   --delivery-id d_…
 ```
 
-After refresh, `entities.json` is absent or empty — no bootstrap import runs. The first successful bind creates registry rows at query time.
+After refresh, `entities.json` is absent or empty — no bootstrap import runs. The first registry row is created on **step 2 deliver**, not step 1.
 
 ## Layout
 

@@ -170,13 +170,18 @@ Users download the **framework** (this repo: `src/`, `bin/`, docs, tests) and ru
 ```
 <network_root>/
   network.json
-  seed.json
+  seed.json             # optional bootstrap fixture (refresh/create import only)
+  entities.json         # runtime canonical registry
   categories.json       # skeleton ontology at create; runtime (see docs/examples/sample-categories.json)
   agent_registry.json
+  deliveries.json       # runtime — step-1 delivery scopes (TTL; MYCELIUM_DELIVERIES_PATH)
+  quotes.json           # runtime — metered quotes (TTL; MYCELIUM_QUOTES_PATH)
+  entitlements.json     # runtime — metering entitlements (when enabled)
+  credits.json          # runtime — metering credits (when enabled)
   specialists/          # generated *_specialist.py (Phase 5; per-network)
   agents/<category>/storage.json
   checkpoints.sqlite
-  mycelium.db          # optional legacy
+  mycelium.db          # optional empty bootstrap file (no identity tables)
 ```
 
 **Ontology vs classification:** `network create` writes a **skeleton ontology** (categories, specialists, minimal `attribute_map` from examples). The classification engine still **grows `attribute_map` lazily** at query time when clients request attributes not yet mapped.
@@ -377,7 +382,7 @@ The seed-data-context redesign is **implemented** (Cursor slices `2026-06-09-150
 - Seed JSON origin (`<network_root>/seed.json`; example at `examples/networks/crm/`) with no legacy `id` in the file; public `results["id"]` = stable UUID
 - No `core_data` specialist; `name`/`employer` are specialist-owned like any other attribute
 - Supervisor is a pure planner (resolves seed, classifies, builds full context plan in state)
-- Graph: `supervisor` → `build_context` → `invoke_specialists` → `assemble_response`
+- Graph: `target_resolve` → (`assemble_response` on step 1, or `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` on step 2)
 - Agent Factory template with 3 scenarios (`found` / `pending` / `N/A`), `specialist_contrib`, `id`/`context`/`target_fields`
 - Canonical rename: `person_id` → `id` everywhere (slice 1300, June 2026)
 - Full integration, docs refresh, specialist re-gens, removal of core-person-field privileges, and legacy `id` elimination complete

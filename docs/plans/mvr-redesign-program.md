@@ -160,7 +160,7 @@ Introduce a **two-step delivery protocol** (like quotes): resolve → **`deliver
 | Step-1 `lookup` | `requested_attributes` | Result |
 |-----------------|------------------------|--------|
 | Partial, 0 matches | any | `not_found` — no create |
-| Full MVR, 0 matches | non-empty | Create provisional → `delivery_id` → validate → research on deliver |
+| Full MVR, 0 matches | non-empty | Step 1: `lookup_resolved` + `delivery_id` + `create_on_deliver`; step 2: create provisional → validate → research |
 | Full MVR, 0 matches | empty or attrs | `lookup_resolved`; `total_matches=0`; `delivery.create_on_deliver: true` — step 2 creates + optional research |
 | Full MVR, 0 matches | (partial lookup N/A) | Partial lookup with 0 matches → `not_found` only |
 

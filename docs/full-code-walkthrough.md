@@ -81,23 +81,24 @@ Committed examples: `examples/networks/crm/` (bootstrap seed), `examples/network
 
 - **`supervisor_agent`**: registry resolution, classification, specialist planning, routing audit.
 - **`dispatch`**: `build_context`, `invoke_specialists`, `assemble_response` nodes.
-- **`factory`**: Jinja template → generated `*_specialist.py` under `src/agents/specialists/` (gitignored).
+- **`factory`**: Jinja template → generated `*_specialist.py` under `<network_root>/specialists/` (CRM reference copies also under `src/agents/specialists/`).
 - **`classification`**: attribute → category map (`categories.json` under network root).
 
 ---
 
 ## 8. Storage (`src/storage/core.py`)
 
-SQLite `people(id, name, employer)` retained for checkpoints-era compatibility; **queries** use `entities.json` + specialist files, not auto SQLite seeding.
+`mycelium.db` may exist as an optional empty SQLite file for bootstrap compatibility; **no `people` table** (removed June 2026). Identity and queries use `entities.json` + specialist files under `network_root`.
 
-Paths resolve under active `network_root` via `src/network/paths.py`.
+Paths resolve under active `network_root` via `src/network/paths.py` (`deliveries.json`, `quotes.json`, metering stores when enabled).
 
 ---
 
 ## 9. MCP server (`src/mycelium_mcp/server.py`)
 
 - One long-lived process per network (`MYCELIUM_NETWORK_ROOT` or `MYCELIUM_NETWORK`).
-- `health_check` returns `info.network_root`, `network_name`, `network_display_name`.
+- Tools: `query_entity`, `describe_network`, `pay_quote` (when payment enabled), `health_check`.
+- `health_check` returns `info.network_root`, `network_name`, `network_display_name`; internally pings step 1 + step 2 for diagnostics.
 - `refresh_runtime_from_disk()` before each query.
 
 ---
@@ -127,10 +128,11 @@ Two-step example: `mycelium query --lookup-json '{…}'` then `mycelium query --
 
 ## 12. Gaps / next tasks
 
-From `TODO.md`:
+From `TODO.md` (June 2026):
 
-- Networks Phases 1–5 delivered (`network create`, per-network `specialists/`, skeleton ontology).
-- Query-as-seed launch (v2), inter-network handoff (Phase 6).
+- **MVR redesign M1–M10** — shipped (two-step protocol, `DeliveryStore`, admin query UI).
+- **Networks Phases 1–5** — delivered (`network create`, per-network `specialists/`, skeleton ontology).
+- **Next:** Program 2 (versioned bind storage), query-as-seed launch (v2), inter-network handoff (Phase 6).
 - LangSmith E2E verification in operator `.env`.
 
 ---
@@ -145,4 +147,4 @@ entities.json + Specialist storage (agents/<category>/) under network_root
 
 ---
 
-*Last major refresh: June 2026 (networks Phases 1–4, seed-data-context graph, MCP network metadata).*
+*Last major refresh: June 2026 (MVR redesign M1–M10, networks Phases 1–5, target two-step protocol).*

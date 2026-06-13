@@ -2,7 +2,7 @@
 
 **Status:** ✅ **CLEAR** (2026-06-13) — Paul manual gate passed; shipped `origin/main`
 
-**Context:** MVR redesign shipped locally (M1–M10 + post-program polish). Target two-step protocol on CLI, MCP, admin API, and admin UI; `delivery.create_on_deliver` on step 1. Automated coverage: `./bin/ci-local` (360+ smoke).
+**Context:** MVR redesign shipped on `origin/main` (M1–M10 + post-program polish). Target two-step protocol on CLI, MCP, admin API, and admin UI; `delivery.create_on_deliver` on step 1. Automated coverage: `./bin/ci-local` (360+ smoke).
 
 **Prereqs:** From framework repo root; `uv sync` done; `.env` with keys if a check needs live research (noted below).
 

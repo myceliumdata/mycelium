@@ -45,12 +45,15 @@ You are here (step 1). Then:
 uv sync --all-extras
 cp .env.example .env   # OPENAI_API_KEY + TAVILY_API_KEY for research demos
 ./bin/refresh-example-network crm
+# Step 1 — copy delivery_id from JSON
 uv run mycelium query --network crm \
   --lookup-json '{"name": "Nichanan Kesonpat", "employer": "1k(x)"}'
+# Step 2 — paste delivery_id
+uv run mycelium query --network crm --delivery-id d_…
 ./bin/ci-local         # same gate as GitHub CI before you open a PR
 ```
 
-Optional: `./bin/restart-admin` → `http://127.0.0.1:5173` for the read-only admin demo UI.
+Optional: `./bin/restart-admin` → `http://127.0.0.1:5173` for the admin UI (`POST /query` **Run query** panel mirrors the same two-step flow).
 
 ---
 
@@ -71,7 +74,7 @@ Optional: `./bin/restart-admin` → `http://127.0.0.1:5173` for the read-only ad
 
 - Treating `docs/plans/entity-seed-elimination-*.md` as current runtime behavior.
 - Assuming `mycelium.db` holds identity (it does not; optional empty bootstrap file only).
-- Expecting a public ingest API (removed June 2025; internal data addition is future design).
+- Expecting a public ingest API (removed June 2026; internal data addition is future design).
 - Editing website copy in this repo (use **mycelium-website**).
 
 ---

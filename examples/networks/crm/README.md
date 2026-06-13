@@ -58,11 +58,15 @@ uv run mycelium network status --network crm --entity "Andrea Kalmans"
 
 ## Network growth from queries
 
-`seed.json` is imported into **`entities.json` at bootstrap only** (refresh/create). Queries read the registry. When a visiting agent binds a new person via step-1 `lookup` (for example `{"name":"Paul Murphy","employer":"Acme Corp"}`), Mycelium:
+`seed.json` is imported into **`entities.json` at bootstrap only** (refresh/create). Queries read the registry. When a visiting agent binds a new person, use the two-step protocol:
+
+**Step 1** — full MVR `lookup` (for example `{"name":"Paul Murphy","employer":"Acme Corp"}`) plus optional `requested_attributes` on the same request. Response: `lookup_resolved` with `delivery.delivery_id` and `delivery.create_on_deliver: true` when there are 0 registry matches (no row created yet).
+
+**Step 2** — `delivery_id` (+ `quote_id` when metered). Mycelium then:
 
 1. Creates a provisional row in `entities.json` (registry)
 2. Runs core validation and promotes the row to `validated`
-3. Step 2 with `delivery_id` invokes specialists for requested attributes (research gate: validated registry row)
+3. Invokes specialists for `requested_attributes` bound on step 1 (research gate: validated registry row)
 4. Writes extended attributes under `agents/<category>/storage.json` keyed by `entity_id`
 5. Records **data attribution** on the registry row: `attr_sources` (which category owns each attr) and `last_researched_at` (when research last succeeded)
 
@@ -79,6 +83,9 @@ Example MCP fixtures: [`queries/`](queries/) (batch deliver walkthrough).
   seed.json         # people array (name + employer only)
   categories.json   # runtime — created on first query (see docs/examples/sample-categories.json)
   agent_registry.json
+  entities.json     # runtime canonical registry
+  deliveries.json   # runtime — step-1 delivery scopes (TTL)
+  quotes.json       # runtime — metered quotes (TTL)
   specialists/      # generated *_specialist.py
   agents/<category>/
   checkpoints.sqlite

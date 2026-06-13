@@ -26,6 +26,7 @@ Topic-specific plans and backlogs. Start with [architecture.md](architecture.md)
 
 | Topic | Document |
 |-------|----------|
+| **MVR redesign (shipped)** | [plans/mvr-redesign-program.md](plans/mvr-redesign-program.md), [plans/mvr-best-practices.md](plans/mvr-best-practices.md), [plans/mvr-redesign-entity-query-examples.md](plans/mvr-redesign-entity-query-examples.md) |
 | Specialist research (Phase 1) | [plans/specialist-research-phase1.md](plans/specialist-research-phase1.md) |
 | **Research prompt context** (MVR bind disambiguation + peer specialists, June 2026) | Slices `2010` / `2110` in `prompts/cursor/done/`; implementation in `src/tools/research.py`, templates under `src/agents/factory/templates/research/` |
 | Research robustness backlog (post-2010) | [plans/research-robustness-backlog.md](plans/research-robustness-backlog.md) |

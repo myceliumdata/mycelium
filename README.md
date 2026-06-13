@@ -209,7 +209,7 @@ Bind attrs and `provenance` on **step 1 only**; step 2 sends `delivery_id` (+ `q
 
 **Attribute fan-out:** Each requested attribute is classified to a category (contact, social, professional, etc.) and routed to the matching specialist. Multiple attributes may invoke **multiple specialists** in one query (e.g. `["email", "linkedin"]` → contact + social). Core fields (`name`, `employer`) come from the registry; everything else is specialist-owned.
 
-The MCP server reloads the entity registry, categories, and specialist modules from disk before each query; **restart MCP only after a code deploy or if reload fails** and results still disagree with a fresh CLI query. MCP returns the same `trace_id` as the CLI when LangSmith tracing is on (verify in the LangSmith UI under project `mycelium`). Call **`describe_network`** at connect time for the author `guide.md`, ontology, and usage policy. Other tools: `health_check`.
+The MCP server reloads the entity registry, categories, and specialist modules from disk before each query; **restart MCP only after a code deploy or if reload fails** and results still disagree with a fresh CLI query. MCP returns the same `trace_id` as the CLI when LangSmith tracing is on (verify in the LangSmith UI under project `mycelium`). Call **`describe_network`** at connect time for the author `guide.md`, ontology, and usage policy. Other tools: **`pay_quote`** (when `metering.payment.enabled`), **`health_check`** (includes an internal step-1 + step-2 ping for diagnostics).
 
 ### Admin daemon
 
@@ -221,13 +221,14 @@ MYCELIUM_NETWORK=crm uv run mycelium-admin
 MYCELIUM_NETWORK_ROOT=~/mycelium-networks/crm uv run mycelium-admin
 ```
 
-Long-lived **HTTP on localhost** (default `http://127.0.0.1:8741`) — one process per network for operator demos and the **admin UI** (`admin-ui/`). **v0 is read-only**; all snapshot fields come from `src/network/introspection.py` (same as `mycelium network status --json`).
+Long-lived **HTTP on localhost** (default `http://127.0.0.1:8741`) — one process per network for operator demos and the **admin UI** (`admin-ui/`). Snapshot fields come from `src/network/introspection.py` (same as `mycelium network status --json`). **`POST /query`** runs the same target two-step protocol as CLI/MCP (admin UI **Run query** panel; no auto-deliver on step 2).
 
 | Endpoint | Purpose |
 |----------|---------|
 | `GET /health` | Liveness + bound network metadata |
 | `GET /status` | Full status JSON (`?category=`, `?entity=` mirror CLI flags) |
 | `GET /capabilities` | Guide, ontology, policy (same payload as MCP `describe_network`) |
+| `POST /query` | Target-protocol query (`EntityQuery` JSON); returns `QueryResponse.public_dict()` |
 
 After `./bin/refresh-example-network`, the daemon picks up registry changes on the next `GET /status` (entity registry is reset per request). When `seed.json` is present, refresh imports it into `entities.json` at bootstrap only — queries read the registry, not seed. **Restart the daemon after a code deploy** or if specialist module counts look stale.
 
@@ -242,7 +243,7 @@ uv run mycelium network status --network crm --json | jq '.registry_entity_count
 
 Browser client in `admin-ui/` (`mycelium-admin-ui`) — **API-only** (no direct reads of `seed.json` or MCP). Restart the daemon after a Python code deploy; rebuild the SPA after frontend changes.
 
-**Default view** is scannable for demos: **Overview** shows ✅/❌ for entity count, categories, and specialists; specialist rows expand for storage detail. **Entity lookup** and **Network guide & ontology** start collapsed. The UI polls `/status` every 3s (silent) so specialists appear as MCP/CLI queries populate storage — no manual refresh button.
+**Default view** is scannable for demos: **Overview** shows ✅/❌ for entity count, categories, and specialists; specialist rows expand for storage detail. **Run query** exercises the two-step protocol (step 1 pre-fills `delivery_id`; user must click **Run** again for step 2 — no auto-deliver). **Entity lookup** and **Network guide & ontology** start collapsed. The UI polls `/status` every 3s (silent) so specialists appear as MCP/CLI queries populate storage — no manual refresh button.
 
 **Development** (recommended — one command):
 
@@ -264,7 +265,7 @@ MYCELIUM_NETWORK=crm uv run mycelium-admin
 cd admin-ui && npm install && npm run dev
 ```
 
-Open the Vite URL (default `http://127.0.0.1:5173`). The dev server proxies `/health`, `/status`, and `/capabilities` to the admin daemon.
+Open the Vite URL (default `http://127.0.0.1:5173`). The dev server proxies `/health`, `/status`, `/capabilities`, and `/query` to the admin daemon.
 
 **Demo (single process)** — one URL for screen recordings:
 
@@ -325,7 +326,7 @@ CLI and MCP return **`QueryResponse`** JSON:
 }
 ```
 
-Every CLI and MCP query response includes **`outcome`** (machine-readable: `lookup_resolved`, `quote_required`, `found`, `assembled`, `not_found`, or `error`). Step 1 returns `delivery` + `total_matches`; when step 2 will create a new entity, `delivery.create_on_deliver` is `true` (omitted for existing matches). Step 2 returns full `results[]`. Agents should branch on `outcome` and `delivery.create_on_deliver` before trusting `results`; use `message` for step-1 deliver guidance and per-attribute status. MCP schema: `mycelium://schema/query-response`. Examples: [`docs/plans/mvr-redesign-entity-query-examples.md`](docs/plans/mvr-redesign-entity-query-examples.md).
+Every CLI and MCP query response includes **`outcome`** (machine-readable: `lookup_resolved`, `quote_required`, `payment_required`, `principal_required`, `found`, `assembled`, `not_found`, or `error`). Step 1 returns `delivery` + `total_matches`; when step 2 will create a new entity, `delivery.create_on_deliver` is `true` (omitted for existing matches). Step 2 returns full `results[]`. Agents should branch on `outcome` and `delivery.create_on_deliver` before trusting `results`; use `message` for step-1 deliver guidance and per-attribute status. When metering payment is enabled: `quote_required` → `pay_quote` → step 2 with `quote_id`. MCP schema: `mycelium://schema/query-response`. Examples: [`docs/plans/mvr-redesign-entity-query-examples.md`](docs/plans/mvr-redesign-entity-query-examples.md).
 
 - **`results`** — One dict per matched entity. Always includes `"id"`. With `requested_attributes`, includes only those keys after specialist-first merge.
 - **`message`** — Human-readable status (entity found, research pending, N/A, etc.).
@@ -346,15 +347,18 @@ Runtime agent data under your `network_root` (`agents/`, `specialists/`, `agent_
 
 ```mermaid
 flowchart TD
-    Client[CLI or MCP] --> Graph[graphs/core.py]
-    Graph --> S[supervisor]
+    Client[CLI MCP or admin] --> Graph[graphs/core.py]
+    Graph --> TR[target_resolve]
+    TR -->|step 1 lookup_resolved| ASM[assemble_response]
+    TR -->|step 2 deliver| S[supervisor]
     S -->|specialists needed| BC[build_context]
     BC --> INV[invoke_specialists]
-    INV --> ASM[assemble_response]
-    S -->|name only / not found| ASM
+    INV --> ASM
+    S -->|identity only| ASM
     ASM --> RES[QueryResponse JSON]
     Graph --> CP[(checkpoints.sqlite)]
-    Entities[(network_root/entities.json)] --> S
+    Entities[(network_root/entities.json)] --> TR
+    Deliveries[(network_root/deliveries.json)] --> TR
     Store[(network_root/agents/)] --> BC
     Store --> INV
 ```
@@ -370,7 +374,8 @@ flowchart TD
 | Factory | `src/agents/factory/` | Jinja template → generated specialists |
 | Research | `src/tools/research.py`, `src/tools/tavily.py` | Sync LLM + web search, persist fields |
 | Graph | `src/graphs/core.py` | LangGraph; async checkpointer (Studio), sync path (MCP) |
-| MCP | `src/mycelium_mcp/server.py` | `describe_network`, `query_entity`, `health_check` |
+| MCP | `src/mycelium_mcp/server.py` | `describe_network`, `query_entity`, `pay_quote`, `health_check` |
+| Admin | `src/mycelium_admin/server.py` | `GET /health`, `/status`, `/capabilities`; `POST /query` |
 | CLI | `src/main.py` | `mycelium query`, `mycelium network` |
 
 Full detail: [docs/architecture.md](docs/architecture.md). Research: [docs/plans/specialist-research-phase1.md](docs/plans/specialist-research-phase1.md), prompt context ([docs/README.md](docs/README.md#research-prompts-june-2026)).
