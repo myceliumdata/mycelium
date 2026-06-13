@@ -154,8 +154,8 @@ Direct JSON edits bypassing this path are unsupported for operators once write U
 | Surface | v1 behavior |
 |---------|-------------|
 | **Default CLI/MCP query** | Unchanged flat `results` (`id`, attr values as strings) |
-| **`provenance=true`** | Add structured attribution block (implement metering promise); flat keys retained |
-| **Admin entity drill-down** | Current value + expandable version timeline per field |
+| **`provenance=true`** | Add structured attribution block (extended + MVR bind fields with versioned specialist storage); flat keys retained |
+| **Admin entity drill-down** | Current value + expandable version timeline per field (extended + bind) |
 | **`describe_network`** | Document version schema and actor kinds |
 
 ---
@@ -164,7 +164,7 @@ Direct JSON edits bypassing this path are unsupported for operators once write U
 
 See [`attribute-provenance-program1.md`](attribute-provenance-program1.md) for Program 1 slices 1–3.
 
-Program 2 Slice 1 (shipped): MVR canonical values in taxonomy-owned specialist `versions[]` via `agents/attribute_write.py`; entity row = cache + protocol + indexes (no `bind_versions[]`). Slices 2–3: provenance/admin bind fields, research operator deference. See [`attribute-provenance-program2.md`](attribute-provenance-program2.md).
+Program 2 Slice 1 (shipped): MVR canonical values in taxonomy-owned specialist `versions[]` via `agents/attribute_write.py`; entity row = cache + protocol + indexes (no `bind_versions[]`). Slice 2 (shipped): `provenance=true` and admin drill-down expose bind-field `versions[]` from specialist storage. Slice 3: research operator deference. See [`attribute-provenance-program2.md`](attribute-provenance-program2.md).
 Program 3 (TBD): Operator write surfaces.
 
 ---
@@ -196,7 +196,7 @@ Program 3 (TBD): Operator write surfaces.
 | Program | Scope | Status |
 |---------|--------|--------|
 | **1 — Provenance** | Extended attrs: `versions[]`, research append, admin read, `provenance=true` | **Complete** (June 2026) — [`attribute-provenance-program1.md`](attribute-provenance-program1.md) |
-| **2 — MVR / entity** | Specialist-owned MVR, unified write, taxonomy ownership | **In progress** — [`attribute-provenance-program2.md`](attribute-provenance-program2.md) |
+| **2 — MVR / entity** | Specialist-owned MVR, unified write, taxonomy ownership, read surfaces | **In progress** — Slice 2 shipped — [`attribute-provenance-program2.md`](attribute-provenance-program2.md) |
 | **3 — Operator write** | Admin edit, re-research policy | After Program 2 |
 
 ---

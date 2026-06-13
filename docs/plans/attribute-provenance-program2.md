@@ -101,8 +101,8 @@ When building research prompts, if target field’s **current** version has `act
 | Slice | Spec | Cursor prompt | Scope |
 |-------|------|---------------|--------|
 | **1** | [`attribute-provenance-program2-slice1.md`](attribute-provenance-program2-slice1.md) | `2026-06-13-2200-attribute-provenance-program2-slice1` | Unified write; taxonomy bootstrap; route bind/seed/create paths; MVR in specialist storage |
-| **2** | [`attribute-provenance-program2-slice2.md`](attribute-provenance-program2-slice2.md) | *(after Slice 1 approved)* | `provenance=true` + admin for bind fields |
-| **3** | [`attribute-provenance-program2-slice3.md`](attribute-provenance-program2-slice3.md) | *(after Slice 2 approved)* | Generalize `bind_provisional_from_scope`; operator research deference prompt; docs + hygiene |
+| **2** | [`attribute-provenance-program2-slice2.md`](attribute-provenance-program2-slice2.md) | `2026-06-13-2300-attribute-provenance-program2-slice2` | `provenance=true` + admin for bind fields |
+| **3** | [`attribute-provenance-program2-slice3.md`](attribute-provenance-program2-slice3.md) | `2026-06-13-2400-attribute-provenance-program2-slice3` | Generalize `bind_provisional_from_scope`; operator research deference prompt; docs + hygiene |
 
 **Order:** 1 → 2 → 3 (each reviewed before the next).
 

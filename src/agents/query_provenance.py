@@ -12,12 +12,7 @@ from agents.entity_registry import get_entity_registry
 from agents.specialist_fields import is_versioned_field, validate_versioned_field
 from agents.specialists.base import category_slug
 from models.state import EntityQuery, QueryResponse, normalized_requested_attributes
-from network.mvr import load_mvr
 from network.paths import NetworkPaths, resolve_network_root, runtime_path
-
-
-def _bind_field_names() -> set[str]:
-    return {field.strip().lower() for field in load_mvr().bind_fields if field.strip()}
 
 
 def _category_for_attribute(attr: str, *, entity_id: str) -> str | None:
@@ -75,9 +70,7 @@ def build_query_provenance(
 ) -> dict[str, Any] | None:
     """Return provenance payload or None when nothing to attach."""
     requested = normalized_requested_attributes(requested_attributes)
-    bind_fields = _bind_field_names()
-    extended = [attr for attr in requested if attr not in bind_fields]
-    if not extended or not entity_ids:
+    if not requested or not entity_ids:
         return None
 
     resolved_paths = _runtime_paths(paths)
@@ -87,7 +80,7 @@ def build_query_provenance(
         if not entity_id:
             continue
         attributes: dict[str, Any] = {}
-        for attr in extended:
+        for attr in requested:
             category = _category_for_attribute(attr, entity_id=entity_id)
             if not category:
                 continue

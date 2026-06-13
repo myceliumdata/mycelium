@@ -848,9 +848,7 @@ export default function App() {
                     </thead>
                     <tbody>
                       {status.entity_fields.map((field) => {
-                        const hasVersions =
-                          field.field_kind !== "bind" &&
-                          Boolean(field.versions?.length);
+                        const hasVersions = Boolean(field.versions?.length);
                         return (
                           <Fragment key={`${field.field_kind}-${field.field}`}>
                             <tr>

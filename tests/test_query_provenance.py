@@ -65,11 +65,11 @@ def _configure_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
         str(tmp_path / "agent_registry.json"),
     )
     monkeypatch.setenv("MYCELIUM_SPECIALISTS_DIR", str(tmp_path / "specialists"))
-    monkeypatch.setenv("MYCELIUM_AGENT_DATA_DIR", str(tmp_path / "agent_data"))
+    monkeypatch.setenv("MYCELIUM_AGENT_DATA_DIR", str(tmp_path / "agents"))
     monkeypatch.setenv("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("TAVILY_API_KEY", raising=False)
-    return str(tmp_path / "agent_data")
+    return str(tmp_path / "agents")
 
 
 def _seed_entity_id() -> str:
@@ -105,7 +105,6 @@ def provenance_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[str
     reset_category_tree()
     get_category_tree()
     import_seed_for_test(tmp_path / "seed.json")
-    monkeypatch.setenv("MYCELIUM_AGENT_DATA_DIR", agent_data)
     entity_id = _seed_entity_id()
     _write_linkedin_storage(Path(agent_data), entity_id)
     reset_core_graph()
@@ -145,7 +144,7 @@ def test_build_query_provenance_reads_versioned_storage(
 
 
 @pytest.mark.smoke
-def test_build_query_provenance_skips_bind_fields(
+def test_build_query_provenance_includes_bind_fields_when_stored(
     provenance_env: tuple[str, str],
     tmp_path: Path,
 ) -> None:
@@ -161,9 +160,82 @@ def test_build_query_provenance_skips_bind_fields(
     )
     assert payload is not None
     attrs = payload["entities"][0]["attributes"]
-    assert "name" not in attrs
-    assert "employer" not in attrs
+    assert "name" in attrs
+    assert "employer" in attrs
+    assert attrs["name"]["current_version_id"] == "v1"
+    assert attrs["employer"]["current_version_id"] == "v1"
+    assert attrs["name"]["versions"][0]["value"] == "Paul Murphy"
+    assert attrs["employer"]["versions"][0]["value"] == "Acme Corp"
     assert "linkedin" in attrs
+
+
+@pytest.mark.smoke
+def test_build_query_provenance_omits_bind_without_versioned_storage(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Registry-only rows without specialist bind versions stay out of provenance."""
+    reset_entity_registry()
+    reset_category_tree()
+    _configure_env(tmp_path, monkeypatch)
+    (tmp_path / "entities.json").write_text(
+        json.dumps(
+            {
+                "version": "1.0",
+                "entities": {
+                    "solo-id": {
+                        "id": "solo-id",
+                        "name": "Solo Person",
+                        "employer": "Test Co",
+                        "validation_state": "validated",
+                    },
+                },
+                "bind_index": {"solo person|test co": "solo-id"},
+            },
+        ),
+        encoding="utf-8",
+    )
+    reset_category_tree()
+    get_category_tree()
+    paths = NetworkPaths.from_root(tmp_path)
+    payload = build_query_provenance(
+        entity_ids=["solo-id"],
+        requested_attributes=["name", "employer"],
+        paths=paths,
+    )
+    assert payload is None
+
+
+@pytest.mark.smoke
+def test_assemble_response_provenance_includes_bind_fields_when_requested(
+    provenance_env: tuple[str, str],
+) -> None:
+    entity_id, _agent_data = provenance_env
+    state = MyceliumGraphState(
+        query=EntityQuery(
+            entity_key="Paul Murphy",
+            requested_attributes=["name", "employer"],
+            provenance=True,
+        ),
+        matched_records=[
+            {
+                "id": entity_id,
+                "name": "Paul Murphy",
+                "employer": "Acme Corp",
+                "_registry": True,
+                "_validation_state": "validated",
+            },
+        ],
+        current_id=entity_id,
+        entity_resolution_kind="exact",
+        invocation_thread_id="prov-bind",
+    )
+    result = assemble_response_node(state)
+    response = result["response"]
+    assert response.provenance is not None
+    attrs = response.provenance["entities"][0]["attributes"]
+    assert attrs["name"]["versions"][0]["value"] == "Paul Murphy"
+    assert attrs["employer"]["versions"][0]["value"] == "Acme Corp"
 
 
 @pytest.mark.smoke
@@ -309,3 +381,5 @@ def test_query_response_schema_documents_provenance() -> None:
     assert "provenance" in props
     description = schema.get("description") or ""
     assert "provenance" in description
+    provenance_desc = (props.get("provenance") or {}).get("description") or ""
+    assert "bind" in provenance_desc.lower()

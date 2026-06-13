@@ -1,8 +1,9 @@
 # Program 2 — Slice 2: Read surfaces (provenance + admin)
 
-**Status:** Blocked until Slice 1 approved  
+**Status:** Shipped (awaiting commit)
 **Program:** [`attribute-provenance-program2.md`](attribute-provenance-program2.md)  
-**Depends on:** Slice 1 shipped — MVR values in specialist storage
+**Depends on:** Slice 1 approved — MVR values in specialist storage  
+**Cursor prompt:** `prompts/cursor/next/2026-06-13-2300-attribute-provenance-program2-slice2.md`
 
 ---
 

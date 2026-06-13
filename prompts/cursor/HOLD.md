@@ -1,12 +1,14 @@
 # Cursor queue
 
-**Active:** None — **Program 2 Slice 1** committed locally (awaiting push; Slice 2 not queued)
+**Active:** [`next/2026-06-13-2400-attribute-provenance-program2-slice3.md`](next/2026-06-13-2400-attribute-provenance-program2-slice3.md) — Program 2 Slice 3 (polish)
 
 **Program:** [`docs/plans/attribute-provenance-program2.md`](../../docs/plans/attribute-provenance-program2.md)
 
-**Done:** [`done/2026-06-13-2200-attribute-provenance-program2-slice1/`](done/2026-06-13-2200-attribute-provenance-program2-slice1/) — **Approved + polish nits**
+**Done:** [`done/2026-06-13-2300-attribute-provenance-program2-slice2/`](done/2026-06-13-2300-attribute-provenance-program2-slice2/) — **Approved** (uncommitted; commit when Paul ready)
 
-**Next:** Queue Slice 2 (provenance + admin bind fields) when Paul asks.
+**Prior:** [`done/2026-06-13-2200-attribute-provenance-program2-slice1/`](done/2026-06-13-2200-attribute-provenance-program2-slice1/) — **Approved + polish nits**
+
+**Next:** Program 3 kickoff (after Slice 3 approved).
 
 **Git:** Local commit ahead of `origin/main`. No push until Paul asks. See `WORKFLOW.md` §4.
 

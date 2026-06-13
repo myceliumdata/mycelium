@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from agents.classification import get_category_tree
 from agents.entity_registry import RegistryEntity, get_entity_registry
 from agents.specialist_fields import (
     current_status,
@@ -371,12 +372,39 @@ def _match_summaries(matches: list[dict[str, Any]]) -> list[EntityMatchSummary]:
     return summaries
 
 
+def _bind_field_versions(
+    paths: NetworkPaths,
+    record_id: str,
+    field_name: str,
+) -> tuple[dict[str, Any], ...]:
+    category = get_category_tree().mapped_category(field_name.strip().lower())
+    if not category:
+        return ()
+    storage_path = _storage_file(paths, category)
+    if not storage_path.is_file():
+        return ()
+    try:
+        payload = json.loads(storage_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return ()
+    records = payload.get("records", {}) if isinstance(payload, dict) else {}
+    if not isinstance(records, dict):
+        return ()
+    record = records.get(record_id)
+    if not isinstance(record, dict):
+        return ()
+    return _field_versions(record.get(field_name))
+
+
 def _bind_field_statuses(
+    paths: NetworkPaths,
     match: dict[str, Any],
     registry_entity: RegistryEntity | None,
 ) -> list[EntityFieldStatus]:
+    record_id = match.get("id")
+    record_key = record_id if isinstance(record_id, str) and record_id else ""
     rows: list[EntityFieldStatus] = []
-    for field_name in ("name", "employer"):
+    for field_name in load_mvr().bind_fields:
         value = match.get(field_name)
         if field_name == "employer" and not value:
             continue
@@ -387,6 +415,9 @@ def _bind_field_statuses(
             status = registry_entity.field_states.get(field_name) or (
                 registry_entity.validation_state
             )
+        versions: tuple[dict[str, Any], ...] = ()
+        if record_key:
+            versions = _bind_field_versions(paths, record_key, field_name)
         rows.append(
             EntityFieldStatus(
                 field=field_name,
@@ -395,6 +426,7 @@ def _bind_field_statuses(
                 status=status,
                 value=str(value) if value is not None else None,
                 field_kind="bind",
+                versions=versions,
             ),
         )
     return rows
@@ -411,7 +443,7 @@ def _entity_fields_for_match(
     if not isinstance(record_id, str) or not record_id:
         return []
     registry_entity = _registry_entity_for_match(match)
-    fields = _bind_field_statuses(match, registry_entity)
+    fields = _bind_field_statuses(paths, match, registry_entity)
     extended = _entity_field_statuses(
         paths,
         record_id,

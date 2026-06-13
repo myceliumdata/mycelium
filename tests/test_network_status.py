@@ -444,6 +444,7 @@ def test_status_entity_fields_include_versions_json(
     assert email["versions"][0]["value"] == "akalmans@example.com"
     bind_rows = [item for item in payload["entity_fields"] if item["field_kind"] == "bind"]
     assert bind_rows
+    assert all(item.get("versions") for item in bind_rows)
 
 
 @pytest.mark.smoke

@@ -115,7 +115,78 @@ These examples show the **locked target** two-step protocol.
 }
 ```
 
-When step 1 bound `provenance: true`, step 2 may include `QueryResponse.provenance` with version history for requested extended attributes (see Program 1 spec).
+When step 1 bound `provenance: true`, step 2 may include `QueryResponse.provenance` with version history for requested extended attributes and MVR bind fields (`name`, `employer`, …) that have versioned specialist storage (see Program 1 + Program 2 specs).
+
+**Example** (`provenance: true`, step 1 bound `name` + `employer` + `linkedin`):
+
+```json
+{
+  "outcome": "assembled",
+  "results": [
+    {
+      "id": "3c3daf80-5e10-411e-8961-3e8d0f3421d4",
+      "name": "Jane Example",
+      "employer": "IBM",
+      "linkedin": "https://linkedin.com/in/jane"
+    }
+  ],
+  "provenance": {
+    "entities": [
+      {
+        "id": "3c3daf80-5e10-411e-8961-3e8d0f3421d4",
+        "attributes": {
+          "name": {
+            "current_version_id": "v1",
+            "versions": [
+              {
+                "id": "v1",
+                "at": "2026-06-13T12:00:00+00:00",
+                "status": "found",
+                "value": "Jane Example",
+                "actor": {
+                  "kind": "seed_bootstrap",
+                  "category": "demographic",
+                  "specialist": "demographic_specialist"
+                }
+              }
+            ]
+          },
+          "employer": {
+            "current_version_id": "v1",
+            "versions": [
+              {
+                "id": "v1",
+                "at": "2026-06-13T12:00:00+00:00",
+                "status": "found",
+                "value": "IBM",
+                "actor": {
+                  "kind": "seed_bootstrap",
+                  "category": "professional",
+                  "specialist": "professional_specialist"
+                }
+              }
+            ]
+          },
+          "linkedin": {
+            "current_version_id": "v1",
+            "versions": [
+              {
+                "id": "v1",
+                "at": "2026-06-13T12:00:00+00:00",
+                "status": "found",
+                "value": "https://linkedin.com/in/jane"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "message": "Found record for Jane Example."
+}
+```
+
+Bind fields without versioned specialist entries are omitted from `provenance` (backward compat during cutover).
 
 Batch: N matches from step 1 → step 2 returns N rows in `results[]`; metering scales ≈ N singles.
 

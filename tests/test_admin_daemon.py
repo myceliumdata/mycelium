@@ -211,6 +211,12 @@ def test_status_entity_drill_down(
     assert email["versions"][0]["id"] == "v1"
     bind_fields = [item for item in fields if item["field_kind"] == "bind"]
     assert {item["field"] for item in bind_fields} == {"name", "employer"}
+    name_row = next(item for item in bind_fields if item["field"] == "name")
+    employer_row = next(item for item in bind_fields if item["field"] == "employer")
+    assert name_row["versions"]
+    assert name_row["versions"][0]["id"] == "v1"
+    assert employer_row["versions"]
+    assert employer_row["versions"][0]["id"] == "v1"
 
 
 @pytest.mark.smoke

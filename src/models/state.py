@@ -299,7 +299,8 @@ class QueryResponse(BaseModel):
         default=None,
         description=(
             "Structured attribute versions when query.provenance=true; "
-            "omitted or null otherwise."
+            "includes extended and MVR bind fields with versioned specialist "
+            "storage. Omitted or null otherwise."
         ),
     )
 
