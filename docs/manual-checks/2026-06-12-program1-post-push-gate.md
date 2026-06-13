@@ -6,10 +6,12 @@
 
 **Do not reset `crm` before these checks.** If you already ran Paul Murphy + `linkedin` and have version history, keep that grown state — checks 1 and 3 read existing specialist storage. A `./bin/refresh-example-network crm` wipe is only for first-time hard cutover or a deliberate clean slate; it deletes `agents/*/storage.json` and clears version history. **Check 2 only:** refresh `crm-metering` if that network was never bootstrapped (see below).
 
-**If you already reset `crm`:** one live query repopulates storage — run check 1’s status command after:
+**If you already reset `crm`:** Paul Murphy is not in `crm` seed — bind with MVR first (or in the same query). Use the employer on your registry row (`Ormi Labs` in recent hands-on; `Acme Corp` in metering fixtures). One query repopulates linkedin version history; then run check 1’s status command:
 
 ```bash
-uv run mycelium query --network crm --entity-key "Paul Murphy" --attributes linkedin --provenance
+uv run mycelium query --network crm \
+  --entity-key "Paul Murphy" --employer "Ormi Labs" \
+  --attributes linkedin --provenance
 ```
 
 (Requires `OPENAI_API_KEY` + `TAVILY_API_KEY` in `.env` for research.)
@@ -74,10 +76,13 @@ Use your configured MCP server for **crm** (e.g. `mycelium-crm`). Payload:
 ```json
 {
   "entity_key": "Paul Murphy",
+  "binding": { "employer": "Ormi Labs" },
   "requested_attributes": ["linkedin"],
   "provenance": true
 }
 ```
+
+Use the same `employer` as on your Paul Murphy registry row (after reset, match the bind you used in the CLI step above).
 
 **Pass criteria:**
 
