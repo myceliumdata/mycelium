@@ -105,6 +105,7 @@ def provenance_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[str
     reset_category_tree()
     get_category_tree()
     import_seed_for_test(tmp_path / "seed.json")
+    monkeypatch.setenv("MYCELIUM_AGENT_DATA_DIR", agent_data)
     entity_id = _seed_entity_id()
     _write_linkedin_storage(Path(agent_data), entity_id)
     reset_core_graph()

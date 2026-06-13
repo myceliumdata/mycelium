@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from agents.factory.agent_factory import AgentFactory
 from agents.registry import AgentRegistryData
 from agents.specialists.base import SpecialistStorage
+from network.category_mvr_bootstrap import ensure_mvr_fields_in_category_tree
 from network.ontology import SkeletonOntologyResult, generate_skeleton_ontology
 from network.paths import NetworkPaths, apply_network_paths, framework_root
 from network.registry import register_network
@@ -270,10 +271,12 @@ def create_network(
     entities_bootstrapped = 0
     if seed_file is not None:
         shutil.copy2(seed_file, paths.seed_path)
-        entities_bootstrapped = bootstrap_seed_at_paths(paths)
+    ontology.categories = ensure_mvr_fields_in_category_tree(ontology.categories)
     _write_categories(paths, ontology.categories)
     _write_agent_registry(paths, ontology.agents)
     _render_specialists(ontology, paths)
+    if seed_file is not None:
+        entities_bootstrapped = bootstrap_seed_at_paths(paths)
     _write_network_manifest(
         paths,
         name=clean_name,

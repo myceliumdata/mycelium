@@ -147,7 +147,7 @@ Phase 1 adds a **Classification Engine** (cached lookup in `src/agents/classific
 ## Storage (current)
 
 - **Entities (queries):** `<network_root>/entities.json` via `EntityRegistry` — seed is bootstrap-only when present.
-- **Specialists:** per-category JSON under `<network_root>/agents/<category>/` (`SpecialistStorage` in `src/agents/specialists/base.py`), keyed by `id` (UUID). Extended attributes use **`versioned_provenance_v1`**: each field stores `versions[]` + `current_version_id` (append-only provenance). Deprecated flat v1 field blobs are invalid — refresh the network or delete `agents/<category>/storage.json` to reset. Research writes may still **wrap** a legacy flat **pending** blob into versioned `v1` once (`ensure_versioned_for_write`) so in-flight retries can complete; all other flat shapes fail loud on read. Admin `/status` and `mycelium network status --json` expose full `versions[]` per extended field on entity drill-down (bind fields omit history). Admin UI renders version history in a full-width sub-row below each extended field (status badges, short timestamps, `reason` / `last_error`, source links).
+- **Specialists:** per-category JSON under `<network_root>/agents/<category>/` (`SpecialistStorage` in `src/agents/specialists/base.py`), keyed by `id` (UUID). Extended attributes and **MVR bind fields** (`name`, `employer`, …) use **`versioned_provenance_v1`**: each field stores `versions[]` + `current_version_id` (append-only provenance). Taxonomy `attribute_map` owns bind fields (Program 2 Slice 1 — `agents/attribute_write.py`); `entities.json` caches current values and derived indexes. Deprecated flat v1 field blobs are invalid — refresh the network or delete `agents/<category>/storage.json` to reset. Research writes may still **wrap** a legacy flat **pending** blob into versioned `v1` once (`ensure_versioned_for_write`) so in-flight retries can complete; all other flat shapes fail loud on read. Admin `/status` and `mycelium network status --json` expose full `versions[]` per extended field on entity drill-down (bind fields omit history until Program 2 Slice 2). Admin UI renders version history in a full-width sub-row below each extended field (status badges, short timestamps, `reason` / `last_error`, source links).
 - **SQLite:** `<network_root>/checkpoints.sqlite` (LangGraph checkpointer). Optional `<network_root>/mycelium.db` — empty bootstrap file only; no identity tables.
 
 See `src/storage/core.py` (path bootstrap for MCP/admin startup).
@@ -231,7 +231,7 @@ Future (not v1): per-network LangSmith project names, optional credential profil
 
 **M10 (polish):** Admin UI two-step form; backlog tests; legacy graph path gated behind `MYCELIUM_ALLOW_LEGACY_ENTITY_KEY`.
 
-**Active — Program 2** (MVR in specialist storage, unified write): [`attribute-provenance-program2.md`](plans/attribute-provenance-program2.md). Slice 1 queued.
+**Active — Program 2** (MVR in specialist storage, unified write): [`attribute-provenance-program2.md`](plans/attribute-provenance-program2.md). Slice 1 shipped (unified write); Slices 2–3 queued.
 
 ### Three separated concerns
 

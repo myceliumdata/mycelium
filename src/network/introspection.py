@@ -512,7 +512,7 @@ def build_network_status(
 
 def status_to_dict(summary: NetworkStatusSummary) -> dict[str, Any]:
     """Serialize a status summary for ``--json`` output."""
-    return asdict(summary)
+    return json.loads(json.dumps(asdict(summary)))
 
 
 _POLICY_EXTENSIBILITY = (

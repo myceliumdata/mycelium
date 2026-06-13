@@ -53,7 +53,10 @@ def test_refresh_example_network_skips_categories_json(tmp_path: Path) -> None:
             check=False,
         )
         assert result.returncode == 0, result.stderr or result.stdout
-        assert not (target / "categories.json").exists()
+        assert (target / "categories.json").is_file()
+        data = json.loads((target / "categories.json").read_text(encoding="utf-8"))
+        assert data.get("version") == "1.0"
+        assert "name" in data.get("attribute_map", {})
     finally:
         if created_stray and stray.exists():
             stray.unlink()

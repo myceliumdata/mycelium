@@ -164,7 +164,7 @@ Direct JSON edits bypassing this path are unsupported for operators once write U
 
 See [`attribute-provenance-program1.md`](attribute-provenance-program1.md) for Program 1 slices 1–3.
 
-Program 2 (in progress): MVR canonical storage in specialist `versions[]`, unified bind write API, taxonomy ownership, index replace policy, research operator deference in prompts. See [`attribute-provenance-program2.md`](attribute-provenance-program2.md).
+Program 2 Slice 1 (shipped): MVR canonical values in taxonomy-owned specialist `versions[]` via `agents/attribute_write.py`; entity row = cache + protocol + indexes (no `bind_versions[]`). Slices 2–3: provenance/admin bind fields, research operator deference. See [`attribute-provenance-program2.md`](attribute-provenance-program2.md).
 Program 3 (TBD): Operator write surfaces.
 
 ---

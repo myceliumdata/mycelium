@@ -1,14 +1,14 @@
 # Cursor queue
 
-**Active:** **Program 2 — MVR / entity storage** Slice 1 (unified write)
+**Active:** None — **Program 2 Slice 1** committed locally (awaiting push; Slice 2 not queued)
 
 **Program:** [`docs/plans/attribute-provenance-program2.md`](../../docs/plans/attribute-provenance-program2.md)
 
-**Prompt:** [`next/2026-06-13-2200-attribute-provenance-program2-slice1.md`](next/2026-06-13-2200-attribute-provenance-program2-slice1.md) — move to `in-progress/` when Cursor starts.
+**Done:** [`done/2026-06-13-2200-attribute-provenance-program2-slice1/`](done/2026-06-13-2200-attribute-provenance-program2-slice1/) — **Approved + polish nits**
 
-MVR redesign (M1–M10) complete. Requirements locked June 2026.
+**Next:** Queue Slice 2 (provenance + admin bind fields) when Paul asks.
 
-**Git:** `origin/main` current. See `WORKFLOW.md` §4.
+**Git:** Local commit ahead of `origin/main`. No push until Paul asks. See `WORKFLOW.md` §4.
 
 ---
 

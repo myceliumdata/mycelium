@@ -57,6 +57,18 @@ def import_seed_for_test(
     if seed_path is None:
         msg = "seed_path or (tmp_path, seed_src) required"
         raise ValueError(msg)
+
+    from network.category_mvr_bootstrap import ensure_categories_for_mvr_bind
+    from network.paths import NetworkPaths, apply_network_paths
+
+    root = seed_path.parent
+    paths = NetworkPaths.from_root(root)
+    apply_network_paths(paths)
+    ensure_categories_for_mvr_bind(paths)
+    if monkeypatch is not None:
+        monkeypatch.setenv("MYCELIUM_AGENT_DATA_DIR", str(root / "agent_data"))
+        (root / "agent_data").mkdir(parents=True, exist_ok=True)
+
     reset_entity_registry()
     return import_seed_file(seed_path)
 
@@ -69,5 +81,8 @@ def import_seed_at_root(root: Path) -> int:
 
     paths = NetworkPaths.from_root(root)
     apply_network_paths(paths)
+    from network.category_mvr_bootstrap import ensure_categories_for_mvr_bind
+
+    ensure_categories_for_mvr_bind(paths)
     reset_entity_registry()
     return import_seed_file(paths.seed_path)

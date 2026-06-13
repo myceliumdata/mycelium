@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -170,6 +169,19 @@ class EntityRegistry:
             if _normalize_name_for_bind(entity.name) == target
         ]
 
+    def assign_bind_index(self, entity_id: str, name: str, employer: str) -> None:
+        self._data.bind_index[make_bind_key(name, employer)] = entity_id
+
+    def pop_bind_index(self, name: str, employer: str) -> None:
+        self._data.bind_index.pop(make_bind_key(name, employer), None)
+
+    def register_entity(self, entity: RegistryEntity) -> None:
+        self._data.entities[entity.id] = entity
+
+    def save_entity(self, entity: RegistryEntity) -> None:
+        self._data.entities[entity.id] = entity
+        self._save()
+
     def ensure_bound_entity(
         self,
         name: str,
@@ -183,33 +195,14 @@ class EntityRegistry:
         The bool is True when an existing row was returned (duplicate bind).
         On hit, id/source/validation_state are not changed.
         """
-        key = make_bind_key(name, employer)
-        existing_id = self._data.bind_index.get(key)
-        if existing_id:
-            existing = self._data.entities.get(existing_id)
-            if existing is not None:
-                return existing, True
+        from agents.attribute_write import ensure_entity_bind
 
-        now = datetime.now(timezone.utc).isoformat()
-        entity_id = str(uuid.uuid4())
-        normalized_employer = employer.strip()
-        if validation_state == "provisional":
-            field_states = {"name": "provisional", "employer": "provisional"}
-        else:
-            field_states = {"name": "validated", "employer": "validated"}
-        entity = RegistryEntity(
-            id=entity_id,
-            name=name.strip(),
-            employer=normalized_employer or None,
-            validation_state=validation_state,
-            field_states=field_states,
+        return ensure_entity_bind(
+            name,
+            employer,
             source=source,
-            created_at=now,
+            validation_state=validation_state,
         )
-        self._data.entities[entity_id] = entity
-        self._data.bind_index[key] = entity_id
-        self._save()
-        return entity, False
 
     def bind_provisional(self, name: str, employer: str) -> tuple[RegistryEntity, bool]:
         """Create provisional entity or return existing row (duplicate bind)."""

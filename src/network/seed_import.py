@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from agents.entity_registry import reset_entity_registry
+from network.category_mvr_bootstrap import ensure_categories_for_mvr_bind
 from network.paths import NetworkPaths, apply_network_paths
 
 if TYPE_CHECKING:
@@ -76,5 +77,6 @@ def count_seed_rows(seed_path: Path) -> int:
 def bootstrap_seed_at_paths(paths: NetworkPaths) -> int:
     """Apply network paths, reset registry, import ``seed.json`` when present."""
     apply_network_paths(paths)
+    ensure_categories_for_mvr_bind(paths)
     reset_entity_registry()
     return import_seed_file(paths.seed_path)

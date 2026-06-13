@@ -161,7 +161,7 @@ def test_status_json_matches_introspection(
     expected = status_to_dict(build_network_status())
     assert response.json() == expected
     assert response.json()["registry_entity_count"] == 15
-    assert response.json()["ontology_present"] is False
+    assert response.json()["ontology_present"] is True
 
 
 @pytest.mark.smoke

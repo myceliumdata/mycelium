@@ -76,8 +76,11 @@ def test_status_demo_entities_only(
 
     text = format_status_demo(build_network_status())
     assert "Entities: ✅ (15)" in text
-    assert "Current ontology: ❌" in text
-    assert "Existing specialists: ❌" in text
+    assert "Current ontology:" in text
+    assert "contact (e.g., email, phone, …)" in text
+    assert "Existing specialists:" in text
+    assert "demographic (15)" in text
+    assert "professional (15)" in text
     assert "Root:" not in text
 
 
@@ -145,8 +148,10 @@ def test_status_empty_network_entities_only(
 
     summary = build_network_status()
     assert summary.registry_entity_count == 15
-    assert summary.ontology_present is False
-    assert summary.specialists == []
+    assert summary.ontology_present is True
+    assert len(summary.categories) == 6
+    seeded = {item.category for item in summary.specialists if item.record_count > 0}
+    assert seeded == {"demographic", "professional"}
 
 
 @pytest.mark.smoke
@@ -219,8 +224,10 @@ def test_status_json_round_trip(
 
     payload = status_to_dict(build_network_status())
     assert payload["registry_entity_count"] == 15
-    assert payload["ontology_present"] is False
+    assert payload["ontology_present"] is True
     assert isinstance(payload["specialists"], list)
+    seeded = {item["category"] for item in payload["specialists"] if item["record_count"] > 0}
+    assert seeded == {"demographic", "professional"}
 
 
 @pytest.mark.smoke

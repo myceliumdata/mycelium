@@ -29,6 +29,8 @@ _RUNTIME_ARTIFACTS = (
     "mycelium.db",
     "agent_registry.json",
 )
+# Seed bootstrap materializes categories.json; other runtime artifacts stay absent.
+_BOOTSTRAP_ALLOWED = frozenset({"categories.json"})
 
 
 def _run_refresh(
@@ -128,7 +130,10 @@ def test_refresh_example_network_empty_root(tmp_path: Path) -> None:
     assert (target / "network.json").is_file()
     assert not (target / "README.md").exists()
     assert not (target / "prepare_seed.py").exists()
+    assert (target / "categories.json").is_file()
     for runtime_artifact in _RUNTIME_ARTIFACTS:
+        if runtime_artifact in _BOOTSTRAP_ALLOWED:
+            continue
         assert not (target / runtime_artifact).exists()
 
 
@@ -203,7 +208,9 @@ def test_refresh_replaces_existing_root(tmp_path: Path) -> None:
     result = refresh_example_network("crm", root=target, register=False, yes=True)
     assert result.wiped is True
     assert (target / "seed.json").is_file()
-    assert not (target / "categories.json").exists()
+    categories = json.loads((target / "categories.json").read_text(encoding="utf-8"))
+    assert categories.get("version") == "1.0"
+    assert categories.get("attribute_map", {}).get("name") == "demographic"
     assert not (target / "agents").exists()
     assert not (target / "specialists").exists()
 

@@ -55,24 +55,17 @@ def delivery_scope_has_attributes(scope: DeliveryScope) -> bool:
 
 def bind_provisional_from_scope(scope: DeliveryScope) -> RegistryEntity:
     """Create or reuse a provisional registry row from a create-on-deliver scope."""
-    from network.mvr import load_mvr
-
     values = normalized_lookup_values(
         {str(k): str(v) for k, v in scope.lookup.items()},
     )
-    mvr = load_mvr()
-    name = values.get("name", "")
-    employer = values.get("employer", "")
-    for field in mvr.bind_fields:
-        key = field.strip().lower()
-        if key == "name":
-            name = values.get(key, name)
-        elif key == "employer":
-            employer = values.get(key, employer)
-    if not name:
-        raise ValueError("create_on_deliver scope missing lookup.name")
-    registry = get_entity_registry()
-    entity, _duplicate = registry.bind_provisional(name, employer)
+    from agents.attribute_write import ensure_entity_bind_fields
+
+    entity, _duplicate = ensure_entity_bind_fields(
+        values,
+        source="query_bind",
+        validation_state="provisional",
+        actor_kind="bind",
+    )
     return entity
 
 

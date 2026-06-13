@@ -72,13 +72,14 @@ class SpecialistStorage:
         if not self.strategy_file.exists():
             strategy = {
                 "strategy": "versioned_provenance_v1",
-                "version": "2.0",
-                "bind_field_ownership": "registry_or_seed",
-                "stored_fields": "extended_attributes_only",
+                "version": "2.1",
+                "bind_field_ownership": "taxonomy",
+                "stored_fields": "extended_attributes_and_mvr_bind_fields",
                 "notes": (
-                    "Extended attributes use versioned_provenance_v1 (versions[] per field). "
-                    "Flat v1 field blobs are invalid — refresh the network to reset. "
-                    "Bind fields (name, employer) are not persisted in storage.json."
+                    "Extended attributes and MVR bind fields (name, employer, etc.) use "
+                    "versioned_provenance_v1 (versions[] per field) in taxonomy-owned "
+                    "specialist storage. Entity row caches current values. "
+                    "Flat v1 field blobs are invalid — refresh the network to reset."
                 ),
                 "last_migrated": None,
                 "upgrade_path": {
