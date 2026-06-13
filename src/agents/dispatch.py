@@ -34,6 +34,12 @@ from agents.responses import (
     response_validation_failed,
 )
 from agents.target_deliver import delivery_scope_has_attributes, load_delivery_scope
+from agents.target_metering import (
+    delivery_payload_from_scope,
+    run_target_metering_gate,
+    step1_should_quote,
+    step2_should_quote,
+)
 from agents.target_resolve import issue_target_delivery, resolve_target_step1
 from agents.supervisor import (
     _collect_specialists_to_invoke,
@@ -48,6 +54,54 @@ from models.state import (
     graph_provenance_requested,
     graph_requested_attributes,
 )
+from network.delivery import DeliveryScope, get_delivery_store
+from network.metering_policy import load_metering_policy
+
+
+def _target_metering_block_response(
+    query,
+    scope: DeliveryScope,
+    gate,
+    *,
+    total_matches: int | None,
+    id_kwargs: dict[str, Any],
+) -> dict[str, Any] | None:
+    delivery = delivery_payload_from_scope(scope)
+    if gate.kind == "principal_required":
+        return {
+            "response": response_principal_required(
+                query,
+                funding_model=gate.funding_model or "",
+                **id_kwargs,
+            ),
+            "audit_log": ["target_resolve: principal_required."],
+        }
+    if gate.kind == "payment_required" and gate.quote:
+        return {
+            "response": response_payment_required(query, gate.quote, **id_kwargs),
+            "audit_log": ["target_resolve: payment_required."],
+        }
+    if gate.kind == "quote_required" and gate.quote:
+        return {
+            "response": response_quote_required(
+                query,
+                gate.quote,
+                total_matches=total_matches,
+                delivery=delivery,
+                **id_kwargs,
+            ),
+            "audit_log": ["target_resolve: quote_required."],
+        }
+    return None
+
+
+def _target_metering_entitlement_state(gate) -> dict[str, Any]:
+    if gate.kind != "accepted":
+        return {}
+    return {
+        "metering_accepted_quote": gate.accepted_quote,
+        "metering_write_entitlement": gate.write_entitlement,
+    }
 
 
 def _coerce(state: MyceliumGraphState | dict[str, Any]) -> MyceliumGraphState:
@@ -86,8 +140,30 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
 
         scope = loaded.scope
         matched = loaded.matched_records
+        policy = load_metering_policy()
+        metering_state: dict[str, Any] = {}
+        if step2_should_quote(policy):
+            gate = run_target_metering_gate(
+                query=query,
+                scope=scope,
+                quote_id=query.quote_id,
+                principal=query.principal,
+                require_quote=True,
+            )
+            blocked = _target_metering_block_response(
+                query,
+                scope,
+                gate,
+                total_matches=len(scope.entity_ids),
+                id_kwargs=id_kwargs,
+            )
+            if blocked is not None:
+                return blocked
+            metering_state = _target_metering_entitlement_state(gate)
+
         if delivery_scope_has_attributes(scope):
             return {
+                **metering_state,
                 "matched_records": matched,
                 "entity_resolution_kind": "exact",
                 "delivery_scope_attrs": list(scope.requested_attributes),
@@ -134,6 +210,35 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
 
     delivery = issue_target_delivery(query, resolved.entity_ids)
     total = len(resolved.entity_ids)
+    scope = get_delivery_store().get(delivery.delivery_id)
+    if scope is None:
+        return {
+            "response": response_not_found(
+                query,
+                message="Delivery scope missing after issue.",
+                **id_kwargs,
+            ),
+            "audit_log": ["target_resolve: not_found (delivery store miss)."],
+        }
+
+    policy = load_metering_policy()
+    if step1_should_quote(scope, policy):
+        gate = run_target_metering_gate(
+            query=query,
+            scope=scope,
+            principal=query.principal,
+            require_quote=True,
+        )
+        blocked = _target_metering_block_response(
+            query,
+            scope,
+            gate,
+            total_matches=total,
+            id_kwargs=id_kwargs,
+        )
+        if blocked is not None:
+            return blocked
+
     return {
         "response": response_lookup_resolved(
             query,

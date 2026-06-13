@@ -21,7 +21,9 @@ CacheState = Literal["hit", "miss", "partial"]
 
 
 class WorkloadSpec(BaseModel):
-    entity_id: str
+    entity_id: str = ""
+    delivery_id: str | None = None
+    entity_ids: list[str] = Field(default_factory=list)
     requested_attributes: list[str] = Field(default_factory=list)
     provenance: bool = False
     scope_hash: str = ""
@@ -114,11 +116,19 @@ def quote_is_expired(quote: Quote, *, now: datetime | None = None) -> bool:
 
 
 def compute_scope_hash(workload: WorkloadSpec) -> str:
-    payload = {
-        "entity_id": workload.entity_id,
-        "requested_attributes": sorted(workload.requested_attributes),
-        "provenance": workload.provenance,
-    }
+    if (workload.delivery_id or "").strip():
+        payload = {
+            "delivery_id": workload.delivery_id,
+            "entity_ids": sorted(workload.entity_ids),
+            "requested_attributes": sorted(workload.requested_attributes),
+            "provenance": workload.provenance,
+        }
+    else:
+        payload = {
+            "entity_id": workload.entity_id,
+            "requested_attributes": sorted(workload.requested_attributes),
+            "provenance": workload.provenance,
+        }
     digest = hashlib.sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(),
     ).hexdigest()
@@ -162,12 +172,18 @@ class BuiltinQuoteProvider:
         principal: BillingPrincipal | None,
     ) -> Quote:
         _ = principal
-        research_usd = meter_research_usd()
+        entity_count = (
+            len(workload.entity_ids)
+            if workload.entity_ids
+            else (1 if workload.entity_id else 1)
+        )
+        research_usd = meter_research_usd() * entity_count
         query_usd = (
             meter_query_provenance_usd()
             if workload.provenance
             else meter_query_value_usd()
-        )
+        ) * entity_count
+        batch_note = f" (×{entity_count} entities)" if entity_count > 1 else ""
         line_items: list[LineItem] = []
         avoidable: dict[str, Any] | None = None
         include_production = cache_state in {"miss", "partial"} or funding_model == "full_duplicate"
@@ -182,7 +198,7 @@ class BuiltinQuoteProvider:
                     kind="production",
                     meter="research",
                     amount_usd=research_usd,
-                    description="Tavily research commit",
+                    description=f"Tavily research commit{batch_note}",
                 ),
             )
 
@@ -196,7 +212,7 @@ class BuiltinQuoteProvider:
                     kind="consumption",
                     meter=meter,
                     amount_usd=query_usd,
-                    description="Cache read / query delivery",
+                    description=f"Cache read / query delivery{batch_note}",
                 ),
             )
 

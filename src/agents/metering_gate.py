@@ -7,7 +7,7 @@ import uuid
 from typing import Any
 
 from agents.entity_registry import get_entity_registry
-from models.state import MyceliumGraphState, graph_provenance_requested, graph_requested_attributes
+from models.state import MyceliumGraphState, entity_query_is_delivery_step, graph_provenance_requested, graph_requested_attributes
 from network.entitlements import EntitlementRecord, get_entitlement_store
 from network.metering_policy import MeteringPolicy, load_metering_policy
 from network.payment import payment_bypassed, settle_quote
@@ -116,6 +116,14 @@ def metering_gate_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, 
 
     current = _coerce(state)
     policy = load_metering_policy()
+    if (
+        entity_query_is_delivery_step(current.query)
+        and current.metering_accepted_quote
+    ):
+        return {
+            "pending_quote": None,
+            "audit_log": ["metering_gate: target deliver quote already accepted."],
+        }
     if metering_bypassed(policy) or not should_meter(current):
         return {
             "pending_quote": None,

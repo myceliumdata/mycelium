@@ -214,7 +214,9 @@ Future (not v1): per-network LangSmith project names, optional credential profil
 
 **M4 (resolve):** Per-field inverted indexes on registry MVR bind fields; graph `target_resolve` node returns `lookup_resolved` + `delivery_id` for step-1 `id`/`lookup`.
 
-**M5 (deliver):** Step-2 `delivery_id` loads `DeliveryScope` and returns `found` / `assembled` with registry `results[]`; attrs/provenance from step-1 scope hydrate internal graph state. Metering `quote_id` gate deferred to M6.
+**M5 (deliver):** Step-2 `delivery_id` loads `DeliveryScope` and returns `found` / `assembled` with registry `results[]`; attrs/provenance from step-1 scope hydrate internal graph state.
+
+**M6 (metering):** Metered step-1 with attrs → `quote_required` + `delivery_id`; step-2 requires `quote_id` when `metering.enabled`; batch line items scale × N entities.
 
 **Program 2** (versioned bind storage / `bind_versions[]`) is **blocked** until this program completes.
 

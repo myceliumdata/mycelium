@@ -613,6 +613,8 @@ def response_quote_required(
     quote: dict[str, Any],
     *,
     base_records: list[dict[str, Any]] | None = None,
+    total_matches: int | None = None,
+    delivery: DeliveryPayload | None = None,
     trace_id: str | None = None,
     thread_id: str | None = None,
 ) -> QueryResponse:
@@ -624,17 +626,19 @@ def response_quote_required(
         f"Quote required before research or delivery (cache_state={cache_state}, "
         f"total_usd={total}). Retry with quote_id after acceptance."
     )
-    return _make_response(
+    return QueryResponse(
         results=results,
         message=message,
-        outcome="quote_required",
-        quote=quote,
         debug=debug_for_query(
             query,
             outcome="quote_required",
             quote_id=quote.get("quote_id"),
             cache_state=cache_state,
         ),
+        outcome="quote_required",
+        quote=quote,
+        total_matches=total_matches,
+        delivery=delivery,
         trace_id=trace_id,
         thread_id=thread_id,
     )
