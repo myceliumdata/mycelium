@@ -112,13 +112,22 @@ def apply_query_provenance(
     response: QueryResponse,
     query: EntityQuery,
     matched_records: list[dict[str, Any]],
+    *,
+    requested_attributes: list[str] | None = None,
+    provenance: bool | None = None,
 ) -> QueryResponse:
     """Attach QueryResponse.provenance when the request flag is set."""
-    if not query.provenance:
+    provenance_flag = query.provenance if provenance is None else provenance
+    if not provenance_flag:
         return response
     if response.outcome not in {"assembled", "found"}:
         return response
-    if not normalized_requested_attributes(query.requested_attributes):
+    attrs = (
+        normalized_requested_attributes(requested_attributes)
+        if requested_attributes is not None
+        else normalized_requested_attributes(query.requested_attributes)
+    )
+    if not attrs:
         return response
 
     entity_ids = [
@@ -126,10 +135,10 @@ def apply_query_provenance(
         for record in matched_records
         if isinstance(record, dict) and record.get("id")
     ]
-    provenance = build_query_provenance(
+    provenance_payload = build_query_provenance(
         entity_ids=entity_ids,
-        requested_attributes=query.requested_attributes,
+        requested_attributes=attrs,
     )
-    if provenance is None:
+    if provenance_payload is None:
         return response
-    return response.model_copy(update={"provenance": provenance})
+    return response.model_copy(update={"provenance": provenance_payload})

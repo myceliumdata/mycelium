@@ -373,6 +373,31 @@ class MyceliumGraphState(BaseModel):
         default=False,
         description="True when quote_id was supplied but quote is not paid yet.",
     )
+    delivery_scope_attrs: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Step-2 deliver: requested_attributes bound on step-1 delivery scope "
+            "(internal; not sent on public EntityQuery)."
+        ),
+    )
+    delivery_scope_provenance: bool = Field(
+        default=False,
+        description="Step-2 deliver: provenance flag bound on step-1 delivery scope.",
+    )
+
+
+def graph_requested_attributes(state: MyceliumGraphState) -> list[str]:
+    """Attrs to execute for this graph turn (step-2 scope or query step-1)."""
+    if state.delivery_scope_attrs:
+        return normalized_requested_attributes(state.delivery_scope_attrs)
+    return normalized_requested_attributes(state.query.requested_attributes)
+
+
+def graph_provenance_requested(state: MyceliumGraphState) -> bool:
+    """Whether provenance delivery was requested (step-2 scope or query)."""
+    if state.delivery_scope_attrs or state.delivery_scope_provenance:
+        return state.delivery_scope_provenance
+    return bool(state.query.provenance)
 
 
 def normalized_requested_attributes(requested: list[str]) -> list[str]:

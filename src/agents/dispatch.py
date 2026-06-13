@@ -33,6 +33,7 @@ from agents.responses import (
     response_research_gated,
     response_validation_failed,
 )
+from agents.target_deliver import delivery_scope_has_attributes, load_delivery_scope
 from agents.target_resolve import issue_target_delivery, resolve_target_step1
 from agents.supervisor import (
     _collect_specialists_to_invoke,
@@ -40,11 +41,12 @@ from agents.supervisor import (
     _target_fields_for_agent,
 )
 from models.state import (
-    EntityQuery,
     MyceliumGraphState,
     QueryResponse,
+    entity_query_is_delivery_step,
     entity_query_is_target_resolve_step,
-    normalized_requested_attributes,
+    graph_provenance_requested,
+    graph_requested_attributes,
 )
 
 
@@ -61,13 +63,61 @@ def _meta(state: MyceliumGraphState) -> dict[str, Any]:
 
 
 def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
-    """Step-1 target protocol: id/lookup → lookup_resolved + delivery_id (M4)."""
+    """Target protocol step-1 resolve or step-2 deliver (M4/M5)."""
     current = _coerce(state)
     query = current.query
     id_kwargs = {
         "thread_id": current.invocation_thread_id,
         "trace_id": current.invocation_trace_id,
     }
+
+    if entity_query_is_delivery_step(query):
+        delivery_id = (query.delivery_id or "").strip()
+        loaded = load_delivery_scope(delivery_id)
+        if loaded.kind != "loaded" or not loaded.scope or not loaded.matched_records:
+            return {
+                "response": response_not_found(
+                    query,
+                    message=f"No valid delivery for delivery_id {delivery_id!r}.",
+                    **id_kwargs,
+                ),
+                "audit_log": ["target_resolve: deliver not_found (missing or expired scope)."],
+            }
+
+        scope = loaded.scope
+        matched = loaded.matched_records
+        if delivery_scope_has_attributes(scope):
+            return {
+                "matched_records": matched,
+                "entity_resolution_kind": "exact",
+                "delivery_scope_attrs": list(scope.requested_attributes),
+                "delivery_scope_provenance": bool(scope.provenance),
+                "audit_log": [
+                    f"target_resolve: deliver step-2 attrs="
+                    f"{scope.requested_attributes!r} entity_count={len(matched)}.",
+                ],
+            }
+
+        identity_records = _identity_records_from_match(matched)
+        message = None
+        if len(matched) == 1:
+            name = matched[0].get("name") or "record"
+            message = f"Found record for {name}."
+        else:
+            message = f"Found {len(matched)} records for delivery."
+        resp = response_found(
+            query,
+            base_records=identity_records,
+            message=message,
+            **id_kwargs,
+        )
+        return {
+            "response": _attach_provenance(resp, current, matched),
+            "audit_log": [
+                f"target_resolve: deliver found entity_count={len(matched)}.",
+            ],
+        }
+
     if not entity_query_is_target_resolve_step(query):
         return {"audit_log": ["target_resolve: legacy entity_key path — defer to supervisor."]}
 
@@ -140,7 +190,7 @@ def validate_entity_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str
     meta = dict(_meta(current))
     specialists_to_invoke: list[str] = []
     if (
-        current.query.requested_attributes
+        graph_requested_attributes(current)
         and current.classifications
         and research_gate_allows(current_id=updated.id, matched=[updated_match])
     ):
@@ -290,12 +340,19 @@ def invoke_specialists_node(state: MyceliumGraphState | dict[str, Any]) -> dict[
 
 def _attach_provenance(
     response: QueryResponse,
-    query: EntityQuery,
+    state: MyceliumGraphState,
     matched: list[dict[str, Any]],
 ) -> QueryResponse:
     from agents.query_provenance import apply_query_provenance
 
-    return apply_query_provenance(response, query, matched)
+    attrs = graph_requested_attributes(state)
+    return apply_query_provenance(
+        response,
+        state.query,
+        matched,
+        requested_attributes=attrs,
+        provenance=graph_provenance_requested(state),
+    )
 
 
 def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
@@ -396,7 +453,7 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
         current.validation_passed is True
         and current.validation_contributions
         and matched
-        and not normalized_requested_attributes(query.requested_attributes)
+        and not graph_requested_attributes(current)
     ):
         return {
             "response": response_entity_validated(query, matched[0], **id_kwargs),
@@ -406,7 +463,7 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
     if is_research_gated(current):
         gated = response_research_gated(query, matched[0], **id_kwargs)
         return {
-            "response": _attach_provenance(gated, query, matched),
+            "response": _attach_provenance(gated, current, matched),
             "audit_log": ["assemble_response: research gate (provisional + attrs)."],
         }
 
@@ -430,7 +487,7 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
             "audit_log": ["assemble_response: no entity match."],
         }
 
-    requested = normalized_requested_attributes(query.requested_attributes)
+    requested = graph_requested_attributes(current)
 
     if not requested:
         identity_records = _identity_records_from_match(matched)
@@ -453,7 +510,7 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
             **clf_kwargs,
         )
         return {
-            "response": _attach_provenance(resp, query, matched),
+            "response": _attach_provenance(resp, current, matched),
             "audit_log": ["assemble_response: entity identity response."],
         }
 
@@ -490,7 +547,7 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
         audit = "assemble_response: requested attrs, no contributions."
 
     return {
-        "response": _attach_provenance(resp, query, matched),
+        "response": _attach_provenance(resp, current, matched),
         "audit_log": [audit],
     }
 

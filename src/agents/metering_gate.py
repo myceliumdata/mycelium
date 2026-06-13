@@ -7,7 +7,7 @@ import uuid
 from typing import Any
 
 from agents.entity_registry import get_entity_registry
-from models.state import MyceliumGraphState, normalized_requested_attributes
+from models.state import MyceliumGraphState, graph_provenance_requested, graph_requested_attributes
 from network.entitlements import EntitlementRecord, get_entitlement_store
 from network.metering_policy import MeteringPolicy, load_metering_policy
 from network.payment import payment_bypassed, settle_quote
@@ -41,13 +41,13 @@ def build_workload_spec(state: MyceliumGraphState) -> WorkloadSpec | None:
         matched = state.matched_records or []
         if len(matched) == 1 and matched[0].get("id"):
             entity_id = str(matched[0]["id"])
-    requested = normalized_requested_attributes(state.query.requested_attributes)
+    requested = graph_requested_attributes(state)
     if not entity_id or not requested:
         return None
     workload = WorkloadSpec(
         entity_id=entity_id,
         requested_attributes=requested,
-        provenance=bool(state.query.provenance),
+        provenance=graph_provenance_requested(state),
     )
     return workload.model_copy(update={"scope_hash": compute_scope_hash(workload)})
 
@@ -80,7 +80,7 @@ def resolve_cache_state(
 
 
 def should_meter(state: MyceliumGraphState) -> bool:
-    if not normalized_requested_attributes(state.query.requested_attributes):
+    if not graph_requested_attributes(state):
         return False
     if state.entity_resolution_kind in {"unknown", "under_specified", "suggest"}:
         return False

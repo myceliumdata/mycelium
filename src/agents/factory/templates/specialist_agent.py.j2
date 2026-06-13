@@ -44,7 +44,7 @@ from agents.specialist_fields import (
     research_actor,
 )
 from agents.specialists.base import SpecialistStorage
-from models.state import MyceliumGraphState
+from models.state import MyceliumGraphState, graph_requested_attributes
 
 _storage: SpecialistStorage | None = None
 
@@ -90,7 +90,7 @@ def _resolve_owned_fields(state: MyceliumGraphState) -> list[str]:
         return owned
     return [
         a.strip().lower()
-        for a in state.query.requested_attributes
+        for a in graph_requested_attributes(state)
         if a.strip()
     ] or ["{{ category }} data"]
 

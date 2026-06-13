@@ -1,8 +1,6 @@
 """Core Mycelium LangGraph: registry resolution, context build, specialists, assembly.
 
-Flow: START → target_resolve → supervisor → validate_entity → metering_gate → build_context (if specialists)
-→ invoke_specialists → assemble_response → END; or target_resolve → assemble_response when step-1 target
-resolve completes; or metering_gate → assemble_response.
+Flow: START → target_resolve (step-1 resolve, step-2 deliver, or legacy passthrough) → supervisor → …
 
 The default uses AsyncSqliteSaver (aiosqlite) so LangGraph Studio / langgraph dev
 (ASGI) can use ainvoke cleanly. The MCP server forces the sync SqliteSaver path

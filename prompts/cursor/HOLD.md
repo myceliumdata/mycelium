@@ -1,6 +1,6 @@
 # Cursor queue
 
-**Active:** MVR redesign slice **M5** in `prompts/cursor/next/2026-06-13-1400-mvr-redesign-slice-m5.md` (after M4 approved + committed locally)
+**Active:** MVR redesign slice **M6** in `prompts/cursor/next/2026-06-13-1500-mvr-redesign-slice-m6.md` (after M5 approved + committed locally)
 
 **Program:** [`docs/plans/mvr-redesign-program.md`](../../docs/plans/mvr-redesign-program.md) (slices M1–M10)
 

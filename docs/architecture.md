@@ -212,7 +212,9 @@ Future (not v1): per-network LangSmith project names, optional credential profil
 
 **M3 (models):** `EntityQuery` and `QueryResponse` accept target fields with Pydantic step-1/step-2 validation.
 
-**M4 (resolve):** Per-field inverted indexes on registry MVR bind fields; graph `target_resolve` node returns `lookup_resolved` + `delivery_id` for step-1 `id`/`lookup`. Step-2 deliver (M5) and metering quote on step 1 (M6) not wired yet.
+**M4 (resolve):** Per-field inverted indexes on registry MVR bind fields; graph `target_resolve` node returns `lookup_resolved` + `delivery_id` for step-1 `id`/`lookup`.
+
+**M5 (deliver):** Step-2 `delivery_id` loads `DeliveryScope` and returns `found` / `assembled` with registry `results[]`; attrs/provenance from step-1 scope hydrate internal graph state. Metering `quote_id` gate deferred to M6.
 
 **Program 2** (versioned bind storage / `bind_versions[]`) is **blocked** until this program completes.
 

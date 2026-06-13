@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from models.state import MyceliumGraphState, normalized_requested_attributes
+from models.state import MyceliumGraphState, graph_requested_attributes
 
 RESEARCH_GATE_MESSAGE = (
     "Record is provisionally bound; core validation must complete before "
@@ -26,7 +26,7 @@ def research_gate_allows(
 
 def is_research_gated(state: MyceliumGraphState) -> bool:
     """True when attrs were requested but the gate blocks specialist research."""
-    requested = normalized_requested_attributes(state.query.requested_attributes)
+    requested = graph_requested_attributes(state)
     if not requested:
         return False
     matched = state.matched_records or []

@@ -10,7 +10,7 @@ from agents.context import planner_context
 from agents.research_gate import research_gate_allows
 from agents.factory.agent_factory import get_agent_factory
 from agents.registry import get_agent_registry
-from models.state import MyceliumGraphState
+from models.state import MyceliumGraphState, entity_query_is_delivery_step, graph_requested_attributes
 
 # Context pull + specialist calls run in graph nodes (build_context, invoke_specialists).
 # TODO: peer retrieval replaces supervisor-provided full context union.
@@ -77,12 +77,15 @@ def _collect_specialists_to_invoke(
 def _classify_requested_attributes(
     query,
     audit_log: list[str],
+    *,
+    attributes: list[str] | None = None,
 ) -> list[dict[str, Any]]:
-    if not query.requested_attributes:
+    attrs = attributes if attributes is not None else query.requested_attributes
+    if not attrs:
         return []
     tree = get_category_tree()
     classifications: list[dict[str, Any]] = []
-    for attr in query.requested_attributes:
+    for attr in attrs:
         cl = tree.classify(attr)
         classifications.append(cl.model_dump())
         if cl.category != "unknown":
@@ -115,6 +118,49 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
     current = _coerce(state)
     query = current.query
     audit_log = ["Supervisor: evaluating query."]
+
+    if entity_query_is_delivery_step(query) and current.matched_records:
+        matched = current.matched_records
+        audit_log.append(
+            f"Supervisor: step-2 deliver — using {len(matched)} scope entity row(s); "
+            "skipping legacy resolve.",
+        )
+        ids = [m["id"] for m in matched if m.get("id")]
+        attrs = graph_requested_attributes(current)
+        classifications = _classify_requested_attributes(
+            query,
+            audit_log,
+            attributes=attrs,
+        )
+        specialists_to_invoke: list[str] = []
+        if research_gate_allows(current_id=None, matched=matched):
+            specialists_to_invoke = _collect_specialists_to_invoke(
+                classifications,
+                audit_log,
+            )
+            if specialists_to_invoke:
+                audit_log.append(
+                    f"Supervisor: will invoke specialist(s): "
+                    f"{', '.join(specialists_to_invoke)}.",
+                )
+        context = planner_context(
+            matched=matched[0] if len(matched) == 1 else matched,
+            ids=ids,
+            specialists_to_invoke=specialists_to_invoke,
+        )
+        result: dict[str, Any] = {
+            "matched_records": matched,
+            "entity_resolution_kind": "exact",
+            "entity_suggestions": [],
+            "context": context,
+            "audit_log": audit_log,
+            "route": None,
+        }
+        if classifications:
+            result["classifications"] = classifications
+        if len(matched) == 1:
+            result["current_id"] = matched[0]["id"]
+        return result
 
     resolution = resolve_entity(query)
 
