@@ -101,23 +101,32 @@ This move to `in-progress/` serves as the claim/lock. Other Cursor agents will s
 
 ### 3. Completing Work (Cursor)
 
-When Cursor finishes:
+When Cursor finishes, run this **completion checklist** in order. Do not tell Paul the slice is done until every item passes.
 
-1. It creates a directory under `prompts/cursor/done/` with the same base name as the prompt.
-2. It moves/copies the prompt file into that directory as `prompt.md`.
-3. It produces at minimum:
-   - `output.md` — A clear summary of what was changed, decisions made, and open questions. Include **"For Grok + Paul"** with any `TODO.md` updates needed (Cursor does not apply them).
-   - Any relevant diffs, new files, or notes.
-4. **It must remove only the specific file it claimed** from `prompts/cursor/in-progress/`.
-5. **Do not `git commit` or `git push` until Grok review.** Leave changes in the working tree (or on a branch if Paul prefers). **Grok** commits approved slices locally on the **`mycelium`** framework repo (see §4). Cursor may note a suggested commit message in `output.md` only.
-   - Do **not** delete, move, or touch any other files that may be present in `in-progress/` at the time of completion.
-   - This rule is **mandatory** for safe parallel execution. When multiple Cursor agents (or multiple sessions) are running, each agent is responsible **only** for the file it personally claimed. "Helpful" cleanup of other files can corrupt or delete work being done by other agents.
+#### Completion checklist (mandatory)
+
+| # | Step | Verify |
+|---|------|--------|
+| 1 | **Run CI** | `./bin/ci-local` green (or document failure in `output.md` — do not claim complete). |
+| 2 | **Verify code exists** | Every file listed in your planned `output.md` is actually written on disk — not tests-only when the prompt required implementation. |
+| 3 | **Create `done/` folder** | `prompts/cursor/done/<prompt-basename>/` (same name as the claimed prompt, without `.md`). |
+| 4 | **Move prompt → `prompt.md`** | Copy/move the claimed prompt into that folder as `prompt.md`. **Remove it from `next/` and `in-progress/`** — never leave a duplicate in `next/`. |
+| 5 | **Write `output.md`** | Summary, decisions, verification counts, **"For Grok + Paul"** (TODO notes — do not edit `TODO.md`), suggested commit message. |
+| 6 | **Remove your claim** | Delete **only** the file you moved to `in-progress/` (your slice). Do not touch other agents' files in `in-progress/`. |
+| 7 | **Do not commit** | Leave all code changes in the working tree. **Grok** commits after review on `mycelium`; **no push** until Paul asks. |
+| 8 | **Tell Paul** | "Slice ready for review" (or report CI/blocker). Do **not** write `review.md` — Grok does that. |
+
+**Common failures (avoid):**
+
+- `output.md` describes code that was never saved.
+- Prompt file left in `next/` after work moved to `done/` (stale duplicate).
+- `git commit` / `git push` before Grok review.
+- Deleting or moving another agent's file in `in-progress/`.
 
 ### Parallel Safety Notes
 - Never assume you are the only agent working.
 - Never delete files in `in-progress/` that you did not personally move there.
 - If you see unexpected files in `in-progress/`, document them in your `output.md` but do not touch them.
-5. It may optionally create a `review.md` placeholder, but this is not required.
 
 ### 4. Review (Grok + Paul)
 
@@ -223,6 +232,13 @@ Every prompt in `prompts/cursor/next/` **must** contain:
 - **Do not edit `TODO.md`.** Roadmap updates are for Grok + Paul after review.
 - In `output.md`, add **"For Grok + Paul"**: what to check off, any roadmap notes.
 - Cursor delivers: code, tests, task-scoped docs, and `output.md` only.
+
+## When finished (mandatory — see WORKFLOW.md §3)
+
+1. `./bin/ci-local` green
+2. `prompts/cursor/done/<slice>/` with `prompt.md` + `output.md`
+3. Remove claimed file from `in-progress/` **and** ensure no duplicate remains in `next/`
+4. **Do not commit or push** — tell Paul "slice ready for review"
 ```
 
 ## History & Auditability

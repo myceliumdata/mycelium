@@ -29,12 +29,16 @@ If the user says any of the following (or similar):
 3. Select the **first** file — this is the next task
 4. **Immediately move** that file from `prompts/cursor/next/` into `prompts/cursor/in-progress/`
 5. Read the prompt file and execute the task according to its instructions
-6. When finished:
-   - Create output in `prompts/cursor/done/<original-filename>/` (including at minimum `prompt.md` and `output.md`)
-   - **Remove only the specific file you claimed** from `prompts/cursor/in-progress/`.
-   - **Never delete, move, or touch any other files** that may still be in `in-progress/`.
-   - This is a hard requirement for parallel safety. "Helpfully" cleaning up files you did not claim can destroy or corrupt work being done by other agents.
-   - If you see unexpected files in `in-progress/`, note them in your output but leave them alone.
+6. **When finished — completion checklist (all required before saying "done"):**
+   - Run `./bin/ci-local` and record results in `output.md`
+   - Verify every source file you list in `output.md` actually exists on disk (no tests-only handoff when code was required)
+   - Create `prompts/cursor/done/<prompt-basename>/` with `prompt.md` (moved from your claimed prompt) and `output.md`
+   - **Remove the prompt from `next/` and `in-progress/`** — never leave a stale copy in `next/`
+   - **Do not `git commit` or `git push`** — Grok reviews and commits locally
+   - Tell Paul **"slice ready for review"** — do not write `review.md` (Grok does)
+   - **Remove only the specific file you claimed** from `in-progress/`
+   - **Never delete, move, or touch any other files** in `in-progress/` (parallel safety)
+   - If you see unexpected files in `in-progress/`, note them in `output.md` but leave them alone
 
 ## Important Rules
 

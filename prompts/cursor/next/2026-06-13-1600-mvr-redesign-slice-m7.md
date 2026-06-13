@@ -50,6 +50,17 @@
 - In `output.md`, add **"For Grok + Paul"**: what to check off, any roadmap notes.
 - Cursor delivers: code, tests, task-scoped docs, and `output.md` only.
 
+## When finished (mandatory)
+
+1. `./bin/ci-local` green — record counts in `output.md`
+2. Create `prompts/cursor/done/2026-06-13-1600-mvr-redesign-slice-m7/` with `prompt.md` + `output.md`
+3. Every file in `output.md` must exist on disk (verify before claiming done)
+4. Remove your claimed prompt from **`in-progress/`** and **`next/`** — no stale duplicate in `next/`
+5. **Do not `git commit` or `git push`**
+6. Tell Paul: **"slice ready for review"** (Grok writes `review.md`)
+
+See `prompts/cursor/WORKFLOW.md` §3.
+
 ---
 
 ## Verification
@@ -62,9 +73,9 @@
 
 ## Output
 
-`prompts/cursor/done/2026-06-13-1600-mvr-redesign-slice-m7/` — queue M8 in For Grok + Paul.
+`prompts/cursor/done/2026-06-13-1600-mvr-redesign-slice-m7/` — note M8 queue hint in **For Grok + Paul** only (Grok queues next slice).
 
-Do not commit until review.
+Do not commit until Grok review.
 
 ---
 
