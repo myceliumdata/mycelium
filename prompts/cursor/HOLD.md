@@ -1,8 +1,8 @@
 # Cursor queue
 
-**Active:** MVR redesign slice **M9** in `prompts/cursor/next/2026-06-13-1800-mvr-redesign-slice-m9.md` (after M8 approved + committed locally)
+**Active:** MVR redesign slice **M10** in `prompts/cursor/next/2026-06-13-1900-mvr-redesign-slice-m10.md` (after M9 approved + committed locally)
 
-**Program:** [`docs/plans/mvr-redesign-program.md`](../../docs/plans/mvr-redesign-program.md) (slices M1–M10)
+**Program:** [`docs/plans/mvr-redesign-program.md`](../../docs/plans/mvr-redesign-program.md) (slices M1–M10) — **final slice**
 
 Program 2 (versioned bind storage) waits until MVR redesign ships.
 

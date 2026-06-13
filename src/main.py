@@ -63,17 +63,35 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     query_cmd = sub.add_parser(
         "query",
-        help="Query an entity via the registry (JSON response)",
+        help="Query entities via the target two-step protocol (JSON response)",
         epilog=(
-            "Target protocol (MVR redesign): step 1 uses id or lookup JSON; step 2 uses "
-            "delivery_id from lookup_resolved. This CLI still uses legacy --entity-key until M4."
+            "Target protocol (MVR redesign):\n"
+            "  Step 1 — resolve: --id UUID  OR  --lookup-json '{\"employer\":\"Accel\"}'\n"
+            "           optional --attributes, --provenance\n"
+            "           → lookup_resolved (+ delivery_id) or quote_required\n"
+            "  Step 2 — deliver: --delivery-id d_…  (+ --quote-id when metered)\n"
+            "           → found / assembled with full results[]\n"
+            "\n"
+            "Legacy --entity-key / --employer / --binding-json removed in M9. "
+            "Use lookup JSON with name + employer for full MVR bind."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    query_cmd.add_argument(
-        "--entity-key",
-        required=True,
-        help="Legacy: registry UUID or display name (target protocol: use id or lookup JSON via MCP)",
+    step = query_cmd.add_mutually_exclusive_group(required=True)
+    step.add_argument(
+        "--id",
+        metavar="UUID",
+        help="Step 1: resolve one entity by registry UUID",
+    )
+    step.add_argument(
+        "--lookup-json",
+        metavar="JSON",
+        help='Step 1: partial lookup map, e.g. \'{"employer":"645 Ventures"}\'',
+    )
+    step.add_argument(
+        "--delivery-id",
+        metavar="ID",
+        help="Step 2: deliver a prior delivery_id from lookup_resolved",
     )
     query_cmd.add_argument(
         "--attributes",
@@ -106,13 +124,19 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--employer",
         default=None,
         metavar="NAME",
-        help="MVR bind field: sets binding.employer on EntityQuery",
+        help=argparse.SUPPRESS,
     )
     query_cmd.add_argument(
         "--binding-json",
         default=None,
         metavar="JSON",
-        help='Full binding object as JSON (overrides --employer), e.g. \'{"employer":"Acme Corp"}\'',
+        help=argparse.SUPPRESS,
+    )
+    query_cmd.add_argument(
+        "--entity-key",
+        default=None,
+        metavar="KEY",
+        help=argparse.SUPPRESS,
     )
     query_cmd.add_argument(
         "--quote-id",
@@ -253,26 +277,32 @@ def _resolve_thread_id(cli_thread_id: str | None) -> str:
     return cli_thread_id if cli_thread_id else str(uuid.uuid4())
 
 
-def _binding_from_args(args: argparse.Namespace) -> dict[str, str]:
-    """Build EntityQuery.binding from --binding-json or --employer."""
-    if args.binding_json:
-        raw = json.loads(args.binding_json)
-        if not isinstance(raw, dict):
-            msg = "--binding-json must be a JSON object"
-            raise ValueError(msg)
-        return {str(key): str(value) for key, value in raw.items()}
-    if args.employer:
-        return {"employer": str(args.employer).strip()}
-    return {}
-
-
 def _entity_query_from_args(args: argparse.Namespace) -> EntityQuery:
-    """Map CLI query flags to EntityQuery."""
-    binding = _binding_from_args(args)
+    """Map CLI query flags to EntityQuery (target two-step protocol)."""
+    if getattr(args, "entity_key", None) or getattr(args, "employer", None) or getattr(
+        args, "binding_json", None
+    ):
+        msg = (
+            "Legacy --entity-key / --employer / --binding-json removed. "
+            "Use --lookup-json with MVR fields or --id / --delivery-id."
+        )
+        raise ValueError(msg)
+
+    delivery_id = (getattr(args, "delivery_id", None) or "").strip() or None
+    entity_id = (getattr(args, "id", None) or "").strip() or None
+    lookup: dict[str, str] = {}
+    if getattr(args, "lookup_json", None):
+        raw = json.loads(args.lookup_json)
+        if not isinstance(raw, dict):
+            msg = "--lookup-json must be a JSON object"
+            raise ValueError(msg)
+        lookup = {str(key): str(value) for key, value in raw.items()}
+
     return EntityQuery(
-        entity_key=args.entity_key,
+        id=entity_id,
+        lookup=lookup,
+        delivery_id=delivery_id,
         requested_attributes=list(args.attributes),
-        binding=binding,
         quote_id=args.quote_id,
         provenance=bool(args.provenance),
     )
@@ -447,6 +477,8 @@ def main(argv: list[str] | None = None) -> int:
 
         response = run_query(query, thread_id=thread_id)
         _print_response(response)
+        if response.outcome in {"lookup_resolved", "quote_required", "payment_required"}:
+            return 0
         return 0 if response.results else 1
     finally:
         _cleanup_resources()

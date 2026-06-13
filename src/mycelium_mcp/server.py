@@ -24,8 +24,8 @@ from storage.core import get_storage
 
 mcp = FastMCP("Mycelium", instructions="")
 
-# Seed record used for optional internal ping in health_check (no caller input).
-_HEALTH_PING_ENTITY_KEY = "Nichanan Kesonpat"
+# Health ping: two-step target resolve for a known CRM seed row.
+_HEALTH_PING_LOOKUP = {"name": "Nichanan Kesonpat", "employer": "1k(x)"}
 
 
 def _network_health_info() -> dict[str, str | None]:
@@ -79,6 +79,14 @@ def _parse_query_payload(query_json: str) -> tuple[EntityQuery, str]:
         raise ValueError(msg)
 
     thread_id = data.pop("thread_id", None)
+    if (data.get("entity_key") or data.get("binding")) and not (
+        data.get("id") or data.get("lookup") or data.get("delivery_id")
+    ):
+        msg = (
+            "entity_key/binding removed from public API (MVR redesign M9). "
+            "Use id or lookup on step 1, or delivery_id on step 2."
+        )
+        raise ValueError(msg)
     query = EntityQuery.model_validate(data)
     resolved_thread = thread_id if isinstance(thread_id, str) and thread_id else str(uuid.uuid4())
     return query, resolved_thread
@@ -97,15 +105,17 @@ def _neutral_json_schema(model: type[EntityQuery] | type[QueryResponse] | type[I
         schema["description"] = (
             "Target two-step protocol: step 1 — id or lookup (AND), optional "
             "requested_attributes and provenance; step 2 — delivery_id plus optional "
-            "quote_id. Legacy entity_key/binding still accepted on step 1 until M4."
+            "quote_id. Public clients must not send entity_key or binding (removed M9)."
         )
         props = schema.setdefault("properties", {})
         for legacy_field in ("entity_key", "binding"):
             field_schema = props.get(legacy_field)
             if isinstance(field_schema, dict):
                 desc = field_schema.get("description") or ""
-                if "Deprecated" not in desc:
-                    field_schema["description"] = f"Deprecated. {desc}"
+                if "Deprecated" not in desc and "Internal" not in desc:
+                    field_schema["description"] = (
+                        f"Internal/tests only — not accepted via MCP/CLI/admin (M9). {desc}"
+                    )
     elif model is QueryResponse:
         schema["description"] = (
             "Query outcome: outcome (machine-readable, including lookup_resolved on step 1), "
@@ -143,7 +153,7 @@ def _execute_mcp_query(query_json: str) -> str:
                 "message": f"Query failed internally: {exc}",
                 "debug": (
                     f"outcome='error'; error_type={type(exc).__name__}; "
-                    f"entity_key={query.entity_key!r}"
+                    f"delivery_id={query.delivery_id!r}; id={query.id!r}"
                 ),
                 "outcome": "error",
                 "suggestions": [],
@@ -186,23 +196,26 @@ def _routing_payload() -> dict[str, Any]:
 @mcp.tool
 def query_entity(query_json: str) -> str:
     """
-    Query an entity by registry id or name.
+    Query entities via the target two-step protocol.
 
-    Request JSON (EntityQuery fields plus optional thread_id):
+    Step 1 — resolve (returns delivery_id, empty results[]):
     {
-      "entity_key": "Nichanan Kesonpat",
+      "lookup": {"employer": "645 Ventures"},
       "requested_attributes": ["email"],
-      "thread_id": "optional-conversation-id",
-      "quote_id": "q_abc (retry after quote_required / payment_required)"
+      "provenance": false,
+      "thread_id": "optional-conversation-id"
+    }
+    Or: {"id": "<registry-uuid>"} with optional attrs on step 1 only.
+
+    Step 2 — deliver (full results[]):
+    {
+      "delivery_id": "d_…",
+      "quote_id": "q_… (when metering accepted)"
     }
 
-    Response JSON includes outcome, suggestions (when near-miss), required_fields
-    (when entity_unknown), quote (when quote_required or payment_required), results,
-    message, debug, trace_id, and thread_id.
-    On outcome entity_key_unresolved, re-query with a suggestions[].entity_key.
-    On outcome entity_unknown, gather required_fields from MVR policy (see
-    describe_network) before re-querying — no research until bound.
-    When metering.payment.enabled: quote_required → pay_quote → retry with quote_id.
+    Response JSON includes outcome (lookup_resolved, quote_required, found, assembled, …),
+    delivery, quote, total_matches, results, message, provenance, debug, trace_id, thread_id.
+    When metering.payment.enabled: quote_required → pay_quote → step 2 with quote_id.
     """
     return _run_mcp_query(query_json)
 
@@ -319,10 +332,17 @@ def health_check() -> str:
             checks["lightweight_tool"] = f"error: {exc}"
 
         try:
-            ping_raw = _execute_mcp_query(
-                json.dumps({"entity_key": _HEALTH_PING_ENTITY_KEY}),
+            ping_step1_raw = _execute_mcp_query(
+                json.dumps({"lookup": _HEALTH_PING_LOOKUP}),
             )
-            ping = json.loads(ping_raw)
+            ping_step1 = json.loads(ping_step1_raw)
+            delivery = ping_step1.get("delivery") or {}
+            delivery_id = delivery.get("delivery_id") if isinstance(delivery, dict) else None
+            if ping_step1.get("outcome") == "lookup_resolved" and delivery_id:
+                ping_raw = _execute_mcp_query(json.dumps({"delivery_id": delivery_id}))
+                ping = json.loads(ping_raw)
+            else:
+                ping = ping_step1
             if ping.get("results"):
                 checks["ping_query"] = "ok"
             elif "Query failed internally" in str(ping.get("message", "")):

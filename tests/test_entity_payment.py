@@ -15,7 +15,7 @@ from agents.entity_registry import get_entity_registry, reset_entity_registry
 from agents.factory.agent_factory import get_agent_factory, reset_agent_factory
 from agents.registry import reset_agent_registry
 from graphs.core import reset_core_graph, run_query
-from models.state import BillingPrincipal, EntityQuery
+from models.state import BillingPrincipal, EntityQuery, QueryResponse
 from network.credits import get_credit_store, reset_credit_store
 from network.entitlements import reset_entitlement_store
 from network.metering_policy import load_metering_policy
@@ -183,18 +183,22 @@ def crm_payment_env(
 def _bind_and_quote(
     *,
     payment_enabled: bool = True,
-) -> tuple[str, dict[str, Any]]:
-    run_query(EntityQuery(entity_key="Paul Murphy", binding={"employer": "Acme Corp"}))
+) -> tuple[str, dict[str, Any], str]:
+    _ = payment_enabled
     quoted = run_query(
         EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
+            lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
             requested_attributes=["email"],
         ),
     )
     assert quoted.outcome == "quote_required"
     assert quoted.quote is not None
-    return quoted.quote["quote_id"], quoted.quote
+    assert quoted.delivery is not None
+    return quoted.quote["quote_id"], quoted.quote, quoted.delivery.delivery_id
+
+
+def _deliver_quoted_email(quote_id: str, delivery_id: str) -> QueryResponse:
+    return run_query(EntityQuery(delivery_id=delivery_id, quote_id=quote_id))
 
 
 @pytest.mark.smoke
@@ -211,15 +215,8 @@ def test_payment_disabled_quote_id_without_pay(
     _mock_email_research(monkeypatch)
     reset_core_graph()
 
-    quote_id, _ = _bind_and_quote()
-    resp = run_query(
-        EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
-            requested_attributes=["email"],
-            quote_id=quote_id,
-        ),
-    )
+    quote_id, _, delivery_id = _bind_and_quote()
+    resp = _deliver_quoted_email(quote_id, delivery_id)
     assert resp.outcome == "assembled"
 
 
@@ -231,18 +228,11 @@ def test_mock_settle_then_accept(
     _ = crm_payment_env
     _mock_email_research(monkeypatch)
 
-    quote_id, _ = _bind_and_quote()
+    quote_id, _, delivery_id = _bind_and_quote()
     receipt = settle_quote(quote_id, proof="test:ok")
     assert receipt.provider == "mock"
 
-    resp = run_query(
-        EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
-            requested_attributes=["email"],
-            quote_id=quote_id,
-        ),
-    )
+    resp = _deliver_quoted_email(quote_id, delivery_id)
     assert resp.outcome == "assembled"
     quotes = json.loads(Path(__import__("os").environ["MYCELIUM_QUOTES_PATH"]).read_text())
     assert quotes["quotes"][quote_id]["status"] == "accepted"
@@ -256,14 +246,9 @@ def test_payment_required_before_settle(
     _ = crm_payment_env
     _mock_email_research(monkeypatch)
 
-    quote_id, quote = _bind_and_quote()
+    quote_id, quote, delivery_id = _bind_and_quote()
     blocked = run_query(
-        EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
-            requested_attributes=["email"],
-            quote_id=quote_id,
-        ),
+        EntityQuery(delivery_id=delivery_id, quote_id=quote_id),
     )
     assert blocked.outcome == "payment_required"
     assert blocked.quote is not None
@@ -285,7 +270,7 @@ def test_credit_insufficient(
     reset_core_graph()
     _mock_email_research(monkeypatch)
 
-    quote_id, _ = _bind_and_quote()
+    quote_id, _, _ = _bind_and_quote()
     with pytest.raises(PaymentError, match="insufficient credits"):
         settle_quote(
             quote_id,
@@ -308,7 +293,7 @@ def test_credit_success(
     _mock_email_research(monkeypatch)
 
     get_credit_store().set_balance("acme", 10.0)
-    quote_id, quote = _bind_and_quote()
+    quote_id, quote, delivery_id = _bind_and_quote()
     receipt = settle_quote(
         quote_id,
         principal=BillingPrincipal(kind="tenant", id="acme"),
@@ -318,14 +303,7 @@ def test_credit_success(
         10.0 - quote["total_usd"],
     )
 
-    resp = run_query(
-        EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
-            requested_attributes=["email"],
-            quote_id=quote_id,
-        ),
-    )
+    resp = _deliver_quoted_email(quote_id, delivery_id)
     assert resp.outcome == "assembled"
 
 
@@ -342,7 +320,7 @@ def test_x402_stub_proof(
     )
     reset_core_graph()
 
-    quote_id, _ = _bind_and_quote()
+    quote_id, _, _ = _bind_and_quote()
     with pytest.raises(PaymentError, match="x402:test:"):
         settle_quote(quote_id, proof="bad")
 
@@ -363,15 +341,8 @@ def test_auto_settle_bypass(
     monkeypatch.setenv("MYCELIUM_AUTO_SETTLE_QUOTES", "1")
     reset_core_graph()
 
-    quote_id, _ = _bind_and_quote()
-    resp = run_query(
-        EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
-            requested_attributes=["email"],
-            quote_id=quote_id,
-        ),
-    )
+    quote_id, _, delivery_id = _bind_and_quote()
+    resp = _deliver_quoted_email(quote_id, delivery_id)
     assert resp.outcome == "assembled"
     stored = get_quote_store().get(quote_id)
     assert stored is not None
@@ -416,7 +387,7 @@ def test_settle_quote_rejects_expired(
     _ = crm_payment_env
     _mock_email_research(monkeypatch)
 
-    quote_id, _ = _bind_and_quote()
+    quote_id, _, _ = _bind_and_quote()
     _expire_quote_in_store(quote_id)
 
     with pytest.raises(PaymentError, match="expired"):
@@ -437,7 +408,7 @@ def test_credit_deduct_after_mark_paid(
     reset_core_graph()
 
     get_credit_store().set_balance("acme", 10.0)
-    quote_id, _ = _bind_and_quote()
+    quote_id, _, _ = _bind_and_quote()
 
     def _fail_mark_paid(self, *args: Any, **kwargs: Any) -> None:
         return None
@@ -466,7 +437,7 @@ def test_mcp_pay_quote_round_trip(
 
     apply_network_paths(NetworkPaths.from_root(tmp_path))
 
-    quote_id, _ = _bind_and_quote()
+    quote_id, _, delivery_id = _bind_and_quote()
 
     from mycelium_mcp.server import pay_quote, query_entity
 
@@ -478,9 +449,7 @@ def test_mcp_pay_quote_round_trip(
     query_raw = query_entity(
         json.dumps(
             {
-                "entity_key": "Paul Murphy",
-                "binding": {"employer": "Acme Corp"},
-                "requested_attributes": ["email"],
+                "delivery_id": delivery_id,
                 "quote_id": quote_id,
             },
         ),
@@ -497,18 +466,11 @@ def test_accept_rejects_expired_paid_quote(
     _ = crm_payment_env
     _mock_email_research(monkeypatch)
 
-    quote_id, _ = _bind_and_quote()
+    quote_id, _, delivery_id = _bind_and_quote()
     settle_quote(quote_id, proof="test:ok")
     _expire_quote_in_store(quote_id)
 
-    resp = run_query(
-        EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
-            requested_attributes=["email"],
-            quote_id=quote_id,
-        ),
-    )
+    resp = run_query(EntityQuery(delivery_id=delivery_id, quote_id=quote_id))
     assert resp.outcome != "assembled"
     assert resp.outcome == "quote_required"
     assert resp.quote is not None

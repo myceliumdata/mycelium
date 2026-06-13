@@ -12,6 +12,10 @@ request, routes it to the right specialist, and researches it if we do not
 have it yet. If a request does not fit this network's purpose, you will
 get a clear refusal in the response message.
 
-If your `entity_key` is a near miss (for example a typo in a name), the response
-may return `outcome: entity_key_unresolved` with `suggestions` — re-query using
-a suggested `entity_key`; no attribute data is returned until an exact match.
+Queries use the **two-step protocol**: step 1 with `lookup` (or `id`) returns
+`lookup_resolved` and a `delivery_id`; step 2 with `delivery_id` delivers
+identity or researched attributes.
+
+If your lookup is a near miss (for example a typo in a name), the response may
+return `outcome: lookup_unresolved` with `suggestions` — re-query with a
+suggested lookup; no attribute data is returned until an exact match.

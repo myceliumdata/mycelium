@@ -337,29 +337,53 @@ def test_cli_network_register_list_use_and_query(
 
     query = _run_mycelium_cli(
         "query",
-        "--entity-key",
-        "Beta Person",
+        "--lookup-json",
+        '{"name": "Beta Person"}',
         "--thread-id",
         _unique_thread_id("cli-default"),
         env=registry_env,
     )
     assert query.returncode == 0, query.stderr or query.stdout
     payload = _parse_cli_json(query.stdout)
-    assert payload["results"][0]["name"] == "Beta Person"
+    assert payload["outcome"] == "lookup_resolved"
+    deliver = _run_mycelium_cli(
+        "query",
+        "--delivery-id",
+        payload["delivery"]["delivery_id"],
+        "--thread-id",
+        _unique_thread_id("cli-default-deliver"),
+        env=registry_env,
+    )
+    assert deliver.returncode == 0, deliver.stderr or deliver.stdout
+    deliver_payload = _parse_cli_json(deliver.stdout)
+    assert deliver_payload["results"][0]["name"] == "Beta Person"
 
     query_named = _run_mycelium_cli(
         "query",
         "--network",
         "alpha",
-        "--entity-key",
-        "Alpha Person",
+        "--lookup-json",
+        '{"name": "Alpha Person"}',
         "--thread-id",
         _unique_thread_id("cli-named"),
         env=registry_env,
     )
     assert query_named.returncode == 0, query_named.stderr or query_named.stdout
     named_payload = _parse_cli_json(query_named.stdout)
-    assert named_payload["results"][0]["name"] == "Alpha Person"
+    assert named_payload["outcome"] == "lookup_resolved"
+    named_deliver = _run_mycelium_cli(
+        "query",
+        "--network",
+        "alpha",
+        "--delivery-id",
+        named_payload["delivery"]["delivery_id"],
+        "--thread-id",
+        _unique_thread_id("cli-named-deliver"),
+        env=registry_env,
+    )
+    assert named_deliver.returncode == 0, named_deliver.stderr or named_deliver.stdout
+    named_deliver_payload = _parse_cli_json(named_deliver.stdout)
+    assert named_deliver_payload["results"][0]["name"] == "Alpha Person"
 
 
 # --- 3. Multi-network isolation ---
@@ -420,14 +444,27 @@ def test_refresh_example_register_and_query_nichanan(
     assert (target / "seed.json").is_file()
 
     env = {"MYCELIUM_NETWORKS_CONFIG": str(config), "MYCELIUM_FRAMEWORK_ROOT": str(tmp_path / "fw")}
+    resolve = _run_mycelium_cli(
+        "query",
+        "--network",
+        "crm",
+        "--lookup-json",
+        '{"name": "Nichanan Kesonpat", "employer": "1k(x)"}',
+        "--thread-id",
+        _unique_thread_id("example"),
+        env=env,
+    )
+    assert resolve.returncode == 0, resolve.stderr or resolve.stdout
+    resolved = _parse_cli_json(resolve.stdout)
+    assert resolved["outcome"] == "lookup_resolved"
     query = _run_mycelium_cli(
         "query",
         "--network",
         "crm",
-        "--entity-key",
-        "Nichanan Kesonpat",
+        "--delivery-id",
+        resolved["delivery"]["delivery_id"],
         "--thread-id",
-        _unique_thread_id("example"),
+        _unique_thread_id("example-deliver"),
         env=env,
     )
     assert query.returncode == 0, query.stderr or query.stdout
@@ -471,11 +508,21 @@ def test_mcp_query_entity_reads_active_network_root(
 
     from mycelium_mcp.server import query_entity
 
+    raw_step1 = query_entity(
+        json.dumps(
+            {
+                "lookup": {"name": "MCP Query Person", "employer": "MQ"},
+                "thread_id": _unique_thread_id("mcp-query"),
+            },
+        ),
+    )
+    step1 = json.loads(raw_step1)
+    assert step1["outcome"] == "lookup_resolved"
     raw = query_entity(
         json.dumps(
             {
-                "entity_key": "MCP Query Person",
-                "thread_id": _unique_thread_id("mcp-query"),
+                "delivery_id": step1["delivery"]["delivery_id"],
+                "thread_id": _unique_thread_id("mcp-deliver"),
             },
         ),
     )

@@ -362,11 +362,17 @@ def test_admin_query_seed_entity(
 
     response = client.post(
         "/query",
-        json={"entity_key": "Andrea Kalmans"},
+        json={"lookup": {"name": "Andrea Kalmans", "employer": "Lontra Ventures"}},
     )
 
     assert response.status_code == 200
-    payload = response.json()
+    step1 = response.json()
+    assert step1["outcome"] == "lookup_resolved"
+    delivery_id = step1["delivery"]["delivery_id"]
+
+    deliver = client.post("/query", json={"delivery_id": delivery_id})
+    assert deliver.status_code == 200
+    payload = deliver.json()
     assert payload["outcome"] in {"found", "assembled"}
     assert payload["results"]
 
@@ -376,6 +382,7 @@ def test_admin_query_registry_bind(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
+    """POST /query create-on-deliver via full MVR lookup (Paul Murphy not in seed)."""
     root = _populated_root(tmp_path)
     client = _client_for_root(monkeypatch, tmp_path, root)
     monkeypatch.setattr(
@@ -383,18 +390,24 @@ def test_admin_query_registry_bind(
         lambda: False,
     )
 
-    response = client.post(
+    step1 = client.post(
         "/query",
         json={
-            "entity_key": "Paul Murphy",
-            "binding": {"employer": "Acme Corp"},
+            "lookup": {"name": "Paul Murphy", "employer": "Acme Corp"},
+            "requested_attributes": ["email"],
         },
     )
+    assert step1.status_code == 200
+    resolved = step1.json()
+    assert resolved["outcome"] == "lookup_resolved"
+    assert resolved["total_matches"] == 0
+    delivery_id = resolved["delivery"]["delivery_id"]
 
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["outcome"] in {"entity_validated", "found"}
-    assert payload["results"][0]["name"] == "Paul Murphy"
+    deliver = client.post("/query", json={"delivery_id": delivery_id})
+    assert deliver.status_code == 200
+    payload = deliver.json()
+    assert payload["outcome"] in {"found", "assembled"}
+    assert payload["results"]
 
 
 @pytest.mark.smoke
@@ -458,15 +471,13 @@ def test_admin_query_passes_quote_id(
     client.post(
         "/query",
         json={
-            "entity_key": "Paul Murphy",
-            "binding": {"employer": "Acme Corp"},
+            "lookup": {"name": "Paul Murphy", "employer": "Acme Corp"},
         },
     )
     quoted = client.post(
         "/query",
         json={
-            "entity_key": "Paul Murphy",
-            "binding": {"employer": "Acme Corp"},
+            "lookup": {"name": "Paul Murphy", "employer": "Acme Corp"},
             "requested_attributes": ["email"],
         },
     )
@@ -474,13 +485,12 @@ def test_admin_query_passes_quote_id(
     quote_payload = quoted.json()
     assert quote_payload["outcome"] == "quote_required"
     quote_id = quote_payload["quote"]["quote_id"]
+    delivery_id = quote_payload["delivery"]["delivery_id"]
 
     accepted = client.post(
         "/query",
         json={
-            "entity_key": "Paul Murphy",
-            "binding": {"employer": "Acme Corp"},
-            "requested_attributes": ["email"],
+            "delivery_id": delivery_id,
             "quote_id": quote_id,
         },
     )

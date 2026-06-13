@@ -38,8 +38,13 @@ Non-blocking nits from Grok review of MVR slices **M1–M9** are logged here **a
 | P19 | M8 | No smoke for batch step-2 identity-only (`found`, N rows, no attrs) | Optional M10 |
 | P20 | M8 | Sequential N×M specialist invocations on batch deliver | Document; parallelize only if perf requires |
 | P21 | M8 | `architecture.md` slice header bullets omit M8 batch line | Merge into M10 doc sync (with P17) |
+| P22 | M9 | **admin-ui** still posts `entity_key`/`binding` — demo broken | Two-step UI: lookup fields, store `delivery_id`, deliver + accept quote |
+| P23 | M9 | `crm-metering/README.md` manual step 2 uses `--delivery-id --attributes` | Quote step = `lookup-json` + `--attributes` on step 1 |
+| P24 | M9 | Fixture placeholder `delivery_id-from-step-2` wording | Clarify ids come from step-2 quote response |
+| P25 | M9 | Supervisor `resolve_entity` / legacy outcomes still live | Remove or isolate to test-only path in M10 |
+| P26 | M9 | `health_check` runs two graph queries | Optional lightweight ping later |
 
-*Add rows as M9 review lands.*
+*M10 addresses all open rows.*
 
 ---
 

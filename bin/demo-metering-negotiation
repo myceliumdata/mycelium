@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Demonstrate metering negotiation: bind → quote_required → accept quote_id."""
+"""Demonstrate metering negotiation: resolve → quote_required → deliver."""
 
 from __future__ import annotations
 
@@ -34,13 +34,15 @@ from models.state import EntityQuery  # noqa: E402
 from network.paths import NetworkPaths, apply_network_paths, resolve_network_root  # noqa: E402
 from storage.core import get_storage, reset_storage  # noqa: E402
 
+_LOOKUP = {"name": "Paul Murphy", "employer": "Acme Corp"}
+
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="bin/demo-metering-negotiation",
         description=(
-            "Run the Paul Murphy metering arc: bind → quote_required → assembled. "
-            "Default network: crm-metering."
+            "Run the Paul Murphy metering arc (target protocol): "
+            "resolve → quote_required → deliver. Default network: crm-metering."
         ),
     )
     parser.add_argument(
@@ -117,27 +119,23 @@ def main(argv: list[str] | None = None) -> int:
     if not args.json_only:
         print(f"Network root: {root}")
 
-    bind_query = EntityQuery(
-        entity_key="Paul Murphy",
-        binding={"employer": "Acme Corp"},
-    )
-    bind = run_query(bind_query)
+    resolve_query = EntityQuery(lookup=_LOOKUP)
+    resolved = run_query(resolve_query)
     _emit_step(
-        "Step 1 — bind",
-        query=bind_query,
-        response=bind.model_dump(),
+        "Step 1 — resolve",
+        query=resolve_query,
+        response=resolved.model_dump(),
         json_only=args.json_only,
     )
-    if bind.outcome not in {"entity_validated", "found"}:
+    if resolved.outcome != "lookup_resolved" or not resolved.delivery:
         print(
-            f"Step 1 failed: expected entity_validated or found, got {bind.outcome!r}",
+            f"Step 1 failed: expected lookup_resolved with delivery, got {resolved.outcome!r}",
             file=sys.stderr,
         )
         return 2
 
     quote_query = EntityQuery(
-        entity_key="Paul Murphy",
-        binding={"employer": "Acme Corp"},
+        lookup=_LOOKUP,
         requested_attributes=["email"],
     )
     quoted = run_query(quote_query)
@@ -147,30 +145,26 @@ def main(argv: list[str] | None = None) -> int:
         response=quoted.model_dump(),
         json_only=args.json_only,
     )
-    if quoted.outcome != "quote_required" or not quoted.quote:
+    if quoted.outcome != "quote_required" or not quoted.quote or not quoted.delivery:
         print(
-            f"Step 2 failed: expected quote_required with quote, got {quoted.outcome!r}",
+            f"Step 2 failed: expected quote_required with quote and delivery, got {quoted.outcome!r}",
             file=sys.stderr,
         )
         return 3
 
     quote_id = str(quoted.quote["quote_id"])
-    accept_query = EntityQuery(
-        entity_key="Paul Murphy",
-        binding={"employer": "Acme Corp"},
-        requested_attributes=["email"],
-        quote_id=quote_id,
-    )
-    accepted = run_query(accept_query)
+    delivery_id = quoted.delivery.delivery_id
+    deliver_query = EntityQuery(delivery_id=delivery_id, quote_id=quote_id)
+    delivered = run_query(deliver_query)
     _emit_step(
-        "Step 3 — accept",
-        query=accept_query,
-        response=accepted.model_dump(),
+        "Step 3 — deliver",
+        query=deliver_query,
+        response=delivered.model_dump(),
         json_only=args.json_only,
     )
-    if accepted.outcome != "assembled":
+    if delivered.outcome != "assembled":
         print(
-            f"Step 3 failed: expected assembled, got {accepted.outcome!r}",
+            f"Step 3 failed: expected assembled, got {delivered.outcome!r}",
             file=sys.stderr,
         )
         print(

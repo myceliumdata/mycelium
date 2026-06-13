@@ -269,6 +269,10 @@ Partial `lookup` with 0 matches → `not_found` (no create). Full MVR in step-1 
 
 Multi-match step-1 scopes carry `entity_ids[]` (N > 1). Step-2 deliver hydrates all N rows, invokes specialists **per entity** (no silent truncation), and returns N `results[]` entries with requested attrs merged per row. When step-1 bound `provenance=true`, step-2 `assembled`/`found` responses attach `provenance.entities[]` with one entry per delivered id (extended attrs only). Create-on-deliver remains N=1 (`create_on_deliver` scopes never batch).
 
+### Public surfaces (CLI, MCP, admin) — M9
+
+CLI `query`, MCP `query_entity`, and admin `POST /query` use the **target protocol only** — no `entity_key` / `binding` on public entry points. Example query JSON under `examples/networks/*/queries/` documents two-step resolve → deliver. Legacy `entity_key` remains on `EntityQuery` for internal graph smoke tests until M10 cleanup.
+
 ### Indexes (target)
 
 One inverted index per MVR field on `entities.json` (normalized value → `[uuid, …]`). Compound indexes deferred (Program 2 / operator).

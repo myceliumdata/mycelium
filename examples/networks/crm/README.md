@@ -18,9 +18,12 @@ From the framework repo root:
 # Bootstrap or reset live CRM (default ~/mycelium-networks/crm; registers as default)
 ./bin/refresh-example-network crm
 
-# Query via registered name or default
-uv run mycelium query --network crm --entity-key "Nichanan Kesonpat"
-uv run mycelium query --entity-key "Andrea Kalmans"
+# Step 1 — resolve by lookup (copy delivery_id from JSON output)
+uv run mycelium query --network crm --lookup-json '{"name":"Nichanan Kesonpat"}'
+uv run mycelium query --lookup-json '{"name":"Andrea Kalmans"}'
+
+# Step 2 — deliver (paste delivery_id from step 1)
+uv run mycelium query --network crm --delivery-id d_…
 ```
 
 Custom live root:
@@ -55,15 +58,17 @@ uv run mycelium network status --network crm --entity "Andrea Kalmans"
 
 ## Network growth from queries
 
-`seed.json` is imported into **`entities.json` at bootstrap only** (refresh/create). Queries read the registry. When a visiting agent binds a new person (for example `Paul Murphy` with `binding.employer`), Mycelium:
+`seed.json` is imported into **`entities.json` at bootstrap only** (refresh/create). Queries read the registry. When a visiting agent binds a new person via step-1 `lookup` (for example `{"name":"Paul Murphy","employer":"Acme Corp"}`), Mycelium:
 
 1. Creates a provisional row in `entities.json` (registry)
 2. Runs core validation and promotes the row to `validated`
-3. Invokes specialists for requested attributes (research gate: validated registry row)
+3. Step 2 with `delivery_id` invokes specialists for requested attributes (research gate: validated registry row)
 4. Writes extended attributes under `agents/<category>/storage.json` keyed by `entity_id`
 5. Records **data attribution** on the registry row: `attr_sources` (which category owns each attr) and `last_researched_at` (when research last succeeded)
 
-Re-query the same bind key (`entity_key` + `binding`) resolves the registry row. Specialist storage remains the source of truth for attribute values; registry metadata tracks provenance for operators and the admin UI.
+Re-query the same `lookup` (or `id`) for step 1, then `delivery_id` for step 2. Specialist storage remains the source of truth for attribute values; registry metadata tracks provenance for operators and the admin UI.
+
+Example MCP fixtures: [`queries/`](queries/) (batch deliver walkthrough).
 
 ## Layout
 

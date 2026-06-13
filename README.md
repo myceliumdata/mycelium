@@ -20,8 +20,11 @@ cp .env.example .env
 # Bootstrap or reset the CRM example (default: ~/mycelium-networks/crm)
 ./bin/refresh-example-network crm
 
-# Query (uses default registered network)
-uv run mycelium query --entity-key "Nichanan Kesonpat"
+# Step 1 — resolve (copy delivery_id from response)
+uv run mycelium query --lookup-json '{"name": "Nichanan Kesonpat", "employer": "1k(x)"}'
+
+# Step 2 — deliver
+uv run mycelium query --delivery-id d_abc123
 ```
 
 **When to use which:**
@@ -51,20 +54,23 @@ uv run mycelium network create wheat_farm \
 ### CLI
 
 ```bash
-# Registry identity only (name + employer from entities.json)
-uv run mycelium query --entity-key "Nichanan Kesonpat"
+# Step 1 — resolve by lookup (returns delivery_id, empty results[])
+uv run mycelium query --lookup-json '{"name": "Nichanan Kesonpat", "employer": "1k(x)"}'
 
-# Request non-core attributes (merged into results when specialists have data)
-uv run mycelium query --entity-key "Andrea Kalmans" --attributes email
+# Step 2 — deliver full identity rows
+uv run mycelium query --delivery-id d_abc123
+
+# Step 1 with attrs (bound into delivery scope for step 2)
+uv run mycelium query --lookup-json '{"name": "Andrea Kalmans", "employer": "Lontra Ventures"}' --attributes email
 
 # Stable conversation thread (echoed as thread_id in JSON)
-uv run mycelium query --entity-key "Nichanan Kesonpat" --thread-id "session-abc"
+uv run mycelium query --lookup-json '{"employer": "Accel"}' --thread-id "session-abc"
 
 # Explicit example path (no registry required)
-uv run mycelium query --network-dir examples/networks/crm --entity-key "Nichanan Kesonpat"
+uv run mycelium query --network-dir examples/networks/crm --lookup-json '{"employer": "Accel"}'
 
 # Registered network name (from ~/.config/mycelium/networks.json)
-uv run mycelium query --network crm --entity-key "Andrea Kalmans"
+uv run mycelium query --network crm --id <registry-uuid>
 
 # Network management
 uv run mycelium network create my_net --root ~/mycelium-networks/my_net --prompt "..."
@@ -93,10 +99,17 @@ The CLI starts a **fresh process** each run and reloads registry/storage from di
 **Metering negotiation flags** (for `crm-metering` demo network):
 
 ```bash
-uv run mycelium query --network crm-metering --entity-key "Paul Murphy" --employer "Acme Corp"
-uv run mycelium query --network crm-metering --entity-key "Paul Murphy" --employer "Acme Corp" --attributes email
-uv run mycelium query --network crm-metering --entity-key "Paul Murphy" --employer "Acme Corp" --attributes email --quote-id q_abc123
-uv run mycelium query --network crm-metering --entity-key "Paul Murphy" --binding-json '{"employer":"Acme Corp"}' --attributes email --provenance
+# Step 1 — resolve
+uv run mycelium query --network crm-metering --lookup-json '{"name": "Paul Murphy", "employer": "Acme Corp"}'
+
+# Step 1 — quote for email research
+uv run mycelium query --network crm-metering --lookup-json '{"name": "Paul Murphy", "employer": "Acme Corp"}' --attributes email
+
+# Step 2 — deliver with accepted quote
+uv run mycelium query --network crm-metering --delivery-id d_abc123 --quote-id q_xyz789
+
+# Step 1 with provenance flag (attached on step 2 deliver)
+uv run mycelium query --network crm-metering --lookup-json '{"name": "Paul Murphy", "employer": "Acme Corp"}' --attributes email --provenance
 ```
 
 ### Testing metering negotiation
@@ -173,15 +186,26 @@ Two networks in parallel (paths are examples):
 
 **`query_entity`** accepts JSON (`EntityQuery` fields plus optional top-level `thread_id`):
 
+**Step 1 — resolve:**
+
 ```json
 {
-  "entity_key": "Andrea Kalmans",
+  "lookup": {"name": "Andrea Kalmans", "employer": "Lontra Ventures"},
   "requested_attributes": ["email"],
   "thread_id": "optional-session-id"
 }
 ```
 
-You must include **`requested_attributes`** for non-core fields. Without it, responses contain registry identity only (`id`, `name`, `employer`).
+**Step 2 — deliver** (use `delivery_id` from step 1; add `quote_id` when metered):
+
+```json
+{
+  "delivery_id": "d_abc123",
+  "quote_id": "q_xyz789"
+}
+```
+
+Bind attrs and `provenance` on **step 1 only**; step 2 sends `delivery_id` (+ `quote_id` when required).
 
 **Attribute fan-out:** Each requested attribute is classified to a category (contact, social, professional, etc.) and routed to the matching specialist. Multiple attributes may invoke **multiple specialists** in one query (e.g. `["email", "linkedin"]` → contact + social). Core fields (`name`, `employer`) come from the registry; everything else is specialist-owned.
 
@@ -301,7 +325,7 @@ CLI and MCP return **`QueryResponse`** JSON:
 }
 ```
 
-Every CLI and MCP query response includes **`outcome`** (machine-readable: `found`, `assembled`, `not_found`, `entity_key_unresolved`, or `error`) and **`suggestions`** (near-miss entity keys when `outcome` is `entity_key_unresolved`). Agents should branch on `outcome` before trusting `results`; use `message` for per-attribute status. MCP schema: `mycelium://schema/query-response`.
+Every CLI and MCP query response includes **`outcome`** (machine-readable: `lookup_resolved`, `quote_required`, `found`, `assembled`, `not_found`, or `error`). Step 1 returns `delivery` + `total_matches`; step 2 returns full `results[]`. Agents should branch on `outcome` before trusting `results`; use `message` for per-attribute status. MCP schema: `mycelium://schema/query-response`.
 
 - **`results`** — One dict per matched entity. Always includes `"id"`. With `requested_attributes`, includes only those keys after specialist-first merge.
 - **`message`** — Human-readable status (entity found, research pending, N/A, etc.).
@@ -312,10 +336,11 @@ Every CLI and MCP query response includes **`outcome`** (machine-readable: `foun
 
 1. **Bootstrap (optional)** — `<network_root>/seed.json` is a static fixture for refresh/create only (CRM example: 15 public-safe people). Import writes rows to `entities.json`; queries never read `seed.json`.
 2. **Registry** — `entities.json` is the runtime canonical store (uuid4 ids, `bind_index`). Query-time binds create rows (see `empty-crm` example).
-3. **Supervisor** — Resolves `entity_key` via registry, classifies attributes (`categories.json` under network root — runtime only; sample shape in [`docs/examples/sample-categories.json`](docs/examples/sample-categories.json)).
-4. **Agent factory** — Creates specialist modules on demand (`<network_root>/specialists/*_specialist.py`; CRM reference modules also live under `src/agents/specialists/`).
-5. **Graph** — `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` (or direct assemble for name-only / not found).
-6. **Research** — Specialists run sync LLM + Tavily on cache miss when keys are set; persist to `<network_root>/agents/<category>/storage.json`.
+3. **Target resolve** — Step 1: `id` or `lookup` → `delivery_id`; step 2: deliver. Legacy single-step `entity_key` remains for internal tests only.
+4. **Supervisor** — Classifies attrs and plans specialists after step-2 deliver (or legacy path).
+5. **Agent factory** — Creates specialist modules on demand (`<network_root>/specialists/*_specialist.py`; CRM reference modules also live under `src/agents/specialists/`).
+6. **Graph** — `target_resolve` → `supervisor` → `validate_entity` → `metering_gate` → `build_context` → `invoke_specialists` → `assemble_response`.
+7. **Research** — Specialists run sync LLM + Tavily on cache miss when keys are set; persist to `<network_root>/agents/<category>/storage.json`.
 
 Runtime agent data under your `network_root` (`agents/`, `specialists/`, `agent_registry.json`, `categories.json`) is local-only and never committed.
 

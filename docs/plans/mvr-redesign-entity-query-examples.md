@@ -1,7 +1,7 @@
 # MVR redesign — EntityQuery examples
 
 **Canonical program spec:** [`mvr-redesign-program.md`](mvr-redesign-program.md)  
-**Runtime today:** legacy `entity_key` + `binding` (unchanged until slices M2–M9)
+**Runtime today:** target two-step protocol (`id` / `lookup` → `delivery_id`) on CLI, MCP, and admin since M9.
 
 These examples show the **locked target** two-step protocol.
 

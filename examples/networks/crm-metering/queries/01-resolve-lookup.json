@@ -2,6 +2,5 @@
   "lookup": {
     "name": "Paul Murphy",
     "employer": "Acme Corp"
-  },
-  "requested_attributes": ["email"]
+  }
 }

@@ -33,9 +33,12 @@ _NETWORK_INFO: dict[str, str | None] | None = None
 
 
 class AdminQueryRequest(BaseModel):
-    entity_key: str
+    """Target-protocol query body (step 1: id/lookup; step 2: delivery_id)."""
+
+    id: str | None = None
+    lookup: dict[str, str] = Field(default_factory=dict)
+    delivery_id: str | None = None
     requested_attributes: list[str] = Field(default_factory=list)
-    binding: dict[str, str] = Field(default_factory=dict)
     thread_id: str | None = None
     quote_id: str | None = None
     provenance: bool = False
@@ -129,9 +132,10 @@ def create_app() -> FastAPI:
         refresh_runtime_from_disk()
         _refresh_read_cache()
         query = EntityQuery(
-            entity_key=body.entity_key,
+            id=body.id,
+            lookup=dict(body.lookup),
+            delivery_id=body.delivery_id,
             requested_attributes=body.requested_attributes,
-            binding=body.binding,
             quote_id=body.quote_id,
             provenance=body.provenance,
             principal=body.principal,

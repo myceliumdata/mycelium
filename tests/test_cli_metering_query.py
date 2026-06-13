@@ -145,43 +145,28 @@ def test_cli_query_binding_and_quote_id(
 ) -> None:
     env = metering_cli_env
     root = env["MYCELIUM_NETWORK_ROOT"]
-
-    _, bind_payload = _run_cli_query(
-        monkeypatch,
-        "--network-dir",
-        root,
-        "--entity-key",
-        "Paul Murphy",
-        "--employer",
-        "Acme Corp",
-    )
-    assert bind_payload["outcome"] in {"entity_validated", "found"}
+    lookup = '{"name": "Paul Murphy", "employer": "Acme Corp"}'
 
     _, quote_payload = _run_cli_query(
         monkeypatch,
         "--network-dir",
         root,
-        "--entity-key",
-        "Paul Murphy",
-        "--employer",
-        "Acme Corp",
+        "--lookup-json",
+        lookup,
         "--attributes",
         "email",
     )
     assert quote_payload["outcome"] == "quote_required"
     assert quote_payload["quote"] is not None
     quote_id = quote_payload["quote"]["quote_id"]
+    delivery_id = quote_payload["delivery"]["delivery_id"]
 
     _, accept_payload = _run_cli_query(
         monkeypatch,
         "--network-dir",
         root,
-        "--entity-key",
-        "Paul Murphy",
-        "--employer",
-        "Acme Corp",
-        "--attributes",
-        "email",
+        "--delivery-id",
+        delivery_id,
         "--quote-id",
         quote_id,
     )
@@ -189,26 +174,21 @@ def test_cli_query_binding_and_quote_id(
 
 
 def _warm_metering_network(root: str, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Pre-bind and research email so subprocess demo can assemble without API keys."""
+    """Pre-quote and research email so subprocess demo can assemble without API keys."""
     from graphs.core import reset_core_graph, run_query
     from models.state import EntityQuery
 
     _mock_email_research(monkeypatch)
     reset_core_graph()
-    run_query(EntityQuery(entity_key="Paul Murphy", binding={"employer": "Acme Corp"}))
+    lookup = {"name": "Paul Murphy", "employer": "Acme Corp"}
     quoted = run_query(
-        EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
-            requested_attributes=["email"],
-        ),
+        EntityQuery(lookup=lookup, requested_attributes=["email"]),
     )
     assert quoted.quote is not None
+    assert quoted.delivery is not None
     run_query(
         EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
-            requested_attributes=["email"],
+            delivery_id=quoted.delivery.delivery_id,
             quote_id=quoted.quote["quote_id"],
         ),
     )

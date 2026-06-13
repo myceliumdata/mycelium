@@ -593,9 +593,9 @@ _POLICY_QUERY_PROVENANCE = (
     "Default results[] stay flat; provenance.entities[].attributes.<field> carries "
     "current_version_id and versions[] copied from specialist storage."
 )
-# Target protocol (MVR redesign M2–M9). Runtime still uses entity_key/binding until then.
+# Target protocol (MVR redesign M2–M9). Public CLI/MCP/admin use target fields since M9.
 _POLICY_MVR_REDESIGN_TARGET = (
-    "Target query protocol (shipping MVR redesign slices M2–M9): Step 1 — send id OR "
+    "Target query protocol (MVR redesign M9+): Step 1 — send id OR "
     "lookup (AND within map); optional requested_attributes and provenance on step 1 "
     "only. Response lookup_resolved with total_matches, empty results[], and "
     "delivery.delivery_id (plus quote when metering.enabled). Step 2 — send delivery_id "
@@ -735,10 +735,12 @@ def build_network_capabilities() -> dict[str, Any]:
                 "tool": "query_entity",
                 "request_schema": "mycelium://schema/entity-query",
                 "response_schema": "mycelium://schema/query-response",
-                "key_field": "entity_key",
+                "key_field": "lookup",
                 "optional_fields": [
+                    "id",
+                    "lookup",
+                    "delivery_id",
                     "requested_attributes",
-                    "binding",
                     "thread_id",
                     "quote_id",
                     "principal",
@@ -750,10 +752,10 @@ def build_network_capabilities() -> dict[str, Any]:
                     "request_flag": "provenance",
                     "example": _QUERY_PROVENANCE_EXAMPLE,
                 },
-                "protocol_status": "legacy entity_key until MVR redesign M9",
+                "protocol_status": "target two-step (id/lookup → delivery_id)",
                 "target_protocol": {
                     "description": _POLICY_MVR_REDESIGN_TARGET,
-                    "shipping": "MVR redesign program slices M2–M9",
+                    "shipping": "MVR redesign program — live since M9",
                     "docs": [
                         "docs/plans/mvr-redesign-program.md",
                         "docs/plans/mvr-best-practices.md",
@@ -786,18 +788,17 @@ def format_mcp_instructions(capabilities: dict[str, Any]) -> str:
     text = (
         f"Mycelium network **{display_name}** (`{network_name}`). "
         "Call **`describe_network`** for the author guide, ontology, and usage policy. "
-        "Use **`query_entity`** with JSON: `entity_key`, optional `requested_attributes`, "
-        "optional `thread_id`, optional `quote_id` (retry after quote_required / pay_quote). "
-        "When payment is enabled: quote_required → **`pay_quote`** → query_entity+quote_id. "
+        "Use **`query_entity`** with JSON: step 1 — `id` or `lookup` (+ optional "
+        "`requested_attributes`, `provenance`); step 2 — `delivery_id` (+ `quote_id` "
+        "after quote_required / pay_quote). "
+        "When payment is enabled: quote_required → **`pay_quote`** → step 2 with quote_id. "
         "Responses are **`QueryResponse`** "
-        "(`outcome`, `quote`, `suggestions`, `required_fields`, `results`, `message`, "
-        "`provenance` when request `provenance=true`, `debug`, `trace_id`, `thread_id`); "
-        "read **`message`** for per-attribute status. "
-        "On **`outcome: entity_key_unresolved`**, retry with a **`suggestions[].entity_key`**. "
-        "On **`entity_unknown`**, supply **`binding`** per MVR **`required_fields`**. "
+        "(`outcome`, `delivery`, `total_matches`, `quote`, `results`, `message`, "
+        "`provenance` when step 1 set provenance=true, `debug`, `trace_id`, `thread_id`). "
+        "Step 1 outcomes: `lookup_resolved`, `quote_required`, `not_found`. "
+        "Step 2 outcomes: `found`, `assembled`. "
         "Use **`health_check`** for server liveness and network binding. "
-        "Target protocol (MVR redesign, shipping M2–M9): two-step resolve via id or lookup "
-        "→ delivery_id → deliver; see describe_network policy.target_protocol. "
+        "See describe_network policy.query for step examples. "
         "Registry, categories, seed, and specialists reload from disk before each query — "
         "restart MCP only after code deploy or if reload fails."
     )

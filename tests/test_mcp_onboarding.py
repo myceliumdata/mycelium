@@ -34,7 +34,7 @@ def test_build_network_capabilities_with_guide_and_ontology(
     _configure_root(monkeypatch, root)
 
     caps = build_network_capabilities()
-    assert "binding" in caps["policy"]["query"]["optional_fields"]
+    assert "lookup" in caps["policy"]["query"]["optional_fields"]
 
     assert caps["guide_present"] is True
     assert "investor information" in (caps["guide"] or "")
@@ -45,7 +45,7 @@ def test_build_network_capabilities_with_guide_and_ontology(
     assert caps["policy"]["query"]["tool"] == "query_entity"
     assert "response_provenance" in caps["policy"]["query"]
     assert "target_protocol" in caps["policy"]["query"]
-    assert caps["policy"]["query"]["target_protocol"]["shipping"]
+    assert caps["policy"]["query"]["protocol_status"].startswith("target")
     assert "guide_note" not in caps
 
 
@@ -59,7 +59,7 @@ def test_build_network_capabilities_missing_guide(
     _configure_root(monkeypatch, root)
 
     caps = build_network_capabilities()
-    assert "binding" in caps["policy"]["query"]["optional_fields"]
+    assert "lookup" in caps["policy"]["query"]["optional_fields"]
 
     assert caps["guide_present"] is False
     assert caps["guide"] is None

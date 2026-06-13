@@ -16,21 +16,20 @@ Default live root: `~/mycelium-networks/crm-metering` (registered as `crm-meteri
 ./bin/demo-metering-negotiation
 ```
 
-Or manually:
+Or manually (two-step):
 
 ```bash
-# 1 — Bind
+# 1 — Resolve lookup (copy delivery_id from JSON)
 uv run mycelium query --network crm-metering \
-  --entity-key "Paul Murphy" --employer "Acme Corp"
+  --lookup-json '{"name":"Paul Murphy","employer":"Acme Corp"}'
 
-# 2 — Quote (email research)
+# 2 — Quote (bind email into delivery scope)
 uv run mycelium query --network crm-metering \
-  --entity-key "Paul Murphy" --employer "Acme Corp" --attributes email
+  --delivery-id d_xxxxxxxxxxxx --attributes email
 
 # 3 — Accept (paste quote_id from step 2 JSON)
 uv run mycelium query --network crm-metering \
-  --entity-key "Paul Murphy" --employer "Acme Corp" --attributes email \
-  --quote-id q_xxxxxxxxxxxx
+  --delivery-id d_xxxxxxxxxxxx --quote-id q_xxxxxxxxxxxx
 ```
 
 Step 3 needs `OPENAI_API_KEY` and `TAVILY_API_KEY` in `.env` for live email research (or use mocked research in tests).
@@ -48,7 +47,7 @@ See **[`queries/README.md`](queries/README.md)** for the 3-step table and placeh
 ./bin/restart-admin crm-metering
 ```
 
-Open **http://127.0.0.1:5173/** (Vite proxies to the admin API). Use **Run query** → bind employer → request attributes → **Accept quote** when `quote_required` appears.
+Open **http://127.0.0.1:5173/** (Vite proxies to the admin API). Use **Run query** → lookup (name + employer) → request attributes → **Accept quote** when `quote_required` appears.
 
 **Alternate (single-process demo):** requires a built SPA first:
 

@@ -78,8 +78,17 @@ def test_mcp_query_entity_round_trip_json(
 
     from mycelium_mcp.server import query_entity
 
+    raw_step1 = query_entity(
+        json.dumps(
+            {
+                "lookup": {"name": "Nichanan Kesonpat", "employer": "1k(x)"},
+            },
+        ),
+    )
+    step1 = json.loads(raw_step1)
+    assert step1["outcome"] == "lookup_resolved"
     raw = query_entity(
-        json.dumps({"entity_key": "Nichanan Kesonpat", "requested_attributes": []}),
+        json.dumps({"delivery_id": step1["delivery"]["delivery_id"]}),
     )
     payload = json.loads(raw)
     assert payload["results"]

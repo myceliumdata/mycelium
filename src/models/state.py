@@ -61,7 +61,7 @@ class EntityQuery(BaseModel):
 
     When using LangGraph Studio's visual input editor:
     - Provide a full ``MyceliumGraphState`` dict with a ``query`` key.
-    - Set ``entity_key`` (id or name) and optional ``requested_attributes``.
+    - Set ``lookup`` or ``id`` (step 1) or ``delivery_id`` (step 2) and optional ``requested_attributes``.
     - Set ``thread_id`` in Studio's Thread/Config panel, not in ``EntityQuery``.
     """
 
@@ -69,12 +69,12 @@ class EntityQuery(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
-                    "entity_key": "Nichanan Kesonpat",
-                    "requested_attributes": [],
+                    "lookup": {"employer": "645 Ventures"},
+                    "requested_attributes": ["email"],
                 },
                 {
-                    "entity_key": "Nichanan Kesonpat",
-                    "requested_attributes": ["email", "x_handle"],
+                    "delivery_id": "d_abc123",
+                    "quote_id": "q_xyz789",
                 },
             ]
         }
@@ -96,7 +96,7 @@ class EntityQuery(BaseModel):
         default="",
         description=(
             "Deprecated legacy resolve key (registry UUID or display name). "
-            "Prefer id or lookup for step 1; runtime still honors this until M7."
+            "Public CLI/MCP/admin reject this (M9); internal graph tests may still use it."
         ),
     )
     binding: dict[str, str] = Field(

@@ -7,7 +7,7 @@
 
 ## Current runtime vs target
 
-**Today (until MVR redesign M9):** clients send `entity_key`, optional `binding`, and optional `requested_attributes` in a single step. Outcomes include `entity_unknown`, `entity_key_unresolved`, and `entity_bound_provisional`.
+**Today (MVR redesign M9+):** clients use step 1 `id` or `lookup`, step 2 `delivery_id` (+ `quote_id` when metered).
 
 **Target:** two-step `delivery_id` protocol documented in [`mvr-redesign-program.md`](mvr-redesign-program.md). Step-1 outcome `lookup_resolved` replaces the single-step identity handshake for resolve. Examples: [`mvr-redesign-entity-query-examples.md`](mvr-redesign-entity-query-examples.md).
 
