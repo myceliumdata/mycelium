@@ -168,7 +168,7 @@ Include these sections (can be brief; “Pass” / “N/A” is fine when true):
 | **Legacy / dual-path** | Unchanged behavior where the prompt required it. |
 | **Tests** | New/changed tests cover the slice; gaps called out. |
 | **Design critique** | What is strong; what is sub-optimal (even if approved). |
-| **Nits** | Non-blocking polish rows, or “none.” |
+| **Nits** | Non-blocking polish rows in `review.md` **and** program polish backlog (MVR: `mvr-redesign-polish-m10.md`), or “none.” |
 | **For Paul** | Commit message; next slice queued; push reminder (local only until program done). |
 
 Verdict line at top: **Approved** / **Approved + polish nits** / **Approved + fix slice** (rare — open blocking nit but Paul waived advance) / **Not Approved**.
@@ -189,7 +189,7 @@ Verdict line at top: **Approved** / **Approved + polish nits** / **Approved + fi
 | Severity | Grok action |
 |----------|-------------|
 | **Blocking** | **Not Approved** + fix slice in `prompts/cursor/next/` (see above). Applies to **all** programs, not only entity-protocol. |
-| **Non-blocking** | **Approved + polish nits** — for entity-protocol program, add a row to `docs/plans/entity-protocol-polish-post8.md` (polish slice `1800`). Other programs: note nits in `review.md` or program polish doc. |
+| **Non-blocking** | **Approved + polish nits** — log in slice `review.md` **and** append a row to the program polish backlog: entity-protocol → `docs/plans/entity-protocol-polish-post8.md` (slice `1800`); **MVR redesign → `docs/plans/mvr-redesign-polish-m10.md` (slice M10)**. Both places, every time. |
 
 Do not advance the planned slice queue past a slice with open **blocking** issues unless Paul waives.
 
