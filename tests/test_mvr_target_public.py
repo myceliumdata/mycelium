@@ -40,6 +40,28 @@ def _run_cli(monkeypatch: pytest.MonkeyPatch, *args: str) -> dict:
     return {"code": code, "response": captured[-1].model_dump()}
 
 
+def _run_cli_public_json(monkeypatch: pytest.MonkeyPatch, *args: str) -> dict:
+    """CLI client-visible JSON (``QueryResponse.public_json()``)."""
+    import main as cli_main
+
+    captured: list = []
+
+    def _capture(response) -> None:
+        captured.append(response)
+
+    monkeypatch.setattr(cli_main, "_print_response", _capture)
+    monkeypatch.setenv("LANGCHAIN_TRACING_V2", "false")
+    code = cli_main.main(["query", *args])
+    assert captured, "CLI did not emit a QueryResponse"
+    payload = json.loads(captured[-1].public_json())
+    return {"code": code, "payload": payload}
+
+
+def _mcp_public_json(query_payload: dict) -> dict:
+    """MCP client-visible JSON (``query_entity`` return string)."""
+    return json.loads(query_entity(json.dumps(query_payload)))
+
+
 @pytest.fixture
 def crm_public_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     reset_storage()
@@ -143,3 +165,89 @@ def test_mcp_example_batch_fixture_roundtrip(
     step2 = json.loads(raw_step2)
     assert step2["outcome"] == "assembled"
     assert len(step2["results"]) == 3
+
+
+@pytest.mark.smoke
+def test_mcp_create_pending_wire_json(
+    crm_public_env: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _ = crm_public_env
+    payload = _mcp_public_json(
+        {"lookup": {"name": "Road Runner", "employer": "Acme Corp"}},
+    )
+    assert payload["outcome"] == "lookup_resolved"
+    assert payload["total_matches"] == 0
+    assert payload["delivery"]["create_on_deliver"] is True
+    assert "step 2 will create" in payload["message"]
+    assert "quote" in payload
+    assert payload["quote"] is None
+
+
+@pytest.mark.smoke
+def test_mcp_existing_match_wire_json(
+    crm_public_env: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _ = crm_public_env
+    payload = _mcp_public_json(
+        {
+            "lookup": {
+                "name": "Nichanan Kesonpat",
+                "employer": "1k(x)",
+            },
+        },
+    )
+    assert payload["outcome"] == "lookup_resolved"
+    assert payload["total_matches"] == 1
+    assert "create_on_deliver" not in payload["delivery"]
+    assert payload["delivery"].get("create_on_deliver") is not False
+    assert "1 registry match" in payload["message"]
+    assert "step 2" in payload["message"]
+    assert "quote" in payload
+    assert payload["quote"] is None
+
+
+@pytest.mark.smoke
+def test_cli_create_pending_public_json(
+    crm_public_env: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _ = crm_public_env
+    result = _run_cli_public_json(
+        monkeypatch,
+        "--network-dir",
+        str(crm_public_env),
+        "--lookup-json",
+        '{"name": "Road Runner", "employer": "Acme Corp"}',
+    )
+    payload = result["payload"]
+    assert payload["outcome"] == "lookup_resolved"
+    assert payload["total_matches"] == 0
+    assert payload["delivery"]["create_on_deliver"] is True
+    assert "step 2 will create" in payload["message"]
+    assert "quote" in payload
+    assert payload["quote"] is None
+
+
+@pytest.mark.smoke
+def test_cli_existing_match_public_json(
+    crm_public_env: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _ = crm_public_env
+    result = _run_cli_public_json(
+        monkeypatch,
+        "--network-dir",
+        str(crm_public_env),
+        "--lookup-json",
+        '{"name": "Nichanan Kesonpat", "employer": "1k(x)"}',
+    )
+    payload = result["payload"]
+    assert payload["outcome"] == "lookup_resolved"
+    assert payload["total_matches"] == 1
+    assert "create_on_deliver" not in payload["delivery"]
+    assert payload["delivery"].get("create_on_deliver") is not False
+    assert "1 registry match" in payload["message"]
+    assert "quote" in payload
+    assert payload["quote"] is None

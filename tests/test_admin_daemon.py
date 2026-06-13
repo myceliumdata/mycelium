@@ -465,6 +465,48 @@ def test_admin_query_existing_match_omits_create_on_deliver(
 
 
 @pytest.mark.smoke
+def test_admin_query_step1_wire_json_shape(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Admin POST /query returns client-visible JSON (public_dict), not model_dump."""
+    root = _populated_root(tmp_path)
+    client = _client_for_root(monkeypatch, tmp_path, root)
+
+    create = client.post(
+        "/query",
+        json={"lookup": {"name": "Road Runner", "employer": "Acme Corp"}},
+    )
+    assert create.status_code == 200
+    create_payload = create.json()
+    assert create_payload["outcome"] == "lookup_resolved"
+    assert create_payload["total_matches"] == 0
+    assert create_payload["delivery"]["create_on_deliver"] is True
+    assert "step 2 will create" in create_payload["message"]
+    assert "quote" in create_payload
+    assert create_payload["quote"] is None
+
+    existing = client.post(
+        "/query",
+        json={
+            "lookup": {
+                "name": "Nichanan Kesonpat",
+                "employer": "1k(x)",
+            },
+        },
+    )
+    assert existing.status_code == 200
+    existing_payload = existing.json()
+    assert existing_payload["outcome"] == "lookup_resolved"
+    assert existing_payload["total_matches"] == 1
+    assert "create_on_deliver" not in existing_payload["delivery"]
+    assert existing_payload["delivery"].get("create_on_deliver") is not False
+    assert "1 registry match" in existing_payload["message"]
+    assert "quote" in existing_payload
+    assert existing_payload["quote"] is None
+
+
+@pytest.mark.smoke
 def test_admin_query_passes_quote_id(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
