@@ -2,12 +2,12 @@
 
 **Purpose:** Orientation for how the pieces fit together after the **query-only public interface** refactor, **seed-data-context graph**, and **Networks Phases 1–4**.
 
-**Current reality (June 2026):**
+**Current reality (June 2026 — MVR redesign M1–M10 shipped):**
 
 - **Networks:** Framework repo + user-chosen **`network_root`** paths. Committed CRM example at `examples/networks/crm/`; bootstrap with `./bin/refresh-example-network crm`. See `docs/plans/networks-terminology.md`.
-- **Public API** = queries only (`EntityQuery`: `entity_key`, `requested_attributes`). No CLI `ingest`, no MCP `submit_person_data`, no `provided_data`.
-- **Graph:** `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` (or direct assemble for name-only / not found). Identity from `entities.json` + specialist storage.
-- See `docs/architecture.md` for the authoritative architecture; this doc is a walkthrough.
+- **Public API** = target two-step protocol (`EntityQuery`: step 1 `id` or `lookup` + optional `requested_attributes`; step 2 `delivery_id` + optional `quote_id`). Legacy `entity_key` / `binding` rejected on CLI, MCP, admin. No CLI `ingest`, no MCP `submit_person_data`.
+- **Graph:** `target_resolve` (step 1 or step 2 deliver) → `supervisor` → … → `assemble_response`. Step 1 returns `lookup_resolved` + `delivery_id` (`delivery.create_on_deliver: true` when step 2 will create). Identity from `entities.json` + specialist storage.
+- See `docs/architecture.md` for the authoritative architecture; examples in `docs/plans/mvr-redesign-entity-query-examples.md`.
 
 ---
 
@@ -33,8 +33,8 @@ From `docs/architecture.md` and `prompts/system/CORE_PROMPT.md`:
 ## 3. Data model & contracts (`src/models/state.py`)
 
 - **`IdentityRecord`**: `id`, `name`, `employer` only.
-- **`EntityQuery`** (query-only): `entity_key`, `requested_attributes`. No `provided_data`.
-- **`QueryResponse`**: `results`, `message`, `debug`, `trace_id`, `thread_id`.
+- **`EntityQuery`** (target protocol): step 1 — `id` or `lookup`, optional `requested_attributes`, `provenance`; step 2 — `delivery_id`, optional `quote_id`. Legacy `entity_key` internal-only when `MYCELIUM_ALLOW_LEGACY_ENTITY_KEY=1`.
+- **`QueryResponse`**: `outcome`, `total_matches`, `delivery`, `quote`, `results`, `message`, `provenance`, `debug`, `trace_id`, `thread_id`. Public JSON via `public_dict()` / `public_json()`.
 - **`MyceliumGraphState`**: `query` required at input; internal fields (`route`, `identity_record`, `response`, `audit_log`, classifications, etc.).
 
 ---
@@ -55,10 +55,11 @@ Package: `mycelium_mcp` (renamed from `mcp` to avoid SDK collision).
 
 ## 5. Graph runtime (`src/graphs/core.py`)
 
-**Current:** `START → supervisor → build_context → invoke_specialists → assemble_response → END`  
-(or `supervisor → assemble_response` when name-only / not found).
+**Current:** `START → target_resolve → supervisor → validate_entity → metering_gate → build_context → invoke_specialists → assemble_response → END`  
+(`target_resolve` may short-circuit to `assemble_response` on step-1 `lookup_resolved` / `quote_required` / `not_found`).
 
-- **Supervisor** resolves registry matches, classifies attributes, plans specialist invocations.
+- **target_resolve** (`src/agents/dispatch.py`): step-1 lookup/id → `delivery_id`; step-2 deliver hydrates scope (create-on-deliver binds provisional row when flagged).
+- **Supervisor** classifies attributes, plans specialist invocations (after deliver scope is loaded).
 - **build_context** unions registry identity + specialist storage for matched id(s).
 - **invoke_specialists** runs generated specialists (sync research on cache miss when keys set).
 - **assemble_response** builds unified `QueryResponse`.
@@ -104,13 +105,15 @@ Paths resolve under active `network_root` via `src/network/paths.py`.
 ## 10. Query flow (end-to-end)
 
 ```
-CLI/MCP → resolve network_root → EntityQuery → run_query → graph.ainvoke
-  → supervisor
-  → build_context (if specialists needed)
-  → invoke_specialists
+CLI/MCP/admin → resolve network_root → EntityQuery → run_query → graph.ainvoke
+  → target_resolve (step 1: lookup_resolved + delivery_id; step 2: load scope / create)
+  → supervisor → validate_entity → metering_gate (if metered)
+  → build_context → invoke_specialists (if attrs on step-1 scope)
   → assemble_response
-  → QueryResponse (+ thread_id, trace_id)
+  → QueryResponse.public_dict() (+ thread_id, trace_id)
 ```
+
+Two-step example: `mycelium query --lookup-json '{…}'` then `mycelium query --delivery-id d_…`. Admin UI mirrors the same explicit two-step flow.
 
 ---
 

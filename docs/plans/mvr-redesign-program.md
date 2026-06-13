@@ -1,6 +1,6 @@
 # MVR redesign program — lookup, identity, delivery
 
-**Status:** **Locked** (Paul + Grok, June 2026) — ready for Cursor slices  
+**Status:** **Complete** (M1–M10, June 2026) — shipped locally; manual gate [`2026-06-13-mvr-redesign-post-program-gate.md`](../manual-checks/2026-06-13-mvr-redesign-post-program-gate.md)  
 **Blocks:** Program 2 (versioned bind storage) — run **after** this program  
 **Breaking changes:** Yes — remove `entity_key`, `binding`, `name_source`; two-step lookup/delivery protocol
 
@@ -35,7 +35,7 @@ Introduce a **two-step delivery protocol** (like quotes): resolve → **`deliver
 | R7 | **`requested_attributes` only on step 1** — bound into `delivery_id` / quote workload; step 2 is tokens only. |
 | R8 | **`metering.enabled`** is the only billing switch. No `meter_search`. Free networks deliver on `delivery_id` only. |
 | R9 | **Batch:** N matches + attrs → quote/deliver/research **all N**; meter ≈ N singles. |
-| R10 | **Create:** 0 matches + **full MVR in step-1 `lookup`** + attrs → provisional create → research. Partial lookup never creates. |
+| R10 | **Create:** 0 matches + **full MVR in step-1 `lookup`** → provisional create on step-2 deliver (`delivery.create_on_deliver: true`); attrs on step 1 optional (research when bound). Partial lookup never creates. |
 | R11 | **Invalid / unknown `id`:** `not_found`, no `delivery_id`. |
 | R12 | **TTL:** `delivery_id` and `quote_id` both **5 minutes** (env-configurable, default 300s). |
 | R13 | **Fuzzy:** keep today’s **suggestions** on miss; no widened index lookup in v1. |
@@ -161,7 +161,8 @@ Introduce a **two-step delivery protocol** (like quotes): resolve → **`deliver
 |-----------------|------------------------|--------|
 | Partial, 0 matches | any | `not_found` — no create |
 | Full MVR, 0 matches | non-empty | Create provisional → `delivery_id` → validate → research on deliver |
-| Full MVR, 0 matches | empty | `not_found` or `lookup_resolved` with create on deliver — **prefer create on deliver step when lookup is full MVR** (slice M7) |
+| Full MVR, 0 matches | empty or attrs | `lookup_resolved`; `total_matches=0`; `delivery.create_on_deliver: true` — step 2 creates + optional research |
+| Full MVR, 0 matches | (partial lookup N/A) | Partial lookup with 0 matches → `not_found` only |
 
 ---
 

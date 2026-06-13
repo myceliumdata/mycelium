@@ -2,7 +2,7 @@
 
 **Status:** ⏳ **PENDING** — run before `git push origin main`
 
-**Context:** MVR redesign shipped locally (14 commits ahead of `origin`). Target two-step protocol on CLI, MCP, admin API, and admin UI. Automated coverage: `./bin/ci-local` (352 smoke).
+**Context:** MVR redesign shipped locally (M1–M10 + post-program polish). Target two-step protocol on CLI, MCP, admin API, and admin UI; `delivery.create_on_deliver` on step 1. Automated coverage: `./bin/ci-local` (360+ smoke).
 
 **Prereqs:** From framework repo root; `uv sync` done; `.env` with keys if a check needs live research (noted below).
 
@@ -39,7 +39,7 @@ uv run mycelium network list
 ./bin/ci-local
 ```
 
-**Pass:** all steps green (352 smoke passed at last review).
+**Pass:** all steps green (360+ smoke passed at last review).
 
 ---
 

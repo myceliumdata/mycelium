@@ -6,7 +6,7 @@
 
 Program 2 (versioned bind storage) may start after Paul pushes and signs off.
 
-**Git:** 13 local commits ahead of `origin/main` (M4–M10 + polish backlog). Push when Paul explicitly asks. See `WORKFLOW.md` §4.
+**Git:** Local commits ahead of `origin/main` (M1–M10 + admin/create_on_deliver polish + doc sync). Push when Paul explicitly asks. See `WORKFLOW.md` §4.
 
 ---
 

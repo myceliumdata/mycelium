@@ -16,6 +16,6 @@ Queries use the **two-step protocol**: step 1 with `lookup` (or `id`) returns
 `lookup_resolved` and a `delivery_id`; step 2 with `delivery_id` delivers
 identity or researched attributes.
 
-If your lookup is a near miss (for example a typo in a name), the response may
-return `outcome: lookup_unresolved` with `suggestions` — re-query with a
-suggested lookup; no attribute data is returned until an exact match.
+If your lookup is a near miss (for example a typo in a name), refine `lookup`
+fields and retry step 1. Step 1 returns empty `results[]` until you deliver on
+step 2 with a resolved `delivery_id`.

@@ -5,11 +5,9 @@
 
 ---
 
-## Current runtime vs target
+## Runtime (MVR redesign M1–M10, shipped)
 
-**Today (MVR redesign M9+):** clients use step 1 `id` or `lookup`, step 2 `delivery_id` (+ `quote_id` when metered).
-
-**Target:** two-step `delivery_id` protocol documented in [`mvr-redesign-program.md`](mvr-redesign-program.md). Step-1 outcome `lookup_resolved` replaces the single-step identity handshake for resolve. Examples: [`mvr-redesign-entity-query-examples.md`](mvr-redesign-entity-query-examples.md).
+Clients use step 1 `id` or `lookup`, step 2 `delivery_id` (+ `quote_id` when metered). Step-1 outcome `lookup_resolved` replaces the legacy single-step `entity_key` handshake. When step 2 will create a new row (full MVR, 0 registry matches), step 1 includes `delivery.create_on_deliver: true` (omitted for existing matches). Examples: [`mvr-redesign-entity-query-examples.md`](mvr-redesign-entity-query-examples.md). Program spec: [`mvr-redesign-program.md`](mvr-redesign-program.md).
 
 ---
 
@@ -58,8 +56,8 @@ MVR is **not** how clients find records. Lookup uses **any subset** of indexed M
 
 ## Two-step delivery (agent clients)
 
-1. **Resolve** — send `lookup` or `id`; optional `requested_attributes` on this step only. Receive `total_matches` + `delivery_id` (+ quote if metered).  
-2. **Deliver** — send `delivery_id` (+ `quote_id` if metered). Receive `results[]`.
+1. **Resolve** — send `lookup` or `id`; optional `requested_attributes` on this step only. Receive `total_matches` + `delivery_id` (`create_on_deliver: true` when step 2 will create) (+ quote if metered).  
+2. **Deliver** — send `delivery_id` (+ `quote_id` if metered). Receive `results[]` (`found` / `assembled`).
 
 Visiting agents should treat this as one logical operation; humans using CLI may use a wrapper or two commands.
 
