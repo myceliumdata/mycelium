@@ -1,8 +1,8 @@
 # Next chunk — prep brief (Paul + Grok, June 2026)
 
-**Prerequisite:** Manual gate **CLEAR** (2026-06-13). **Active work:** [`mvr-redesign-program.md`](mvr-redesign-program.md) (M1 queued).
+**Prerequisite:** MVR redesign manual gate — [`2026-06-13-mvr-redesign-post-program-gate.md`](../manual-checks/2026-06-13-mvr-redesign-post-program-gate.md).
 
-**Just shipped:** Program 1 — extended attribute provenance (versioned specialist storage, admin version history, `QueryResponse.provenance`, hard cutover). Post-push admin UI: full-width version cards, formatted timestamps, `reason` / `last_error` lines.
+**Just shipped (local, not pushed):** MVR redesign M1–M10 — target two-step protocol on CLI/MCP/admin; batch deliver; create-on-deliver; metering; admin-ui two-step form.
 
 ---
 
@@ -11,14 +11,14 @@
 | Track | Status |
 |-------|--------|
 | **Program 1 — Provenance** | **Complete** — pushed June 2026 |
-| **MVR redesign** | **Locked** — slices M1–M10; [`mvr-redesign-program.md`](mvr-redesign-program.md) |
-| **Program 2 — MVR / entity storage** | After MVR redesign — versioned bind, `bind_versions[]` |
+| **MVR redesign** | **Complete** (M1–M10, June 2026) — [`mvr-redesign-program.md`](mvr-redesign-program.md) |
+| **Program 2 — MVR / entity storage** | **Next** — versioned bind, `bind_versions[]`, deferred M10 nits |
 | **Program 3 — Operator write** | Deferred — admin edit + force re-research |
 | **Toolbox** | TBD (Paul to define) |
 | **Research robustness** | Backlog — [`research-robustness-backlog.md`](research-robustness-backlog.md) |
 | **Website sync** | Review [myceliumdata.org](https://myceliumdata.org) after this push (`TODO.md` process) |
 
-`prompts/cursor/next/` is **empty** intentionally — waiting on manual gate + Program 2 lock.
+`prompts/cursor/next/` is **empty** — MVR program done; waiting on post-program manual gate + Program 2 lock.
 
 ---
 
@@ -34,6 +34,15 @@
 - Unified write API: one path updates canonical value + indexes + entity cache
 
 **Blocks:** Operator attribute correction (Program 3), full “data attribution USP” story.
+
+**Folded from MVR M10 post-ship nits** (no separate remedial slice):
+
+| Item | Program 2 action |
+|------|------------------|
+| `bind_provisional_from_scope` still `bind_provisional(name, employer)` only | Generalize when MVR bind fields move to specialist-owned storage |
+| Target-path `payment_required` smoke | Add when payment surfaces expand in P2/P3 |
+| Admin-ui query e2e test | Optional — API tests cover contract; add Playwright/component test if admin grows |
+| `health_check` lightweight ping (P26) | Defer unless MCP liveness becomes hot path |
 
 ---
 
@@ -59,12 +68,6 @@ Once locked → Grok writes `attribute-provenance-program2.md` + queues slice pr
 
 ---
 
-## Design revisit (may precede or overlap Program 2)
-
-**MVR vs resolution** — Paul (June 2026): MVR should mean *minimum data to research*, not drive record lookup. Today `name_source` / `binding` / `required_fields` conflate the two. See `TODO.md` → *MVR redesign — research gate vs record lookup*. Lock in a design session before a fix slice.
-
----
-
 ## Alternative / parallel tracks (if not Program 2)
 
 | Track | Why consider | Dependency |
@@ -86,8 +89,9 @@ Once locked → Grok writes `attribute-provenance-program2.md` + queues slice pr
 
 ## What waits on Paul
 
-1. Complete **manual gate** (3 checks) — [`2026-06-12-program1-post-push-gate.md`](../manual-checks/2026-06-12-program1-post-push-gate.md)
-2. Choose **next program** (Program 2 recommended)
+1. Complete **MVR post-program gate** — [`2026-06-13-mvr-redesign-post-program-gate.md`](../manual-checks/2026-06-13-mvr-redesign-post-program-gate.md)
+2. Push `origin` when satisfied (13 local commits ahead)
+3. Lock **Program 2** (design session)
 3. **Toolbox** — brief description when ready
 4. **`TODO.md`** — Grok + Paul: bump “Last updated”; note post-push + gate (Cursor does not edit `TODO.md`)
 

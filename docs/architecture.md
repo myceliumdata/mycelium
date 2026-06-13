@@ -53,7 +53,7 @@ This is a deliberate departure from earlier thinking that treated the core CRM t
 
 ### Public interface: query-only (June 2026)
 
-The **CLI** (`query`) and **MCP** (`describe_network`, `query_entity`, `health_check`) expose **lookups only**. Today `EntityQuery` uses `entity_key` and optional `binding` / `requested_attributes` — no `provided_data` on the public model. **Target:** `id` or `lookup` plus two-step `delivery_id` ([MVR redesign](#mvr-redesign-target-protocol)). MCP **`describe_network`** returns author `guide.md`, ontology categories, framework policy, and the locked target-protocol narrative (runtime unchanged until M2–M9).
+The **CLI** (`query`) and **MCP** (`describe_network`, `query_entity`, `health_check`) expose **lookups only** via the **target two-step protocol** — step 1: `id` or `lookup`; step 2: `delivery_id` (+ `quote_id` when metered). No `provided_data` on the public model. See [MVR redesign (target protocol)](#mvr-redesign-target-protocol). MCP **`describe_network`** returns author `guide.md`, ontology categories, framework policy, and usage examples.
 
 Data addition via the public API was removed in the June 2026 refactor (tasks 1000–1050). It will return later as **internal agent coordination**, not as a direct caller-supplied payload.
 
@@ -61,7 +61,7 @@ Data addition via the public API was removed in the June 2026 refactor (tasks 10
 
 - **Optional fixture:** `<network_root>/seed.json` — static `people` array for bootstrap only (not read at query time). Committed CRM example: `examples/networks/crm/seed.json`. Import via `./bin/refresh-example-network crm` or `mycelium network create` when the file is present (`network/seed_import.py` → `entities.json`).
 - **Transform (maintainers):** `examples/networks/crm/prepare_seed.py` builds example `seed.json` from a CRM source file (name + employer only; no legacy `id` in the file). Full prototype data: git tag `prototype`.
-- **Runtime store:** `entities.json` holds canonical entities (uuid4 ids, `bind_index`, per-field indexes). `ensure_bound_entity` assigns stable ids on import; target step-1 uses `lookup` AND indexes (M4); legacy queries still use `resolve_entity` / `entity_key` until M7.
+- **Runtime store:** `entities.json` holds canonical entities (uuid4 ids, `bind_index`, per-field indexes). `ensure_bound_entity` assigns stable ids on import; step-1 resolve uses `lookup` AND indexes. Internal smoke tests may still use deprecated `entity_key` when `MYCELIUM_ALLOW_LEGACY_ENTITY_KEY=1`.
 - **No `core_data` specialist** — identity fields (name, employer) come from the registry; specialists may override them later.
 
 ### Supervisor and graph (current)
@@ -71,8 +71,8 @@ The **supervisor** (`src/agents/supervisor.py`) resolves registry matches, class
 **Graph flow** (`src/graphs/core.py`):
 
 ```
-START → supervisor → validate_entity → metering_gate → build_context → invoke_specialists → assemble_response → END
-              └────────────────────────────────────── assemble_response (blocked / identity-only)
+START → target_resolve → supervisor → validate_entity → metering_gate → build_context → invoke_specialists → assemble_response → END
+              └──────────────────────── assemble_response (step-1 lookup_resolved / quote_required / not_found)
 ```
 
 ### Metering negotiation vs payment settlement (Slice 10–11)
@@ -199,7 +199,7 @@ Users download the **framework** (this repo: `src/`, `bin/`, docs, tests) and ru
 
 CLI and MCP call `load_dotenv()` at startup from the **framework** working directory. **`MYCELIUM_NETWORK_ROOT`** / **`MYCELIUM_NETWORK`** select which data directory to use; they do not hold secrets. Launching or registering a network does **not** copy or create a `.env` inside `network_root`.
 
-**MCP:** `cwd` = framework repo; per-server `env` sets only network selection (plus the same shared API keys as other servers on that host). Person lookups today use **`entity_key`** against that network’s registry and specialist storage — not env vars. **Target (MVR redesign):** `id` or `lookup` map, then two-step `delivery_id` — see [MVR redesign (target)](#mvr-redesign-target-protocol) below.
+**MCP:** `cwd` = framework repo; per-server `env` sets only network selection (plus the same shared API keys as other servers on that host). **`query_entity`** uses the target protocol: step 1 `id` or `lookup`, step 2 `delivery_id` — see [MVR redesign (target)](#mvr-redesign-target-protocol) below.
 
 Future (not v1): per-network LangSmith project names, optional credential profiles — see `TODO.md`.
 
@@ -218,7 +218,15 @@ Future (not v1): per-network LangSmith project names, optional credential profil
 
 **M6 (metering):** Metered step-1 with attrs → `quote_required` + `delivery_id`; step-2 requires `quote_id` when `metering.enabled`; batch line items scale × N entities.
 
-**Program 2** (versioned bind storage / `bind_versions[]`) is **blocked** until this program completes.
+**M7 (create):** Full MVR lookup + attrs on 0 matches → create-on-deliver scope; step-2 `bind_provisional` + research.
+
+**M8 (batch):** N-match scopes research and deliver all entities; batch `provenance.entities[]`.
+
+**M9 (public surfaces):** CLI, MCP, admin API migrated to target protocol; legacy `entity_key` rejected on public entry points.
+
+**M10 (polish):** Admin UI two-step form; backlog tests; legacy graph path gated behind `MYCELIUM_ALLOW_LEGACY_ENTITY_KEY`.
+
+**Next — Program 2** (versioned bind storage / `bind_versions[]`): see [`next-chunk-prep.md`](plans/next-chunk-prep.md).
 
 ### Three separated concerns
 
@@ -228,7 +236,7 @@ Future (not v1): per-network LangSmith project names, optional credential profil
 | **Lookup** | Find candidate rows by **partial field match** (AND within `lookup`) |
 | **MVR** | Per-network **minimum field set** to **create** a new entity and **run extended research** |
 
-Today these are conflated in `EntityQuery.entity_key`, `binding`, and `network.json` `mvr.name_source`. The redesign removes `entity_key`, `binding`, and `name_source`.
+Previously conflated in `entity_key`, `binding`, and `mvr.name_source` — all removed from the public protocol (June 2026).
 
 ### Two-step delivery (like quotes)
 
@@ -259,11 +267,11 @@ No `deliver: true` flag. `delivery_id` and `quote_id` TTL default **5 minutes** 
 | `not_found` | 0 matches, unknown `id`, or expired/invalid tokens |
 | `assembled` / `found` | Step 2 delivery (and research when attrs bound) |
 
-Legacy outcomes (`entity_unknown`, `entity_key_unresolved`, `entity_bound_provisional`, …) are retired with the old protocol in M7–M9.
+Legacy outcomes (`entity_unknown`, `entity_key_unresolved`, `entity_bound_provisional`, …) are retired on public surfaces; they may still appear when `MYCELIUM_ALLOW_LEGACY_ENTITY_KEY=1` for internal smoke tests only.
 
 ### Create flow (0 matches) — M7
 
-Partial `lookup` with 0 matches → `not_found` (no create). Full MVR in step-1 `lookup` **plus** `requested_attributes` → step-1 returns `lookup_resolved` with `total_matches=0` and a `delivery_id` scoped for provisional create; step-2 deliver calls `bind_provisional` from scope `lookup` then runs attribute research when attrs were bound. **`name_source`** is removed — `name` is supplied in `lookup` like any other MVR bind field. Legacy `entity_key` resolution remains until M9 (CLI/MCP migration).
+Partial `lookup` with 0 matches → `not_found` (no create). Full MVR in step-1 `lookup` **plus** `requested_attributes` → step-1 returns `lookup_resolved` with `total_matches=0` and a `delivery_id` scoped for provisional create; step-2 deliver calls `bind_provisional` from scope `lookup` then runs attribute research when attrs were bound. `name` is supplied in `lookup` like any other MVR bind field.
 
 ### Batch deliver (N entities) — M8
 
@@ -290,17 +298,16 @@ One inverted index per MVR field on `entities.json` (normalized value → `[uuid
 
 ## Public query flow (current runtime)
 
-Core storage holds only `id`, `name`, and `employer`. Callers send a query-only **`EntityQuery`** (`entity_key`, optional `binding`, optional `requested_attributes`). The graph state always includes `MyceliumGraphState.query`; LangSmith trace input therefore always shows a `query` section even for internal-only operations.
-
-> **Migration:** This section describes **today’s** protocol. Implementers and MCP clients should plan for the [MVR redesign (target protocol)](#mvr-redesign-target-protocol) above.
+Core storage holds `id`, `name`, and `employer` on registry rows. Callers send a query-only **`EntityQuery`** using the [target two-step protocol](#mvr-redesign-target-protocol). The graph state always includes `MyceliumGraphState.query`; LangSmith trace input therefore always shows a `query` section even for internal-only operations.
 
 ### Flow summary
 
-| Intent | What the caller sends | Graph path (current / target) | What comes back |
-|--------|----------------------|-------------------------------|-----------------|
-| **Lookup (found)** | `entity_key` only | `supervisor` → `assemble_response` (seed) | `results`: identity dict(s) from seed; `message`: "Found record for …" |
-| **Lookup (miss)** | unknown `entity_key` | `supervisor` → `assemble_response` | `results`: `[]`; not-found `message` |
-| **Non-core attrs** | `entity_key` + attrs | `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` | `results`: `id` + requested attrs (merged); `message`: classification-aware per-attribute status (found values omitted; researching / unavailable / out-of-scope sentences) |
+| Intent | What the caller sends | Graph path | What comes back |
+|--------|----------------------|------------|-----------------|
+| **Resolve (step 1)** | `id` or `lookup`; optional `requested_attributes`, `provenance` | `target_resolve` → `assemble_response` | `lookup_resolved` or `quote_required`; `total_matches`; `delivery.delivery_id`; empty `results[]` |
+| **Deliver identity (step 2)** | `delivery_id` (+ `quote_id` when metered) | `target_resolve` → `supervisor` → … → `assemble_response` | `found`; full identity `results[]` |
+| **Deliver with attrs (step 2)** | `delivery_id` (+ `quote_id` when metered); attrs bound on step 1 | `target_resolve` → `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` | `assembled`; `results[]` with requested attrs merged per row |
+| **Miss / invalid** | bad `id`, partial lookup with 0 matches, expired tokens | `target_resolve` → `assemble_response` | `not_found` |
 
 ### Response fields (query outcomes)
 
@@ -309,7 +316,7 @@ All external responses use the minimalist **`QueryResponse`** (`results`, `messa
 - **`results`** — One dict per match. Always includes `"id"` (stable UUID). With no `requested_attributes`: `id`, `name`, `employer`. With `requested_attributes`: `id` plus only those keys after specialist-first merge (specialist value wins; seed provisional while pending). No `person_id` field.
 - **`message`** — Primary channel: found / not-found / per-attribute status. Visiting agents read natural-language sentences built from supervisor classifications: **researching** (in-scope, pending), **unavailable** (researched, no value), **out_of_scope** (`category == "unknown"` — never "researching" wording). Found attribute values appear only in `results`, not repeated in `message`. Multi-match uses a collective prefix (`Found N records for 'key'.`).
 - **`provenance`** — Optional structured version history. **`EntityQuery.provenance`** (request flag, default `false`) controls whether this block is populated; it is unrelated to the response field name. When `true` and the outcome delivers results (`assembled` / `found`) with requested extended attributes, `provenance.entities[]` lists each match `id` and per-attribute `current_version_id` + `versions[]` copied from specialist storage (bind fields `name` / `employer` omitted). Default flat `results[]` is unchanged. Metering may charge a `query_provenance` line when enabled. See [`attribute-provenance-program1.md`](plans/attribute-provenance-program1.md).
-- **`debug`** — Internal context (original `entity_key`, `requested_attributes`, outcome tags). Callers should not depend on it.
+- **`debug`** — Internal context (`lookup` / `delivery_id`, `requested_attributes`, outcome tags). Callers should not depend on it.
 - **`trace_id`** — LangSmith trace identifier for this graph invocation when `LANGCHAIN_TRACING_V2` is enabled; otherwise `null`. Lets operators and developers jump from a JSON response to the matching trace in LangSmith for debugging. When creating your LangSmith API key, select **Personal Access Token (PAT)** (prefix `lsv2_pt_`). `LANGCHAIN_PROJECT` (default "mycelium") names the tracing project in the LangSmith UI — it will be created automatically on first use; no manual pre-creation required. See README.md for full setup steps.
 - **`thread_id`** — Conversation/session identifier for this request. CLI and MCP callers may pass a stable `thread_id` to tie follow-up queries to the same LangGraph checkpoint thread; when omitted, the runtime generates one per invocation.
 

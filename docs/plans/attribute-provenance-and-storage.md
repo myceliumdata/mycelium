@@ -179,7 +179,7 @@ Direct JSON edits bypassing this path are unsupported for operators once write U
 
 See [`attribute-provenance-program1.md`](attribute-provenance-program1.md) for Program 1 slices 1–3.
 
-Program 2 (TBD): MVR canonical storage, `bind_versions`, unified bind write API.  
+Program 2 (next): MVR canonical storage, `bind_versions`, unified bind write API; generalize `bind_provisional` for arbitrary `mvr.bind_fields`; optional target-path `payment_required` test coverage.  
 Program 3 (TBD): Operator write surfaces.
 
 ---

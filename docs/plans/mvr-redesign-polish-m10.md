@@ -42,7 +42,7 @@ Non-blocking nits from Grok review of MVR slices **M1–M9** were logged here **
 | P25 | M9 | Supervisor legacy path | **Closed** — env gate |
 | P26 | M9 | `health_check` two queries | **Waived** |
 
-Post-ship debt (optional): P12 payment smoke, P14 full bind-field generalization, stale architecture tense (M10 review N1).
+Post-ship debt folded into **Program 2** — see [`next-chunk-prep.md`](next-chunk-prep.md) (P12 payment smoke, P14 bind generalization, admin-ui e2e, P26 health ping). Architecture doc tense updated June 2026.
 
 ---
 
