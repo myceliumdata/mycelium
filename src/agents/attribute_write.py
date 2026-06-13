@@ -75,6 +75,11 @@ def _write_specialist_version(
 
 
 def _apply_cache_field(entity: RegistryEntity, field: str, value: str) -> None:
+    """Denormalize MVR bind values on the registry row for hot reads.
+
+    CRM v1 caches ``name`` and ``employer`` columns only; additional
+    ``mvr.bind_fields`` are stored in specialist storage + ``attr_sources``.
+    """
     key = field.strip().lower()
     text = value.strip()
     if key == "name":
@@ -84,6 +89,7 @@ def _apply_cache_field(entity: RegistryEntity, field: str, value: str) -> None:
 
 
 def _cache_values(entity: RegistryEntity) -> dict[str, str]:
+    """Snapshot cached bind columns used for ``bind_index`` (CRM v1: name + employer)."""
     return {
         "name": entity.name,
         "employer": entity.employer or "",

@@ -231,7 +231,7 @@ Future (not v1): per-network LangSmith project names, optional credential profil
 
 **M10 (polish):** Admin UI two-step form; backlog tests; legacy graph path gated behind `MYCELIUM_ALLOW_LEGACY_ENTITY_KEY`.
 
-**Active — Program 2** (MVR in specialist storage, unified write): [`attribute-provenance-program2.md`](plans/attribute-provenance-program2.md). Slices 1–2 shipped (write + read surfaces); Slice 3 queued.
+**Active — Program 2** (MVR in specialist storage, unified write): [`attribute-provenance-program2.md`](plans/attribute-provenance-program2.md). **Complete** (Slices 1–3 shipped).
 
 ### Three separated concerns
 

@@ -10,7 +10,7 @@
 
 ## Problem
 
-Extended attributes use versioned specialist storage (Program 1). Registry rows still mix **protocol metadata** with **cached** MVR values (`name`, `employer`); canonical bind-field history is not yet in specialist storage (Program 2). Bind resolution uses `bind_index` plus per-field indexes (MVR redesign). Operator corrections and research overrides need a unified write path and taxonomy-owned MVR versions (Program 2); operator edit UI is Program 3.
+Extended attributes and MVR bind fields (`name`, `employer`, …) use versioned specialist storage (Programs 1–2). Registry rows cache current MVR values and hold protocol metadata; canonical bind-field history lives in taxonomy-owned specialist `versions[]`. Bind resolution uses `bind_index` plus per-field indexes (MVR redesign). Operator corrections use unified write (Program 2); operator edit UI is Program 3.
 
 Paul Murphy LinkedIn (wrong post URL) is the motivating case: we need an audit trail of *what was stored, when, by whom, from which sources* — including `na` / `pending` states for debugging.
 
@@ -164,7 +164,7 @@ Direct JSON edits bypassing this path are unsupported for operators once write U
 
 See [`attribute-provenance-program1.md`](attribute-provenance-program1.md) for Program 1 slices 1–3.
 
-Program 2 Slice 1 (shipped): MVR canonical values in taxonomy-owned specialist `versions[]` via `agents/attribute_write.py`; entity row = cache + protocol + indexes (no `bind_versions[]`). Slice 2 (shipped): `provenance=true` and admin drill-down expose bind-field `versions[]` from specialist storage. Slice 3: research operator deference. See [`attribute-provenance-program2.md`](attribute-provenance-program2.md).
+Program 2 Slice 1 (shipped): MVR canonical values in taxonomy-owned specialist `versions[]` via `agents/attribute_write.py`; entity row = cache + protocol + indexes (no `bind_versions[]`). Slice 2 (shipped): `provenance=true` and admin drill-down expose bind-field `versions[]` from specialist storage. Slice 3 (shipped): dynamic `mvr.bind_fields` on create-on-deliver; research operator deference in prompts. See [`attribute-provenance-program2.md`](attribute-provenance-program2.md).
 Program 3 (TBD): Operator write surfaces.
 
 ---
@@ -196,7 +196,7 @@ Program 3 (TBD): Operator write surfaces.
 | Program | Scope | Status |
 |---------|--------|--------|
 | **1 — Provenance** | Extended attrs: `versions[]`, research append, admin read, `provenance=true` | **Complete** (June 2026) — [`attribute-provenance-program1.md`](attribute-provenance-program1.md) |
-| **2 — MVR / entity** | Specialist-owned MVR, unified write, taxonomy ownership, read surfaces | **In progress** — Slice 2 shipped — [`attribute-provenance-program2.md`](attribute-provenance-program2.md) |
+| **2 — MVR / entity** | Specialist-owned MVR, unified write, taxonomy ownership, read surfaces, research deference | **Complete** (June 2026) — [`attribute-provenance-program2.md`](attribute-provenance-program2.md) |
 | **3 — Operator write** | Admin edit, re-research policy | After Program 2 |
 
 ---

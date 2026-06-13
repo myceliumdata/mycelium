@@ -200,6 +200,49 @@ def test_bind_provisional_from_scope_uses_unified_write(
 
 
 @pytest.mark.smoke
+def test_bind_provisional_from_scope_collects_all_mvr_bind_fields(
+    attribute_write_env: CoreStorage,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _ = attribute_write_env
+    import os
+
+    network_path = Path(os.environ["MYCELIUM_NETWORK_ROOT"]) / "network.json"
+    data = json.loads(network_path.read_text(encoding="utf-8"))
+    data["mvr"] = {
+        "bind_fields": ["name", "employer", "account_id"],
+        "description": "test",
+    }
+    network_path.write_text(json.dumps(data), encoding="utf-8")
+
+    categories_path = Path(os.environ["MYCELIUM_CATEGORIES_PATH"])
+    categories = json.loads(categories_path.read_text(encoding="utf-8"))
+    categories["attribute_map"]["account_id"] = "contact"
+    categories["categories"]["contact"]["examples"].append("account_id")
+    categories_path.write_text(json.dumps(categories), encoding="utf-8")
+    reset_category_tree()
+    get_category_tree()
+
+    scope = DeliveryScope(
+        delivery_id="d_custom",
+        expires_at="2026-06-13T12:00:00+00:00",
+        lookup={
+            "name": "Acct Person",
+            "employer": "Acct Co",
+            "account_id": "ACME-99",
+        },
+        create_on_deliver=True,
+    )
+    entity = bind_provisional_from_scope(scope)
+    assert entity.name == "Acct Person"
+    assert entity.employer == "Acct Co"
+
+    account_entry = _specialist_field(entity.id, "contact", "account_id")
+    assert account_entry is not None
+    assert current_value(account_entry) == "ACME-99"
+
+
+@pytest.mark.smoke
 def test_mvr_policy_lists_mapped_bind_fields(attribute_write_env: CoreStorage) -> None:
     _ = attribute_write_env
     policy = load_mvr()

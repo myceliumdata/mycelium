@@ -1,0 +1,8 @@
+OPERATOR OVERRIDE (deference required):
+An operator set the current value for the following target field(s). Prefer keeping these values unless web_search evidence is very strong and unambiguous for a different answer.
+
+{% for item in operator_overrides %}
+- {{ item.field }}: {{ item.value }} (set {{ item.at }}{% if item.note %}; note: {{ item.note }}{% endif %})
+{% endfor %}
+
+If evidence is weak, conflicting, or ambiguous versus the operator value, return status "na" with a clear reason — do not guess. You may propose a new "found" value only when evidence strongly contradicts the operator entry; that appends a new version without erasing history.

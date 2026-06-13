@@ -65,3 +65,22 @@ def versioned_pending(
             "actor": research_actor(category=category, specialist_name=specialist_name),
         },
     )
+
+
+def versioned_operator(
+    *,
+    at: str,
+    value: str,
+    note: str = "",
+    category: str = "contact",
+    specialist_name: str = "contact_specialist",
+) -> dict[str, Any]:
+    body: dict[str, Any] = {
+        "at": at,
+        "status": "found",
+        "value": value,
+        "actor": {"kind": "operator", "category": category, "specialist": specialist_name},
+    }
+    if note:
+        body["note"] = note
+    return append_version(None, body)

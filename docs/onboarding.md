@@ -16,7 +16,7 @@
 
 | Term | Meaning |
 |------|---------|
-| **`entities.json`** | Canonical identity store at runtime (UUID, bind keys, validation state). |
+| **`entities.json`** | Canonical identity store at runtime (UUID, bind keys, validation state). MVR bind values are cached here; canonical history is in specialist `versions[]` (Program 2). |
 | **`seed.json`** | Optional **bootstrap fixture** — imported at `refresh-example-network` or `network create --seed` only. Not read on query. |
 | **`IdentityRecord`** | Graph/MCP model for a matched registry row (renamed from `SeedRecord`, June 2026). |
 | **`network create`** | Scaffold ontology + register name. `--seed` is optional; empty registry + first-query bind is valid (`empty-crm`). |

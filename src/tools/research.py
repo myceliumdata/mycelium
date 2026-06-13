@@ -245,6 +245,49 @@ def format_peer_context_block(peer_display: dict[str, list[dict[str, str]]]) -> 
     return "\n".join(lines)
 
 
+def operator_overrides_for_target_fields(
+    context: dict[str, Any],
+    target_fields: list[str],
+) -> list[dict[str, Any]]:
+    """Return operator-set current versions for target fields in specialist storage."""
+    storage = context.get("storage")
+    if not isinstance(storage, dict):
+        return []
+    overrides: list[dict[str, Any]] = []
+    for field_name in _normalize_fields(target_fields):
+        entry = storage.get(field_name)
+        if not is_versioned_field(entry):
+            continue
+        version = current_version(entry)
+        if not isinstance(version, dict):
+            continue
+        actor = version.get("actor")
+        if not isinstance(actor, dict) or actor.get("kind") != "operator":
+            continue
+        overrides.append(
+            {
+                "field": field_name,
+                "value": version.get("value"),
+                "at": version.get("at"),
+                "note": version.get("note") or version.get("reason"),
+            },
+        )
+    return overrides
+
+
+def _current_actor_kind(entry: Any) -> str | None:
+    if not isinstance(entry, dict) or not is_versioned_field(entry):
+        return None
+    version = current_version(entry)
+    if not isinstance(version, dict):
+        return None
+    actor = version.get("actor")
+    if isinstance(actor, dict):
+        raw = actor.get("kind")
+        return str(raw) if raw else None
+    return None
+
+
 def build_research_prompts(
     *,
     category: str,
@@ -266,6 +309,7 @@ def build_research_prompts(
         category=category,
     )
     peer_display = peer_display_for_prompt(peer_specialists)
+    operator_overrides = operator_overrides_for_target_fields(context, target_fields)
     template_vars = {
         "category": category,
         "specialist_name": specialist_name,
@@ -276,6 +320,8 @@ def build_research_prompts(
         "has_peer_specialists": bool(peer_display),
         "peer_specialists": peer_specialists,
         "peer_display": peer_display,
+        "operator_overrides": operator_overrides,
+        "has_operator_overrides": bool(operator_overrides),
     }
 
     system_tpl = env.get_template("research/_system.j2")
@@ -306,6 +352,12 @@ def build_research_prompts(
     if extra_disamb:
         disambiguation = env.get_template("research/_disambiguation.j2").render(**template_vars).strip()
         user_parts.insert(0, disambiguation)
+    if operator_overrides:
+        operator_block = env.get_template("research/_operator_deference.j2").render(
+            **template_vars,
+        ).strip()
+        insert_at = 1 if extra_disamb else 0
+        user_parts.insert(insert_at, operator_block)
     if peer_display:
         peer_block = format_peer_context_block(peer_display)
         insert_at = 1 if extra_disamb else 0
@@ -558,7 +610,7 @@ def _persist_field_version(
     specialist_name: str,
 ) -> dict[str, Any]:
     """Apply P1-11 transition rules for one field entry."""
-    if field_has_value(existing):
+    if field_has_value(existing) and _current_actor_kind(existing) != "operator":
         return existing if isinstance(existing, dict) else ensure_versioned_for_write(None)
     shell = ensure_versioned_for_write(existing)
     current = current_version(shell)

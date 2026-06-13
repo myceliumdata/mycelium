@@ -67,10 +67,10 @@ uv run mycelium network status --network crm --entity "Andrea Kalmans"
 1. Creates a provisional row in `entities.json` (registry)
 2. Runs core validation and promotes the row to `validated`
 3. Invokes specialists for `requested_attributes` bound on step 1 (research gate: validated registry row)
-4. Writes extended attributes under `agents/<category>/storage.json` keyed by `entity_id`
+4. Writes MVR bind fields and extended attributes under `agents/<category>/storage.json` keyed by `entity_id` (bind fields are taxonomy-owned per `categories.json` `attribute_map`)
 5. Records **data attribution** on the registry row: `attr_sources` (which category owns each attr) and `last_researched_at` (when research last succeeded)
 
-Re-query the same `lookup` (or `id`) for step 1, then `delivery_id` for step 2. Specialist storage remains the source of truth for attribute values; registry metadata tracks provenance for operators and the admin UI.
+Re-query the same `lookup` (or `id`) for step 1, then `delivery_id` for step 2. Specialist storage is the source of truth for attribute values (including MVR bind fields `name` and `employer` after Program 2); registry metadata tracks provenance for operators and the admin UI.
 
 Example MCP fixtures: [`queries/`](queries/) (batch deliver walkthrough).
 

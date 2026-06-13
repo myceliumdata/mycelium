@@ -1,16 +1,16 @@
 # Cursor queue
 
-**Active:** [`next/2026-06-13-2400-attribute-provenance-program2-slice3.md`](next/2026-06-13-2400-attribute-provenance-program2-slice3.md) — Program 2 Slice 3 (polish)
+**Active:** None — **Program 2 complete** (Slices 1–3 committed locally)
 
-**Program:** [`docs/plans/attribute-provenance-program2.md`](../../docs/plans/attribute-provenance-program2.md)
+**Program:** [`docs/plans/attribute-provenance-program2.md`](../../docs/plans/attribute-provenance-program2.md) — **Complete**
 
-**Done:** [`done/2026-06-13-2300-attribute-provenance-program2-slice2/`](done/2026-06-13-2300-attribute-provenance-program2-slice2/) — **Approved** (uncommitted; commit when Paul ready)
+**Done:** [`done/2026-06-13-2400-attribute-provenance-program2-slice3/`](done/2026-06-13-2400-attribute-provenance-program2-slice3/) — **Approved + polish nits**
 
-**Prior:** [`done/2026-06-13-2200-attribute-provenance-program2-slice1/`](done/2026-06-13-2200-attribute-provenance-program2-slice1/) — **Approved + polish nits**
+**Prior:** Slices 1–2 — Approved
 
-**Next:** Program 3 kickoff (after Slice 3 approved).
+**Next:** Program 3 kickoff when Paul + Grok lock spec and queue prompt.
 
-**Git:** Local commit ahead of `origin/main`. No push until Paul asks. See `WORKFLOW.md` §4.
+**Git:** 3 commits ahead of `origin/main` (Program 2). No push until Paul asks. See `WORKFLOW.md` §4.
 
 ---
 

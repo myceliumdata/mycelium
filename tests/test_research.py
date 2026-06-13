@@ -10,7 +10,12 @@ import pytest
 
 from agents.classification import get_category_tree, reset_category_tree
 from agents.specialist_fields import current_status, current_value, pending_last_error
-from versioned_storage_fixtures import versioned_found, versioned_na, versioned_pending
+from versioned_storage_fixtures import (
+    versioned_found,
+    versioned_na,
+    versioned_operator,
+    versioned_pending,
+)
 from agents.specialists.base import SpecialistStorage
 from network.mvr import MvrPolicy
 from tools.research import (
@@ -246,6 +251,75 @@ def test_build_research_prompts_omits_na_peer_fields_from_header() -> None:
     peer_section = user.split("Research the following person", 1)[0]
     assert "jane@example.com" in peer_section
     assert "phone" not in peer_section
+
+
+@pytest.mark.smoke
+def test_build_research_prompts_injects_operator_deference() -> None:
+    operator_email = versioned_operator(
+        at="2026-06-12T10:00:00+00:00",
+        value="manual@corp.com",
+        note="Verified by operator",
+    )
+    _system, user = build_research_prompts(
+        category="contact",
+        specialist_name="contact_specialist",
+        person_id="uuid-operator",
+        target_fields=["email"],
+        context={
+            "entity_id": "uuid-operator",
+            "bind": {"name": "Jane Example", "employer": "Corp"},
+            "storage": {"email": operator_email},
+        },
+    )
+    assert "OPERATOR OVERRIDE" in user
+    assert "manual@corp.com" in user
+    assert "Verified by operator" in user
+    assert "very strong" in user.lower()
+
+
+@pytest.mark.smoke
+def test_persist_proposal_appends_after_operator_version(tmp_path: Path) -> None:
+    storage = SpecialistStorage(category="contact", base_dir=tmp_path / "agents")
+    pid = "uuid-operator-persist"
+    operator_email = versioned_operator(
+        at="2026-06-12T10:00:00+00:00",
+        value="manual@corp.com",
+    )
+    storage.save(
+        {
+            "records": {
+                pid: {
+                    "email": operator_email,
+                },
+            },
+        },
+    )
+    proposal = ResearchProposal(
+        fields=[
+            FieldProposal(
+                field="email",
+                value="research@corp.com",
+                status="found",
+                confidence=0.95,
+                sources=["https://example.com/new-evidence"],
+            ),
+        ],
+    )
+    updated, errors = _persist_proposal(
+        storage,
+        pid,
+        proposal,
+        allowed={"email"},
+        min_confidence=0.6,
+        category="contact",
+        specialist_name="contact_specialist",
+    )
+    assert errors == []
+    assert updated == ["email"]
+    entry = storage.load()["records"][pid]["email"]
+    assert len(entry["versions"]) == 2
+    assert entry["current_version_id"] == "v2"
+    assert current_value(entry) == "research@corp.com"
 
 
 @pytest.mark.smoke

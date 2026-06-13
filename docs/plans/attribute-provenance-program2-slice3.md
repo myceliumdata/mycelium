@@ -1,9 +1,9 @@
 # Program 2 — Slice 3: Polish (dynamic bind fields + research deference)
 
-**Status:** Ready  
+**Status:** Shipped
 **Program:** [`attribute-provenance-program2.md`](attribute-provenance-program2.md)  
 **Depends on:** Slices 1–2 approved  
-**Cursor prompt:** `prompts/cursor/next/2026-06-13-2400-attribute-provenance-program2-slice3.md`
+**Cursor prompt:** `prompts/cursor/done/2026-06-13-2400-attribute-provenance-program2-slice3/`
 
 ---
 
