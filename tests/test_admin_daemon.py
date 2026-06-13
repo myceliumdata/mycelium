@@ -219,7 +219,6 @@ def test_status_reflects_entities_change_without_restart(
     tmp_path: Path,
 ) -> None:
     root = _seed_only_root(tmp_path)
-    import_seed_for_test(root / "seed.json")
     client = _client_for_root(monkeypatch, tmp_path, root)
 
     first = client.get("/status")
