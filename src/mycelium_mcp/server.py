@@ -94,10 +94,22 @@ def _neutral_json_schema(model: type[EntityQuery] | type[QueryResponse] | type[I
     schema = model.model_json_schema()
     schema["title"] = model.__name__
     if model is EntityQuery:
-        schema.setdefault("description", "Lookup request: entity_key plus optional requested_attributes.")
+        schema["description"] = (
+            "Target two-step protocol: step 1 — id or lookup (AND), optional "
+            "requested_attributes and provenance; step 2 — delivery_id plus optional "
+            "quote_id. Legacy entity_key/binding still accepted on step 1 until M4."
+        )
+        props = schema.setdefault("properties", {})
+        for legacy_field in ("entity_key", "binding"):
+            field_schema = props.get(legacy_field)
+            if isinstance(field_schema, dict):
+                desc = field_schema.get("description") or ""
+                if "Deprecated" not in desc:
+                    field_schema["description"] = f"Deprecated. {desc}"
     elif model is QueryResponse:
         schema["description"] = (
-            "Query outcome: outcome (machine-readable), suggestions (near-miss retries), "
+            "Query outcome: outcome (machine-readable, including lookup_resolved on step 1), "
+            "total_matches and delivery (step-1 delivery_id), suggestions (near-miss retries), "
             "required_fields (MVR gaps when entity_unknown), results (attribute values), "
             "message (status narrative), provenance (version history when request "
             "provenance=true), debug, trace_id, thread_id."

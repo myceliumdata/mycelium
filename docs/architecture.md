@@ -207,8 +207,10 @@ Future (not v1): per-network LangSmith project names, optional credential profil
 
 ## MVR redesign (target protocol)
 
-**Status:** Locked design; **runtime still uses legacy `entity_key` / `binding`** until slices M2–M9 ship.  
+**Status:** Locked design; **runtime still uses legacy `entity_key` / `binding`** until slices M4–M9 ship.  
 **Program:** [`docs/plans/mvr-redesign-program.md`](plans/mvr-redesign-program.md) · **Operator guide:** [`docs/plans/mvr-best-practices.md`](plans/mvr-best-practices.md) · **Examples:** [`docs/plans/mvr-redesign-entity-query-examples.md`](plans/mvr-redesign-entity-query-examples.md)
+
+**M3 (models):** `EntityQuery` and `QueryResponse` accept target fields (`id`, `lookup`, `delivery_id`, `total_matches`, `delivery`, outcome `lookup_resolved`) with Pydantic step-1/step-2 validation. Legacy `entity_key` remains for smoke tests and the CLI; graph resolve/deliver still uses the legacy path until M4.
 
 **Program 2** (versioned bind storage / `bind_versions[]`) is **blocked** until this program completes.
 

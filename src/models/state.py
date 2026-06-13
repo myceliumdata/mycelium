@@ -5,7 +5,7 @@ from __future__ import annotations
 import operator
 from typing import Annotated, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class IdentityRecord(BaseModel):
@@ -46,6 +46,13 @@ class BillingPrincipal(BaseModel):
     id: str = Field(description="Principal identifier for entitlement attribution.")
 
 
+class DeliveryPayload(BaseModel):
+    """Step-1 delivery token returned when lookup resolves."""
+
+    delivery_id: str = Field(description="Opaque delivery scope id from step 1 (d_ prefix).")
+    expires_at: str = Field(description="ISO-8601 expiry for delivery_id (default TTL 5 minutes).")
+
+
 class EntityQuery(BaseModel):
     """Inbound JSON query for looking up an entity (public interface).
 
@@ -73,14 +80,30 @@ class EntityQuery(BaseModel):
         }
     }
 
+    id: str | None = Field(
+        default=None,
+        description="Step 1: stable registry UUID to resolve (returns delivery_id).",
+    )
+    lookup: dict[str, str] = Field(
+        default_factory=dict,
+        description="Step 1: partial field match map (AND within keys); keys ⊆ mvr.bind_fields.",
+    )
+    delivery_id: str | None = Field(
+        default=None,
+        description="Step 2: delivery scope id from a prior lookup_resolved response.",
+    )
     entity_key: str = Field(
-        description="Registry entity UUID (``id``) or display name used for lookup.",
+        default="",
+        description=(
+            "Deprecated legacy resolve key (registry UUID or display name). "
+            "Prefer id or lookup for step 1; runtime still honors this until M4."
+        ),
     )
     binding: dict[str, str] = Field(
         default_factory=dict,
         description=(
-            "Optional MVR bind fields (e.g. employer). Name comes from entity_key "
-            "when network mvr.name_source is entity_key. Used to bind unknown entities."
+            "Deprecated legacy MVR bind fields (e.g. employer). "
+            "Prefer lookup for step 1; used with entity_key until M4."
         ),
     )
     requested_attributes: list[str] = Field(
@@ -101,10 +124,42 @@ class EntityQuery(BaseModel):
     provenance: bool = Field(
         default=False,
         description=(
-            "When true, request query delivery with sources/audit trail "
+            "Step 1 only. When true, request query delivery with sources/audit trail "
             "(metering: query_provenance consumption line)."
         ),
     )
+
+    @model_validator(mode="after")
+    def _validate_target_protocol_step(self) -> EntityQuery:
+        delivery_id = (self.delivery_id or "").strip()
+        if delivery_id:
+            if (self.entity_key or "").strip():
+                raise ValueError("step 2 accepts only delivery_id")
+            if self.lookup:
+                raise ValueError("step 2 accepts only delivery_id")
+            if (self.id or "").strip():
+                raise ValueError("step 2 accepts only delivery_id")
+            if self.binding:
+                raise ValueError("step 2 accepts only delivery_id")
+            if self.requested_attributes:
+                raise ValueError("requested_attributes are step 1 only")
+            if self.provenance:
+                raise ValueError("provenance is step 1 only")
+            if self.principal is not None:
+                raise ValueError("step 2 accepts only delivery_id")
+            return self
+
+        has_id = bool((self.id or "").strip())
+        has_lookup = bool(self.lookup)
+        has_entity_key = bool(self.entity_key)
+        if not (has_id or has_lookup or has_entity_key):
+            raise ValueError("step 1 requires id, lookup, or entity_key")
+        return self
+
+
+def entity_query_is_delivery_step(query: EntityQuery) -> bool:
+    """Return True when the query is step 2 (deliver via delivery_id)."""
+    return bool((query.delivery_id or "").strip())
 
 
 class QueryResponse(BaseModel):
@@ -113,7 +168,8 @@ class QueryResponse(BaseModel):
     outcome: str | None = Field(
         default=None,
         description=(
-            "Machine-readable query outcome on every response: found (registry identity only), "
+            "Machine-readable query outcome on every response: lookup_resolved (step 1; "
+            "total_matches + delivery_id), found (registry identity only), "
             "assembled (requested attributes merged), not_found, entity_key_unresolved "
             "(near-miss suggestions), entity_unknown (no registry match, MVR fields needed), "
             "entity_under_specified (partial binding), entity_bound_provisional "
@@ -123,6 +179,14 @@ class QueryResponse(BaseModel):
             "principal_required (metering: billing principal missing for funding model), "
             "or error (internal failure). Mirrors debug outcome=."
         ),
+    )
+    total_matches: int | None = Field(
+        default=None,
+        description="Step 1 lookup_resolved: number of registry rows matching the lookup.",
+    )
+    delivery: DeliveryPayload | None = Field(
+        default=None,
+        description="Step 1 lookup_resolved: delivery_id + expires_at for step-2 deliver.",
     )
     quote: dict[str, Any] | None = Field(
         default=None,

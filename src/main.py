@@ -61,8 +61,20 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Mycelium core graph CLI")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    query_cmd = sub.add_parser("query", help="Query an entity via the registry (JSON response)")
-    query_cmd.add_argument("--entity-key", required=True, help="Id, email, or name")
+    query_cmd = sub.add_parser(
+        "query",
+        help="Query an entity via the registry (JSON response)",
+        epilog=(
+            "Target protocol (MVR redesign): step 1 uses id or lookup JSON; step 2 uses "
+            "delivery_id from lookup_resolved. This CLI still uses legacy --entity-key until M4."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    query_cmd.add_argument(
+        "--entity-key",
+        required=True,
+        help="Legacy: registry UUID or display name (target protocol: use id or lookup JSON via MCP)",
+    )
     query_cmd.add_argument(
         "--attributes",
         nargs="*",

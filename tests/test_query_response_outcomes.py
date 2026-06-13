@@ -117,11 +117,15 @@ def test_query_response_json_schema_includes_outcome_and_suggestions() -> None:
     assert "outcome" in props
     assert "suggestions" in props
     assert "provenance" in props
+    assert "total_matches" in props
+    assert "delivery" in props
     assert schema.get("title") == "QueryResponse"
     description = schema.get("description") or ""
     assert "outcome" in description
     assert "suggestions" in description
     assert "provenance" in description
+    assert "lookup_resolved" in description
+    assert "total_matches" in description
 
 
 @pytest.mark.smoke
