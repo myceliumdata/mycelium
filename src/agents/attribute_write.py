@@ -2,10 +2,14 @@
 
 Canonical values and versions[] live in taxonomy-owned specialist storage;
 ``entities.json`` holds cache, protocol fields, and derived indexes.
+
+Multi-category writes snapshot specialist payloads before save and best-effort
+rollback prior categories if a later save fails (Program 2 polish P4).
 """
 
 from __future__ import annotations
 
+import copy
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -16,7 +20,7 @@ from agents.entity_registry import (
     get_entity_registry,
     make_bind_key,
 )
-from agents.specialist_fields import append_version
+from agents.specialist_fields import append_version, current_value_matches
 from agents.specialists.base import SpecialistStorage
 from network.mvr import load_mvr, normalized_lookup_values
 
@@ -49,29 +53,51 @@ def _actor_body(*, kind: str, category: str, specialist: str) -> dict[str, str]:
     return {"kind": kind, "category": category, "specialist": specialist}
 
 
-def _write_specialist_version(
+def _apply_specialist_bind_writes(
     entity_id: str,
-    field: str,
-    value: str,
+    normalized_fields: dict[str, str],
     *,
     actor_kind: str,
     at: str,
-) -> str:
-    """Append a bind/seed version in owning specialist storage; return category slug."""
-    category, specialist = resolve_attribute_owner(field)
-    storage = SpecialistStorage(category)
-    data = storage.load()
-    records = data.setdefault("records", {})
-    record = records.setdefault(entity_id, {})
-    version_body: dict[str, Any] = {
-        "at": at,
-        "status": "found",
-        "value": value,
-        "actor": _actor_body(kind=actor_kind, category=category, specialist=specialist),
-    }
-    record[field] = append_version(record.get(field), version_body)
-    storage.save(data)
-    return category
+) -> None:
+    """Mutate specialist storage for bind fields; rollback on partial save failure."""
+    snapshots: dict[str, dict[str, Any]] = {}
+    pending: dict[str, dict[str, Any]] = {}
+
+    for field, value in normalized_fields.items():
+        category, specialist = resolve_attribute_owner(field)
+        if category not in pending:
+            storage = SpecialistStorage(category)
+            loaded = storage.load()
+            snapshots[category] = copy.deepcopy(loaded)
+            pending[category] = loaded
+
+        data = pending[category]
+        records = data.setdefault("records", {})
+        record = records.setdefault(entity_id, {})
+        if current_value_matches(record.get(field), value):
+            continue
+        version_body: dict[str, Any] = {
+            "at": at,
+            "status": "found",
+            "value": value,
+            "actor": _actor_body(
+                kind=actor_kind,
+                category=category,
+                specialist=specialist,
+            ),
+        }
+        record[field] = append_version(record.get(field), version_body)
+
+    saved: list[str] = []
+    try:
+        for category, data in pending.items():
+            SpecialistStorage(category).save(data)
+            saved.append(category)
+    except Exception:
+        for category in saved:
+            SpecialistStorage(category).save(snapshots[category])
+        raise
 
 
 def _apply_cache_field(entity: RegistryEntity, field: str, value: str) -> None:
@@ -129,14 +155,13 @@ def write_bind_fields(
     old_key = make_bind_key(old_values["name"], old_values["employer"])
     now = datetime.now(timezone.utc).isoformat()
 
+    _apply_specialist_bind_writes(
+        entity_id,
+        normalized_fields,
+        actor_kind=actor_kind,
+        at=now,
+    )
     for field in normalized_fields:
-        _write_specialist_version(
-            entity_id,
-            field,
-            normalized_fields[field],
-            actor_kind=actor_kind,
-            at=now,
-        )
         category = resolve_attribute_owner(field)[0]
         entity.attr_sources[field] = category
         _apply_cache_field(entity, field, normalized_fields[field])

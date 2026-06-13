@@ -1,4 +1,10 @@
-"""Ensure ``categories.json`` maps MVR bind fields for Program 2 unified writes."""
+"""Ensure ``categories.json`` maps MVR bind fields for Program 2 unified writes.
+
+``CRM_MVR_FIELD_CATEGORY`` is a **bootstrap/merge reference only** for example
+networks and ``network create`` when LLM ontologies omit MVR mappings. Runtime
+bind-field ownership is always resolved from ``categories.json`` ``attribute_map``
+via ``resolve_attribute_owner`` — never from this hardcoded map.
+"""
 
 from __future__ import annotations
 

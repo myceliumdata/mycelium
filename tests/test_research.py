@@ -254,6 +254,39 @@ def test_build_research_prompts_omits_na_peer_fields_from_header() -> None:
 
 
 @pytest.mark.smoke
+def test_build_research_prompts_block_order_disambig_operator_peer() -> None:
+    operator_spouse = versioned_operator(
+        at="2026-06-12T10:00:00+00:00",
+        value="John Murphy",
+    )
+    _system, user = build_research_prompts(
+        category="relationships",
+        specialist_name="relationships_specialist",
+        person_id="uuid-order",
+        target_fields=["spouse"],
+        context={
+            "entity_id": "uuid-order",
+            "bind": {"name": "Angela Murphy", "employer": "Talentcare"},
+            "storage": {"spouse": operator_spouse},
+            "specialists": {
+                "contact": {
+                    "email": versioned_found(
+                        at="2026-06-09T00:00:00+00:00",
+                        value="angela@example.com",
+                        sources=["https://x.com"],
+                    ),
+                },
+            },
+        },
+    )
+    disambig_pos = user.index("DISAMBIGUATION")
+    operator_pos = user.index("OPERATOR OVERRIDE")
+    peer_pos = user.index("PEER SPECIALIST FINDINGS")
+    research_pos = user.index("Research the following person")
+    assert disambig_pos < operator_pos < peer_pos < research_pos
+
+
+@pytest.mark.smoke
 def test_build_research_prompts_injects_operator_deference() -> None:
     operator_email = versioned_operator(
         at="2026-06-12T10:00:00+00:00",

@@ -72,6 +72,10 @@ uv run mycelium network status --network crm --entity "Andrea Kalmans"
 
 Re-query the same `lookup` (or `id`) for step 1, then `delivery_id` for step 2. Specialist storage is the source of truth for attribute values (including MVR bind fields `name` and `employer` after Program 2); registry metadata tracks provenance for operators and the admin UI.
 
+### Duplicate bind keys (hard cutover)
+
+If step 2 create-on-deliver or a bind hits an existing `bind_index` key, Mycelium returns the **existing registry row** without backfilling specialist `versions[]` for pre–Program 2 rows. To migrate legacy registry-only MVR into specialist storage, run `./bin/refresh-example-network crm --yes` (or wipe `agents/<category>/storage.json` and re-import seed) — there is no lazy migration on duplicate bind.
+
 Example MCP fixtures: [`queries/`](queries/) (batch deliver walkthrough).
 
 ## Layout

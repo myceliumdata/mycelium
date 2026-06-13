@@ -196,3 +196,54 @@ def research_actor(*, category: str, specialist_name: str) -> dict[str, str]:
         "category": category,
         "specialist": specialist_name,
     }
+
+
+def version_tuple_from_entry(entry: Any) -> tuple[dict[str, Any], ...]:
+    """Return version dicts from a versioned field entry."""
+    if isinstance(entry, dict) and is_versioned_field(entry):
+        raw = entry.get("versions") or []
+        return tuple(item for item in raw if isinstance(item, dict))
+    return ()
+
+
+def storage_record(
+    agents_dir: Any,
+    category: str,
+    entity_id: str,
+) -> dict[str, Any]:
+    """Load one entity record from specialist ``storage.json``."""
+    from agents.specialists.base import category_slug
+
+    storage_path = agents_dir / category_slug(category) / "storage.json"
+    if not storage_path.is_file():
+        return {}
+    try:
+        import json
+
+        payload = json.loads(storage_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    records = payload.get("records", {}) if isinstance(payload, dict) else {}
+    if not isinstance(records, dict):
+        return {}
+    record = records.get(entity_id)
+    return record if isinstance(record, dict) else {}
+
+
+def field_versions_from_storage(
+    agents_dir: Any,
+    category: str,
+    entity_id: str,
+    field_name: str,
+) -> tuple[dict[str, Any], ...]:
+    """Load ``versions[]`` for a field from specialist storage."""
+    record = storage_record(agents_dir, category, entity_id)
+    return version_tuple_from_entry(record.get(field_name))
+
+
+def current_value_matches(entry: Any, value: str) -> bool:
+    """True when a versioned field's current value equals ``value`` (stripped)."""
+    if not is_versioned_field(entry):
+        return False
+    current = current_value(entry)
+    return current is not None and str(current).strip() == value.strip()

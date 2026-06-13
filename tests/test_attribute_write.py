@@ -6,6 +6,8 @@ import json
 import shutil
 from pathlib import Path
 
+from typing import Any
+
 import pytest
 
 from agents.attribute_write import (
@@ -197,6 +199,64 @@ def test_bind_provisional_from_scope_uses_unified_write(
     name_entry = _specialist_field(entity.id, "demographic", "name")
     assert name_entry is not None
     assert (name_entry.get("versions") or [{}])[0]["actor"]["kind"] == "bind"
+
+
+@pytest.mark.smoke
+def test_write_bind_fields_skips_duplicate_version(
+    attribute_write_env: CoreStorage,
+) -> None:
+    _ = attribute_write_env
+    entity, _ = ensure_entity_bind(
+        "No Op Person",
+        "Stable Co",
+        source="query_bind",
+        validation_state="validated",
+    )
+    write_bind_fields(
+        entity.id,
+        {"name": "No Op Person", "employer": "Stable Co"},
+        actor_kind="bind",
+    )
+    name_entry = _specialist_field(entity.id, "demographic", "name")
+    assert name_entry is not None
+    assert len(name_entry.get("versions") or []) == 1
+
+
+@pytest.mark.smoke
+def test_write_bind_fields_rollback_on_second_save_failure(
+    attribute_write_env: CoreStorage,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _ = attribute_write_env
+    entity, _ = ensure_entity_bind(
+        "Rollback Person",
+        "First Co",
+        source="query_bind",
+        validation_state="validated",
+    )
+    demographic = SpecialistStorage("demographic")
+    before = demographic.load()
+
+    original_save = SpecialistStorage.save
+    calls = {"count": 0}
+
+    def flaky_save(self: SpecialistStorage, data: dict[str, Any]) -> None:
+        calls["count"] += 1
+        if calls["count"] == 2:
+            raise OSError("simulated save failure")
+        original_save(self, data)
+
+    monkeypatch.setattr(SpecialistStorage, "save", flaky_save)
+
+    with pytest.raises(OSError, match="simulated save failure"):
+        write_bind_fields(
+            entity.id,
+            {"name": "Rollback Person", "employer": "New Co"},
+            actor_kind="bind",
+        )
+
+    after = demographic.load()
+    assert after.get("records") == before.get("records")
 
 
 @pytest.mark.smoke

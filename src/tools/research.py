@@ -343,26 +343,24 @@ def build_research_prompts(
         "context": context,
         "min_confidence": min_conf,
     }
-    user_parts = [
-        "Research the following person for the listed target_fields only.",
-        json.dumps(user_payload, indent=2, default=str),
-    ]
-    if fragment:
-        user_parts.insert(1, f"Category guidance:\n{fragment}")
+    leading: list[str] = []
     if extra_disamb:
         disambiguation = env.get_template("research/_disambiguation.j2").render(**template_vars).strip()
-        user_parts.insert(0, disambiguation)
+        leading.append(disambiguation)
     if operator_overrides:
         operator_block = env.get_template("research/_operator_deference.j2").render(
             **template_vars,
         ).strip()
-        insert_at = 1 if extra_disamb else 0
-        user_parts.insert(insert_at, operator_block)
+        leading.append(operator_block)
     if peer_display:
-        peer_block = format_peer_context_block(peer_display)
-        insert_at = 1 if extra_disamb else 0
-        user_parts.insert(insert_at, peer_block)
-    user = "\n\n".join(user_parts)
+        leading.append(format_peer_context_block(peer_display))
+
+    body: list[str] = []
+    if fragment:
+        body.append(f"Category guidance:\n{fragment}")
+    body.append("Research the following person for the listed target_fields only.")
+    body.append(json.dumps(user_payload, indent=2, default=str))
+    user = "\n\n".join([*leading, *body])
     return system, user
 
 

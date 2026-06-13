@@ -1,7 +1,7 @@
 # Program 2 — Polish backlog (post Slice 3)
 
-**Status:** Ready  
-**Cursor prompt:** `prompts/cursor/next/2026-06-13-2500-attribute-provenance-program2-polish.md`  
+**Status:** Complete (June 2026) — P1–P7 polish shipped locally  
+**Cursor prompt:** `prompts/cursor/done/2026-06-13-2500-attribute-provenance-program2-polish/`  
 **Program:** [`attribute-provenance-program2.md`](attribute-provenance-program2.md)
 
 ---
@@ -34,9 +34,9 @@ Non-blocking nits from Grok review of Program 2 Slices 1–3. One polish pass af
 
 ## Exit criteria
 
-- [ ] P1–P7 addressed
-- [ ] `./bin/ci-local` green
-- [ ] No Program 3 scope creep
+- [x] P1–P7 addressed
+- [x] `./bin/ci-local` green
+- [x] No Program 3 scope creep
 
 ---
 

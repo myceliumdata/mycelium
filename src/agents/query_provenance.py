@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-import json
 from copy import deepcopy
 from dataclasses import replace
 from typing import Any
 
 from agents.classification import get_category_tree
 from agents.entity_registry import get_entity_registry
-from agents.specialist_fields import is_versioned_field, validate_versioned_field
-from agents.specialists.base import category_slug
+from agents.specialist_fields import (
+    is_versioned_field,
+    storage_record,
+    validate_versioned_field,
+)
 from models.state import EntityQuery, QueryResponse, normalized_requested_attributes
 from network.paths import NetworkPaths, resolve_network_root, runtime_path
 
@@ -30,21 +32,6 @@ def _runtime_paths(paths: NetworkPaths | None) -> NetworkPaths:
         return paths
     base = NetworkPaths.from_root(resolve_network_root())
     return replace(base, agents_dir=runtime_path("MYCELIUM_AGENT_DATA_DIR"))
-
-
-def _storage_record(paths: NetworkPaths, category: str, entity_id: str) -> dict[str, Any]:
-    storage_path = paths.agents_dir / category_slug(category) / "storage.json"
-    if not storage_path.is_file():
-        return {}
-    try:
-        payload = json.loads(storage_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-    records = payload.get("records", {}) if isinstance(payload, dict) else {}
-    if not isinstance(records, dict):
-        return {}
-    record = records.get(entity_id)
-    return record if isinstance(record, dict) else {}
 
 
 def _provenance_field_entry(entry: Any, *, field_name: str, category: str) -> dict[str, Any] | None:
@@ -84,7 +71,7 @@ def build_query_provenance(
             category = _category_for_attribute(attr, entity_id=entity_id)
             if not category:
                 continue
-            record = _storage_record(resolved_paths, category, entity_id)
+            record = storage_record(resolved_paths.agents_dir, category, entity_id)
             entry = record.get(attr)
             field_provenance = _provenance_field_entry(
                 entry,

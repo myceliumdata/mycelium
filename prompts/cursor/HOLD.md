@@ -1,16 +1,16 @@
 # Cursor queue
 
-**Active:** [`next/2026-06-13-2500-attribute-provenance-program2-polish.md`](next/2026-06-13-2500-attribute-provenance-program2-polish.md) — Program 2 polish (review nits)
+**Active:** None — **Program 2 + polish complete** (committed locally)
 
-**Program:** [`docs/plans/attribute-provenance-program2.md`](../../docs/plans/attribute-provenance-program2.md) — **Complete** (polish pass queued)
+**Program:** [`docs/plans/attribute-provenance-program2.md`](../../docs/plans/attribute-provenance-program2.md) — **Complete**
 
-**Done:** [`done/2026-06-13-2400-attribute-provenance-program2-slice3/`](done/2026-06-13-2400-attribute-provenance-program2-slice3/) — **Approved + polish nits**
+**Done:** [`done/2026-06-13-2500-attribute-provenance-program2-polish/`](done/2026-06-13-2500-attribute-provenance-program2-polish/) — **Approved**
 
-**Prior:** Slices 1–2 — Approved
+**Prior:** Slices 1–3 — Approved
 
-**Next:** Program 3 kickoff after polish reviewed (or in parallel if Paul prefers).
+**Next:** Delivery push when Paul asks; Program 3 kickoff when ready.
 
-**Git:** 3 commits ahead of `origin/main` (Program 2). No push until Paul asks. See `WORKFLOW.md` §4.
+**Git:** 5 commits ahead of `origin/main` (Program 2 + polish). No push until Paul asks. See `WORKFLOW.md` §4.
 
 ---
 

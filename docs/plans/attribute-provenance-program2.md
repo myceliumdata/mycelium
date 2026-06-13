@@ -1,6 +1,6 @@
 # Program 2 — MVR / entity storage (versioned bind fields)
 
-**Status:** Complete (June 2026) — Slices 1–3 shipped locally
+**Status:** Complete (June 2026) — Slices 1–3 + polish shipped locally
 **Architecture:** [`attribute-provenance-and-storage.md`](attribute-provenance-and-storage.md)  
 **Prerequisite:** Program 1 complete; MVR redesign M1–M10 shipped  
 **Blocks:** Program 3 (operator edit + force re-research UI)
@@ -55,6 +55,8 @@ CRM reference mappings (committed in `docs/examples/sample-categories.json` + ex
 Add `name` / `employer` to category **examples** so `attribute_map` is populated on `network create` and sample ontology copy paths.
 
 At runtime, unified write resolves `(category, specialist)` via `ClassificationEngine` / `attribute_map` — not hardcoded Python maps.
+
+`CRM_MVR_FIELD_CATEGORY` in `category_mvr_bootstrap.py` is **bootstrap/merge reference only** (sample categories, seed import, `network create` when the LLM ontology omits MVR rows). It is not used on the hot bind write path.
 
 ---
 

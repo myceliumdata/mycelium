@@ -13,6 +13,7 @@ from agents.entity_registry import RegistryEntity, get_entity_registry
 from agents.specialist_fields import (
     current_status,
     current_value,
+    field_versions_from_storage,
     is_versioned_field,
     validate_versioned_field,
 )
@@ -380,20 +381,12 @@ def _bind_field_versions(
     category = get_category_tree().mapped_category(field_name.strip().lower())
     if not category:
         return ()
-    storage_path = _storage_file(paths, category)
-    if not storage_path.is_file():
-        return ()
-    try:
-        payload = json.loads(storage_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return ()
-    records = payload.get("records", {}) if isinstance(payload, dict) else {}
-    if not isinstance(records, dict):
-        return ()
-    record = records.get(record_id)
-    if not isinstance(record, dict):
-        return ()
-    return _field_versions(record.get(field_name))
+    return field_versions_from_storage(
+        paths.agents_dir,
+        category,
+        record_id,
+        field_name,
+    )
 
 
 def _bind_field_statuses(
@@ -406,8 +399,6 @@ def _bind_field_statuses(
     rows: list[EntityFieldStatus] = []
     for field_name in load_mvr().bind_fields:
         value = match.get(field_name)
-        if field_name == "employer" and not value:
-            continue
         if field_name == "name" and not value:
             value = match.get("name") or ""
         status = "seed"

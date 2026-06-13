@@ -302,6 +302,28 @@ def test_status_cli_verbose(
 
 
 @pytest.mark.smoke
+def test_status_bind_rows_include_empty_employer(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "empty_employer"
+    root.mkdir()
+    shutil.copy(EXAMPLE_CRM / "seed.json", root / "seed.json")
+    shutil.copy(SAMPLE_CATEGORIES, root / "categories.json")
+    _configure_root(monkeypatch, tmp_path, root)
+    registry = get_entity_registry()
+    entity, _ = registry.bind_provisional("Solo Name", "")
+    registry.promote_validated(entity.id)
+
+    summary = build_network_status(entity_key=entity.id)
+    employer = next(
+        item for item in summary.entity_fields if item.field == "employer"
+    )
+    assert employer.field_kind == "bind"
+    assert employer.value is None
+
+
+@pytest.mark.smoke
 def test_status_registry_entity_lookup(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
