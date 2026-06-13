@@ -1,12 +1,12 @@
 # Cursor queue
 
-**Active:** None — **MVR redesign program complete** (M1–M10 reviewed and committed locally)
+**Active:** None — **MVR redesign program complete** (M1–M10 shipped)
 
 **Program:** [`docs/plans/mvr-redesign-program.md`](../../docs/plans/mvr-redesign-program.md)
 
-Program 2 (versioned bind storage) may start after Paul pushes and signs off.
+Program 2 (versioned bind storage) may start after Paul locks scope.
 
-**Git:** Local commits ahead of `origin/main` (M1–M10 + admin/create_on_deliver polish + doc sync). Push when Paul explicitly asks. See `WORKFLOW.md` §4.
+**Git:** MVR stack on `origin/main` (June 2026). See `WORKFLOW.md` §4.
 
 ---
 
