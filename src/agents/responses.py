@@ -41,11 +41,17 @@ def debug_for_query(query: EntityQuery, **extra: Any) -> str:
 def _specialist_value_for_attr(
     contributions: list[dict[str, Any]],
     attr: str,
+    *,
+    entity_id: str | None = None,
 ) -> tuple[Any | None, bool]:
     """Return (value, specialist_pending) from contributions for one attribute."""
     pending = False
     for contrib in contributions:
         sc = contrib.get("specialist_contrib") or {}
+        if entity_id:
+            contrib_entity = sc.get("id") or contrib.get("entity_id")
+            if contrib_entity and str(contrib_entity) != entity_id:
+                continue
         values = sc.get("values") or {}
         if attr not in values:
             continue
@@ -70,9 +76,14 @@ def merge_requested_record(
     merged: dict[str, Any] = {"id": seed_rec.get("id", "")}
     provisional: list[str] = []
     unavailable: list[str] = []
+    entity_id = str(seed_rec.get("id") or "") or None
 
     for attr in requested:
-        spec_value, spec_pending = _specialist_value_for_attr(contributions, attr)
+        spec_value, spec_pending = _specialist_value_for_attr(
+            contributions,
+            attr,
+            entity_id=entity_id,
+        )
         if spec_value is not None:
             merged[attr] = spec_value
         elif attr in seed_rec and seed_rec.get(attr) not in (None, ""):
@@ -114,10 +125,16 @@ def shape_results(
 def _contrib_status_for_attr(
     contributions: list[dict[str, Any]],
     attr: str,
+    *,
+    entity_id: str | None = None,
 ) -> str | None:
     """Return ``pending``, ``na``, ``found``, or ``None`` from specialist contributions."""
     for contrib in contributions:
         sc = contrib.get("specialist_contrib") or {}
+        if entity_id:
+            contrib_entity = sc.get("id") or contrib.get("entity_id")
+            if contrib_entity and str(contrib_entity) != entity_id:
+                continue
         values = sc.get("values") or {}
         if attr not in values:
             continue

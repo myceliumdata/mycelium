@@ -265,6 +265,10 @@ Legacy outcomes (`entity_unknown`, `entity_key_unresolved`, `entity_bound_provis
 
 Partial `lookup` with 0 matches → `not_found` (no create). Full MVR in step-1 `lookup` **plus** `requested_attributes` → step-1 returns `lookup_resolved` with `total_matches=0` and a `delivery_id` scoped for provisional create; step-2 deliver calls `bind_provisional` from scope `lookup` then runs attribute research when attrs were bound. **`name_source`** is removed — `name` is supplied in `lookup` like any other MVR bind field. Legacy `entity_key` resolution remains until M9 (CLI/MCP migration).
 
+### Batch deliver (N entities) — M8
+
+Multi-match step-1 scopes carry `entity_ids[]` (N > 1). Step-2 deliver hydrates all N rows, invokes specialists **per entity** (no silent truncation), and returns N `results[]` entries with requested attrs merged per row. When step-1 bound `provenance=true`, step-2 `assembled`/`found` responses attach `provenance.entities[]` with one entry per delivered id (extended attrs only). Create-on-deliver remains N=1 (`create_on_deliver` scopes never batch).
+
 ### Indexes (target)
 
 One inverted index per MVR field on `entities.json` (normalized value → `[uuid, …]`). Compound indexes deferred (Program 2 / operator).

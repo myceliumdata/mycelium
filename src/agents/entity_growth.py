@@ -48,6 +48,9 @@ def apply_registry_research_attribution(
 
     for contrib in contributions:
         specialist_contrib = contrib.get("specialist_contrib") or {}
+        contrib_entity = specialist_contrib.get("id") or contrib.get("entity_id")
+        if contrib_entity and str(contrib_entity) != entity_id:
+            continue
         category = specialist_contrib.get("category")
         if not category:
             continue

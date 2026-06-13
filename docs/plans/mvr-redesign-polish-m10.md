@@ -34,8 +34,12 @@ Non-blocking nits from Grok review of MVR slices **M1–M9** are logged here **a
 | P15 | M7 | `is_full_mvr_lookup` — document empty-value behavior | Doc comment or operator guide |
 | P16 | M7 | Metered create-on-deliver path untested | `crm-metering` smoke |
 | P17 | M7 | `architecture.md` slice header bullets missing M7+ one-liners | Doc sync in M10 |
+| P18 | M8 | `partition_attribute_buckets` ignores per-entity contribution status | Pass `entity_id` or aggregate conservatively for batch `message` |
+| P19 | M8 | No smoke for batch step-2 identity-only (`found`, N rows, no attrs) | Optional M10 |
+| P20 | M8 | Sequential N×M specialist invocations on batch deliver | Document; parallelize only if perf requires |
+| P21 | M8 | `architecture.md` slice header bullets omit M8 batch line | Merge into M10 doc sync (with P17) |
 
-*Add rows as M8–M9 reviews land.*
+*Add rows as M9 review lands.*
 
 ---
 

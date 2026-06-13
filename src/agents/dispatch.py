@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from agents.context import get_context_builder, planner_context
+from agents.context import bind_from_record, get_context_builder, planner_context
 from agents.entity_growth import apply_registry_research_attribution, parse_research_fields_updated
 from agents.entity_registry import get_entity_registry, registry_entity_to_match
 from agents.entity_resolution import is_provisional_registry_match
@@ -387,6 +387,35 @@ def build_context_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, 
     return {"context": merged, "audit_log": logs}
 
 
+def _entity_ids_from_state(current: MyceliumGraphState) -> list[str]:
+    """Return all entity ids scheduled for this graph turn (batch deliver safe)."""
+    meta = _meta(current)
+    ids = [str(entity_id) for entity_id in (meta.get("ids") or []) if entity_id]
+    if ids:
+        return ids
+    if current.current_id:
+        return [str(current.current_id)]
+    matched = current.matched_records or []
+    return [str(row["id"]) for row in matched if row.get("id")]
+
+
+def _context_for_entity(
+    ctx: dict[str, Any] | None,
+    entity_id: str,
+    matched_records: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Narrow planner/build context to one entity row (batch step-2 deliver)."""
+    base = dict(ctx) if isinstance(ctx, dict) else {}
+    row = next(
+        (record for record in matched_records if str(record.get("id") or "") == entity_id),
+        None,
+    )
+    base["entity_id"] = entity_id
+    if row is not None:
+        base["bind"] = bind_from_record(row)
+    return base
+
+
 def invoke_specialists_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     """Sequentially invoke each required specialist with full context + owned fields."""
     current = _coerce(state)
@@ -403,51 +432,61 @@ def invoke_specialists_node(state: MyceliumGraphState | dict[str, Any]) -> dict[
     contributions: list[dict[str, Any]] = list(meta.get("contributions") or [])
     logs: list[str] = []
     registry = get_agent_registry()
+    entity_ids = _entity_ids_from_state(current)
+    matched = list(current.matched_records or [])
+    base_ctx = current.context if isinstance(current.context, dict) else {}
 
-    for agent_name in to_invoke:
-        fn = registry.get_agent_fn(agent_name)
-        if fn is None:
-            logs.append(f"invoke_specialists: skip {agent_name} (not registered).")
-            continue
-        target_fields = _target_fields_for_agent(
-            agent_name,
-            current.classifications or [],
-        )
-        enriched = current.model_copy(
-            update={
-                "context": current.context,
-                "current_id": current.current_id,
-                "target_fields": target_fields,
-                "route": agent_name,
-            },
-        )
-        result = fn(enriched)
-        contrib_audit = list(result.get("audit_log") or [])
-        specialist_contrib = result.get("specialist_contrib") or {}
-        researched_fields = list(specialist_contrib.get("researched_fields") or [])
-        if not researched_fields:
-            researched_fields = parse_research_fields_updated(contrib_audit)
-        contributions.append(
-            {
-                "agent": agent_name,
-                "target_fields": target_fields,
-                "specialist_contrib": specialist_contrib,
-                "response": result.get("response"),
-                "audit_log": contrib_audit,
-                "researched_fields": researched_fields,
-            },
-        )
-        logs.append(
-            f"invoke_specialists: invoked {agent_name} with context "
-            f"({len(target_fields)} owned field(s)).",
-        )
-        if contrib_audit:
-            logs.extend(contrib_audit)
+    for entity_id in entity_ids:
+        entity_ctx = _context_for_entity(base_ctx, entity_id, matched)
+        for agent_name in to_invoke:
+            fn = registry.get_agent_fn(agent_name)
+            if fn is None:
+                logs.append(f"invoke_specialists: skip {agent_name} (not registered).")
+                continue
+            target_fields = _target_fields_for_agent(
+                agent_name,
+                current.classifications or [],
+            )
+            enriched = current.model_copy(
+                update={
+                    "context": entity_ctx,
+                    "current_id": entity_id,
+                    "target_fields": target_fields,
+                    "route": agent_name,
+                },
+            )
+            result = fn(enriched)
+            contrib_audit = list(result.get("audit_log") or [])
+            specialist_contrib = result.get("specialist_contrib") or {}
+            researched_fields = list(specialist_contrib.get("researched_fields") or [])
+            if not researched_fields:
+                researched_fields = parse_research_fields_updated(contrib_audit)
+            contributions.append(
+                {
+                    "agent": agent_name,
+                    "entity_id": entity_id,
+                    "target_fields": target_fields,
+                    "specialist_contrib": specialist_contrib,
+                    "response": result.get("response"),
+                    "audit_log": contrib_audit,
+                    "researched_fields": researched_fields,
+                },
+            )
+            logs.append(
+                f"invoke_specialists: invoked {agent_name} for id={entity_id!r} "
+                f"({len(target_fields)} owned field(s)).",
+            )
+            if contrib_audit:
+                logs.extend(contrib_audit)
 
-    growth_logs = apply_registry_research_attribution(
-        entity_id=current.current_id,
-        contributions=contributions,
-    )
+    growth_logs: list[str] = []
+    for entity_id in entity_ids:
+        growth_logs.extend(
+            apply_registry_research_attribution(
+                entity_id=entity_id,
+                contributions=contributions,
+            ),
+        )
     logs.extend(growth_logs)
 
     if current.metering_write_entitlement and current.metering_accepted_quote:
