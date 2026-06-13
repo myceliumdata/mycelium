@@ -4,6 +4,16 @@
 
 **Context:** Program 1 (extended attribute provenance) shipped June 2026. Core hands-on (CLI `--provenance`, admin version history) is done. These three optional checks close the integration surface area.
 
+**Do not reset `crm` before these checks.** If you already ran Paul Murphy + `linkedin` and have version history, keep that grown state — checks 1 and 3 read existing specialist storage. A `./bin/refresh-example-network crm` wipe is only for first-time hard cutover or a deliberate clean slate; it deletes `agents/*/storage.json` and clears version history. **Check 2 only:** refresh `crm-metering` if that network was never bootstrapped (see below).
+
+**If you already reset `crm`:** one live query repopulates storage — run check 1’s status command after:
+
+```bash
+uv run mycelium query --network crm --entity-key "Paul Murphy" --attributes linkedin --provenance
+```
+
+(Requires `OPENAI_API_KEY` + `TAVILY_API_KEY` in `.env` for research.)
+
 **When all three pass:** Paul marks this file **CLEAR** (change status line below) or tells Grok “manual gate clear.” Grok may then lock Program 2 / queue the next slice.
 
 ---
@@ -30,7 +40,7 @@ uv run mycelium network status --network crm --entity "Paul Murphy" --json
 Confirms metering promise: `query_provenance` meter when `provenance=true`.
 
 ```bash
-# Refresh if needed
+# Only if crm-metering was never refreshed / is empty — do NOT refresh crm here
 ./bin/refresh-example-network crm-metering --yes
 
 # Quote step — expect quote_required (or inspect quote in response)
