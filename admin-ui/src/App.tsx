@@ -374,10 +374,10 @@ export default function App() {
       const attrs = parseAttributes(queryAttributes);
 
       let body: Parameters<typeof runQuery>[0];
-      if (deliveryId && quoteId) {
-        body = { delivery_id: deliveryId, quote_id: quoteId };
-      } else if (deliveryId && !name && !employer && attrs.length === 0) {
-        body = { delivery_id: deliveryId };
+      if (deliveryId) {
+        body = quoteId
+          ? { delivery_id: deliveryId, quote_id: quoteId }
+          : { delivery_id: deliveryId };
       } else {
         if (!name && !employer) {
           return;
@@ -398,7 +398,16 @@ export default function App() {
       setQueryLoading(true);
       setQueryError(null);
       try {
-        const result = await runQuery(body);
+        let result = await runQuery(body);
+        if (
+          result.outcome === "lookup_resolved" &&
+          result.delivery?.delivery_id &&
+          !deliveryId
+        ) {
+          const deliverId = String(result.delivery.delivery_id);
+          setQueryDeliveryId(deliverId);
+          result = await runQuery({ delivery_id: deliverId });
+        }
         setQueryResult(result);
         if (result.delivery?.delivery_id) {
           setQueryDeliveryId(String(result.delivery.delivery_id));
@@ -550,7 +559,7 @@ export default function App() {
           </summary>
           <form className="row-actions query-form" onSubmit={onQuerySubmit}>
             <input
-              type="search"
+              type="text"
               placeholder="Name (lookup)"
               value={queryName}
               onChange={(e) => setQueryName(e.target.value)}

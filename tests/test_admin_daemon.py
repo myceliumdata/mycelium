@@ -411,6 +411,36 @@ def test_admin_query_registry_bind(
 
 
 @pytest.mark.smoke
+def test_admin_query_identity_bind_without_attrs(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Full MVR lookup with no attrs issues delivery; step 2 creates provisional row."""
+    root = _populated_root(tmp_path)
+    client = _client_for_root(monkeypatch, tmp_path, root)
+
+    step1 = client.post(
+        "/query",
+        json={
+            "lookup": {"name": "Paul Murphy", "employer": "Ormi Labs"},
+        },
+    )
+    assert step1.status_code == 200
+    resolved = step1.json()
+    assert resolved["outcome"] == "lookup_resolved"
+    assert resolved["total_matches"] == 0
+    delivery_id = resolved["delivery"]["delivery_id"]
+
+    deliver = client.post("/query", json={"delivery_id": delivery_id})
+    assert deliver.status_code == 200
+    payload = deliver.json()
+    assert payload["outcome"] == "found"
+    assert payload["results"]
+    assert payload["results"][0]["name"] == "Paul Murphy"
+    assert payload["results"][0]["employer"] == "Ormi Labs"
+
+
+@pytest.mark.smoke
 def test_admin_query_passes_quote_id(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

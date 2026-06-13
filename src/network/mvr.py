@@ -117,15 +117,14 @@ def is_full_mvr_lookup(lookup: dict[str, str], mvr: MvrPolicy) -> bool:
 
 def can_create_on_zero_matches(
     lookup: dict[str, str],
-    requested_attributes: list[str],
+    requested_attributes: list[str] | None = None,
     *,
     mvr: MvrPolicy | None = None,
 ) -> bool:
-    """True when 0-match lookup may create on step-2 deliver (full MVR + attrs)."""
-    from models.state import normalized_requested_attributes as norm_attrs
-
+    """True when 0-match lookup may create on step-2 deliver (full MVR in lookup)."""
+    _ = requested_attributes
     policy = mvr if mvr is not None else load_mvr()
-    return is_full_mvr_lookup(lookup, policy) and bool(norm_attrs(requested_attributes))
+    return is_full_mvr_lookup(lookup, policy)
 
 
 def load_mvr(*, paths: NetworkPaths | None = None) -> MvrPolicy:

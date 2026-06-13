@@ -143,17 +143,31 @@ def test_partial_lookup_zero_matches_not_found(
 
 
 @pytest.mark.smoke
-def test_full_mvr_zero_matches_without_attrs_not_found(
+def test_full_mvr_zero_matches_without_attrs_create_on_deliver(
     crm_create_on_deliver_env: CoreStorage,
 ) -> None:
     _ = crm_create_on_deliver_env
-    response = run_query(
-        EntityQuery(
-            lookup={"name": "Brand New Person", "employer": "Never Seen Inc"},
-        ),
-    )
-    assert response.outcome == "not_found"
-    assert response.delivery is None
+    lookup = {"name": "Brand New Person", "employer": "Never Seen Inc"}
+    step1 = run_query(EntityQuery(lookup=lookup))
+    assert step1.outcome == "lookup_resolved"
+    assert step1.total_matches == 0
+    assert step1.delivery is not None
+
+    stored = get_delivery_store().get(step1.delivery.delivery_id)
+    assert stored is not None
+    assert stored.create_on_deliver is True
+    assert stored.requested_attributes == []
+
+    registry = get_entity_registry()
+    before_ids = {entity.id for entity in registry.list_entities()}
+
+    step2 = run_query(EntityQuery(delivery_id=step1.delivery.delivery_id))
+    assert step2.outcome == "found"
+    assert len(step2.results) == 1
+    created = step2.results[0]
+    assert created["id"] not in before_ids
+    assert created["name"] == "Brand New Person"
+    assert created["employer"] == "Never Seen Inc"
 
 
 @pytest.mark.smoke
