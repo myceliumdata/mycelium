@@ -85,20 +85,6 @@ def meter_query_provenance_usd() -> float:
     return _env_float("MYCELIUM_METER_QUERY_PROVENANCE_USD", 0.15)
 
 
-def _env_int(name: str, default: int) -> int:
-    raw = os.getenv(name, "").strip()
-    if not raw:
-        return default
-    try:
-        return int(raw)
-    except ValueError:
-        return default
-
-
-def quote_ttl_seconds() -> int:
-    return _env_int("MYCELIUM_QUOTE_TTL_SEC", 300)
-
-
 def quote_is_expired(quote: Quote, *, now: datetime | None = None) -> bool:
     """Return True when ``quote.expires_at`` is in the past (or unparseable)."""
     try:
@@ -214,7 +200,7 @@ class BuiltinQuoteProvider:
         entitlement_id = f"ent_{uuid.uuid4().hex[:12]}"
         return Quote(
             quote_id=f"q_{uuid.uuid4().hex[:12]}",
-            expires_at=(now + timedelta(seconds=quote_ttl_seconds())).isoformat(),
+            expires_at=(now + timedelta(hours=1)).isoformat(),
             workload=workload,
             cache_state=cache_state,
             funding_model=funding_model,
