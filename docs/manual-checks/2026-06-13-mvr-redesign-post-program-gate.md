@@ -2,11 +2,34 @@
 
 **Status:** ⏳ **PENDING** — run before `git push origin main`
 
-**Context:** MVR redesign shipped locally (13 commits ahead of `origin`). Target two-step protocol on CLI, MCP, admin API, and admin UI. Automated coverage: `./bin/ci-local` (352 smoke).
+**Context:** MVR redesign shipped locally (14 commits ahead of `origin`). Target two-step protocol on CLI, MCP, admin API, and admin UI. Automated coverage: `./bin/ci-local` (352 smoke).
 
 **Prereqs:** From framework repo root; `uv sync` done; `.env` with keys if a check needs live research (noted below).
 
-**Networks:** Use registered names (`crm`, `crm-metering`) if you have them, or `--network-dir examples/networks/<name>` for a self-contained run.
+**Networks:** Use **clean deployed** live roots under `~/mycelium-networks/` (or your configured paths) — **not** `--network-dir examples/networks/…`. The committed example tree is source material only; queries need a full deployed root (seed imported, `entities.json`, DB, categories).
+
+---
+
+## 0 — Clean deploy (required before checks 1–6)
+
+Wipe runtime state and recopy from `examples/networks/`:
+
+```bash
+./bin/refresh-example-network crm --yes
+./bin/refresh-example-network crm-metering --yes
+```
+
+Confirm registration:
+
+```bash
+uv run mycelium network list
+# expect: crm (default), crm-metering
+```
+
+**After refresh:**
+
+- **Admin (check 4):** `./bin/restart-admin crm` — daemon must bind the refreshed root.
+- **MCP (check 6):** restart the MCP server for `crm` so it picks up the clean network.
 
 ---
 
@@ -26,11 +49,11 @@ Confirms step-1 `lookup_resolved` + step-2 `found`.
 
 ```bash
 # Step 1 — copy delivery_id from JSON
-uv run mycelium query --network-dir examples/networks/crm \
+uv run mycelium query --network crm \
   --lookup-json '{"name": "Nichanan Kesonpat", "employer": "1k(x)"}'
 
 # Step 2 — paste delivery_id
-uv run mycelium query --network-dir examples/networks/crm \
+uv run mycelium query --network crm \
   --delivery-id <delivery_id-from-step-1>
 ```
 
@@ -47,11 +70,11 @@ Confirms R9 batch deliver without attrs.
 
 ```bash
 # Step 1
-uv run mycelium query --network-dir examples/networks/crm \
+uv run mycelium query --network crm \
   --lookup-json '{"employer": "645 Ventures"}'
 
 # Step 2
-uv run mycelium query --network-dir examples/networks/crm \
+uv run mycelium query --network crm \
   --delivery-id <delivery_id-from-step-1>
 ```
 
@@ -64,12 +87,9 @@ uv run mycelium query --network-dir examples/networks/crm \
 
 ## Check 3 — Metering arc: quote → deliver
 
-Confirms metered step-1 quote + step-2 `assembled`. **Needs API keys** for email research on a cold network.
+Confirms metered step-1 quote + step-2 `assembled` on the **refreshed** `crm-metering` network. **Needs API keys** for email research.
 
 ```bash
-# Bootstrap metering example if needed
-./bin/refresh-example-network crm-metering --yes
-
 # Step 1 — quote (attrs on step 1 only)
 uv run mycelium query --network crm-metering \
   --lookup-json '{"name": "Paul Murphy", "employer": "Acme Corp"}' \
@@ -83,9 +103,9 @@ uv run mycelium query --network crm-metering \
 **Pass criteria:**
 
 - Step 1: `outcome` = `quote_required`, `quote.quote_id` and `delivery.delivery_id` present
-- Step 2: `outcome` = `assembled`, `results[0].email` populated (or sensible pending if keys missing — note in gate)
+- Step 2: `outcome` = `assembled`, `results[0].email` populated (or note if keys missing)
 
-**Shortcut (mocked path):**
+**Shortcut (uses deployed crm-metering via default network in script):**
 
 ```bash
 ./bin/demo-metering-negotiation --network crm-metering
@@ -97,11 +117,10 @@ uv run mycelium query --network crm-metering \
 
 ## Check 4 — Admin UI two-step
 
-Confirms M10 admin-ui migration (P22).
+Confirms M10 admin-ui migration (P22) against the **deployed** CRM network.
 
 ```bash
 ./bin/restart-admin crm
-# or: ./bin/restart-admin examples/networks/crm
 ```
 
 Open **http://127.0.0.1:5173/** → **Run query**:
@@ -118,10 +137,10 @@ Open **http://127.0.0.1:5173/** → **Run query**:
 
 ## Check 5 — Legacy CLI rejected (optional)
 
-Confirms public gate.
+Confirms public gate on deployed CRM.
 
 ```bash
-uv run mycelium query --network-dir examples/networks/crm \
+uv run mycelium query --network crm \
   --entity-key "Nichanan Kesonpat" 2>&1 || true
 ```
 
@@ -131,7 +150,7 @@ uv run mycelium query --network-dir examples/networks/crm \
 
 ## Check 6 — MCP target protocol (optional)
 
-If you use Claude Desktop / MCP for `crm`:
+Restart MCP for **crm** after section 0 refresh. Then:
 
 **Step 1** `query_entity`:
 
@@ -151,7 +170,7 @@ If you use Claude Desktop / MCP for `crm`:
 
 **Pass:** step 1 `lookup_resolved`; step 2 `found` with Andrea in `results`.
 
-Fixture reference: `examples/networks/crm/queries/`.
+Fixture reference (payload shape only): `examples/networks/crm/queries/`.
 
 ---
 
@@ -163,4 +182,4 @@ Fixture reference: `examples/networks/crm/queries/`.
 
 ---
 
-*Created: 2026-06-13*
+*Created: 2026-06-13 · Updated: use clean deployed networks (refresh-example-network)*
