@@ -1,9 +1,11 @@
-# Cursor queue — ON HOLD
+# Cursor queue — ready for next slice
 
-**Do not add prompts to `next/` or start implementation until Paul clears the manual gate.**
+**Manual gate cleared** 2026-06-13. See [`docs/manual-checks/2026-06-12-program1-post-push-gate.md`](../../docs/manual-checks/2026-06-12-program1-post-push-gate.md).
 
-Gate: [`docs/manual-checks/2026-06-12-program1-post-push-gate.md`](../../docs/manual-checks/2026-06-12-program1-post-push-gate.md)
+**Before queuing Cursor work:** Paul + Grok lock scope in [`docs/plans/next-chunk-prep.md`](../../docs/plans/next-chunk-prep.md):
 
-Next work prep: [`docs/plans/next-chunk-prep.md`](../../docs/plans/next-chunk-prep.md)
+1. **MVR redesign** (research gate vs record lookup) — design session
+2. **Program 2** (MVR/entity, `bind_versions[]`) — Q1/Q2/Q4 decisions
+3. Or alternate track (Toolbox, research robustness, etc.)
 
-When Paul says “manual gate clear,” Grok removes or updates this file and queues the next slice in `next/`.
+Do not queue implementation until Paul + Grok agree which program/slice is next.

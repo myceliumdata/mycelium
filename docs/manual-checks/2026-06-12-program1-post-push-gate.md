@@ -1,6 +1,6 @@
 # Manual checks — gate before next code (Program 1 post-push)
 
-**Status:** ⛔ **BLOCKED** — Paul must complete these three checks before Grok queues Cursor prompts or we write more implementation code.
+**Status:** ✅ **CLEAR** (2026-06-13) — Paul completed checks 1–3 (CLI status, crm-metering provenance quote, MCP provenance).
 
 **Context:** Program 1 (extended attribute provenance) shipped June 2026. Core hands-on (CLI `--provenance`, admin version history) is done. These three optional checks close the integration surface area.
 
