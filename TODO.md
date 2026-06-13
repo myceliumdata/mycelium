@@ -206,6 +206,7 @@ Backend shipped in entity protocol Slices 1–8; operator-facing admin work defe
 
 ### Entity program — deferred follow-ups (Paul + Grok)
 
+- [ ] **MVR redesign — research gate vs record lookup (Paul + Grok)** — Original intent: MVR defines **minimum context to run extended-attribute research** (CRM: name alone insufficient; name + employer usually enough). Today `network.json` `mvr` is **conflated with entity resolution** (`name_source: entity_key`, `required_fields`, `binding` shape, `entity_unknown` short-circuit). Those concerns should be **orthogonal**: (1) how we **find** a record (`entity_key`, `id`, indexes, disambiguation) vs (2) what **bind/context** must be present before research. Revisit `src/network/mvr.py`, `EntityQuery` fields, Slice 3–4 resolution flow, and `name_source` naming. Design session before Program 2 or a dedicated fix slice.
 - [x] **Program 1 — Extended attribute provenance** — **Complete** (June 2026). Slices 1–3 + polish `1400` shipped: versioned storage, admin history, `QueryResponse.provenance`. Plan: [`docs/plans/attribute-provenance-program1.md`](docs/plans/attribute-provenance-program1.md). Program 2 (MVR/entity): [`attribute-provenance-and-storage.md`](docs/plans/attribute-provenance-and-storage.md).
 - [ ] **Search indices (follow-up)** — v1: `bind_index` (+ optional `name_index`) on `entities.json`, maintained atomically on write. **Later:** specialists maintain domain-specific indices (e.g. email → id, linkedin slug → id). Design session when scaling beyond CRM-scale entity counts.
 - [ ] **Operator attribute correction** — Research can return wrong values (e.g. Paul Murphy @ Ormi Labs → LinkedIn `paul-murphy-003360` is not Paul). Operators need to **view and update** extended attributes in specialist storage (LinkedIn, email, etc.): correct value, mark source as operator override, prevent naive re-research from overwriting without policy. Surfaces: admin UI edit on entity field drill-down (primary); optional CLI/MCP operator tool later. **Depends on** attribute provenance design (above). Ties to attribution (`attr_sources` / provenance) and re-research/staleness policy.
@@ -258,4 +259,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-11 (Toolbox queued; attribute provenance Program 1 in flight)
+Last updated: 2026-06-12 (Program 1 pushed; MVR redesign queued; manual gate open)

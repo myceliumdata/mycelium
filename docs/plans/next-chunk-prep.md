@@ -58,6 +58,12 @@ Once locked → Grok writes `attribute-provenance-program2.md` + queues slice pr
 
 ---
 
+## Design revisit (may precede or overlap Program 2)
+
+**MVR vs resolution** — Paul (June 2026): MVR should mean *minimum data to research*, not drive record lookup. Today `name_source` / `binding` / `required_fields` conflate the two. See `TODO.md` → *MVR redesign — research gate vs record lookup*. Lock in a design session before a fix slice.
+
+---
+
 ## Alternative / parallel tracks (if not Program 2)
 
 | Track | Why consider | Dependency |
