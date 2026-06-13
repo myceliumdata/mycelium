@@ -108,8 +108,11 @@ Implementation handoffs live in `prompts/cursor/done/<slug>/` with `prompt.md`, 
 |-----|-------|
 | [`attribute-provenance-program1.md`](attribute-provenance-program1.md) | **Complete** (June 2026) — extended attr `versions[]`; hard cutover; pushed |
 | [`attribute-provenance-program1-polish.md`](attribute-provenance-program1-polish.md) | Program 1 polish — done |
-| [`attribute-provenance-and-storage.md`](attribute-provenance-and-storage.md) | Architecture — entity/index/protocol split; **Program 2** next |
-| [`next-chunk-prep.md`](next-chunk-prep.md) | Handoff notes; Program 2 lock after MVR gate |
+| [`attribute-provenance-program2.md`](attribute-provenance-program2.md) | **In progress** — Slice 1 queued |
+| [`attribute-provenance-program2-slice1.md`](attribute-provenance-program2-slice1.md) | Unified write + taxonomy bootstrap |
+| [`attribute-provenance-and-storage.md`](attribute-provenance-and-storage.md) | Architecture — entity/index/protocol split |
+| [`attribute-provenance-program2.md`](attribute-provenance-program2.md) | **Active** — MVR in specialist storage; unified write (Slice 1 queued) |
+| [`next-chunk-prep.md`](next-chunk-prep.md) | Handoff notes; Program 2 locked |
 | [`../manual-checks/2026-06-12-program1-post-push-gate.md`](../manual-checks/2026-06-12-program1-post-push-gate.md) | **CLEAR** (2026-06-13) — Program 1 integration verified |
 | [`research-robustness-backlog.md`](research-robustness-backlog.md) | Post-2010 research hardening |
 | [`historical-assumptions-audit.md`](historical-assumptions-audit.md) | Phase 1 audit; Phase 2 cleanup recommendations |

@@ -1,12 +1,14 @@
 # Cursor queue
 
-**Active:** None — **MVR redesign program complete** (M1–M10 shipped)
+**Active:** **Program 2 — MVR / entity storage** Slice 1 (unified write)
 
-**Program:** [`docs/plans/mvr-redesign-program.md`](../../docs/plans/mvr-redesign-program.md)
+**Program:** [`docs/plans/attribute-provenance-program2.md`](../../docs/plans/attribute-provenance-program2.md)
 
-Program 2 (versioned bind storage) may start after Paul locks scope.
+**Prompt:** [`next/2026-06-13-2200-attribute-provenance-program2-slice1.md`](next/2026-06-13-2200-attribute-provenance-program2-slice1.md) — move to `in-progress/` when Cursor starts.
 
-**Git:** MVR stack on `origin/main` (June 2026). See `WORKFLOW.md` §4.
+MVR redesign (M1–M10) complete. Requirements locked June 2026.
+
+**Git:** `origin/main` current. See `WORKFLOW.md` §4.
 
 ---
 

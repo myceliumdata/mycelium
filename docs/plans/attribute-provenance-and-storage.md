@@ -1,7 +1,7 @@
 # Attribute provenance, storage, and entity model — architecture
 
-**Status:** Architecture doc (June 2026) — **Program 1 complete** (pushed June 2026); Program 2 next  
-**Program 1:** [`attribute-provenance-program1.md`](attribute-provenance-program1.md) — **shipped**  
+**Status:** Architecture doc (June 2026) — **Program 1 complete**; **Program 2 locked** — [`attribute-provenance-program2.md`](attribute-provenance-program2.md)  
+**Program 1:** [`attribute-provenance-program1.md`](attribute-provenance-program1.md) — **shipped**
 **Depends on:** Entity protocol Slices 1–8, seed elimination, Slice 8 attribution  
 **Blocks:** Operator attribute correction (after Program 2), full unified write API  
 **Related:** `TODO.md` — Program 1 queue, Program 2 MVR/entity
@@ -10,7 +10,7 @@
 
 ## Problem
 
-Today specialist storage holds one overwriteable blob per field (`value`, `sources[]`, `researched_at`). Registry rows mix **protocol metadata** (`validation_state`, `field_states`) with **person facts** (`name`, `employer`). Bind resolution uses `bind_index`, but MVR values are treated as registry-owned. There is no field-level history, operator corrections would clobber research, and `provenance=true` is metered but not yet returned on `QueryResponse`.
+Extended attributes use versioned specialist storage (Program 1). Registry rows still mix **protocol metadata** with **cached** MVR values (`name`, `employer`); canonical bind-field history is not yet in specialist storage (Program 2). Bind resolution uses `bind_index` plus per-field indexes (MVR redesign). Operator corrections and research overrides need a unified write path and taxonomy-owned MVR versions (Program 2); operator edit UI is Program 3.
 
 Paul Murphy LinkedIn (wrong post URL) is the motivating case: we need an audit trail of *what was stored, when, by whom, from which sources* — including `na` / `pending` states for debugging.
 
@@ -24,7 +24,7 @@ Paul Murphy LinkedIn (wrong post URL) is the motivating case: we need an audit t
 | P2 | **v1 timestamps:** one `at` per version; no per-source `retrieved_at` until the research layer captures it |
 | P3 | **Version all statuses:** `found`, `na`, `pending`, operator edits — not only successful `found` |
 | P4 | **Registry summary only:** keep `attr_sources` + `last_researched_at` as pointers; no full citation lists on `entities.json`. `last_researched_at` = current version `at` (last attempt, any status) |
-| P5 | **Bind corrections:** append `bind_versions[]` on the entity row; summary `employer` / `name` updated in place |
+| P5 | **Bind corrections:** append version in **specialist storage**; update cached `employer` / `name` on entity row (no `bind_versions[]` on entity row — locked June 2026) |
 | P6 | **Bind key change policy:** **replace** — update canonical value + `bind_index`; **do not** retain old bind-key aliases |
 | P7 | **Denormalized MVR cache:** keep current `name` / `employer` on the entity row for fast reads; not source of truth |
 | P8 | **Canonical values:** specialist-owned (or unified attribute store) with `versions[]`; entity row holds protocol + indexes + cache |
@@ -56,7 +56,6 @@ Paul Murphy LinkedIn (wrong post URL) is the motivating case: we need an audit t
 │ 3. Entity protocol record (small, graph/admin metadata)     │
 │    id, validation_state, field_states, source, created_at   │
 │    attr_sources, last_researched_at (summary pointers)        │
-│    bind_versions[] (bind-field audit trail)                 │
 │    cached name / employer (denormalized current)            │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -106,30 +105,16 @@ Category-level `meta.research_audit` may remain as a coarse pass log; field `ver
 
 ---
 
-## Bind / MVR attribute shape (registry entity)
+## Bind / MVR attribute shape (specialist storage)
 
-Summary fields stay on the entity row. History for bind-field corrections:
-
-```json
-"bind_versions": [
-  {
-    "at": "2026-06-12T14:00:00+00:00",
-    "field": "employer",
-    "value": "Ormi Labs, Inc.",
-    "previous_value": "Ormi",
-    "actor": { "kind": "operator", "note": "legal name" },
-    "sources": []
-  }
-]
-```
+**Canonical history** for bind fields lives in taxonomy-owned specialist `storage.json` (`versions[]`), same as extended attrs. The entity row holds **cached** `name` / `employer` only.
 
 **Bind key correction (replace policy):**
 
-1. Append `bind_versions[]` entry.
-2. Update cached `employer` on entity row.
-3. Update canonical `employer.versions[]` in owning specialist storage (professional).
-4. **Replace** `bind_index` entry: remove old normalized key, add new key → same `id`.
-5. Do **not** keep old bind key as alias.
+1. Append new version in owning specialist storage (`employer.versions[]`, etc.).
+2. Update cached value on entity row.
+3. **Replace** `bind_index` and per-field indexes: remove old normalized keys, add new → same `id`.
+4. Do **not** keep old bind key as alias.
 
 Duplicate-bind collision (two entities, same new key) is a separate UX/policy problem; v1 fails loud or surfaces operator disambiguation.
 
@@ -139,12 +124,12 @@ Duplicate-bind collision (two entities, same new key) is a separate UX/policy pr
 
 MVR fields can be **specialist-owned** like any other attribute:
 
-| MVR field | Owning specialist (CRM today) | Validation today |
-|-----------|------------------------------|------------------|
-| `name` | demographic | Inline rules in `validate_entity` |
-| `employer` | professional | Inline rules in `validate_entity` |
+| MVR field | Owning specialist (CRM) | Resolution |
+|-----------|-------------------------|------------|
+| `name` | `demographic_specialist` | `attribute_map["name"]` → category → agent |
+| `employer` | `professional_specialist` | `attribute_map["employer"]` → category → agent |
 
-**v1:** keep inline rule checks in `validate_entity`; specialists store values + versions when written. **Later:** optional full specialist invoke for MVR validation.
+**v1:** keep inline rule checks in `validate_entity`; specialists store values + versions when written via unified write API. **Later:** optional full specialist invoke for MVR validation.
 
 `validation_state` / `field_states` remain on the entity protocol record regardless of where values live.
 
@@ -179,7 +164,7 @@ Direct JSON edits bypassing this path are unsupported for operators once write U
 
 See [`attribute-provenance-program1.md`](attribute-provenance-program1.md) for Program 1 slices 1–3.
 
-Program 2 (next): MVR canonical storage, `bind_versions`, unified bind write API; generalize `bind_provisional` for arbitrary `mvr.bind_fields`; optional target-path `payment_required` test coverage.  
+Program 2 (in progress): MVR canonical storage in specialist `versions[]`, unified bind write API, taxonomy ownership, index replace policy, research operator deference in prompts. See [`attribute-provenance-program2.md`](attribute-provenance-program2.md).
 Program 3 (TBD): Operator write surfaces.
 
 ---
@@ -194,15 +179,15 @@ Program 3 (TBD): Operator write surfaces.
 
 ---
 
-## Open questions (Program 2 — before lock)
+## Locked decisions (Program 2 — June 2026)
 
-| # | Question | Default if silent |
-|---|----------|-----------------|
-| Q1 | `bind_versions[]` on entity row vs sidecar `entities_history.json`? | On entity row |
-| Q2 | MVR → specialist mapping: keep hardcoded CRM map or drive from `network.json`? | Hardcoded v1; network.json later |
-| Q3 | `provenance=true` response shape: parallel `provenance` block vs nested under `results[]`? | **Locked for Program 1** — parallel top-level block |
-| Q4 | Re-research after operator override: block, warn, or allow with new version? | Block overwrite of `actor: operator` current without explicit force |
-| Q5 | Migrate existing `flat_json_v1` records? | **Locked** — no migration; hard cutover (refresh / wipe storage) |
+| # | Question | Locked answer |
+|---|----------|---------------|
+| Q1 | Bind-field history location? | **Specialist `versions[]` only** — no `bind_versions[]` on entity row |
+| Q2 | MVR → specialist mapping? | **`categories.json` `attribute_map`** (taxonomy); `mvr.bind_fields` = required bind set |
+| Q3 | `provenance=true` response shape? | **Locked Program 1** — parallel top-level block; Slice 2 adds bind fields |
+| Q4 | Re-research after operator override? | **Allow** new versions; **prompt deference** when current is `actor: operator` |
+| Q5 | Migrate legacy registry-only MVR? | **Hard cutover** — refresh / wipe storage |
 
 ---
 
@@ -211,15 +196,16 @@ Program 3 (TBD): Operator write surfaces.
 | Program | Scope | Status |
 |---------|--------|--------|
 | **1 — Provenance** | Extended attrs: `versions[]`, research append, admin read, `provenance=true` | **Complete** (June 2026) — [`attribute-provenance-program1.md`](attribute-provenance-program1.md) |
-| **2 — MVR / entity** | Specialist-owned MVR, `bind_versions[]`, index replace policy | **Next** — see [`next-chunk-prep.md`](next-chunk-prep.md) |
+| **2 — MVR / entity** | Specialist-owned MVR, unified write, taxonomy ownership | **In progress** — [`attribute-provenance-program2.md`](attribute-provenance-program2.md) |
 | **3 — Operator write** | Admin edit, re-research policy | After Program 2 |
 
 ---
 
 ## Paul review checklist (Program 2 architecture)
 
-- [ ] Three-layer model (canonical / indexes / protocol) matches mental model
-- [ ] Replace bind-key policy (no aliases) acceptable for CRM and future networks
-- [ ] `bind_versions` on entity row vs sidecar
-- [ ] Open questions Q1–Q2, Q4
-- [ ] Program 2 slice map after Program 1 ships
+- [x] Three-layer model (canonical / indexes / protocol) matches mental model
+- [x] Replace bind-key policy (no aliases) acceptable for CRM and future networks
+- [x] No entity-level bind history — specialist `versions[]` only
+- [x] Taxonomy ownership via `attribute_map`
+- [x] Research allows override with prompt deference for operator versions
+- [x] Program 2 slice map (3 slices) — see [`attribute-provenance-program2.md`](attribute-provenance-program2.md)
