@@ -129,9 +129,12 @@ When Cursor finishes:
 | Rule | Detail |
 |------|--------|
 | **Read-only review** | Grok **must not write or edit source code** during slice review — no “fixing” failing CI, no patching missing implementation. Exception: Paul explicitly authorizes Grok to implement in that message. |
-| **Cursor implements** | Blocking failures (CI red, incomplete delivery, spec miss) → **fix / remedial slice** in `prompts/cursor/next/` for Cursor — **before** the next planned slice. Do not queue the next slice until the fix slice is approved (unless Paul waives). |
+| **Full diff review** | Before any **Approved** verdict, Grok reads the **entire** slice diff — every changed and new file. Use `git diff` (staged + unstaged + untracked via the WORKFLOW local-diff recipe) or read each file in the changed-files list. Spot-checking key files alone is **not** sufficient. |
+| **Substantive critique** | Grok applies real engineering judgment: architecture fit, edge cases, naming, duplication, scope creep, test gaps, and whether the approach is the **best** option — not merely “CI green.” **Push back** when Cursor’s implementation is sub-optimal; say why and what to do instead. Blocking design/spec issues → **Not Approved** + fix slice; improvements that can wait → **Approved + polish nits** with concrete rows in `review.md`. |
+| **Cursor implements** | Blocking failures (CI red, incomplete delivery, spec miss, unacceptable design) → **fix / remedial slice** in `prompts/cursor/next/` for Cursor — **before** the next planned slice. Do not queue the next slice until the fix slice is approved (unless Paul waives). |
 | **Verify delivery** | Compare `output.md` claims to `git diff` / changed files. Tests-only or docs-only delivery when the prompt required code is **Not Approved**. |
 | **Run CI** | `./bin/ci-local` before any **Approved** verdict (mandatory). |
+| **Large slices** | When the diff is large (graph, state, metering, multi-module), Grok may additionally run the **`/review` skill** (reviewer subagent on the full diff) and fold findings into `review.md`. That supplements — does not replace — Grok’s own full read. |
 
 ```bash
 ./bin/ci-local
@@ -142,6 +145,24 @@ Mirrors `.github/workflows/ci.yml` — do not rely on `pytest -q` alone; CI also
 Record pass/fail and counts in `review.md` (e.g. `316 smoke passed`, ruff clean, admin-ui build ok). If CI fails, verdict is **Not Approved** — queue a fix slice; Grok does **not** patch code to green CI.
 
 Optionally also run `LANGCHAIN_TRACING_V2=false uv run pytest -q` for major slices; that is extra, not a substitute for `ci-local`.
+
+#### `review.md` checklist (Grok fills per slice)
+
+Include these sections (can be brief; “Pass” / “N/A” is fine when true):
+
+| Section | What to confirm |
+|---------|-----------------|
+| **CI** | `./bin/ci-local` table (mandatory). |
+| **Delivery** | `output.md` matches actual files; no missing implementation. |
+| **Diff reviewed** | List files read; note if `/review` subagent was used. |
+| **Spec compliance** | Slice prompt exit criteria — table with Pass/Fail. |
+| **Legacy / dual-path** | Unchanged behavior where the prompt required it. |
+| **Tests** | New/changed tests cover the slice; gaps called out. |
+| **Design critique** | What is strong; what is sub-optimal (even if approved). |
+| **Nits** | Non-blocking polish rows, or “none.” |
+| **For Paul** | Commit message; next slice queued; push reminder (local only until program done). |
+
+Verdict line at top: **Approved** / **Approved + polish nits** / **Approved + fix slice** (rare — open blocking nit but Paul waived advance) / **Not Approved**.
 
 #### Git — commit and push (Paul, June 2026)
 
@@ -224,8 +245,10 @@ To see what needs attention:
 We may add lightweight tooling later (e.g. a script or GitHub Action) to surface pending reviews, but for now the absence of `review.md` is the signal.
 
 When reviewing:
-- Read the `output.md` and verify against the actual diff
-- Grok adds `review.md` with verdict, CI results, and fix-slice path if needed
+- Read `output.md`, then the **full diff** (every changed/new file)
+- Run `./bin/ci-local`; record results in `review.md` using the checklist above
+- Critique design quality — approve only when spec **and** approach are acceptable; push back when sub-optimal
+- Grok adds `review.md` with verdict, CI results, design critique, and fix-slice path if needed
 - Grok commits locally on **`mycelium`** when **Approved**; does **not** push unless Paul asks
 - If changes are needed, create a fix / remedial prompt in `prompts/cursor/next/` (Grok does not edit source)
 
