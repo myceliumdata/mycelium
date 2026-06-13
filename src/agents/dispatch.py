@@ -25,6 +25,7 @@ from agents.responses import (
     response_entity_unresolved,
     response_entity_validated,
     response_found,
+    response_lookup_resolved,
     response_not_found,
     response_principal_required,
     response_payment_required,
@@ -32,6 +33,7 @@ from agents.responses import (
     response_research_gated,
     response_validation_failed,
 )
+from agents.target_resolve import issue_target_delivery, resolve_target_step1
 from agents.supervisor import (
     _collect_specialists_to_invoke,
     _identity_records_from_match,
@@ -41,6 +43,7 @@ from models.state import (
     EntityQuery,
     MyceliumGraphState,
     QueryResponse,
+    entity_query_is_target_resolve_step,
     normalized_requested_attributes,
 )
 
@@ -55,6 +58,44 @@ def _meta(state: MyceliumGraphState) -> dict[str, Any]:
     ctx = state.context if isinstance(state.context, dict) else {}
     meta = ctx.get("_meta")
     return meta if isinstance(meta, dict) else {}
+
+
+def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
+    """Step-1 target protocol: id/lookup → lookup_resolved + delivery_id (M4)."""
+    current = _coerce(state)
+    query = current.query
+    id_kwargs = {
+        "thread_id": current.invocation_thread_id,
+        "trace_id": current.invocation_trace_id,
+    }
+    if not entity_query_is_target_resolve_step(query):
+        return {"audit_log": ["target_resolve: legacy entity_key path — defer to supervisor."]}
+
+    resolved = resolve_target_step1(query)
+    if resolved.kind != "resolved" or not resolved.entity_ids:
+        if (query.id or "").strip():
+            message = f"No record found for id {(query.id or '').strip()!r}."
+        else:
+            message = f"No records found for lookup {query.lookup!r}."
+        return {
+            "response": response_not_found(query, message=message, **id_kwargs),
+            "audit_log": ["target_resolve: not_found (no delivery issued)."],
+        }
+
+    delivery = issue_target_delivery(query, resolved.entity_ids)
+    total = len(resolved.entity_ids)
+    return {
+        "response": response_lookup_resolved(
+            query,
+            total_matches=total,
+            delivery=delivery,
+            **id_kwargs,
+        ),
+        "audit_log": [
+            f"target_resolve: lookup_resolved total_matches={total} "
+            f"delivery_id={delivery.delivery_id!r}.",
+        ],
+    }
 
 
 def validate_entity_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
@@ -260,6 +301,9 @@ def _attach_provenance(
 def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     """Produce final QueryResponse from entity matches and specialist contributions."""
     current = _coerce(state)
+    if current.response is not None:
+        return {"audit_log": ["assemble_response: passthrough (preset response)."]}
+
     query = current.query
     thread_id = current.invocation_thread_id
     trace_id = current.invocation_trace_id

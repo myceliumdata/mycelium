@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from models.state import (
+    DeliveryPayload,
     EntityKeySuggestion,
     EntityQuery,
     QueryResponse,
@@ -365,13 +366,15 @@ def response_not_found(
     specialist: str | None = None,
     trace_id: str | None = None,
     thread_id: str | None = None,
+    message: str | None = None,
 ) -> QueryResponse:
-    message, _buckets = build_query_message(
-        query,
-        records=[],
-        classifications=classifications or [],
-        contributions=[],
-    )
+    if message is None:
+        message, _buckets = build_query_message(
+            query,
+            records=[],
+            classifications=classifications or [],
+            contributions=[],
+        )
     return _make_response(
         results=[],
         message=message,
@@ -381,6 +384,35 @@ def response_not_found(
             outcome="not_found",
             **({"classifications": classifications} if classifications else {}),
             **({"specialist": specialist} if specialist else {}),
+        ),
+        trace_id=trace_id,
+        thread_id=thread_id,
+    )
+
+
+def response_lookup_resolved(
+    query: EntityQuery,
+    *,
+    total_matches: int,
+    delivery: DeliveryPayload,
+    trace_id: str | None = None,
+    thread_id: str | None = None,
+) -> QueryResponse:
+    if (query.id or "").strip():
+        message = f"Resolved {total_matches} match(es) for id."
+    else:
+        message = f"Resolved {total_matches} matches for lookup."
+    return QueryResponse(
+        outcome="lookup_resolved",
+        total_matches=total_matches,
+        delivery=delivery,
+        results=[],
+        message=message,
+        debug=debug_for_query(
+            query,
+            outcome="lookup_resolved",
+            total_matches=total_matches,
+            delivery_id=delivery.delivery_id,
         ),
         trace_id=trace_id,
         thread_id=thread_id,

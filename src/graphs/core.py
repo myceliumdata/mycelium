@@ -1,7 +1,8 @@
 """Core Mycelium LangGraph: registry resolution, context build, specialists, assembly.
 
-Flow: START → supervisor → validate_entity → metering_gate → build_context (if specialists)
-→ invoke_specialists → assemble_response → END; or metering_gate → assemble_response.
+Flow: START → target_resolve → supervisor → validate_entity → metering_gate → build_context (if specialists)
+→ invoke_specialists → assemble_response → END; or target_resolve → assemble_response when step-1 target
+resolve completes; or metering_gate → assemble_response.
 
 The default uses AsyncSqliteSaver (aiosqlite) so LangGraph Studio / langgraph dev
 (ASGI) can use ainvoke cleanly. The MCP server forces the sync SqliteSaver path
@@ -30,6 +31,7 @@ from agents.dispatch import (
     assemble_response_node,
     build_context_node,
     invoke_specialists_node,
+    target_resolve_node,
     validate_entity_node,
 )
 from agents.metering_gate import metering_gate_node
@@ -46,6 +48,7 @@ _CHECKPOINT_MSGPACK_ALLOWLIST: tuple[tuple[str, str], ...] = (
     ("models.state", "EntityKeySuggestion"),
 )
 
+AfterTargetResolve = Literal["supervisor", "assemble_response"]
 AfterMetering = Literal["build_context", "assemble_response"]
 _compiled_graph: CompiledStateGraph | None = None
 _checkpointer_ctx: AsyncSqliteSaver | SqliteSaver | None = None
@@ -142,6 +145,19 @@ def _specialists_planned(state: MyceliumGraphState) -> bool:
     return bool(planned)
 
 
+def _route_after_target_resolve(
+    state: MyceliumGraphState | dict[str, Any],
+) -> AfterTargetResolve:
+    current = (
+        state
+        if isinstance(state, MyceliumGraphState)
+        else MyceliumGraphState.model_validate(state)
+    )
+    if current.response is not None:
+        return "assemble_response"
+    return "supervisor"
+
+
 def _route_after_metering(
     state: MyceliumGraphState | dict[str, Any],
 ) -> AfterMetering:
@@ -173,6 +189,7 @@ def build_core_graph(
     """
     graph: StateGraph = StateGraph(MyceliumGraphState)
 
+    graph.add_node("target_resolve", target_resolve_node)
     graph.add_node("supervisor", supervisor_agent)
     graph.add_node("validate_entity", validate_entity_node)
     graph.add_node("metering_gate", metering_gate_node)
@@ -180,7 +197,15 @@ def build_core_graph(
     graph.add_node("invoke_specialists", invoke_specialists_node)
     graph.add_node("assemble_response", assemble_response_node)
 
-    graph.add_edge(START, "supervisor")
+    graph.add_edge(START, "target_resolve")
+    graph.add_conditional_edges(
+        "target_resolve",
+        _route_after_target_resolve,
+        {
+            "supervisor": "supervisor",
+            "assemble_response": "assemble_response",
+        },
+    )
     graph.add_edge("supervisor", "validate_entity")
     graph.add_edge("validate_entity", "metering_gate")
     graph.add_conditional_edges(

@@ -96,7 +96,7 @@ class EntityQuery(BaseModel):
         default="",
         description=(
             "Deprecated legacy resolve key (registry UUID or display name). "
-            "Prefer id or lookup for step 1; runtime still honors this until M4."
+            "Prefer id or lookup for step 1; runtime still honors this until M7."
         ),
     )
     binding: dict[str, str] = Field(
@@ -160,6 +160,13 @@ class EntityQuery(BaseModel):
 def entity_query_is_delivery_step(query: EntityQuery) -> bool:
     """Return True when the query is step 2 (deliver via delivery_id)."""
     return bool((query.delivery_id or "").strip())
+
+
+def entity_query_is_target_resolve_step(query: EntityQuery) -> bool:
+    """Return True for step-1 target protocol (id or lookup), not legacy entity_key."""
+    if entity_query_is_delivery_step(query):
+        return False
+    return bool((query.id or "").strip()) or bool(query.lookup)
 
 
 class QueryResponse(BaseModel):

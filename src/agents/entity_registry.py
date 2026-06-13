@@ -78,17 +78,30 @@ class EntityRegistry:
     def __init__(self, path: Path | None = None) -> None:
         self.path = path if path is not None else _default_entities_path()
         self._data = EntitiesDocument()
+        self._field_indexes: dict[str, dict[str, list[str]]] = {}
         self._load()
+
+    def _rebuild_field_indexes(self) -> None:
+        from agents.field_index import build_field_indexes
+        from network.mvr import load_mvr
+
+        mvr = load_mvr()
+        self._field_indexes = build_field_indexes(
+            self._data.entities,
+            mvr.bind_fields,
+        )
 
     def _load(self) -> None:
         if not self.path.is_file():
             self._data = EntitiesDocument()
+            self._rebuild_field_indexes()
             return
         try:
             raw = json.loads(self.path.read_text(encoding="utf-8"))
             self._data = EntitiesDocument.model_validate(raw)
         except (OSError, json.JSONDecodeError, ValueError):
             self._data = EntitiesDocument()
+        self._rebuild_field_indexes()
 
     def _save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -108,9 +121,28 @@ class EntityRegistry:
             except OSError:
                 pass
             raise
+        self._rebuild_field_indexes()
 
     def reload(self) -> None:
         self._load()
+
+    def lookup_by_target_lookup(self, lookup: dict[str, str]) -> list[str]:
+        """AND-match registry rows by MVR bind fields (exact normalized index)."""
+        from agents.field_index import intersect_lookup
+        from network.mvr import load_mvr
+
+        return intersect_lookup(
+            self._field_indexes,
+            lookup,
+            load_mvr().bind_fields,
+        )
+
+    def field_indexes(self) -> dict[str, dict[str, list[str]]]:
+        """Snapshot of in-memory per-field inverted indexes (tests/diagnostics)."""
+        return {
+            field: {value: list(ids) for value, ids in bucket.items()}
+            for field, bucket in self._field_indexes.items()
+        }
 
     def entity_count(self) -> int:
         return len(self._data.entities)

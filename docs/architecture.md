@@ -61,7 +61,7 @@ Data addition via the public API was removed in the June 2026 refactor (tasks 10
 
 - **Optional fixture:** `<network_root>/seed.json` — static `people` array for bootstrap only (not read at query time). Committed CRM example: `examples/networks/crm/seed.json`. Import via `./bin/refresh-example-network crm` or `mycelium network create` when the file is present (`network/seed_import.py` → `entities.json`).
 - **Transform (maintainers):** `examples/networks/crm/prepare_seed.py` builds example `seed.json` from a CRM source file (name + employer only; no legacy `id` in the file). Full prototype data: git tag `prototype`.
-- **Runtime store:** `entities.json` holds canonical entities (uuid4 ids, `bind_index`). `ensure_bound_entity` assigns stable ids on import; supervisor resolves lookups via `lookup_entities_by_key` / `resolve_entity` (registry only). **Target:** per-field indexes + `lookup` map resolution (M4); identity references use `id` only (R1).
+- **Runtime store:** `entities.json` holds canonical entities (uuid4 ids, `bind_index`, per-field indexes). `ensure_bound_entity` assigns stable ids on import; target step-1 uses `lookup` AND indexes (M4); legacy queries still use `resolve_entity` / `entity_key` until M7.
 - **No `core_data` specialist** — identity fields (name, employer) come from the registry; specialists may override them later.
 
 ### Supervisor and graph (current)
@@ -207,10 +207,12 @@ Future (not v1): per-network LangSmith project names, optional credential profil
 
 ## MVR redesign (target protocol)
 
-**Status:** Locked design; **runtime still uses legacy `entity_key` / `binding`** until slices M4–M9 ship.  
+**Status:** Locked design; **dual-path runtime** — step-1 `id`/`lookup` via `target_resolve` (M4); legacy `entity_key` until M7–M9.  
 **Program:** [`docs/plans/mvr-redesign-program.md`](plans/mvr-redesign-program.md) · **Operator guide:** [`docs/plans/mvr-best-practices.md`](plans/mvr-best-practices.md) · **Examples:** [`docs/plans/mvr-redesign-entity-query-examples.md`](plans/mvr-redesign-entity-query-examples.md)
 
-**M3 (models):** `EntityQuery` and `QueryResponse` accept target fields (`id`, `lookup`, `delivery_id`, `total_matches`, `delivery`, outcome `lookup_resolved`) with Pydantic step-1/step-2 validation. Legacy `entity_key` remains for smoke tests and the CLI; graph resolve/deliver still uses the legacy path until M4.
+**M3 (models):** `EntityQuery` and `QueryResponse` accept target fields with Pydantic step-1/step-2 validation.
+
+**M4 (resolve):** Per-field inverted indexes on registry MVR bind fields; graph `target_resolve` node returns `lookup_resolved` + `delivery_id` for step-1 `id`/`lookup`. Step-2 deliver (M5) and metering quote on step 1 (M6) not wired yet.
 
 **Program 2** (versioned bind storage / `bind_versions[]`) is **blocked** until this program completes.
 
