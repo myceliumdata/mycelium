@@ -152,6 +152,11 @@ def test_full_mvr_zero_matches_without_attrs_create_on_deliver(
     assert step1.outcome == "lookup_resolved"
     assert step1.total_matches == 0
     assert step1.delivery is not None
+    assert step1.delivery.create_on_deliver is True
+    assert "step 2 will create" in step1.message
+
+    payload = step1.public_dict()
+    assert payload["delivery"]["create_on_deliver"] is True
 
     stored = get_delivery_store().get(step1.delivery.delivery_id)
     assert stored is not None

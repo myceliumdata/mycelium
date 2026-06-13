@@ -616,6 +616,9 @@ export default function App() {
               {queryResult.total_matches != null && (
                 <p className="muted">
                   total_matches: {queryResult.total_matches}
+                  {queryResult.delivery?.create_on_deliver === true
+                    ? " (full MVR)"
+                    : ""}
                 </p>
               )}
               {queryResult.delivery?.delivery_id &&
@@ -626,7 +629,7 @@ export default function App() {
                     delivery_id:{" "}
                     <code>{String(queryResult.delivery.delivery_id)}</code>
                     {" · "}
-                    Run again to deliver (delivery id is pre-filled).
+                    Run again to deliver.
                   </p>
                 )}
               {queryResult.required_fields.length > 0 && (

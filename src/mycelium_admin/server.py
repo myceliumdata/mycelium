@@ -142,7 +142,7 @@ def create_app() -> FastAPI:
         )
         thread_id = body.thread_id or f"admin-{uuid.uuid4()}"
         response: QueryResponse = run_query(query, thread_id=thread_id)
-        return response.model_dump()
+        return response.public_dict()
 
     _mount_admin_ui(app)
     return app

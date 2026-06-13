@@ -177,7 +177,4 @@ def _quote_payload_with_delivery(quote: Quote, scope: DeliveryScope) -> dict[str
 
 
 def delivery_payload_from_scope(scope: DeliveryScope) -> DeliveryPayload:
-    return DeliveryPayload(
-        delivery_id=scope.delivery_id,
-        expires_at=scope.expires_at,
-    )
+    return DeliveryPayload.from_scope(scope)

@@ -451,10 +451,23 @@ def response_lookup_resolved(
     trace_id: str | None = None,
     thread_id: str | None = None,
 ) -> QueryResponse:
-    if (query.id or "").strip():
-        message = f"Resolved {total_matches} match(es) for id."
+    if delivery.create_on_deliver:
+        message = (
+            "No registry match. Full MVR lookup — step 2 will create a "
+            "provisional entity, then deliver."
+        )
+    elif (query.id or "").strip():
+        match_word = "match" if total_matches == 1 else "matches"
+        message = (
+            f"{total_matches} registry {match_word} for id. "
+            "Use delivery_id on step 2 to deliver."
+        )
+    elif total_matches == 1:
+        message = "1 registry match. Use delivery_id on step 2 to deliver."
     else:
-        message = f"Resolved {total_matches} matches for lookup."
+        message = (
+            f"{total_matches} registry matches. Use delivery_id on step 2 to deliver."
+        )
     return QueryResponse(
         outcome="lookup_resolved",
         total_matches=total_matches,

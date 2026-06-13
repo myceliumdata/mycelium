@@ -429,6 +429,8 @@ def test_admin_query_identity_bind_without_attrs(
     resolved = step1.json()
     assert resolved["outcome"] == "lookup_resolved"
     assert resolved["total_matches"] == 0
+    assert resolved["delivery"]["create_on_deliver"] is True
+    assert "step 2 will create" in resolved["message"]
     delivery_id = resolved["delivery"]["delivery_id"]
 
     deliver = client.post("/query", json={"delivery_id": delivery_id})
@@ -438,6 +440,28 @@ def test_admin_query_identity_bind_without_attrs(
     assert payload["results"]
     assert payload["results"][0]["name"] == "Paul Murphy"
     assert payload["results"][0]["employer"] == "Ormi Labs"
+
+
+@pytest.mark.smoke
+def test_admin_query_existing_match_omits_create_on_deliver(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Step-1 JSON for an existing registry row omits delivery.create_on_deliver."""
+    root = _populated_root(tmp_path)
+    client = _client_for_root(monkeypatch, tmp_path, root)
+
+    response = client.post(
+        "/query",
+        json={"lookup": {"name": "Nichanan Kesonpat"}},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["outcome"] == "lookup_resolved"
+    assert payload["total_matches"] >= 1
+    assert "create_on_deliver" not in payload.get("delivery", {})
+    assert "registry match" in payload["message"]
+    assert "step 2" in payload["message"]
 
 
 @pytest.mark.smoke

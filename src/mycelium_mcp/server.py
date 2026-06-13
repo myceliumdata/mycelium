@@ -94,7 +94,7 @@ def _parse_query_payload(query_json: str) -> tuple[EntityQuery, str]:
 
 def _serialize_response(response: QueryResponse) -> str:
     """Return QueryResponse JSON including trace_id and thread_id."""
-    return response.model_dump_json(indent=2)
+    return response.public_json()
 
 
 def _neutral_json_schema(model: type[EntityQuery] | type[QueryResponse] | type[IdentityRecord]) -> dict[str, Any]:

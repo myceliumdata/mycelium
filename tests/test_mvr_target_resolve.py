@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import shutil
 import uuid
 from pathlib import Path
@@ -179,8 +178,43 @@ def test_legacy_entity_key_still_uses_supervisor_path(crm_target_resolve_env: Co
 def test_lookup_resolved_serializes_to_json(crm_target_resolve_env: CoreStorage) -> None:
     _ = crm_target_resolve_env
     response = run_query(EntityQuery(lookup={"employer": "Accel"}))
-    payload = json.loads(response.model_dump_json())
+    payload = response.public_dict()
     assert payload["outcome"] == "lookup_resolved"
     assert payload["total_matches"] == 1
     assert payload["results"] == []
     assert payload["delivery"]["delivery_id"].startswith("d_")
+    assert "create_on_deliver" not in payload["delivery"]
+    assert "registry match" in response.message
+    assert "step 2" in response.message
+
+
+@pytest.mark.smoke
+def test_create_pending_step1_json_has_create_on_deliver(
+    crm_target_resolve_env: CoreStorage,
+) -> None:
+    _ = crm_target_resolve_env
+    response = run_query(
+        EntityQuery(
+            lookup={"name": "Road Runner", "employer": "Acme Corp"},
+        ),
+    )
+    assert response.outcome == "lookup_resolved"
+    assert response.total_matches == 0
+    assert response.delivery is not None
+    assert response.delivery.create_on_deliver is True
+    payload = response.public_dict()
+    assert payload["delivery"]["create_on_deliver"] is True
+    assert "step 2 will create" in response.message
+
+
+@pytest.mark.smoke
+def test_existing_match_step1_json_omits_create_on_deliver(
+    crm_target_resolve_env: CoreStorage,
+) -> None:
+    _ = crm_target_resolve_env
+    response = run_query(EntityQuery(lookup={"name": "Nichanan Kesonpat"}))
+    assert response.outcome == "lookup_resolved"
+    assert response.total_matches >= 1
+    payload = response.public_dict()
+    assert "create_on_deliver" not in payload.get("delivery", {})
+    assert "registry match" in response.message

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-
 import pytest
 from pydantic import ValidationError
 
@@ -107,13 +105,14 @@ def test_query_response_lookup_resolved_serializes() -> None:
         message="237 matches; use delivery_id to fetch results.",
         debug="outcome='lookup_resolved'; total_matches=237",
     )
-    payload = json.loads(response.model_dump_json())
+    payload = response.public_dict()
     assert payload["outcome"] == "lookup_resolved"
     assert payload["total_matches"] == 237
     assert payload["delivery"] == {
         "delivery_id": "d_abc123",
         "expires_at": "2026-06-13T12:05:00Z",
     }
+    assert "create_on_deliver" not in payload["delivery"]
     assert payload["results"] == []
 
 

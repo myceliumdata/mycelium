@@ -81,7 +81,4 @@ def issue_target_delivery(
         create_on_deliver=create_on_deliver,
     )
     get_delivery_store().put(scope)
-    return DeliveryPayload(
-        delivery_id=scope.delivery_id,
-        expires_at=scope.expires_at,
-    )
+    return DeliveryPayload.from_scope(scope)

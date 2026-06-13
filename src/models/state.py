@@ -52,6 +52,24 @@ class DeliveryPayload(BaseModel):
 
     delivery_id: str = Field(description="Opaque delivery scope id from step 1 (d_ prefix).")
     expires_at: str = Field(description="ISO-8601 expiry for delivery_id (default TTL 5 minutes).")
+    create_on_deliver: bool | None = Field(
+        default=None,
+        description=(
+            "Present and true only when step 2 will create a provisional entity from "
+            "step-1 lookup (0 registry matches, full MVR). Omitted for existing matches."
+        ),
+    )
+
+    @classmethod
+    def from_scope(cls, scope: Any) -> DeliveryPayload:
+        """Build a step-1 delivery payload from a persisted ``DeliveryScope``."""
+        payload = cls(
+            delivery_id=scope.delivery_id,
+            expires_at=scope.expires_at,
+        )
+        if scope.create_on_deliver:
+            return payload.model_copy(update={"create_on_deliver": True})
+        return payload
 
 
 class EntityQuery(BaseModel):
@@ -273,6 +291,14 @@ class QueryResponse(BaseModel):
             "omitted or null otherwise."
         ),
     )
+
+    def public_dict(self) -> dict[str, Any]:
+        """Serialize for CLI, MCP, and admin — omit null optional fields."""
+        return self.model_dump(exclude_none=True)
+
+    def public_json(self, *, indent: int | None = 2) -> str:
+        """JSON for public surfaces; omits null optional fields (e.g. create_on_deliver)."""
+        return self.model_dump_json(exclude_none=True, indent=indent)
 
 
 class MyceliumGraphState(BaseModel):

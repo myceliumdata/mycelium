@@ -324,7 +324,7 @@ def _print_response(response: QueryResponse) -> None:
     """Print full QueryResponse JSON including trace_id and thread_id.
     If trace_id is present, also print a direct LangSmith trace URL using the helper.
     """
-    console.print(JSON(response.model_dump_json(indent=2)))
+    console.print(JSON(response.public_json()))
     if response.trace_id:
         try:
             url = get_langsmith_trace_url(response.trace_id)

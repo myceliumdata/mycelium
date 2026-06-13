@@ -113,6 +113,7 @@ export interface QuotePayload {
 export interface DeliveryPayload {
   delivery_id: string;
   expires_at: string;
+  create_on_deliver?: boolean;
 }
 
 export interface QueryResponse {
