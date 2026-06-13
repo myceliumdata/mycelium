@@ -1,11 +1,7 @@
-# Cursor queue — ready for next slice
+# Cursor queue
 
-**Manual gate cleared** 2026-06-13. See [`docs/manual-checks/2026-06-12-program1-post-push-gate.md`](../../docs/manual-checks/2026-06-12-program1-post-push-gate.md).
+**Active:** MVR redesign slice **M1** in `prompts/cursor/next/2026-06-13-1000-mvr-redesign-slice-m1.md`
 
-**Before queuing Cursor work:** Paul + Grok lock scope in [`docs/plans/next-chunk-prep.md`](../../docs/plans/next-chunk-prep.md):
+**Program:** [`docs/plans/mvr-redesign-program.md`](../../docs/plans/mvr-redesign-program.md) (slices M1–M10)
 
-1. **MVR redesign** (research gate vs record lookup) — design session
-2. **Program 2** (MVR/entity, `bind_versions[]`) — Q1/Q2/Q4 decisions
-3. Or alternate track (Toolbox, research robustness, etc.)
-
-Do not queue implementation until Paul + Grok agree which program/slice is next.
+Program 2 (versioned bind storage) waits until MVR redesign ships.

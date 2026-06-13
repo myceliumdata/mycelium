@@ -1,6 +1,6 @@
 # Next chunk — prep brief (Paul + Grok, June 2026)
 
-**Prerequisite:** [`docs/manual-checks/2026-06-12-program1-post-push-gate.md`](../manual-checks/2026-06-12-program1-post-push-gate.md) must be **CLEAR** before implementation resumes.
+**Prerequisite:** Manual gate **CLEAR** (2026-06-13). **Active work:** [`mvr-redesign-program.md`](mvr-redesign-program.md) (M1 queued).
 
 **Just shipped:** Program 1 — extended attribute provenance (versioned specialist storage, admin version history, `QueryResponse.provenance`, hard cutover). Post-push admin UI: full-width version cards, formatted timestamps, `reason` / `last_error` lines.
 
@@ -11,7 +11,8 @@
 | Track | Status |
 |-------|--------|
 | **Program 1 — Provenance** | **Complete** — pushed June 2026 |
-| **Program 2 — MVR / entity** | Architecture drafted; **not locked** — decisions below |
+| **MVR redesign** | **Locked** — slices M1–M10; [`mvr-redesign-program.md`](mvr-redesign-program.md) |
+| **Program 2 — MVR / entity storage** | After MVR redesign — versioned bind, `bind_versions[]` |
 | **Program 3 — Operator write** | Deferred — admin edit + force re-research |
 | **Toolbox** | TBD (Paul to define) |
 | **Research robustness** | Backlog — [`research-robustness-backlog.md`](research-robustness-backlog.md) |
