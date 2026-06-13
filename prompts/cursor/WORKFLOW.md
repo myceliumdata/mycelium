@@ -109,7 +109,7 @@ When Cursor finishes:
    - `output.md` — A clear summary of what was changed, decisions made, and open questions. Include **"For Grok + Paul"** with any `TODO.md` updates needed (Cursor does not apply them).
    - Any relevant diffs, new files, or notes.
 4. **It must remove only the specific file it claimed** from `prompts/cursor/in-progress/`.
-5. **Do not `git commit` to `main` (or push) until Grok + Paul review.** Leave changes in the working tree (or on a branch if Paul prefers). Paul commits after `review.md` approval — or after any blocking **fix slice** is also approved. Cursor may note suggested commit message in `output.md` only.
+5. **Do not `git commit` or `git push` until Grok review.** Leave changes in the working tree (or on a branch if Paul prefers). **Grok** commits approved slices locally on the **`mycelium`** framework repo (see §4). Cursor may note a suggested commit message in `output.md` only.
    - Do **not** delete, move, or touch any other files that may be present in `in-progress/` at the time of completion.
    - This rule is **mandatory** for safe parallel execution. When multiple Cursor agents (or multiple sessions) are running, each agent is responsible **only** for the file it personally claimed. "Helpful" cleanup of other files can corrupt or delete work being done by other agents.
 
@@ -122,28 +122,46 @@ When Cursor finishes:
 ### 4. Review (Grok + Paul)
 
 - We review the contents of `prompts/cursor/done/<name>/`
-- Grok adds `review.md` with: **Approved** / **Approved + fix slice** / **Approved + polish nits**
+- Grok adds `review.md` with: **Approved** / **Approved + fix slice** / **Approved + polish nits** / **Not Approved**
 
-**Grok: run full CI locally before approve + commit (mandatory).**  
-Mirrors `.github/workflows/ci.yml` — do not rely on `pytest -q` alone; CI also builds `admin-ui` and runs **smoke** tests only.
+#### Grok review rules (mandatory)
+
+| Rule | Detail |
+|------|--------|
+| **Read-only review** | Grok **must not write or edit source code** during slice review — no “fixing” failing CI, no patching missing implementation. Exception: Paul explicitly authorizes Grok to implement in that message. |
+| **Cursor implements** | Blocking failures (CI red, incomplete delivery, spec miss) → **fix / remedial slice** in `prompts/cursor/next/` for Cursor — **before** the next planned slice. Do not queue the next slice until the fix slice is approved (unless Paul waives). |
+| **Verify delivery** | Compare `output.md` claims to `git diff` / changed files. Tests-only or docs-only delivery when the prompt required code is **Not Approved**. |
+| **Run CI** | `./bin/ci-local` before any **Approved** verdict (mandatory). |
 
 ```bash
 ./bin/ci-local
 ```
 
-Record pass/fail and counts in `review.md` (e.g. `281 smoke passed`, ruff clean, admin-ui build ok). If CI local fails, verdict is **not Approved** until fixed. Optionally also run `LANGCHAIN_TRACING_V2=false uv run pytest -q` for major slices; that is extra, not a substitute for `ci-local`.
+Mirrors `.github/workflows/ci.yml` — do not rely on `pytest -q` alone; CI also builds `admin-ui` and runs **smoke** tests only.
 
-**Website repo (`mycelium-website`) — push policy (Paul, June 2026):**  
-Grok and Cursor may commit website changes **locally** and write `review.md`, but **do not `git push`** to `origin` on the public website repo. Paul reviews locally and pushes when ready. Deploy (Cloudflare Pages, etc.) is also Paul's step.
+Record pass/fail and counts in `review.md` (e.g. `316 smoke passed`, ruff clean, admin-ui build ok). If CI fails, verdict is **Not Approved** — queue a fix slice; Grok does **not** patch code to green CI.
 
-**Entity protocol program — nit triage (Paul, June 2026):**
+Optionally also run `LANGCHAIN_TRACING_V2=false uv run pytest -q` for major slices; that is extra, not a substitute for `ci-local`.
+
+#### Git — commit and push (Paul, June 2026)
+
+| Repo | Who commits | Who pushes `origin` |
+|------|-------------|---------------------|
+| **`mycelium`** (this framework repo) | **Grok** — locally after **Approved** review (+ fix slice if any) | **Paul only** — Grok pushes **only when Paul explicitly asks**, typically after a **full program** is implemented and tested. **No mid-program pushes.** |
+| **`mycelium-website`** (public site) | **Paul** | **Paul** — after local review. Grok/Cursor do not push. Deploy (Cloudflare Pages, etc.) is also Paul's step. |
+
+**During multi-slice programs** (e.g. MVR M1–M10): Grok may commit each approved slice locally on `mycelium`; keep `origin` unchanged until Paul requests a program-level push. Anyone cloning `origin` mid-program would otherwise see inconsistent docs and half-wired code.
+
+**Fix-slice naming:** timestamp between parent and next (e.g. `1205-…-fix-…` between `1200` and `1300`). Batch related blocking issues into one fix prompt when sensible.
+
+#### Nit triage
 
 | Severity | Grok action |
 |----------|-------------|
-| **Blocking** | Create a **fix slice** in `prompts/cursor/next/` immediately — must run **before** the next planned slice. Batch related blocking nits into one fix prompt when sensible. Naming: timestamp between parent and next (e.g. `1005-…-fix-…` between `1000` and `1100`). |
-| **Non-blocking** | Add a row to `docs/plans/entity-protocol-polish-post8.md` — addressed in polish slice `1800` after Slice 8. |
+| **Blocking** | **Not Approved** + fix slice in `prompts/cursor/next/` (see above). Applies to **all** programs, not only entity-protocol. |
+| **Non-blocking** | **Approved + polish nits** — for entity-protocol program, add a row to `docs/plans/entity-protocol-polish-post8.md` (polish slice `1800`). Other programs: note nits in `review.md` or program polish doc. |
 
-Do not advance the planned slice queue past a slice with open **blocking** nits unless Paul waives.
+Do not advance the planned slice queue past a slice with open **blocking** issues unless Paul waives.
 
 - Other programs / ad-hoc work: follow-up prompt in `prompts/cursor/next/`, or ask Cursor to continue in the same done folder.
 
@@ -206,9 +224,10 @@ To see what needs attention:
 We may add lightweight tooling later (e.g. a script or GitHub Action) to surface pending reviews, but for now the absence of `review.md` is the signal.
 
 When reviewing:
-- Read the `output.md`
-- Optionally add your own `review.md` with feedback, approvals, or requested follow-ups
-- If changes are needed, create a new prompt in `prompts/cursor/next/`
+- Read the `output.md` and verify against the actual diff
+- Grok adds `review.md` with verdict, CI results, and fix-slice path if needed
+- Grok commits locally on **`mycelium`** when **Approved**; does **not** push unless Paul asks
+- If changes are needed, create a fix / remedial prompt in `prompts/cursor/next/` (Grok does not edit source)
 
 ## Preventing Scope Creep
 

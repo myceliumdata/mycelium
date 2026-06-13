@@ -6,4 +6,4 @@
 
 Program 2 (versioned bind storage) waits until MVR redesign ships.
 
-**Push policy:** commit slices locally; push `origin` only when the full MVR program is tested and Paul approves.
+**Git:** Grok commits approved slices locally on `mycelium`; push `origin` only when Paul explicitly asks (after program complete). See `WORKFLOW.md` §4.
