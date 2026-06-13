@@ -8,7 +8,9 @@
 
 **Prior:** Slices 1–3 — Approved
 
-**Next:** Delivery push when Paul asks; Program 3 kickoff when ready.
+**Manual gate:** [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](../../docs/manual-checks/2026-06-13-program2-post-program-gate.md) — pending.
+
+**Next:** Push after gate CLEAR; Program 3 when ready.
 
 **Git:** 5 commits ahead of `origin/main` (Program 2 + polish). No push until Paul asks. See `WORKFLOW.md` §4.
 

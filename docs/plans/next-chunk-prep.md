@@ -10,11 +10,13 @@
 |-------|--------|
 | **Program 1 — Provenance** | **Complete** — pushed June 2026 |
 | **MVR redesign** | **Complete** (M1–M10) — on `origin/main` |
-| **Program 2 — MVR / entity storage** | **Complete** (Slices 1–3) — on `origin/main` after review |
+| **Program 2 — MVR / entity storage** | **Complete locally** (Slices 1–3 + polish) — manual gate pending → push |
 | **Program 3 — Operator write** | Next — admin edit + force re-research |
 | **Toolbox** | TBD (Paul to define) |
 | **Research robustness** | Backlog — [`research-robustness-backlog.md`](research-robustness-backlog.md) |
 | **Website sync** | Review [myceliumdata.org](https://myceliumdata.org) after major pushes |
+
+**Manual gate:** [`2026-06-13-program2-post-program-gate.md`](../manual-checks/2026-06-13-program2-post-program-gate.md) — run before push.
 
 **Active Cursor prompt:** None — Program 2 complete; queue Program 3 when ready.
 
@@ -56,8 +58,8 @@
 
 ## What waits on Paul
 
-1. Review and commit Program 2 Slices 1–3 when ready.
-2. Optional Program 2 manual gate before Program 3 kickoff (Grok can draft checklist).
+1. Run Program 2 manual gate (morning) — [`2026-06-13-program2-post-program-gate.md`](../manual-checks/2026-06-13-program2-post-program-gate.md).
+2. On **CLEAR**, push `origin/main` and bump `TODO.md`.
 3. **`TODO.md`** — Grok + Paul bump when Program 2 ships (Cursor does not edit).
 
 ---
