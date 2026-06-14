@@ -1,10 +1,8 @@
 # Cursor queue
 
-**Active:** [`next/2026-06-14-1220-admin-query-ui-polish-nits.md`](next/2026-06-14-1220-admin-query-ui-polish-nits.md) — admin UI polish nits from 1200 review
+**Active:** [`next/2026-06-14-1220-admin-query-ui-polish-nits.md`](next/2026-06-14-1220-admin-query-ui-polish-nits.md) — admin UI polish nits (confirm lookup-only, dedupe suggestions)
 
-**In flight:** `1215-admin-query-confirm-new-entity-wire` — Cursor working; review pending when ready
-
-**Last approved:** [`done/2026-06-14-1200-admin-query-unified-mvr-lookup/`](done/2026-06-14-1200-admin-query-unified-mvr-lookup/) — **Approved + fix slice**
+**Last approved:** [`done/2026-06-14-1215-admin-query-confirm-new-entity-wire/`](done/2026-06-14-1215-admin-query-confirm-new-entity-wire/) — **Approved** (Grok, 2026-06-14)
 
 **Manual gate:** [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](../../docs/manual-checks/2026-06-13-program2-post-program-gate.md)
 

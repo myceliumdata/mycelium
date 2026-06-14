@@ -43,6 +43,7 @@ class AdminQueryRequest(BaseModel):
     quote_id: str | None = None
     provenance: bool = False
     principal: BillingPrincipal | None = None
+    confirm_new_entity: bool = False
 
 
 _DEFAULT_HOST = "127.0.0.1"
@@ -139,6 +140,7 @@ def create_app() -> FastAPI:
             quote_id=body.quote_id,
             provenance=body.provenance,
             principal=body.principal,
+            confirm_new_entity=body.confirm_new_entity,
         )
         thread_id = body.thread_id or f"admin-{uuid.uuid4()}"
         response: QueryResponse = run_query(query, thread_id=thread_id)

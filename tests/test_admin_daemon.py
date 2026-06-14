@@ -534,6 +534,33 @@ def test_admin_query_lookup_suggested_shape(
 
 
 @pytest.mark.smoke
+def test_admin_query_confirm_new_entity_creates(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root = _populated_root(tmp_path)
+    client = _client_for_root(monkeypatch, tmp_path, root)
+
+    lookup = {
+        "name": "Andrea Kalmans",
+        "employer": "Wrong Corp",
+    }
+
+    suggested = client.post("/query", json={"lookup": lookup})
+    assert suggested.status_code == 200
+    assert suggested.json()["outcome"] == "lookup_suggested"
+
+    confirmed = client.post(
+        "/query",
+        json={"lookup": lookup, "confirm_new_entity": True},
+    )
+    assert confirmed.status_code == 200
+    payload = confirmed.json()
+    assert payload["outcome"] == "lookup_resolved"
+    assert payload["delivery"]["create_on_deliver"] is True
+
+
+@pytest.mark.smoke
 def test_admin_query_passes_quote_id(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
