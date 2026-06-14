@@ -61,6 +61,15 @@ Restart surfaces after refresh:
 # Restart MCP for crm if you run optional Check 8
 ```
 
+**Admin UI URL:** Default dev stack runs **two** URLs:
+
+| URL | What it is |
+|-----|------------|
+| **http://127.0.0.1:8741/** | Built SPA + API (same process) — **use this if :5173 is blank** |
+| http://127.0.0.1:5173/ | Vite dev (hot reload); proxies API to :8741 |
+
+View Source on either URL always shows empty `<div id="root"></div>` until JS runs — that is normal. A **visually** blank page on :5173 usually means a browser JS error; open DevTools → **Console**. **Workaround:** open **:8741** (no Vite), or `./bin/restart-admin crm --demo` (rebuild + single process on :8741).
+
 ---
 
 ## Quick smoke (optional)
@@ -121,7 +130,7 @@ uv run mycelium query --network crm --delivery-id <delivery_id>
 ./bin/restart-admin crm
 ```
 
-Open **http://127.0.0.1:5173/** (or dev URL from `restart-admin`).
+Open **http://127.0.0.1:8741/** (recommended — built SPA). Fallback: http://127.0.0.1:5173/ (Vite dev).
 
 1. **Status** tab → search **Andrea Kalmans** → open entity drill-down
 2. Confirm **Kind** column shows `bind` for name / employer
@@ -296,6 +305,7 @@ If attempting manually: edit one field in `agents/contact/storage.json` to set c
 | `provenance` missing bind attrs | Slice 2 — requested attrs not bound on step 1 or no specialist versions |
 | Road Runner step 2 fails | MVR / deliver regression — check daemon logs |
 | Extra version on Check 6 | Polish P3 regression |
+| Admin UI blank on :5173 | Use **:8741** or `--demo`; check browser Console on :5173; `cd admin-ui && rm -rf node_modules/.vite && npm run dev` |
 
 Report failures to Grok with check number + command output; do **not** push until resolved or waived.
 

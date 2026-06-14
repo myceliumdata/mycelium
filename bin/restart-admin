@@ -216,7 +216,10 @@ fi
 
 echo ""
 echo "Admin API:  http://${ADMIN_HOST}:${ADMIN_PORT}/health"
-echo "Admin UI:   http://${ADMIN_HOST}:${VITE_PORT}/"
+echo "Admin UI:   http://${ADMIN_HOST}:${VITE_PORT}/  (Vite dev)"
+if [[ -f "${ADMIN_UI_DIR}/dist/index.html" ]]; then
+  echo "            http://${ADMIN_HOST}:${ADMIN_PORT}/  (built SPA — use if Vite page is blank)"
+fi
 echo "Network:    ${DISPLAY_NETWORK}"
 echo ""
 
