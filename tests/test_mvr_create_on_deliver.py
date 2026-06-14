@@ -174,6 +174,44 @@ def test_full_mvr_zero_matches_without_attrs_create_on_deliver(
     assert created["name"] == "Brand New Person"
     assert created["employer"] == "Never Seen Inc"
 
+    payload = json.loads(
+        Path(__import__("os").environ["MYCELIUM_ENTITIES_PATH"]).read_text(
+            encoding="utf-8",
+        ),
+    )
+    assert payload["entities"][created["id"]]["validation_state"] == "validated"
+
+
+@pytest.mark.smoke
+def test_multi_match_step2_promotes_provisional_bind(
+    crm_create_on_deliver_env: CoreStorage,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _ = crm_create_on_deliver_env
+    _mock_email_research(monkeypatch)
+    registry = get_entity_registry()
+    wrong_corp, _ = registry.bind_provisional("Andrea Kalmans", "Wrong Corp")
+
+    step1 = run_query(
+        EntityQuery(
+            lookup={"name": "Andrea Kalmans"},
+            requested_attributes=["email"],
+        ),
+    )
+    assert step1.outcome == "lookup_resolved"
+    assert step1.total_matches >= 2
+    assert step1.delivery is not None
+
+    step2 = run_query(EntityQuery(delivery_id=step1.delivery.delivery_id))
+    assert step2.outcome == "assembled"
+
+    payload = json.loads(
+        Path(__import__("os").environ["MYCELIUM_ENTITIES_PATH"]).read_text(
+            encoding="utf-8",
+        ),
+    )
+    assert payload["entities"][wrong_corp.id]["validation_state"] == "validated"
+
 
 @pytest.mark.smoke
 def test_full_mvr_zero_matches_step1_delivery_step2_create(

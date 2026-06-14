@@ -1,14 +1,10 @@
 # Cursor queue
 
-**Active:** [`next/2026-06-14-1400-provisional-validation-step2-deliver.md`](next/2026-06-14-1400-provisional-validation-step2-deliver.md) — **fix first** (Q5a validation on step 2)
+**Active:** [`next/2026-06-14-1410-multi-match-step2-deliver-truncation.md`](next/2026-06-14-1410-multi-match-step2-deliver-truncation.md) — **after** Paul manual validation test on `1400`
 
-**Next:** [`next/2026-06-14-1410-multi-match-step2-deliver-truncation.md`](next/2026-06-14-1410-multi-match-step2-deliver-truncation.md) — after `1400` approved + Paul manual validation test
+**Last approved:** [`done/2026-06-14-1400-provisional-validation-step2-deliver/`](done/2026-06-14-1400-provisional-validation-step2-deliver/) — **Approved + polish nits** (pending Paul manual test)
 
-**Process:** Paul + Grok manual test after **each** slice before advancing queue.
-
-**Last approved:** [`done/2026-06-14-1305-admin-inspect-polish-nits/`](done/2026-06-14-1305-admin-inspect-polish-nits/)
-
-**Manual gate:** [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](../../docs/manual-checks/2026-06-13-program2-post-program-gate.md) — defer full gate until after `1400` + `1410`
+**Process:** Paul + Grok manual test `1400` before starting `1410`.
 
 **Git:** Ahead of `origin/main`. No push until Paul asks. See `WORKFLOW.md` §4.
 

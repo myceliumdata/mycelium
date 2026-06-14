@@ -64,8 +64,8 @@ uv run mycelium network status --network crm --entity "Andrea Kalmans"
 
 **Step 2** — `delivery_id` (+ `quote_id` when metered). Mycelium then:
 
-1. Creates a provisional row in `entities.json` (registry)
-2. Runs core validation and promotes the row to `validated`
+1. Creates a provisional row in `entities.json` (registry) when step 1 scoped `create_on_deliver`
+2. Runs core validation on every provisional row in the delivery scope (including identity-only step 2 with no `requested_attributes`) and promotes passing rows to `validated`
 3. Invokes specialists for `requested_attributes` bound on step 1 (research gate: validated registry row)
 4. Writes MVR bind fields and extended attributes under `agents/<category>/storage.json` keyed by `entity_id` (bind fields are taxonomy-owned per `categories.json` `attribute_map`)
 5. Records **data attribution** on the registry row: `attr_sources` (which category owns each attr) and `last_researched_at` (when research last succeeded)

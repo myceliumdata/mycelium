@@ -195,6 +195,20 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
                 result["current_id"] = matched[0].get("id")
             return result
 
+        if any(is_provisional_registry_match(rec) for rec in matched):
+            result = {
+                **metering_state,
+                "matched_records": matched,
+                "entity_resolution_kind": resolution_kind,
+                "audit_log": [
+                    "target_resolve: deliver step-2 identity "
+                    f"entity_count={len(matched)} (validation pending).",
+                ],
+            }
+            if len(matched) == 1:
+                result["current_id"] = matched[0].get("id")
+            return result
+
         identity_records = _identity_records_from_match(matched)
         message = None
         if len(matched) == 1:
@@ -314,74 +328,120 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
 def validate_entity_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     """Run MVR validation on provisional registry entities; promote when all pass."""
     current = _coerce(state)
-    matched = current.matched_records or []
-    if len(matched) != 1 or not is_provisional_registry_match(matched[0]):
+    matched = list(current.matched_records or [])
+    if not matched:
+        return {
+            "validation_passed": None,
+            "validation_contributions": [],
+            "audit_log": ["validate_entity: skip (no matches)."],
+        }
+
+    registry = get_entity_registry()
+    updated_matches: list[dict[str, Any]] = []
+    all_contribs: list[dict[str, Any]] = []
+    logs: list[str] = []
+    processed_provisional = False
+    any_failed = False
+
+    for rec in matched:
+        if not is_provisional_registry_match(rec):
+            updated_matches.append(rec)
+            continue
+
+        processed_provisional = True
+        entity_id = rec.get("id")
+        if not entity_id:
+            updated_matches.append(rec)
+            continue
+
+        entity = registry.lookup_by_id(str(entity_id))
+        if entity is None:
+            updated_matches.append(rec)
+            logs.append(f"validate_entity: skip (registry row missing {entity_id}).")
+            continue
+
+        contribs = run_mvr_validation(entity.name, entity.employer)
+        all_contribs.extend(contribs)
+        if not logs:
+            logs.append(
+                "validate_entity: ran MVR validation on provisional registry row(s).",
+            )
+        for item in contribs:
+            vc = item.get("validation_contrib") or {}
+            logs.append(
+                f"validate_entity: {item.get('agent')} "
+                f"{vc.get('field')} -> {vc.get('status')}.",
+            )
+
+        if not validation_all_passed(contribs):
+            any_failed = True
+            updated_matches.append(rec)
+            logs.append(
+                f"validate_entity: failed ({validation_failure_summary(contribs)}).",
+            )
+            continue
+
+        updated = registry.promote_validated(str(entity_id))
+        updated_matches.append(registry_entity_to_match(updated))
+
+    if not processed_provisional:
         return {
             "validation_passed": None,
             "validation_contributions": [],
             "audit_log": ["validate_entity: skip (not provisional registry)."],
         }
 
-    entity_id = matched[0].get("id")
-    if not entity_id:
-        return {"audit_log": ["validate_entity: skip (no entity id)."]}
-
-    registry = get_entity_registry()
-    entity = registry.lookup_by_id(str(entity_id))
-    if entity is None:
-        return {"audit_log": ["validate_entity: skip (registry row missing)."]}
-
-    contribs = run_mvr_validation(entity.name, entity.employer)
-    logs = ["validate_entity: ran MVR validation on provisional registry entity."]
-    for item in contribs:
-        vc = item.get("validation_contrib") or {}
-        logs.append(
-            f"validate_entity: {item.get('agent')} "
-            f"{vc.get('field')} -> {vc.get('status')}.",
-        )
-
-    if not validation_all_passed(contribs):
-        summary = validation_failure_summary(contribs)
+    if len(matched) == 1 and any_failed:
         return {
+            "matched_records": updated_matches,
             "validation_passed": False,
-            "validation_contributions": contribs,
-            "audit_log": logs + [f"validate_entity: failed ({summary})."],
+            "validation_contributions": all_contribs,
+            "audit_log": logs,
         }
 
-    updated = registry.promote_validated(str(entity_id))
-    updated_match = registry_entity_to_match(updated)
-    meta = dict(_meta(current))
-    specialists_to_invoke: list[str] = []
+    result: dict[str, Any] = {
+        "matched_records": updated_matches,
+        "validation_contributions": all_contribs,
+        "audit_log": logs + ["validate_entity: promoted to validated."],
+        "validation_passed": None if any_failed else True,
+    }
+
+    if any_failed:
+        result["audit_log"] = logs + [
+            "validate_entity: batch has row(s) still provisional after validation.",
+        ]
+
     if (
-        graph_requested_attributes(current)
+        len(matched) == 1
+        and not any_failed
+        and graph_requested_attributes(current)
         and current.classifications
-        and research_gate_allows(current_id=updated.id, matched=[updated_match])
+        and research_gate_allows(
+            current_id=updated_matches[0].get("id"),
+            matched=updated_matches,
+        )
     ):
+        specialists_to_invoke: list[str] = []
         audit: list[str] = []
         specialists_to_invoke = _collect_specialists_to_invoke(
             current.classifications,
             audit,
         )
-        logs.extend(audit)
+        result["audit_log"] = list(result["audit_log"]) + audit
         if specialists_to_invoke:
-            logs.append(
+            result["audit_log"].append(
                 "validate_entity: validation passed — scheduling attribute specialists.",
             )
-    ctx = planner_context(
-        matched=[updated_match],
-        ids=[updated.id],
-        specialists_to_invoke=specialists_to_invoke,
-        contributions=list(meta.get("contributions") or []),
-    )
+        ctx = planner_context(
+            matched=updated_matches,
+            ids=[str(updated_matches[0].get("id"))],
+            specialists_to_invoke=specialists_to_invoke,
+            contributions=list(_meta(current).get("contributions") or []),
+        )
+        result["current_id"] = updated_matches[0].get("id")
+        result["context"] = ctx
 
-    return {
-        "matched_records": [updated_match],
-        "current_id": updated.id,
-        "validation_passed": True,
-        "validation_contributions": contribs,
-        "context": ctx,
-        "audit_log": logs + ["validate_entity: promoted to validated."],
-    }
+    return result
 
 
 def build_context_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
@@ -639,7 +699,7 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
             "audit_log": ["assemble_response: entity under-specified (partial binding)."],
         }
 
-    if current.validation_passed is False and matched:
+    if current.validation_passed is False and matched and len(matched) == 1:
         summary = validation_failure_summary(current.validation_contributions)
         return {
             "response": response_validation_failed(
@@ -656,6 +716,7 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
         and current.validation_contributions
         and matched
         and not graph_requested_attributes(current)
+        and not entity_query_is_delivery_step(query)
     ):
         return {
             "response": response_entity_validated(query, matched[0], **id_kwargs),
