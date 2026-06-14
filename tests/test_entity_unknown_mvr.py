@@ -15,7 +15,7 @@ from graphs.core import reset_core_graph, run_query
 from network_helpers import import_seed_for_test
 from models.state import EntityQuery
 from network.introspection import build_network_capabilities
-from network.mvr import load_mvr
+from network.mvr import MvrPolicy, load_mvr, missing_mvr_bind_fields
 from storage.core import CoreStorage, get_storage, reset_storage
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -95,7 +95,27 @@ def test_load_mvr_from_network_json(crm_mvr_env: CoreStorage) -> None:
     _ = crm_mvr_env
     policy = load_mvr()
     assert policy.bind_fields == ["name", "employer"]
-    assert policy.required_fields_for_entity_key("Paul Murphy") == ["employer"]
+    assert missing_mvr_bind_fields({"name": "Paul Murphy"}, mvr=policy) == ["employer"]
+
+
+@pytest.mark.smoke
+def test_missing_mvr_bind_fields_partial_name(crm_mvr_env: CoreStorage) -> None:
+    _ = crm_mvr_env
+    assert missing_mvr_bind_fields({"name": "Paul"}) == ["employer"]
+
+
+@pytest.mark.smoke
+def test_missing_mvr_bind_fields_employer_only(crm_mvr_env: CoreStorage) -> None:
+    _ = crm_mvr_env
+    assert missing_mvr_bind_fields({"employer": "Acme"}) == ["name"]
+
+
+@pytest.mark.smoke
+def test_mvr_policy_has_no_required_bind_fields_entity_key() -> None:
+    policy = MvrPolicy(bind_fields=["name", "employer"], description="test")
+    assert not hasattr(policy, "required_bind_fields")
+    assert not hasattr(policy, "required_fields_for_entity_key")
+    assert not hasattr(policy, "allowed_binding_keys")
 
 
 @pytest.mark.smoke

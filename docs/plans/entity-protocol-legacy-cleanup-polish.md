@@ -17,7 +17,7 @@ Non-blocking nits from Grok review of Program 3 slices. One polish pass at progr
 | # | Source | Nit | Polish action |
 |---|--------|-----|----------------|
 | P1 | 1500 review N1 | `RegistryEntity.name` / `.employer` **properties** — disk is `bind_values` only (Option A); properties keep CRM-flavored accessors alive | Remove properties; migrate internal callers to `bind_value("name")` / `bind_value("employer")` or explicit map reads |
-| P2 | 1500 review N2 | `ensure_entity_bind_fields` still **`require lookup.name`** | **Verify closed in 1510** — if still present, require all `mvr.bind_fields` for new entity / bind_index key (policy-driven, not name-centric) |
+| P2 | 1500 review N2 | `ensure_entity_bind_fields` still **`require lookup.name`** | **Still open** (1510 closed `mvr.py` helpers only) — require all `mvr.bind_fields` for new entity / bind_index key in `attribute_write.py` |
 | P3 | 1500 review N3 | Legacy `entities.json` rows with top-level `name`/`employer` load as empty `bind_values` (Pydantic ignores extras) | Fail loud in `EntityRegistry._load` with actionable error (“refresh network” / invalid schema version) |
 | P4 | 1500 review N4 | `lookup_by_bind_values` / `make_bind_key` with **partial** `bind_values` pads missing fields as `""` | Require full MVR `bind_values` for bind_index lookup/assign; raise `ValueError` if any `mvr.bind_fields` key missing or empty |
 
@@ -25,7 +25,7 @@ Non-blocking nits from Grok review of Program 3 slices. One polish pass at progr
 
 | # | Source | Nit | Polish action |
 |---|--------|-----|----------------|
-| P5 | — | *(add from 1510 review)* | |
+| P5 | 1510 review | *(none)* | — |
 | P6 | — | *(add from 1520 review)* | |
 | P7 | — | *(add from 1530 review)* | |
 | P8 | — | *(add from 1540 review)* | |

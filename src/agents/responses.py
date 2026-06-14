@@ -17,7 +17,7 @@ from models.state import (
     IdentityRecord,
     normalized_requested_attributes,
 )
-from network.mvr import MvrPolicy, load_mvr
+from network.mvr import MvrPolicy, legacy_entity_lookup_map, load_mvr, missing_mvr_bind_fields
 
 _IDENTITY_SUMMARY_KEYS = ("id", "name", "employer")
 
@@ -620,7 +620,8 @@ def response_entity_unknown(
 ) -> QueryResponse:
     """Unknown entity: no registry match and no near-miss suggestions; return MVR gaps."""
     policy = mvr or load_mvr()
-    required_fields = policy.required_fields_for_entity_key(query.entity_key)
+    lookup = legacy_entity_lookup_map(query.entity_key, query.binding, mvr=policy)
+    required_fields = missing_mvr_bind_fields(lookup, mvr=policy)
     fields_phrase = _required_fields_phrase(required_fields)
     if query.requested_attributes:
         attrs = ", ".join(query.requested_attributes)

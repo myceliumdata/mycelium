@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from dataclasses import dataclass
 from typing import Any
 
@@ -20,28 +21,6 @@ class MvrPolicy:
 
     bind_fields: list[str]
     description: str
-
-    def allowed_binding_keys(self) -> set[str]:
-        """MVR bind field keys accepted in ``EntityQuery.binding`` (legacy)."""
-        return {field.strip().lower() for field in self.bind_fields if field.strip()}
-
-    def required_fields_for_entity_key(self, entity_key: str) -> list[str]:
-        """Return MVR bind fields not satisfied by the current query."""
-        return self.required_bind_fields(entity_key, {})
-
-    def required_bind_fields(
-        self,
-        entity_key: str,
-        binding: dict[str, str],
-    ) -> list[str]:
-        """Return MVR bind fields not yet satisfied by entity_key + binding."""
-        satisfied: set[str] = set()
-        if entity_key.strip():
-            satisfied.add("name")
-        for field, value in binding.items():
-            if value.strip():
-                satisfied.add(field.strip().lower())
-        return [field for field in self.bind_fields if field not in satisfied]
 
     def summary(self) -> dict[str, Any]:
         return {
@@ -75,21 +54,33 @@ def _parse_mvr_block(raw: Any) -> MvrPolicy | None:
     )
 
 
-def normalize_binding(
-    binding: dict[str, str] | None,
-    mvr: MvrPolicy,
+def _is_uuid_shaped(value: str) -> bool:
+    try:
+        uuid.UUID(value)
+    except ValueError:
+        return False
+    return True
+
+
+def legacy_entity_lookup_map(
+    entity_key: str,
+    binding: dict[str, str] | None = None,
+    *,
+    mvr: MvrPolicy | None = None,
 ) -> dict[str, str]:
-    """Strip binding to allowed MVR keys with non-empty values (ignore unknown keys)."""
-    allowed = mvr.allowed_binding_keys()
-    normalized: dict[str, str] = {}
-    for key, value in (binding or {}).items():
-        field = key.strip().lower()
-        if field not in allowed:
-            continue
+    """Build a target-style lookup map from legacy ``EntityQuery`` fields."""
+    policy = mvr if mvr is not None else load_mvr()
+    allowed = {field.strip().lower() for field in policy.bind_fields if field.strip()}
+    lookup: dict[str, str] = {}
+    key = entity_key.strip()
+    if key and not _is_uuid_shaped(key) and "name" in allowed:
+        lookup["name"] = key
+    for field, value in (binding or {}).items():
+        field_key = field.strip().lower()
         text = value.strip() if isinstance(value, str) else ""
-        if text:
-            normalized[field] = text
-    return normalized
+        if field_key in allowed and text:
+            lookup[field_key] = text
+    return lookup
 
 
 def normalized_lookup_values(lookup: dict[str, str]) -> dict[str, str]:

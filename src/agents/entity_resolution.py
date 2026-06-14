@@ -10,7 +10,7 @@ from typing import Any, Literal
 from agents.entity_registry import get_entity_registry, registry_entity_to_match
 from agents.field_index import normalize_field_index_value
 from models.state import EntityQuery, LookupSuggestion, lookup_suggestion
-from network.mvr import load_mvr, normalize_binding
+from network.mvr import legacy_entity_lookup_map, load_mvr, missing_mvr_bind_fields
 
 SUGGESTION_MIN_SCORE = 0.85
 SUGGESTION_MAX_COUNT = 5
@@ -160,8 +160,8 @@ def resolve_entity(query: EntityQuery) -> EntityResolution:
 
     registry = get_entity_registry()
     mvr = load_mvr()
-    binding = normalize_binding(query.binding, mvr)
-    employer = binding.get("employer")
+    lookup = legacy_entity_lookup_map(key, query.binding, mvr=mvr)
+    employer = lookup.get("employer")
 
     if employer:
         bound = registry.lookup_by_bind_key(key, employer)
@@ -193,7 +193,7 @@ def resolve_entity(query: EntityQuery) -> EntityResolution:
                 entity.source == "seed_bootstrap" for entity in by_name
             ):
                 return EntityResolution(kind="multiple", matches=matches)
-            required = mvr.required_bind_fields(key, binding)
+            required = missing_mvr_bind_fields(lookup, mvr=mvr)
             if query.binding:
                 return EntityResolution(
                     kind="under_specified",
@@ -212,7 +212,7 @@ def resolve_entity(query: EntityQuery) -> EntityResolution:
         if suggestions:
             return EntityResolution(kind="suggest", suggestions=suggestions)
 
-    required = mvr.required_bind_fields(key, binding)
+    required = missing_mvr_bind_fields(lookup, mvr=mvr)
     if required:
         if query.binding:
             return EntityResolution(
@@ -288,7 +288,7 @@ def resolve_entity_for_lookup(entity_key: str) -> EntityResolution:
         matches = [registry_entity_to_match(entity) for entity in by_name]
         if all(entity.source == "seed_bootstrap" for entity in by_name):
             return EntityResolution(kind="multiple", matches=matches)
-        required = mvr.required_bind_fields(key, {})
+        required = missing_mvr_bind_fields({"name": key}, mvr=mvr)
         return EntityResolution(
             kind="unknown",
             required_fields=required or ["employer"],
@@ -298,11 +298,11 @@ def resolve_entity_for_lookup(entity_key: str) -> EntityResolution:
     if suggestions:
         return EntityResolution(kind="suggest", suggestions=suggestions)
 
-    required = mvr.required_bind_fields(key, {})
+    required = missing_mvr_bind_fields({"name": key}, mvr=mvr)
     if required:
         return EntityResolution(kind="unknown", required_fields=required)
 
     return EntityResolution(
         kind="unknown",
-        required_fields=mvr.required_fields_for_entity_key(key),
+        required_fields=missing_mvr_bind_fields({"name": key}, mvr=mvr),
     )
