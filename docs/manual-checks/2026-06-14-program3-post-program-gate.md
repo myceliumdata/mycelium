@@ -1,6 +1,6 @@
 # Manual checks — Program 3 post-program gate (entity protocol legacy cleanup)
 
-**Status:** ✅ **CLEAR** (2026-06-14) — Paul manual gate passed; tag `program_3` on local `main`
+**Status:** ✅ **CLEAR** (2026-06-14) — Paul manual gate passed; tag `program_3` (incl. polish **1560**)
 
 **Context:** Program 3 (Slices 1500–1550 + polish 1560) removes legacy `entity_key` / `binding` from public surfaces, migrates registry rows to `bind_values`, and aligns status inspect with query step-1 (`id` / `lookup` + `resolve` JSON). Run after code is on your branch and `./bin/ci-local` is green.
 
@@ -130,9 +130,9 @@ curl -s 'http://127.0.0.1:8741/status?lookup={"name":"Andrea%20Kalmans","employe
 
 ## When done
 
-1. Change **Status** at top to **✅ CLEAR (YYYY-MM-DD)** — or tell Grok **"Program 3 gate clear."**
-2. Grok + Paul: update `TODO.md` — Program 3 complete; suggest `program_3` tag.
-3. Run slice **1560** polish / full integration gate if not already done.
+1. ~~Change **Status** at top to **✅ CLEAR (YYYY-MM-DD)**~~ — done 2026-06-14.
+2. ~~Grok + Paul: update `TODO.md` — Program 3 complete; tag `program_3`.~~ — done; tag includes **1560**.
+3. ~~Run slice **1560** polish~~ — complete (`c408ebb`).
 
 ---
 
