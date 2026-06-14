@@ -11,12 +11,38 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 **Priority order when back from break:**
 
-1. [x] **Hands-on: `empty-crm` example** — verified June 2026 (refresh → no seed/entities → Paul Murphy bind → 1 validated row; `network status` Entities ✅). Nit fixed: `network_metadata` no longer lets `MYCELIUM_NETWORK` override explicit `--network-dir`.
+0. [ ] **Program 2 manual gate (fresh from scratch)** — Follow [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](docs/manual-checks/2026-06-13-program2-post-program-gate.md) (rewritten June 2026 after seed-refresh, empty-crm MVR, and capstone-test fixes). Branch is **14 commits ahead** of `origin/main`; do not push until gate **CLEAR**.
+1. [x] **Hands-on: `empty-crm` example** — verified June 2026 (refresh → no seed/entities → Paul Murphy bind → 1 validated row; `network status` Entities ✅). Nit fixed: `network_metadata` no longer lets `MYCELIUM_NETWORK` override explicit `--network-dir`. **Re-verify** as part of gate Check 4b (MVR bootstrap fix landed after this checkbox).
 2. [x] **Historical assumptions review** — Phase 1: [`docs/plans/historical-assumptions-audit.md`](docs/plans/historical-assumptions-audit.md). Phase 2 done: legacy ingest + SQLite `people` removed — [`2026-06-10-legacy-ingest-storage-removal`](prompts/cursor/done/2026-06-10-legacy-ingest-storage-removal/); memory in [`docs/legacy-ingest-and-storage-reference.md`](docs/legacy-ingest-and-storage-reference.md).
 3. [x] **Identity vocabulary rename (breaking)** — Done (`538867e`). Reviews: [`rename`](prompts/cursor/done/2026-06-10-entity-identity-vocabulary-rename/review.md), [`fix`](prompts/cursor/done/2026-06-10-entity-identity-vocabulary-rename-fix/review.md).
 4. [x] **Network create optional `--seed`** — Done (reviewed, 305 tests). Review: [`network-create-optional-seed`](prompts/cursor/done/2026-06-10-network-create-optional-seed/review.md).
 5. [x] **Project website copy** — Done (`../mycelium-website`, June 2026). Option A overhaul + copy pass deployed by Paul.
 6. [x] **Contributor doc hygiene (P1)** — [`docs/onboarding.md`](docs/onboarding.md); audit Phase 2 closed; website copy pass done in **mycelium-website** (`cd7e796`).
+
+---
+
+## OSS collaboration with AI agents (Paul + Grok — design backlog)
+
+**Problem:** This repo ships maintainer-specific multi-agent workflow (`prompts/cursor/`, `AGENTS.md`, `.cursor/rules/`) alongside normal framework code. External contributors should not be forced into Paul’s Grok + Cursor handoff.
+
+**Conversation summary (June 2026):**
+
+| Artifact | Imposes on OSS contributors? | Notes |
+|----------|------------------------------|-------|
+| `prompts/cursor/WORKFLOW.md` + `done/*/prompt.md` + `output.md` + `review.md` | **No** (passive) | Audit trail of how features were built; optional unless you use the queue. `prompt.md`/`output.md` are Cursor deliverables per slice; Grok adds `review.md`. |
+| `AGENTS.md` | **No** | Grok Build only — irrelevant to normal git/PR workflow. |
+| `.cursor/rules/04-cursor-workflow.mdc` (`alwaysApply: true`) | **Yes, if using Cursor IDE** | Auto-injects “work on the next task”, no-commit-before-review, etc. Main OSS friction point. |
+| `.cursor/permissions.json`, hooks | **Local / optional** | Personal machine config — **do not commit**. |
+
+**Decisions to make (not yet implemented):**
+
+- [ ] **CONTRIBUTING.md clarity** — External contributors: ignore `prompts/cursor/`; open PRs normally; `./bin/ci-local` + smoke tests sufficient.
+- [ ] **Soften or remove always-on Cursor rule** — e.g. `alwaysApply: false` on `04-cursor-workflow.mdc`, or move maintainer rules out of public tree.
+- [ ] **Gitignore local Cursor config** — `.cursor/permissions.json` at minimum.
+- [ ] **Optional: split maintainer ops** — `prompts/cursor/`, `AGENTS.md`, `.cursor/rules/` in private meta repo vs public framework (history vs enforcement).
+- [ ] **Example tree policy (done)** — Runtime files (`entities.json`, `deliveries.json`, `agents/`, etc.) must **not** exist under `examples/networks/`; enforced by layout tests, not gitignore (stray files stay visible in `git status`).
+
+**Reference:** `docs/onboarding.md` for human contributors; `prompts/cursor/README.md` for maintainer agent handoffs only.
 
 ---
 
@@ -206,8 +232,9 @@ Backend shipped in entity protocol Slices 1–8; operator-facing admin work defe
 
 ### Entity program — deferred follow-ups (Paul + Grok)
 
-- [x] **MVR redesign program** — **Complete** (June 2026, pushed). M1–M10 + post-program polish (`create_on_deliver`, admin two-step UX). Plan: [`docs/plans/mvr-redesign-program.md`](docs/plans/mvr-redesign-program.md); gate: [`docs/manual-checks/2026-06-13-mvr-redesign-post-program-gate.md`](docs/manual-checks/2026-06-13-mvr-redesign-post-program-gate.md). **Program 2** next.
+- [x] **MVR redesign program** — **Complete** (June 2026, pushed). M1–M10 + post-program polish (`create_on_deliver`, admin two-step UX). Plan: [`docs/plans/mvr-redesign-program.md`](docs/plans/mvr-redesign-program.md); gate: [`docs/manual-checks/2026-06-13-mvr-redesign-post-program-gate.md`](docs/manual-checks/2026-06-13-mvr-redesign-post-program-gate.md).
 - [x] **Program 1 — Extended attribute provenance** — **Complete** (June 2026). Slices 1–3 + polish `1400` shipped: versioned storage, admin history, `QueryResponse.provenance`. Plan: [`docs/plans/attribute-provenance-program1.md`](docs/plans/attribute-provenance-program1.md). Program 2 (MVR/entity): [`attribute-provenance-and-storage.md`](docs/plans/attribute-provenance-and-storage.md).
+- [ ] **Program 2 — MVR bind storage + provenance** — **Committed locally** (Slices 1–3 + polish + remedial fixes + capstone tests). Gate: [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](docs/manual-checks/2026-06-13-program2-post-program-gate.md). Push after **CLEAR**.
 - [ ] **Search indices (follow-up)** — MVR redesign v1: per-field indexes on `entities.json` for **partial lookup** (e.g. `employer` → `[ids]`, composite `bind_index` for full MVR match). Maintained atomically on write. **Later:** specialists maintain domain-specific indices (e.g. email → id, linkedin slug → id). Design session when scaling beyond CRM-scale entity counts.
 - [ ] **Query / search any field (future)** — Product requirement: clients can query on **any** attribute field, not only MVR/bind/indexed fields. v1 MVR redesign: lookup on indexed MVR subset + UUID identity; this item tracks general-field search (extended attrs, specialist storage scan or secondary indices, optional query restrictions per network). Deferred until after MVR redesign + index story matures.
 - [ ] **Operator attribute correction** — Research can return wrong values (e.g. Paul Murphy @ Ormi Labs → LinkedIn `paul-murphy-003360` is not Paul). Operators need to **view and update** extended attributes in specialist storage (LinkedIn, email, etc.): correct value, mark source as operator override, prevent naive re-research from overwriting without policy. Surfaces: admin UI edit on entity field drill-down (primary); optional CLI/MCP operator tool later. **Depends on** attribute provenance design (above). Ties to attribution (`attr_sources` / provenance) and re-research/staleness policy.
@@ -260,4 +287,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-13 (MVR redesign M1–M10 shipped; manual gate clear; Program 2 next)
+Last updated: 2026-06-14 (Program 2 local complete; manual gate pending; OSS agent-workflow backlog added)
