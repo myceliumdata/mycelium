@@ -306,6 +306,13 @@ def test_status_bind_rows_include_empty_employer(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
+    """Regression: status lists every MVR bind row even when employer value is null.
+
+    Uses a synthetic registry row (bind_provisional + promote_validated) because
+    query flow cannot produce this state — full MVR is required for deliver and
+    validate_entity rejects empty employer. Guards polish P5 (removed skip that
+    hid empty employer in _bind_field_statuses), not a production bind scenario.
+    """
     root = tmp_path / "empty_employer"
     root.mkdir()
     shutil.copy(EXAMPLE_CRM / "seed.json", root / "seed.json")

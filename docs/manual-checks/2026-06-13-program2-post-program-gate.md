@@ -87,7 +87,7 @@ View Source showing empty `<div id="root"></div>` is normal until JS runs. Blank
 
 ## Fresh-start sequence (required checks in order)
 
-Run checks **0 → 0b → 4b → 1 → 2 → 3 → 4 → 5 → 6 → 7**. Checks 4b before 4 because empty-crm is the cold-start path; crm Road Runner in Check 4 assumes seeded network.
+Run checks **0 → 0b → 4b → 1 → 2 → 3 → 4 → 6 → 7**. Checks 4b before 4 because empty-crm is the cold-start path; crm Road Runner in Check 4 assumes seeded network. Check 5 is **automated only** (skip manual).
 
 Set once:
 
@@ -288,39 +288,22 @@ jq --arg id "$ID" '.records[$id].name.versions[0].actor.kind' \
 
 ---
 
-## Check 5 — Empty employer row in status (required)
+## Check 5 — Empty employer row in status (automated only — skip manual)
 
-**Polish P5** — status introspection must list an `employer` bind row even when the value is empty/null. This is **not** the create-on-deliver query path.
+**Do not run this check by hand.** There is no legitimate production path that produces the state this test exercises.
 
-**Why the two-step query does not work here:** Target-protocol step 1 only issues a `delivery_id` when the lookup is a **full MVR** — every `mvr.bind_fields` entry with a **non-empty** value (`src/network/mvr.py` `is_full_mvr_lookup`). `employer: ""` is stripped and treated as absent, so step 1 returns `not_found` with `delivery: null` (no `delivery_id`). That is intentional: you cannot create a new entity via deliver without supplying employer on step 1.
+**What it guards (polish P5):** `_bind_field_statuses` used to **skip** the `employer` row when the cached value was empty, so admin/CLI status hid a bind field that MVR declares. The fix: always emit every `mvr.bind_fields` row; `value` may be `null`.
 
-**Manual bootstrap** (same registry path the smoke test uses):
+**Why manual reproduction is misleading:** Empty employer is blocked in real flows:
 
-```bash
-PYTHONPATH=src uv run python <<'PY'
-from pathlib import Path
-import os
-root = Path(os.path.expanduser("~/mycelium-networks/crm"))
-from network.paths import NetworkPaths, apply_network_paths
-from agents.entity_registry import get_entity_registry, reset_entity_registry
-apply_network_paths(NetworkPaths.from_root(root))
-reset_entity_registry()
-registry = get_entity_registry()
-entity, _ = registry.bind_provisional("Solo Gate", "")
-registry.promote_validated(entity.id)
-print("Solo Gate id:", entity.id)
-PY
+- Query step 1 requires a **full MVR** lookup (non-empty `employer`) before issuing `delivery_id`
+- `validate_entity` fails employer &lt; 2 characters on provisional binds
 
-uv run mycelium network status --network crm --entity "Solo Gate" --json
-```
+The smoke test uses a **fixture shortcut** (`bind_provisional` + `promote_validated`, bypassing validation) to manufacture a registry row that query flow would never create. That is a regression test for introspection code, not proof that empty employer is valid CRM data.
 
-**Pass:**
+**Automated:** `test_status_bind_rows_include_empty_employer` in `tests/test_network_status.py` (smoke; `./bin/ci-local`)
 
-- `entity_matches` = 1
-- `entity_fields` includes **`employer`** with `field_kind` = `bind` and `value` = null (row present — not omitted from the list)
-- `name` bind row present with value `Solo Gate`
-
-**Automated:** `test_status_bind_rows_include_empty_employer` (smoke; `./bin/ci-local`)
+**Optional:** `uv run pytest tests/test_network_status.py::test_status_bind_rows_include_empty_employer -q` if you want to re-run that single test while debugging CI.
 
 ---
 
@@ -400,7 +383,7 @@ Skip unless deep validation desired. Automated: `tests/test_research.py` operato
 | **Entities ✅ but specialists ❌** (crm) | Stale example tree or old refresh copy path | Confirm example tree clean; re-refresh on current `main`; re-run **0b** |
 | **empty-crm has entities/specialists after refresh only** | Should never happen (no seed) | Re-refresh empty-crm; check you are not pointing at `crm` root |
 | Step 2 **"No valid delivery"** on empty-crm | MVR bootstrap regression (pre-fix) or stale code | Confirm `848ba02`+ on branch; re-run **4b** |
-| Step 1 `not_found`, no `delivery_id`, `employer: ""` | **Expected** — not full MVR lookup | Use Check 5 bootstrap script; do not use two-step query for empty employer |
+| Step 1 `not_found`, no `delivery_id`, `employer: ""` | **Expected** — not full MVR lookup | Empty employer is not a valid create path; Check 5 is automated-only |
 | Bind rows without `versions` | Specialist storage empty | Re-refresh crm; verify Check 0 spot-check |
 | `provenance` missing bind attrs | Slice 2 / step 1 binding | Re-run Check 2 with fresh delivery |
 | Extra Road Runner version (Check 6) | Polish P3 regression | Report check number + `jq` output |
