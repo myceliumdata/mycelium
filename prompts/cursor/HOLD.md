@@ -1,8 +1,10 @@
 # Cursor queue
 
-**Active:** *(empty)*
+**Active:** [`next/2026-06-14-1450-suggestion-suggested-lookup-rename.md`](next/2026-06-14-1450-suggestion-suggested-lookup-rename.md) — after `1440` review
 
-**Last approved:** [`done/2026-06-14-1435-partial-lookup-fuzzy-employer-suggestions/`](done/2026-06-14-1435-partial-lookup-fuzzy-employer-suggestions/) — **Approved**
+**Last approved:** [`done/2026-06-14-1440-employer-fuzzy-suggestion-shape/`](done/2026-06-14-1440-employer-fuzzy-suggestion-shape/) — **Approved + polish nits**
+
+**Prior:** [`1435`](done/2026-06-14-1435-partial-lookup-fuzzy-employer-suggestions/) — Approved
 
 **Prior:** [`1430`](done/2026-06-14-1430-partial-lookup-fuzzy-name-suggestions/) — Approved + polish nits
 

@@ -123,29 +123,28 @@ def _rank_employer_suggestions(employer: str) -> list[EntityKeySuggestion]:
     if not query_norm:
         return []
 
-    representatives: dict[str, Any] = {}
+    canonical_by_norm: dict[str, str] = {}
     for entity in get_entity_registry().list_entities():
         raw_employer = entity.employer
         if raw_employer is None or not str(raw_employer).strip():
             continue
-        candidate_norm = normalize_field_index_value(str(raw_employer))
-        if not candidate_norm or candidate_norm in representatives:
+        canonical = str(raw_employer)
+        candidate_norm = normalize_field_index_value(canonical)
+        if not candidate_norm or candidate_norm in canonical_by_norm:
             continue
-        representatives[candidate_norm] = entity
+        canonical_by_norm[candidate_norm] = canonical
 
     candidates: list[EntityKeySuggestion] = []
-    for candidate_norm, entity in representatives.items():
+    for candidate_norm, canonical_employer in canonical_by_norm.items():
         score = SequenceMatcher(None, query_norm, candidate_norm).ratio()
         if score < SUGGESTION_MIN_SCORE:
             continue
         candidates.append(
             EntityKeySuggestion(
-                entity_key=entity.name,
-                id=entity.id,
-                name=entity.name,
-                employer=entity.employer,
+                entity_key=canonical_employer,
+                employer=canonical_employer,
                 score=round(score, 4),
-                reason="sequence_ratio",
+                reason="employer_sequence_ratio",
             ),
         )
 

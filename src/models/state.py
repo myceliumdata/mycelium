@@ -26,19 +26,29 @@ class IdentityRecord(BaseModel):
 
 
 class EntityKeySuggestion(BaseModel):
-    """Near-miss registry name suggestion when entity_key has no exact match."""
+    """Near-miss registry suggestion when lookup has no exact match."""
 
     entity_key: str = Field(
-        description="Retry key — registry display name (canonical for re-query).",
+        description=(
+            "Retry key — registry display name or canonical bind-field value "
+            "for re-query."
+        ),
     )
-    id: str = Field(description="Stable registry UUID for the suggested record.")
-    name: str
+    id: str | None = Field(
+        default=None,
+        description="Stable registry UUID when suggestion targets a specific row.",
+    )
+    name: str | None = Field(
+        default=None,
+        description="Registry person name when suggestion is name-level.",
+    )
     employer: str | None = None
     score: float = Field(description="Similarity score 0.0–1.0 (sequence_ratio).")
     reason: str = Field(
         default="sequence_ratio",
         description=(
             "Why this candidate was suggested: sequence_ratio (fuzzy name), "
+            "employer_sequence_ratio (fuzzy employer), "
             "same_name_different_employer (exact name, different employer)."
         ),
     )

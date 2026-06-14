@@ -524,6 +524,10 @@ def _lookup_suggested_message(
             "Retry with suggestions[].id or a corrected lookup map. Set "
             "confirm_new_entity=true only if you intend a new bind."
         )
+    if "employer_sequence_ratio" in reasons:
+        return (
+            "Near-miss registry employer found. Retry with a corrected lookup map."
+        )
     return (
         "Near-miss registry names found. Retry with suggestions[].id or a corrected "
         "lookup map."

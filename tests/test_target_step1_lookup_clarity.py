@@ -90,8 +90,66 @@ def test_partial_fuzzy_employer_lookup_suggested(
     assert response.total_matches == 0
     assert response.delivery is None
     assert len(response.suggestions) >= 1
+    assert response.suggestions[0].entity_key == "645 Ventures"
     assert response.suggestions[0].employer == "645 Ventures"
-    assert response.suggestions[0].reason == "sequence_ratio"
+    assert response.suggestions[0].reason == "employer_sequence_ratio"
+
+
+@pytest.mark.smoke
+def test_partial_fuzzy_employer_plural_typo_suggests_employer(
+    crm_lookup_clarity_env: CoreStorage,
+) -> None:
+    _ = crm_lookup_clarity_env
+    response = run_query(EntityQuery(lookup={"employer": "645 Venture"}))
+    assert response.outcome == "lookup_suggested"
+    assert response.total_matches == 0
+    assert response.delivery is None
+    assert response.suggestions[0].entity_key == "645 Ventures"
+    assert response.suggestions[0].employer == "645 Ventures"
+    assert response.suggestions[0].reason == "employer_sequence_ratio"
+
+
+@pytest.mark.smoke
+def test_partial_fuzzy_employer_with_attrs_still_suggested(
+    crm_lookup_clarity_env: CoreStorage,
+) -> None:
+    _ = crm_lookup_clarity_env
+    response = run_query(
+        EntityQuery(
+            lookup={"employer": "645 Venture"},
+            requested_attributes=["title", "email"],
+        ),
+    )
+    assert response.outcome == "lookup_suggested"
+    assert response.total_matches == 0
+    assert response.delivery is None
+    assert response.suggestions[0].entity_key == "645 Ventures"
+    assert response.suggestions[0].employer == "645 Ventures"
+
+
+@pytest.mark.smoke
+def test_partial_fuzzy_employer_retry_then_resolved(
+    crm_lookup_clarity_env: CoreStorage,
+) -> None:
+    _ = crm_lookup_clarity_env
+    typo = run_query(
+        EntityQuery(
+            lookup={"employer": "645 Venture"},
+            requested_attributes=["title", "email"],
+        ),
+    )
+    assert typo.outcome == "lookup_suggested"
+    assert typo.delivery is None
+
+    resolved = run_query(
+        EntityQuery(
+            lookup={"employer": "645 Ventures"},
+            requested_attributes=["title", "email"],
+        ),
+    )
+    assert resolved.outcome == "lookup_resolved"
+    assert resolved.total_matches == 3
+    assert resolved.delivery is not None
 
 
 @pytest.mark.smoke

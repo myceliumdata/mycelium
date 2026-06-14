@@ -1,12 +1,12 @@
 # Fuzzy lookup policy (bind fields → any field)
 
-**Status:** Partial 0-hit bind-field fuzzy **shipped** (`1430` name, `1435` employer). Alias/prefix upgrades remain on TODO.
+**Status:** Partial 0-hit bind-field fuzzy **shipped** (`1430` name, `1435` employer, `1440` employer suggestion shape). Alias/prefix upgrades remain on TODO.
 **Owners:** Grok + Paul.
 
 ## Scope today (MVR v1)
 
 - Step-1 `lookup` searches **MVR bind fields only** (CRM: `name`, `employer`) via exact per-field indexes.
-- **Fuzzy suggestions** (`lookup_suggested`, `sequence_ratio`, `SUGGESTION_MIN_SCORE = 0.85`) apply when exact index lookup returns 0 hits — first on partial/full paths for **names** (`1430`), then **employers** (`1435`).
+- **Fuzzy suggestions** (`lookup_suggested`, `SUGGESTION_MIN_SCORE = 0.85`) apply when exact index lookup returns 0 hits — partial/full paths for **names** (`sequence_ratio`, `1430`) and **employers** (`employer_sequence_ratio`, `1435`/`1440`). Employer typos suggest the **corrected employer string** for retry (`entity_key` / `employer` = e.g. `645 Ventures`); **do not** auto-resolve to all employees (parity with name fuzzy).
 
 ## Policy (Paul, June 2026)
 
@@ -32,6 +32,9 @@
 |-------|-------|--------|
 | `1430` | `name` (partial 0-hit) | **Approved** |
 | `1435` | `employer` (partial 0-hit) | **Approved** |
+| `1440` | employer suggestion shape | **Approved** |
+
+**Employer retry contract:** On `lookup_suggested` with `employer_sequence_ratio`, retry with `lookup` using `suggestions[0].entity_key` (or `.employer`) as the corrected `employer` value; same `requested_attributes` / step-2 flow as name fuzzy.
 
 ## References
 
