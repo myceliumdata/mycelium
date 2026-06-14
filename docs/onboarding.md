@@ -16,7 +16,7 @@
 
 | Term | Meaning |
 |------|---------|
-| **`entities.json`** | Canonical identity store at runtime (UUID, bind keys, validation state). MVR bind values are cached here; canonical history is in specialist `versions[]` (Program 2). |
+| **`entities.json`** | Canonical identity store at runtime (UUID, `bind_values` keyed by `mvr.bind_fields`, generic `bind_index`, validation state). MVR bind values are cached here; canonical history is in specialist `versions[]` (Program 2). |
 | **`seed.json`** | Optional **bootstrap fixture** — imported at `refresh-example-network` or `network create --seed` only. Not read on query. |
 | **`IdentityRecord`** | Graph/MCP model for a matched registry row (renamed from `SeedRecord`, June 2026). |
 | **`network create`** | Scaffold ontology + register name. `--seed` is optional; empty registry + first-query bind is valid (`empty-crm`). |
@@ -55,6 +55,15 @@ uv run mycelium query --network crm --delivery-id d_…
 
 Optional: `./bin/restart-admin` → `http://127.0.0.1:5173` for the admin UI (`POST /query` **Run query** panel mirrors the same two-step flow).
 
+**Status inspect:** Exact match only — no fuzzy suggestions on status.
+
+```bash
+uv run mycelium network status --network crm --lookup-json '{"name":"Andrea Kalmans"}' --json
+uv run mycelium network status --network crm --id <uuid> --json
+```
+
+JSON includes `resolve: { id, lookup }` mirroring the inspect input, plus `entity_fields[]` with versioned storage.
+
 **Step-1 negotiation (June 2026):** Branch on `outcome` before step 2. Partial lookup missing MVR fields → `lookup_incomplete` + `required_fields`. Near-miss typos or same-name collisions → `lookup_suggested` + `suggestions[].suggested_lookup` (merge into retry `lookup`, or use `suggestions[].id`). Intentional create after a warning → re-run step 1 with `confirm_new_entity: true`. Policy: [`plans/fuzzy-lookup-policy.md`](plans/fuzzy-lookup-policy.md). **Restart MCP** after pulling suggestion-shape changes.
 
 ---
@@ -81,4 +90,4 @@ Optional: `./bin/restart-admin` → `http://127.0.0.1:5173` for the admin UI (`P
 
 ---
 
-*Last updated: June 2026 (Program 2 + fuzzy `suggested_lookup` on `origin/main`).*
+*Last updated: June 2026 (Program 3 protocol cleanup; status `resolve` JSON).*

@@ -599,19 +599,6 @@ _POLICY_OUTCOME = (
     "not_found, quote_required, payment_required, principal_required, or error). "
     "Read outcome before results; use message for per-attribute detail."
 )
-_POLICY_ENTITY_UNKNOWN = (
-    'When outcome is "entity_unknown", the entity_key had no registry match and no '
-    "near-miss suggestions. required_fields lists MVR bind fields still needed "
-    "(for CRM: employer when name comes from entity_key). Re-query with the same "
-    "entity_key and binding when ready."
-)
-_POLICY_ENTITY_BIND = (
-    'Supply MVR fields in query_entity JSON via binding (e.g. {"employer": "Acme Corp"}). '
-    'On outcome entity_bound_provisional, results include id, name, and employer — '
-    "use the bound uuid as entity_key for follow-ups. Duplicate bind returns found "
-    "with the same id. After bind, core validation runs automatically; outcome "
-    "entity_validated when MVR passes."
-)
 _POLICY_RESEARCH_GATE = (
     "Attribute research (specialists / Tavily) runs only when current_id is set and "
     "the entity is a validated registry row (including seed_bootstrap imports) or "
@@ -619,10 +606,6 @@ _POLICY_RESEARCH_GATE = (
     "attributes return outcome found with identity-only results and a message that "
     "core validation must complete before researching attributes. Same-turn bind, "
     "validate, and research is supported when validation passes in one graph run."
-)
-_POLICY_ENTITY_VALIDATED = (
-    'When outcome is "entity_validated", provisional registry entity passed rule-based '
-    "MVR checks (name and employer). The entity is promoted to validated in entities.json."
 )
 _POLICY_METERING = (
     "When metering.enabled is true, billable attribute research and delivery require an "
@@ -636,25 +619,28 @@ _POLICY_METERING = (
     "models. Bind and validate phases stay free. Default CRM keeps metering and payment disabled."
 )
 _POLICY_ENTITY_GROWTH = (
-    "Network growth from queries: bind creates a registry row (entities.json), validation "
-    "promotes it, gated research writes extended attributes to specialist storage keyed by "
-    "entity_id. Registry rows track attr_sources (attr → category slug) and "
-    "last_researched_at after each successful research pass. Optional seed.json is "
-    "bootstrap-only; registry rows are canonical at query time."
+    "Network growth from queries: create-on-deliver writes a registry row (entities.json) "
+    "with bind_values; validation promotes provisional rows; gated research writes "
+    "extended attributes to specialist storage keyed by entity_id. Registry rows track "
+    "attr_sources (attr → category slug) and last_researched_at after each successful "
+    "research pass. Optional seed.json is bootstrap-only; registry rows are canonical "
+    "at query time."
 )
-_POLICY_ENTITY_KEY_UNRESOLVED = (
-    'When outcome is "entity_key_unresolved", the entity_key had no exact registry match '
-    "but near-miss suggestions are provided in suggestions[]. Re-query with "
-    "query_entity using suggestions[].suggested_lookup (typically name) or "
-    "suggestions[].id when row-specific. No attribute data is authoritative until "
-    "an exact match resolves. If suggestions are empty and the name is not a "
-    "near-miss, expect entity_unknown."
+_POLICY_REGISTRY = (
+    "Registry rows in entities.json store MVR bind fields in bind_values keyed by "
+    "mvr.bind_fields (e.g. name, employer). bind_index is a generic compound key from "
+    "normalized bind_values in policy order. Seed import maps seed people[] into "
+    "bind_values on refresh or network create."
 )
-_POLICY_MULTI_MATCH = (
-    "When entity_key matches multiple registry entities, results contains every match. "
-    "Disambiguate using fields in each record (for example id and employer on CRM "
-    "networks). The message summarizes status collectively unless per-record "
-    "messaging is added later."
+_POLICY_STATUS_INSPECT = (
+    "Status inspect (CLI network status --id / --lookup-json, admin GET /status): "
+    "exact AND match on id or lookup only — no fuzzy lookup_suggested. Response "
+    "includes resolve: { id, lookup } mirroring the inspect input, plus "
+    "resolve_matches, resolve_kind, and entity_fields with versioned storage detail."
+)
+_POLICY_HISTORICAL = (
+    "Pre-2026 entity_key / binding single-step protocol removed from public surfaces "
+    "(Program 3, June 2026)."
 )
 _POLICY_QUERY_PROVENANCE = (
     "Set provenance=true on EntityQuery to attach structured version history on "
@@ -797,17 +783,15 @@ def build_network_capabilities() -> dict[str, Any]:
         "policy": {
             "extensibility": _POLICY_EXTENSIBILITY,
             "out_of_scope": _POLICY_OUT_OF_SCOPE,
-            "multi_match": _POLICY_MULTI_MATCH,
             "outcome": _POLICY_OUTCOME,
+            "registry": _POLICY_REGISTRY,
+            "status_inspect": _POLICY_STATUS_INSPECT,
             "mvr": load_mvr(paths=paths).summary(),
-            "entity_unknown": _POLICY_ENTITY_UNKNOWN,
-            "entity_bind": _POLICY_ENTITY_BIND,
             "research_gate": _POLICY_RESEARCH_GATE,
             "metering": _POLICY_METERING,
             "metering_policy": load_metering_policy(paths=paths).summary(),
-            "entity_validated": _POLICY_ENTITY_VALIDATED,
             "entity_growth": _POLICY_ENTITY_GROWTH,
-            "entity_key_unresolved": _POLICY_ENTITY_KEY_UNRESOLVED,
+            "historical": _POLICY_HISTORICAL,
             "query": {
                 "tool": "query_entity",
                 "request_schema": "mycelium://schema/entity-query",

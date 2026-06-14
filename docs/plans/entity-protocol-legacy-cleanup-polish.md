@@ -29,7 +29,7 @@ Non-blocking nits from Grok review of Program 3 slices. One polish pass at progr
 | P6 | 1520 review | *(none)* | — |
 | P7 | 1530 review N1 | `conftest.py` redundant `pytest_collection_modifyitems` after `pytest_ignore_collect` | **Closed** in 1540 (legacy block removed) |
 | P8 | 1540 review | *(none)* | — |
-| P9 | — | *(add from 1550 review)* | |
+| P9 | 1550 review | *(none)* | — |
 
 ---
 
@@ -42,4 +42,4 @@ Non-blocking nits from Grok review of Program 3 slices. One polish pass at progr
 
 ---
 
-*Last updated: 2026-06-14 (1540 review — P7 closed, P8 none)*
+*Last updated: 2026-06-14 (1550 review — P9 none)*

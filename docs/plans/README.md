@@ -104,6 +104,14 @@ Implementation handoffs live in `prompts/cursor/done/<slug>/` with `prompt.md`, 
 | [`attribute-provenance-program2-slice1.md`](attribute-provenance-program2-slice1.md) … [`slice3.md`](attribute-provenance-program2-slice3.md) | Done |
 | [`../manual-checks/2026-06-13-program2-post-program-gate.md`](../manual-checks/2026-06-13-program2-post-program-gate.md) | Post-program manual gate — **CLEAR** (2026-06-14) |
 
+### Entity protocol legacy cleanup — Program 3 (June 2026)
+
+| Doc | Status |
+|-----|--------|
+| [`entity-protocol-legacy-cleanup-program.md`](entity-protocol-legacy-cleanup-program.md) | **Complete** — `bind_values`, status `resolve` JSON, legacy graph removed |
+| [`entity-protocol-legacy-cleanup-polish.md`](entity-protocol-legacy-cleanup-polish.md) | Polish P1–P2 — slice 1560 |
+| [`../manual-checks/2026-06-14-program3-post-program-gate.md`](../manual-checks/2026-06-14-program3-post-program-gate.md) | Post-program manual gate — **PENDING** |
+
 ### Cleared / superseded backlogs
 
 | Doc | Notes |
@@ -117,8 +125,7 @@ Implementation handoffs live in `prompts/cursor/done/<slug>/` with `prompt.md`, 
 | Doc | Topic |
 |-----|-------|
 | [`attribute-provenance-and-storage.md`](attribute-provenance-and-storage.md) | Architecture — entity/index/protocol split |
-| [`entity-protocol-legacy-cleanup-program.md`](entity-protocol-legacy-cleanup-program.md) | **Next** — Program 3 legacy protocol cleanup |
-| [`next-chunk-prep.md`](next-chunk-prep.md) | Handoff notes; Program 2 gate **CLEAR**; Program 3 next |
+| [`next-chunk-prep.md`](next-chunk-prep.md) | Handoff notes; Program 3 code complete — manual gate pending |
 | [`research-robustness-backlog.md`](research-robustness-backlog.md) | Post-2010 research hardening |
 | [`historical-assumptions-audit.md`](historical-assumptions-audit.md) | Phase 1 audit; Phase 2 cleanup recommendations |
 
@@ -141,4 +148,4 @@ Archived Paul + Grok threads: [`conversations/README.md`](conversations/README.m
 
 ---
 
-*Last updated: June 2026 (Program 2 gate **CLEAR**; Program 3 next).*
+*Last updated: June 2026 (Program 3 code complete; manual gate pending; Program 4 operator write next).*

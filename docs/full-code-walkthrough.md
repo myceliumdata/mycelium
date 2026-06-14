@@ -5,7 +5,7 @@
 **Current reality (June 2026 — MVR redesign M1–M10 shipped):**
 
 - **Networks:** Framework repo + user-chosen **`network_root`** paths. Committed CRM example at `examples/networks/crm/`; bootstrap with `./bin/refresh-example-network crm`. See `docs/plans/networks-terminology.md`.
-- **Public API** = target two-step protocol (`EntityQuery`: step 1 `id` or `lookup` + optional `requested_attributes`; step 2 `delivery_id` + optional `quote_id`). Legacy `entity_key` / `binding` rejected on CLI, MCP, admin. No CLI `ingest`, no MCP `submit_person_data`.
+- **Public API** = target two-step protocol (`EntityQuery`: step 1 `id` or `lookup` + optional `requested_attributes`; step 2 `delivery_id` + optional `quote_id`). Legacy `entity_key` / `binding` removed from CLI, MCP, admin. No CLI `ingest`, no MCP `submit_person_data`.
 - **Graph:** `target_resolve` (step 1 or step 2 deliver) → `supervisor` → … → `assemble_response`. Step 1 returns `lookup_resolved` + `delivery_id` (`delivery.create_on_deliver: true` when step 2 will create). Identity from `entities.json` + specialist storage.
 - See `docs/architecture.md` for the authoritative architecture; examples in `docs/plans/mvr-redesign-entity-query-examples.md`.
 
@@ -33,7 +33,7 @@ From `docs/architecture.md` and `prompts/system/CORE_PROMPT.md`:
 ## 3. Data model & contracts (`src/models/state.py`)
 
 - **`IdentityRecord`**: `id`, `name`, `employer` only.
-- **`EntityQuery`** (target protocol): step 1 — `id` or `lookup`, optional `requested_attributes`, `provenance`; step 2 — `delivery_id`, optional `quote_id`. Legacy `entity_key` internal-only when `MYCELIUM_ALLOW_LEGACY_ENTITY_KEY=1`.
+- **`EntityQuery`** (target protocol): step 1 — `id` or `lookup`, optional `requested_attributes`, `provenance`; step 2 — `delivery_id`, optional `quote_id`. `EntityQuery` rejects `entity_key` / `binding` (`extra="forbid"`).
 - **`LookupSuggestion`**: `reason`, optional `id` / display fields, and **`suggested_lookup`** (partial MVR map for step-1 retry). Built via `lookup_suggestion()` helper.
 - **`QueryResponse`**: `outcome`, `total_matches`, `delivery`, `quote`, `suggestions`, `required_fields`, `results`, `message`, `provenance`, `debug`, `trace_id`, `thread_id`. Step-1 outcomes include `lookup_incomplete`, `lookup_suggested`, and `lookup_resolved`. Public JSON via `public_dict()` / `public_json()` (omits inapplicable keys).
 - **`MyceliumGraphState`**: `query` required at input; internal fields (`route`, `identity_record`, `response`, `audit_log`, classifications, etc.).
@@ -44,7 +44,7 @@ From `docs/architecture.md` and `prompts/system/CORE_PROMPT.md`:
 
 | Surface | Commands / tools |
 |---------|------------------|
-| **CLI** | `mycelium query`, `mycelium network …` |
+| **CLI** | `mycelium query`, `mycelium network …` (status inspect: `--id` / `--lookup-json`; JSON `resolve: { id, lookup }`) |
 | **MCP** | `describe_network`, `query_entity`, `health_check`; schemas via resources |
 | **Studio** | `langgraph dev` via `./bin/run-studio` + optional ngrok |
 
@@ -70,9 +70,9 @@ Package: `mycelium_mcp` (renamed from `mcp` to avoid SDK collision).
 
 ## 6. Entity registry + bootstrap import
 
-- **`entities.json`** — canonical runtime store (`EntityRegistry`, `lookup_entities_by_key`).
-- **`network/seed_import.py`** — imports optional `seed.json` rows at bootstrap (refresh/create) via `ensure_bound_entity`.
-- Query-time resolution: `resolve_entity` / `lookup_entities_by_key` (registry only).
+- **`entities.json`** — canonical runtime store (`EntityRegistry`); rows use `bind_values` keyed by `mvr.bind_fields` and generic `bind_index`.
+- **`network/seed_import.py`** — imports optional `seed.json` rows at bootstrap (refresh/create) into `bind_values` via `ensure_bound_entity`.
+- Query-time resolution: `target_resolve` step-1 uses per-field indexes and `lookup` AND matching.
 
 Committed examples: `examples/networks/crm/` (bootstrap seed), `examples/networks/empty-crm/` (no seed, growth from queries).
 

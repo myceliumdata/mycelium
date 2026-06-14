@@ -339,8 +339,8 @@ Every CLI and MCP query response includes **`outcome`** (machine-readable: `look
 
 1. **Bootstrap (optional)** — `<network_root>/seed.json` is a static fixture for refresh/create only (CRM example: 15 public-safe people). Import writes rows to `entities.json`; queries never read `seed.json`.
 2. **Registry** — `entities.json` is the runtime canonical store (uuid4 ids, `bind_index`). Query-time binds create rows (see `empty-crm` example).
-3. **Target resolve** — Step 1: `id` or `lookup` → `delivery_id`; step 2: deliver. Legacy single-step `entity_key` remains for internal tests only.
-4. **Supervisor** — Classifies attrs and plans specialists after step-2 deliver (or legacy path).
+3. **Target resolve** — Step 1: `id` or `lookup` → `delivery_id`; step 2: deliver.
+4. **Supervisor** — Classifies attrs and plans specialists after step-2 deliver.
 5. **Agent factory** — Creates specialist modules on demand (`<network_root>/specialists/*_specialist.py`; CRM reference modules also live under `src/agents/specialists/`).
 6. **Graph** — `target_resolve` → `supervisor` → `validate_entity` → `metering_gate` → `build_context` → `invoke_specialists` → `assemble_response`.
 7. **Research** — Specialists run sync LLM + Tavily on cache miss when keys are set; persist to `<network_root>/agents/<category>/storage.json`.

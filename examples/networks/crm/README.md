@@ -53,7 +53,7 @@ Check network state before and after demo queries:
 ```bash
 uv run mycelium network status --network crm
 uv run mycelium network status --network crm --verbose   # debug layout
-uv run mycelium network status --network crm --entity "Andrea Kalmans"
+uv run mycelium network status --network crm --lookup-json '{"name":"Andrea Kalmans"}'
 ```
 
 ## Network growth from queries

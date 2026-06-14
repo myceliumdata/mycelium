@@ -2,6 +2,8 @@
 
 **Status:** ✅ **CLEAR** (2026-06-14) — Paul manual gate passed; Program 2 verified on `origin/main`
 
+> **Superseded for status inspect:** Program 3 (slice 1520+) replaced `--entity` with `--lookup-json` / `--id` and added `resolve` JSON on status responses. Use [`2026-06-14-program3-post-program-gate.md`](2026-06-14-program3-post-program-gate.md) for the current protocol checklist after Program 3 gate **CLEAR**.
+
 **Context:** Program 2 (Slices 1–3 + polish P1–P7 + remedial fixes + capstone tests + **step-1 lookup clarity** + **fuzzy bind-field suggestions 1430–1450**) is **on `origin/main`** (`f5cf089` and later). This gate validates hands-on behavior on a synced checkout — **restart MCP** after pulling so suggestion shape matches code.
 
 **What Program 2 proves:**

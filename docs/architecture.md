@@ -61,7 +61,7 @@ Data addition via the public API was removed in the June 2026 refactor (tasks 10
 
 - **Optional fixture:** `<network_root>/seed.json` — static `people` array for bootstrap only (not read at query time). Committed CRM example: `examples/networks/crm/seed.json`. Import via `./bin/refresh-example-network crm` or `mycelium network create` when the file is present (`network/seed_import.py` → `entities.json`).
 - **Transform (maintainers):** `examples/networks/crm/prepare_seed.py` builds example `seed.json` from a CRM source file (name + employer only; no legacy `id` in the file). Full prototype data: git tag `prototype`.
-- **Runtime store:** `entities.json` holds canonical entities (uuid4 ids, `bind_index`, per-field indexes). `ensure_bound_entity` assigns stable ids on import; step-1 resolve uses `lookup` AND indexes. Internal smoke tests may still use deprecated `entity_key` when `MYCELIUM_ALLOW_LEGACY_ENTITY_KEY=1`.
+- **Runtime store:** `entities.json` holds canonical entities (uuid4 ids, `bind_values` keyed by `mvr.bind_fields`, generic `bind_index`, per-field indexes). `ensure_bound_entity` assigns stable ids on import; step-1 resolve uses `lookup` AND indexes. Seed `people[]` rows import into `bind_values` on refresh or `network create`.
 - **No `core_data` specialist** — identity fields (name, employer) come from the registry; specialists may override them later.
 
 ### Supervisor and graph (current)
@@ -146,7 +146,7 @@ Phase 1 adds a **Classification Engine** (cached lookup in `src/agents/classific
 
 ## Storage (current)
 
-- **Entities (queries):** `<network_root>/entities.json` via `EntityRegistry` — seed is bootstrap-only when present.
+- **Entities (queries):** `<network_root>/entities.json` via `EntityRegistry` — seed is bootstrap-only when present. Each row stores MVR bind fields in **`bind_values: dict[str, str]`** keyed by `mvr.bind_fields`; **`bind_index`** is a generic compound key from normalized bind values in policy order (CRM: `name|employer`).
 - **Specialists:** per-category JSON under `<network_root>/agents/<category>/` (`SpecialistStorage` in `src/agents/specialists/base.py`), keyed by `id` (UUID). Extended attributes and **MVR bind fields** (`name`, `employer`, …) use **`versioned_provenance_v1`**: each field stores `versions[]` + `current_version_id` (append-only provenance). Taxonomy `attribute_map` owns bind fields (Program 2 Slice 1 — `agents/attribute_write.py`); `entities.json` caches current values and derived indexes. Deprecated flat v1 field blobs are invalid — refresh the network or delete `agents/<category>/storage.json` to reset. Research writes may still **wrap** a legacy flat **pending** blob into versioned `v1` once (`ensure_versioned_for_write`) so in-flight retries can complete; all other flat shapes fail loud on read. Admin `/status` and `mycelium network status --json` expose full `versions[]` per extended and bind field on entity drill-down (Program 2 Slice 2). `QueryResponse.provenance` includes bind fields when versioned storage exists. Admin UI renders version history in a full-width sub-row below each field (status badges, short timestamps, `reason` / `last_error`, source links).
 - **SQLite:** `<network_root>/checkpoints.sqlite` (LangGraph checkpointer). Optional `<network_root>/mycelium.db` — empty bootstrap file only; no identity tables.
 
@@ -227,9 +227,9 @@ Future (not v1): per-network LangSmith project names, optional credential profil
 
 **M8 (batch):** N-match scopes research and deliver all entities; batch `provenance.entities[]`.
 
-**M9 (public surfaces):** CLI, MCP, admin API migrated to target protocol; legacy `entity_key` rejected on public entry points.
+**M9 (public surfaces):** CLI, MCP, admin API migrated to target protocol; legacy `entity_key` / `binding` removed from public entry points.
 
-**M10 (polish):** Admin UI two-step form; backlog tests; legacy graph path gated behind `MYCELIUM_ALLOW_LEGACY_ENTITY_KEY`.
+**M10 (polish):** Admin UI two-step form; backlog tests; Program 3 removed legacy graph path and env flag.
 
 **Active — Program 2** (MVR in specialist storage, unified write): [`attribute-provenance-program2.md`](plans/attribute-provenance-program2.md). **Complete** (Slices 1–3 shipped).
 
@@ -272,7 +272,7 @@ No `deliver: true` flag. `delivery_id` and `quote_id` TTL default **5 minutes** 
 | `not_found` | 0 matches, unknown `id`, or expired/invalid tokens |
 | `assembled` / `found` | Step 2 delivery (and research when attrs bound) |
 
-Legacy outcomes (`entity_unknown`, `entity_key_unresolved`, `entity_bound_provisional`, …) are retired on public surfaces; they may still appear when `MYCELIUM_ALLOW_LEGACY_ENTITY_KEY=1` for internal smoke tests only.
+Legacy outcomes (`entity_unknown`, `entity_key_unresolved`, `entity_bound_provisional`, …) are retired — removed in Program 3 (June 2026).
 
 ### Create flow (0 matches) — M7
 
@@ -286,11 +286,9 @@ Multi-match step-1 scopes carry `entity_ids[]` (N > 1). Step-2 deliver hydrates 
 
 ### Public surfaces (CLI, MCP, admin) — M9
 
-CLI `query`, MCP `query_entity`, and admin `POST /query` use the **target protocol only** — no `entity_key` / `binding` on public entry points. Public JSON uses `QueryResponse.public_dict()` / `public_json()` — omits fields that do not apply to the response `outcome` (e.g. step-2 `found` omits `total_matches` and `delivery`; empty `required_fields`/`suggestions` and null `quote`/`provenance`/`trace_id` are absent keys; `delivery.create_on_deliver` only when true). Step-1 adds `lookup_incomplete` (partial lookup missing MVR fields) and `lookup_suggested` (same-name or fuzzy near-miss); `lookup_suggested` retry hints use `suggestions[].suggested_lookup` (partial/full MVR bind map), not retired `entity_key`; `confirm_new_entity` on step-1 lookup opts into create after suggestions. Example query JSON under `examples/networks/*/queries/` documents two-step resolve → deliver. Admin UI (`admin-ui/`) uses lookup fields + stored `delivery_id` (M10); shows `total_matches: 0 (full MVR)` when `create_on_deliver` is true.
+CLI `query`, MCP `query_entity`, and admin `POST /query` use the **target protocol only** — no `entity_key` / `binding` on public entry points. Public JSON uses `QueryResponse.public_dict()` / `public_json()` — omits fields that do not apply to the response `outcome` (e.g. step-2 `found` omits `total_matches` and `delivery`; empty `required_fields`/`suggestions` and null `quote`/`provenance`/`trace_id` are absent keys; `delivery.create_on_deliver` only when true). Step-1 adds `lookup_incomplete` (partial lookup missing MVR fields) and `lookup_suggested` (same-name or fuzzy near-miss); `lookup_suggested` retry hints use `suggestions[].suggested_lookup` (partial/full MVR bind map); `confirm_new_entity` on step-1 lookup opts into create after suggestions. Example query JSON under `examples/networks/*/queries/` documents two-step resolve → deliver. Admin UI (`admin-ui/`) uses lookup fields + stored `delivery_id` (M10); shows `total_matches: 0 (full MVR)` when `create_on_deliver` is true.
 
-### Legacy graph path — M10
-
-Internal smoke tests may still call `EntityQuery(entity_key=…)` when `MYCELIUM_ALLOW_LEGACY_ENTITY_KEY=1` (pytest default). Public entry points reject legacy keys; supervisor returns `not_found` when the flag is unset.
+**Status inspect (D2-b):** CLI `mycelium network status --id` / `--lookup-json` and admin `GET /status?id=` / `?lookup=` accept exact `id` or `lookup` only (no fuzzy suggestions). JSON responses include `resolve: { id, lookup }` mirroring the inspect input, plus `resolve_matches`, `resolve_kind`, and `entity_fields[]` with versioned storage detail.
 
 ### Operator notes — M10
 

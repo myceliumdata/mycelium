@@ -104,6 +104,33 @@ def test_describe_network_returns_parseable_json(
 
 
 @pytest.mark.smoke
+def test_describe_network_policy_omits_legacy_entity_key_outcomes(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "net"
+    root.mkdir()
+    shutil.copy(EXAMPLE_CRM / "network.json", root / "network.json")
+    _configure_root(monkeypatch, root)
+
+    policy = build_network_capabilities()["policy"]
+    legacy_keys = {
+        "entity_unknown",
+        "entity_bind",
+        "entity_key_unresolved",
+        "entity_validated",
+        "multi_match",
+    }
+    assert legacy_keys.isdisjoint(policy.keys())
+    assert "registry" in policy
+    assert "status_inspect" in policy
+    assert "historical" in policy
+    policy_text = json.dumps(policy)
+    assert "entity_key_unresolved" not in policy_text
+    assert "entity_unknown" not in policy_text
+
+
+@pytest.mark.smoke
 def test_list_specialist_routing_not_exposed() -> None:
     import mycelium_mcp.server as server
 

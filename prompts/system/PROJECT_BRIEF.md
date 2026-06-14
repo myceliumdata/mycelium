@@ -19,7 +19,7 @@ Mycelium is a system where AI agents autonomously handle data ingestion, schema 
 
 ## Current implementation (June 2026)
 
-- **Public interface:** Query-only CLI and MCP (`EntityQuery`: `entity_key`, optional `requested_attributes`; MCP `query_entity`). Data addition returns via internal agent coordination, not caller-supplied payloads.
+- **Public interface:** Query-only CLI and MCP (`EntityQuery`: step 1 `id` or `lookup`, step 2 `delivery_id`; MCP `query_entity`). Data addition returns via internal agent coordination, not caller-supplied payloads.
 - **Graph:** `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` (see `src/graphs/core.py`).
 - **Specialists:** Generated per attribute domain (Agent Factory); not the original Ingest/Validator bootstrap agents.
 - **Checkpointer:** SQLite (`data/checkpoints.sqlite`), not Postgres.
