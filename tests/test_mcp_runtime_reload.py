@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from agents.entity_resolution import lookup_entities_by_key
+from registry_helpers import lookup_entities_by_name as lookup_entities_by_key
 from agents.registry import get_agent_registry, reset_agent_registry
 from agents.runtime import evict_cached_specialist_modules, refresh_runtime_from_disk
 from network_helpers import import_seed_for_test

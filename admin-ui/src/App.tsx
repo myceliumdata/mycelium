@@ -38,7 +38,6 @@ function outcomeBadgeClass(outcome: string | null | undefined): string {
   if (
     outcome === "found" ||
     outcome === "assembled" ||
-    outcome === "entity_validated" ||
     outcome === "lookup_resolved"
   ) {
     return "badge ok";
@@ -444,8 +443,7 @@ export default function App() {
 
         const terminalOutcome =
           result.outcome === "found" ||
-          result.outcome === "assembled" ||
-          result.outcome === "entity_validated";
+          result.outcome === "assembled";
 
         if (terminalOutcome) {
           setQueryDeliveryId("");

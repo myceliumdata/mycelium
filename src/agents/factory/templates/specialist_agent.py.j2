@@ -348,7 +348,7 @@ def {{ agent_name }}(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
             "response": resp,
             "route": None,
             "audit_log": [
-                f"{{ agent_name }}: no id in state for {current.query.entity_key!r}.",
+                f"{{ agent_name }}: no id in state for {current.current_id!r}.",
             ],
             "specialist_contrib": contrib,
             "matched_records": current.matched_records or [],

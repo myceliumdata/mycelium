@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from agents.entity_registry import reset_entity_registry
-from agents.entity_resolution import lookup_entities_by_key
+from registry_helpers import lookup_entities_by_name as lookup_entities_by_key
 from mycelium_admin.server import bootstrap_admin, create_app
 from network_helpers import import_seed_for_test
 from network.introspection import build_network_status, status_to_dict

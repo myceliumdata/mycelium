@@ -149,8 +149,6 @@ def resolve_cache_state(
 def should_meter(state: MyceliumGraphState) -> bool:
     if not graph_requested_attributes(state):
         return False
-    if state.entity_resolution_kind in {"unknown", "under_specified", "suggest"}:
-        return False
     if state.validation_passed is False:
         return False
     from agents.research_gate import is_research_gated

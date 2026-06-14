@@ -348,7 +348,7 @@ def demographic_specialist(state: MyceliumGraphState | dict[str, Any]) -> dict[s
             "response": resp,
             "route": None,
             "audit_log": [
-                f"demographic_specialist: no id in state for {current.query.entity_key!r}.",
+                f"demographic_specialist: no id in state for {current.current_id!r}.",
             ],
             "specialist_contrib": contrib,
             "matched_records": current.matched_records or [],

@@ -18,7 +18,7 @@ from mycelium_mcp.server import _neutral_json_schema
 def test_entity_query_step1_by_id() -> None:
     query = EntityQuery(id="3c3daf80-5e10-411e-8961-3e8d0f3421d4")
     assert not entity_query_is_delivery_step(query)
-    assert query.entity_key == ""
+    assert query.id == "3c3daf80-5e10-411e-8961-3e8d0f3421d4"
 
 
 @pytest.mark.smoke
@@ -34,17 +34,21 @@ def test_entity_query_step1_by_lookup() -> None:
 
 
 @pytest.mark.smoke
-def test_entity_query_step1_legacy_entity_key() -> None:
-    query = EntityQuery(entity_key="Nichanan Kesonpat", binding={"employer": "Acme"})
-    assert query.entity_key == "Nichanan Kesonpat"
-    assert query.binding == {"employer": "Acme"}
+def test_entity_query_rejects_entity_key_field() -> None:
+    with pytest.raises(ValidationError):
+        EntityQuery(entity_key="Nichanan Kesonpat")  # type: ignore[call-arg]
+
+
+@pytest.mark.smoke
+def test_entity_query_rejects_binding_field() -> None:
+    with pytest.raises(ValidationError):
+        EntityQuery(binding={"employer": "Acme"})  # type: ignore[call-arg]
 
 
 @pytest.mark.smoke
 def test_entity_query_step2_delivery_only() -> None:
     query = EntityQuery(delivery_id="d_abc123", quote_id="q_xyz789")
     assert entity_query_is_delivery_step(query)
-    assert query.entity_key == ""
     assert query.quote_id == "q_xyz789"
 
 
@@ -53,19 +57,11 @@ def test_entity_query_step2_delivery_only() -> None:
     ("payload", "match"),
     [
         (
-            {"delivery_id": "d_x", "entity_key": "Ada"},
-            "step 2 accepts only delivery_id",
-        ),
-        (
             {"delivery_id": "d_x", "lookup": {"employer": "IBM"}},
             "step 2 accepts only delivery_id",
         ),
         (
             {"delivery_id": "d_x", "id": "uuid"},
-            "step 2 accepts only delivery_id",
-        ),
-        (
-            {"delivery_id": "d_x", "binding": {"employer": "IBM"}},
             "step 2 accepts only delivery_id",
         ),
         (
@@ -78,11 +74,11 @@ def test_entity_query_step2_delivery_only() -> None:
         ),
         (
             {},
-            "step 1 requires id, lookup, or entity_key",
+            "step 1 requires id or lookup",
         ),
         (
             {"lookup": {}},
-            "step 1 requires id, lookup, or entity_key",
+            "step 1 requires id or lookup",
         ),
     ],
 )
@@ -211,10 +207,10 @@ def test_public_dict_includes_required_fields_when_incomplete() -> None:
 def test_mcp_entity_query_schema_includes_target_fields() -> None:
     schema = _neutral_json_schema(EntityQuery)
     props = schema.get("properties") or {}
-    for field in ("id", "lookup", "delivery_id", "entity_key", "binding"):
+    for field in ("id", "lookup", "delivery_id"):
         assert field in props
-    assert "Deprecated" in (props["entity_key"].get("description") or "")
-    assert "Deprecated" in (props["binding"].get("description") or "")
+    assert "entity_key" not in props
+    assert "binding" not in props
     description = schema.get("description") or ""
     assert "delivery_id" in description
     assert "lookup" in description

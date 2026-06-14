@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from agents.entity_registry import reset_entity_registry
-from agents.entity_resolution import lookup_entities_by_key
+from registry_helpers import lookup_entities_by_name as lookup_entities_by_key
 from network.example import refresh_example_network
 from network_helpers import import_seed_at_root
 from network.paths import NetworkPaths, apply_network_paths, resolve_network_root

@@ -163,16 +163,6 @@ def test_unknown_id_not_found_without_delivery(crm_target_resolve_env: CoreStora
     assert "No record found for id" in response.message
 
 
-@pytest.mark.smoke
-def test_legacy_entity_key_still_uses_supervisor_path(crm_target_resolve_env: CoreStorage) -> None:
-    _ = crm_target_resolve_env
-    response = run_query(EntityQuery(entity_key="Nichanan Kesonpat"))
-    assert response.outcome == "found"
-    assert response.results
-    assert response.results[0]["name"] == "Nichanan Kesonpat"
-    assert response.delivery is None
-    assert response.total_matches is None
-
 
 @pytest.mark.smoke
 def test_lookup_resolved_serializes_to_json(crm_target_resolve_env: CoreStorage) -> None:

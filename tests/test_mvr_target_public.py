@@ -106,7 +106,7 @@ def test_example_batch_resolve_json_is_valid_target_step1() -> None:
     query, _thread = _parse_query_payload(json.dumps(payload))
     assert query.lookup == {"employer": "645 Ventures"}
     assert query.requested_attributes == ["email"]
-    assert not query.entity_key
+    assert not (query.id or "").strip()
 
 
 @pytest.mark.smoke

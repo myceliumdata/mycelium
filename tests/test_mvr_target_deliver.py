@@ -170,14 +170,6 @@ def test_unknown_delivery_id_not_found(crm_deliver_env: CoreStorage) -> None:
     assert "No valid delivery" in response.message
 
 
-@pytest.mark.smoke
-def test_legacy_entity_key_unaffected_by_deliver_path(crm_deliver_env: CoreStorage) -> None:
-    _ = crm_deliver_env
-    response = run_query(EntityQuery(entity_key="Nichanan Kesonpat"))
-    assert response.outcome == "found"
-    assert response.results
-    assert response.delivery is None
-
 
 @pytest.mark.smoke
 def test_step2_deliver_serializes_without_delivery_fields(crm_deliver_env: CoreStorage) -> None:

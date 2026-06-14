@@ -348,7 +348,7 @@ def contact_specialist(state: MyceliumGraphState | dict[str, Any]) -> dict[str, 
             "response": resp,
             "route": None,
             "audit_log": [
-                f"contact_specialist: no id in state for {current.query.entity_key!r}.",
+                f"contact_specialist: no id in state for {current.current_id!r}.",
             ],
             "specialist_contrib": contrib,
             "matched_records": current.matched_records or [],

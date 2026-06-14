@@ -1,22 +1,18 @@
-"""Supervisor: entity resolution, classification, and specialist invocation planning."""
+"""Supervisor: classification and specialist invocation planning for step-2 deliver."""
 
 from __future__ import annotations
 
 from typing import Any
 
 from agents.classification import get_category_tree
-from agents.entity_resolution import is_provisional_registry_match, resolve_entity
 from agents.context import planner_context
-from agents.research_gate import research_gate_allows
 from agents.factory.agent_factory import get_agent_factory
 from agents.registry import get_agent_registry
-from agents.responses import response_not_found
+from agents.research_gate import research_gate_allows
 from models.state import (
     MyceliumGraphState,
     entity_query_is_delivery_step,
-    entity_query_is_legacy_entity_key_step,
     graph_requested_attributes,
-    legacy_entity_key_allowed,
 )
 
 # Context pull + specialist calls run in graph nodes (build_context, invoke_specialists).
@@ -116,41 +112,19 @@ def _target_fields_for_agent(
 
 def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     """
-    Resolve entity via registry, classify requested attributes, plan specialists.
+    Classify requested attributes and plan specialists for step-2 deliver.
 
-    Does not build the full cross-specialist context or final QueryResponse —
-    graph nodes ``build_context``, ``invoke_specialists``, and ``assemble_response``
-    handle those steps.
+    Step-1 resolve terminates in ``target_resolve_node``. This node only runs when
+    ``target_resolve`` hydrated ``matched_records`` for a delivery scope.
     """
     current = _coerce(state)
     query = current.query
     audit_log = ["Supervisor: evaluating query."]
 
-    if entity_query_is_legacy_entity_key_step(query) and not legacy_entity_key_allowed():
-        audit_log.append(
-            "Supervisor: legacy entity_key path disabled — use lookup or id.",
-        )
-        return {
-            "response": response_not_found(
-                query,
-                message=(
-                    "Legacy entity_key protocol retired on public surfaces. "
-                    "Use lookup or id for step 1, then delivery_id for step 2."
-                ),
-            ),
-            "matched_records": [],
-            "entity_resolution_kind": "unknown",
-            "entity_suggestions": [],
-            "context": _short_circuit_context(),
-            "audit_log": audit_log,
-            "route": None,
-        }
-
     if entity_query_is_delivery_step(query) and current.matched_records:
         matched = current.matched_records
         audit_log.append(
-            f"Supervisor: step-2 deliver — using {len(matched)} scope entity row(s); "
-            "skipping legacy resolve.",
+            f"Supervisor: step-2 deliver — using {len(matched)} scope entity row(s).",
         )
         ids = [m["id"] for m in matched if m.get("id")]
         attrs = graph_requested_attributes(current)
@@ -189,128 +163,14 @@ def supervisor_agent(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
             result["current_id"] = matched[0]["id"]
         return result
 
-    resolution = resolve_entity(query)
-
-    if resolution.kind == "suggest":
-        audit_log.append(
-            f"Supervisor: near-miss suggestions for {query.entity_key!r} "
-            f"(count={len(resolution.suggestions)}); skipping classification.",
-        )
-        return {
-            "matched_records": [],
-            "entity_resolution_kind": "suggest",
-            "entity_suggestions": resolution.suggestions,
-            "context": _short_circuit_context(),
-            "audit_log": audit_log,
-            "route": None,
-        }
-
-    if resolution.kind == "unknown":
-        audit_log.append(
-            f"Supervisor: unknown entity {query.entity_key!r}; "
-            "skipping classification and specialists.",
-        )
-        return {
-            "matched_records": [],
-            "entity_resolution_kind": "unknown",
-            "entity_required_fields": resolution.required_fields,
-            "entity_suggestions": [],
-            "context": _short_circuit_context(),
-            "audit_log": audit_log,
-            "route": None,
-        }
-
-    if resolution.kind == "under_specified":
-        audit_log.append(
-            f"Supervisor: under-specified bind for {query.entity_key!r}; "
-            "skipping classification and specialists.",
-        )
-        return {
-            "matched_records": [],
-            "entity_resolution_kind": "under_specified",
-            "entity_required_fields": resolution.required_fields,
-            "entity_suggestions": [],
-            "context": _short_circuit_context(),
-            "audit_log": audit_log,
-            "route": None,
-        }
-
-    if resolution.kind == "bind_provisional":
-        matched = resolution.matches
-        audit_log.append(
-            f"Supervisor: provisional bind for {query.entity_key!r} "
-            f"(id={matched[0].get('id')!r}); validation runs next.",
-        )
-        classifications = _classify_requested_attributes(query, audit_log)
-        result: dict[str, Any] = {
-            "matched_records": matched,
-            "entity_resolution_kind": "bind_provisional",
-            "entity_suggestions": [],
-            "current_id": matched[0].get("id"),
-            "context": planner_context(
-                matched=matched,
-                ids=[matched[0].get("id", "")],
-                specialists_to_invoke=[],
-            ),
-            "audit_log": audit_log,
-            "route": None,
-        }
-        if classifications:
-            result["classifications"] = classifications
-        return result
-
-    matched = resolution.matches
-    ids = [m["id"] for m in matched if m.get("id")]
-    if matched:
-        audit_log.append(
-            f"Supervisor: resolved via registry, match count={len(matched)} "
-            f"for {query.entity_key!r}.",
-        )
-        if resolution.duplicate_bind:
-            audit_log.append("Supervisor: duplicate bind key — existing entity returned.")
-    else:
-        audit_log.append(f"Supervisor: no match for {query.entity_key!r}.")
-
-    classifications = _classify_requested_attributes(query, audit_log)
-    specialists_to_invoke: list[str] = []
-    if research_gate_allows(current_id=None, matched=matched):
-        specialists_to_invoke = _collect_specialists_to_invoke(
-            classifications,
-            audit_log,
-        )
-        if specialists_to_invoke:
-            audit_log.append(
-                f"Supervisor: will invoke specialist(s): "
-                f"{', '.join(specialists_to_invoke)}.",
-            )
-    elif (
-        len(matched) == 1
-        and is_provisional_registry_match(matched[0])
-        and query.requested_attributes
-    ):
-        audit_log.append(
-            "Supervisor: provisional registry entity — defer specialists until "
-            "validation.",
-        )
-
-    context = planner_context(
-        matched=matched[0] if len(matched) == 1 else matched,
-        ids=ids,
-        specialists_to_invoke=specialists_to_invoke,
+    audit_log.append(
+        "Supervisor: no delivery scope — step 1 should terminate in target_resolve.",
     )
-
-    result: dict[str, Any] = {
-        "matched_records": matched,
-        "entity_resolution_kind": resolution.kind if matched else "none",
+    return {
+        "matched_records": [],
+        "entity_resolution_kind": "none",
         "entity_suggestions": [],
-        "duplicate_bind": resolution.duplicate_bind,
-        "context": context,
+        "context": _short_circuit_context(),
         "audit_log": audit_log,
         "route": None,
     }
-    if classifications:
-        result["classifications"] = classifications
-    if len(matched) == 1:
-        result["current_id"] = matched[0]["id"]
-
-    return result

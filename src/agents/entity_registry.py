@@ -182,15 +182,18 @@ class EntityRegistry:
     def lookup_by_id(self, entity_id: str) -> RegistryEntity | None:
         return self._data.entities.get(entity_id)
 
-    def lookup_by_name(self, name: str) -> list[RegistryEntity]:
-        target = normalize_field_index_value(name)
-        if not target:
+    def lookup_by_field(self, field: str, value: str) -> list[RegistryEntity]:
+        norm = normalize_field_index_value(value)
+        if not norm:
             return []
-        return [
-            entity
-            for entity in self._data.entities.values()
-            if normalize_field_index_value(entity.name) == target
-        ]
+        field_key = field.strip().lower()
+        entity_ids = self._field_indexes.get(field_key, {}).get(norm, [])
+        entities: list[RegistryEntity] = []
+        for entity_id in entity_ids:
+            entity = self._data.entities.get(entity_id)
+            if entity is not None:
+                entities.append(entity)
+        return entities
 
     def assign_bind_index(self, entity_id: str, bind_values: dict[str, str]) -> None:
         self._data.bind_index[make_bind_key(bind_values, self._bind_fields())] = entity_id

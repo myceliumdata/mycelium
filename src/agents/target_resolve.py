@@ -40,7 +40,7 @@ def _same_name_different_employer_suggestions(
 
     lookup_employer = normalize_field_index_value(employer)
     suggestions: list[LookupSuggestion] = []
-    for entity in get_entity_registry().lookup_by_name(name):
+    for entity in get_entity_registry().lookup_by_field("name", name):
         entity_employer = normalize_field_index_value(entity.employer or "")
         if entity_employer == lookup_employer:
             continue

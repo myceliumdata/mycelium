@@ -19,11 +19,6 @@ from agents.metering_gate import write_entitlement_from_accepted_quote
 from agents.responses import (
     merge_requested_record,
     response_assembled,
-    response_entity_bound_provisional,
-    response_entity_under_specified,
-    response_entity_unknown,
-    response_entity_unresolved,
-    response_entity_validated,
     response_found,
     response_lookup_incomplete,
     response_lookup_resolved,
@@ -57,7 +52,6 @@ from models.state import (
     MyceliumGraphState,
     QueryResponse,
     entity_query_is_delivery_step,
-    entity_query_is_target_resolve_step,
     graph_provenance_requested,
     graph_requested_attributes,
 )
@@ -228,9 +222,6 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
                 f"target_resolve: deliver found entity_count={len(matched)}.",
             ],
         }
-
-    if not entity_query_is_target_resolve_step(query):
-        return {"audit_log": ["target_resolve: legacy entity_key path — defer to supervisor."]}
 
     resolved = resolve_target_step1(query)
     if resolved.kind == "not_found":
@@ -678,32 +669,6 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
             ],
         }
 
-    if current.entity_resolution_kind == "suggest" and current.entity_suggestions:
-        return {
-            "response": response_entity_unresolved(
-                query,
-                current.entity_suggestions,
-                **id_kwargs,
-            ),
-            "audit_log": ["assemble_response: entity key unresolved (suggestions)."],
-        }
-
-    if current.entity_resolution_kind == "unknown":
-        return {
-            "response": response_entity_unknown(query, **id_kwargs),
-            "audit_log": ["assemble_response: entity unknown (MVR required)."],
-        }
-
-    if current.entity_resolution_kind == "under_specified":
-        return {
-            "response": response_entity_under_specified(
-                query,
-                current.entity_required_fields,
-                **id_kwargs,
-            ),
-            "audit_log": ["assemble_response: entity under-specified (partial binding)."],
-        }
-
     if current.validation_passed is False and matched and len(matched) == 1:
         summary = validation_failure_summary(current.validation_contributions)
         return {
@@ -721,10 +686,14 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
         and current.validation_contributions
         and matched
         and not graph_requested_attributes(current)
-        and not entity_query_is_delivery_step(query)
     ):
         return {
-            "response": response_entity_validated(query, matched[0], **id_kwargs),
+            "response": response_found(
+                query,
+                base_records=_identity_records_from_match(matched),
+                message="Core record validated.",
+                **id_kwargs,
+            ),
             "audit_log": ["assemble_response: entity validated."],
         }
 
@@ -733,20 +702,6 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
         return {
             "response": _attach_provenance(gated, current, matched),
             "audit_log": ["assemble_response: research gate (provisional + attrs)."],
-        }
-
-    if (
-        current.entity_resolution_kind == "bind_provisional"
-        and matched
-        and current.validation_passed is not True
-    ):
-        return {
-            "response": response_entity_bound_provisional(
-                query,
-                matched[0],
-                **id_kwargs,
-            ),
-            "audit_log": ["assemble_response: entity bound provisional."],
         }
 
     if not matched:
@@ -761,7 +716,7 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
         identity_records = _identity_records_from_match(matched)
         message = None
         if current.duplicate_bind and len(matched) == 1:
-            name = matched[0].get("name") or query.entity_key
+            name = matched[0].get("name") or (query.id or "").strip() or str(query.lookup)
             employer = matched[0].get("employer")
             employer_phrase = f" at {employer}" if employer else ""
             if matched[0].get("_validation_state") == "validated":

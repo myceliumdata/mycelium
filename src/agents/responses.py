@@ -17,7 +17,6 @@ from models.state import (
     IdentityRecord,
     normalized_requested_attributes,
 )
-from network.mvr import MvrPolicy, legacy_entity_lookup_map, load_mvr, missing_mvr_bind_fields
 
 _IDENTITY_SUMMARY_KEYS = ("id", "name", "employer")
 
@@ -27,9 +26,23 @@ def _debug_extra_value(value: Any) -> str:
     return repr(value)
 
 
+def _query_target_label(query: EntityQuery) -> str:
+    entity_id = (query.id or "").strip()
+    if entity_id:
+        return entity_id
+    if query.lookup:
+        return str(query.lookup)
+    delivery_id = (query.delivery_id or "").strip()
+    if delivery_id:
+        return delivery_id
+    return "query"
+
+
 def debug_for_query(query: EntityQuery, **extra: Any) -> str:
     parts = [
-        f"entity_key={query.entity_key!r}",
+        f"id={(query.id or '').strip()!r}",
+        f"lookup={query.lookup!r}",
+        f"delivery_id={(query.delivery_id or '').strip()!r}",
         f"requested_attributes={query.requested_attributes!r}",
     ]
     parts.extend(
@@ -263,7 +276,7 @@ def build_query_message(
     )
 
     if not records:
-        return f"No record found for {query.entity_key!r}.", {
+        return f"No record found for {_query_target_label(query)!r}.", {
             "found": [],
             "researching": [],
             "unavailable": [],
@@ -271,10 +284,10 @@ def build_query_message(
         }
 
     if len(records) == 1:
-        name = records[0].get("name") or query.entity_key
+        name = records[0].get("name") or _query_target_label(query)
         parts: list[str] = [f"Found record for {name}."]
     else:
-        parts = [f"Found {len(records)} records for {query.entity_key!r}."]
+        parts = [f"Found {len(records)} records for {_query_target_label(query)!r}."]
 
     if not requested:
         return parts[0], {
@@ -392,10 +405,10 @@ def response_found(
     n = len(records)
     if message is None:
         if n == 1:
-            name = records[0].get("name") or query.entity_key
+            name = records[0].get("name") or _query_target_label(query)
             message = f"Found record for {name}."
         else:
-            message = f"Found {n} records for {query.entity_key!r}."
+            message = f"Found {n} records for {_query_target_label(query)!r}."
     return _make_response(
         results=records,
         message=message,
@@ -559,206 +572,6 @@ def response_lookup_suggested(
     )
 
 
-def response_entity_unresolved(
-    query: EntityQuery,
-    suggestions: list[LookupSuggestion],
-    *,
-    trace_id: str | None = None,
-    thread_id: str | None = None,
-) -> QueryResponse:
-    """Near-miss entity_key: suggest retries without returning attribute data."""
-    if not suggestions:
-        return response_not_found(query, trace_id=trace_id, thread_id=thread_id)
-
-    def _suggestion_label(item: LookupSuggestion) -> str:
-        name = item.suggested_lookup.get("name") or item.name
-        if name:
-            employer_hint = f" ({item.employer})" if item.employer else ""
-            return f"{name!r}{employer_hint}"
-        employer = item.suggested_lookup.get("employer") or item.employer
-        if employer:
-            return f"{employer!r}"
-        return repr(item.suggested_lookup)
-
-    top = suggestions[0]
-    if len(suggestions) == 1:
-        message = (
-            f"No exact match for {query.entity_key!r}. "
-            f"Did you mean {_suggestion_label(top)}? "
-            "Re-query with suggested_lookup merged into lookup (legacy: use "
-            "suggested_lookup['name'] as entity_key)."
-        )
-    else:
-        labels = ", ".join(_suggestion_label(item) for item in suggestions[:3])
-        message = (
-            f"No exact match for {query.entity_key!r}. "
-            f"Did you mean one of: {labels}? "
-            "Re-query with a suggested_lookup map to continue."
-        )
-
-    return _make_response(
-        results=[],
-        message=message,
-        outcome="entity_key_unresolved",
-        suggestions=suggestions,
-        debug=debug_for_query(
-            query,
-            outcome="entity_key_unresolved",
-            suggestions=[item.model_dump() for item in suggestions],
-        ),
-        trace_id=trace_id,
-        thread_id=thread_id,
-    )
-
-
-def response_entity_unknown(
-    query: EntityQuery,
-    *,
-    mvr: MvrPolicy | None = None,
-    trace_id: str | None = None,
-    thread_id: str | None = None,
-) -> QueryResponse:
-    """Unknown entity: no registry match and no near-miss suggestions; return MVR gaps."""
-    policy = mvr or load_mvr()
-    lookup = legacy_entity_lookup_map(query.entity_key, query.binding, mvr=policy)
-    required_fields = missing_mvr_bind_fields(lookup, mvr=policy)
-    fields_phrase = _required_fields_phrase(required_fields)
-    if query.requested_attributes:
-        attrs = ", ".join(query.requested_attributes)
-        message = (
-            f"No record for {query.entity_key!r}. "
-            f"To research {attrs}, provide {fields_phrase}. "
-            "Re-query with the same entity_key when you have it."
-        )
-    else:
-        message = (
-            f"No record for {query.entity_key!r}. "
-            f"Provide {fields_phrase} to bind this entity."
-        )
-
-    return _make_response(
-        results=[],
-        message=message,
-        outcome="entity_unknown",
-        required_fields=required_fields,
-        debug=debug_for_query(
-            query,
-            outcome="entity_unknown",
-            required_fields=required_fields,
-        ),
-        trace_id=trace_id,
-        thread_id=thread_id,
-    )
-
-
-def response_entity_under_specified(
-    query: EntityQuery,
-    required_fields: list[str],
-    *,
-    trace_id: str | None = None,
-    thread_id: str | None = None,
-) -> QueryResponse:
-    """Partial binding: MVR fields still missing after binding attempt."""
-    fields_phrase = _required_fields_phrase(required_fields)
-    if query.requested_attributes:
-        attrs = ", ".join(query.requested_attributes)
-        message = (
-            f"No record for {query.entity_key!r}. "
-            f"To research {attrs}, complete binding with {fields_phrase}. "
-            "Re-query with the same entity_key and binding when ready."
-        )
-    else:
-        message = (
-            f"No record for {query.entity_key!r}. "
-            f"Complete binding with {fields_phrase}."
-        )
-
-    return _make_response(
-        results=[],
-        message=message,
-        outcome="entity_under_specified",
-        required_fields=required_fields,
-        debug=debug_for_query(
-            query,
-            outcome="entity_under_specified",
-            required_fields=required_fields,
-            binding=query.binding,
-        ),
-        trace_id=trace_id,
-        thread_id=thread_id,
-    )
-
-
-def response_entity_bound_provisional(
-    query: EntityQuery,
-    record: dict[str, Any],
-    *,
-    trace_id: str | None = None,
-    thread_id: str | None = None,
-) -> QueryResponse:
-    """New provisional registry bind; identity only — no attribute research."""
-    name = record.get("name") or query.entity_key
-    employer = record.get("employer")
-    employer_phrase = f" at {employer}" if employer else ""
-    message = (
-        f"Bound provisional record for {name}{employer_phrase}. "
-        "Core validation and attribute research are not available until a later step."
-    )
-    results = [
-        {
-            "id": record.get("id", ""),
-            "name": name,
-            "employer": employer,
-        },
-    ]
-    return _make_response(
-        results=results,
-        message=message,
-        outcome="entity_bound_provisional",
-        required_fields=[],
-        debug=debug_for_query(
-            query,
-            outcome="entity_bound_provisional",
-            registry_id=record.get("id"),
-            binding=query.binding,
-        ),
-        trace_id=trace_id,
-        thread_id=thread_id,
-    )
-
-
-def response_entity_validated(
-    query: EntityQuery,
-    record: dict[str, Any],
-    *,
-    trace_id: str | None = None,
-    thread_id: str | None = None,
-) -> QueryResponse:
-    """MVR validation passed; registry entity promoted to validated."""
-    name = record.get("name") or query.entity_key
-    employer = record.get("employer")
-    results = [
-        {
-            "id": record.get("id", ""),
-            "name": name,
-            "employer": employer,
-        },
-    ]
-    return _make_response(
-        results=results,
-        message="Core record validated.",
-        outcome="entity_validated",
-        required_fields=[],
-        debug=debug_for_query(
-            query,
-            outcome="entity_validated",
-            registry_id=record.get("id"),
-        ),
-        trace_id=trace_id,
-        thread_id=thread_id,
-    )
-
-
 def response_quote_required(
     query: EntityQuery,
     quote: dict[str, Any],
@@ -862,7 +675,7 @@ def response_validation_failed(
     thread_id: str | None = None,
 ) -> QueryResponse:
     """Validation failed; entity stays provisional (outcome found per Q5b)."""
-    name = record.get("name") or query.entity_key
+    name = record.get("name") or _query_target_label(query)
     employer = record.get("employer")
     employer_phrase = f" at {employer}" if employer else ""
     message = (
@@ -931,7 +744,7 @@ def response_research_gated(
 
     if total == 1:
         rec = matched[0]
-        name = rec.get("name") or query.entity_key
+        name = rec.get("name") or _query_target_label(query)
         employer = rec.get("employer")
         employer_phrase = f" at {employer}" if employer else ""
         if rec.get("_validation_state") == "validated":

@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import json
 import operator
-import os
 from typing import Annotated, Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class IdentityRecord(BaseModel):
@@ -136,8 +135,9 @@ class EntityQuery(BaseModel):
     - Set ``thread_id`` in Studio's Thread/Config panel, not in ``EntityQuery``.
     """
 
-    model_config = {
-        "json_schema_extra": {
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
             "examples": [
                 {
                     "lookup": {"employer": "645 Ventures"},
@@ -148,8 +148,8 @@ class EntityQuery(BaseModel):
                     "quote_id": "q_xyz789",
                 },
             ]
-        }
-    }
+        },
+    )
 
     id: str | None = Field(
         default=None,
@@ -165,20 +165,6 @@ class EntityQuery(BaseModel):
     delivery_id: str | None = Field(
         default=None,
         description="Step 2: delivery scope id from a prior lookup_resolved response.",
-    )
-    entity_key: str = Field(
-        default="",
-        description=(
-            "Deprecated legacy resolve key (registry UUID or display name). "
-            "Public CLI/MCP/admin reject this (M9); internal graph tests may still use it."
-        ),
-    )
-    binding: dict[str, str] = Field(
-        default_factory=dict,
-        description=(
-            "Deprecated legacy MVR bind fields (e.g. employer). "
-            "Prefer lookup for step 1; used with entity_key until M4."
-        ),
     )
     requested_attributes: list[str] = Field(
         default_factory=list,
@@ -217,13 +203,9 @@ class EntityQuery(BaseModel):
         if delivery_id:
             if self.confirm_new_entity:
                 raise ValueError("confirm_new_entity is step 1 only")
-            if (self.entity_key or "").strip():
-                raise ValueError("step 2 accepts only delivery_id")
             if self.lookup:
                 raise ValueError("step 2 accepts only delivery_id")
             if (self.id or "").strip():
-                raise ValueError("step 2 accepts only delivery_id")
-            if self.binding:
                 raise ValueError("step 2 accepts only delivery_id")
             if self.requested_attributes:
                 raise ValueError("requested_attributes are step 1 only")
@@ -235,11 +217,10 @@ class EntityQuery(BaseModel):
 
         has_id = bool((self.id or "").strip())
         has_lookup = bool(self.lookup)
-        has_entity_key = bool(self.entity_key)
         if self.confirm_new_entity and has_id and not has_lookup:
             raise ValueError("confirm_new_entity applies to lookup create path only")
-        if not (has_id or has_lookup or has_entity_key):
-            raise ValueError("step 1 requires id, lookup, or entity_key")
+        if not (has_id or has_lookup):
+            raise ValueError("step 1 requires id or lookup")
         return self
 
 
@@ -249,27 +230,10 @@ def entity_query_is_delivery_step(query: EntityQuery) -> bool:
 
 
 def entity_query_is_target_resolve_step(query: EntityQuery) -> bool:
-    """Return True for step-1 target protocol (id or lookup), not legacy entity_key."""
+    """Return True for step-1 target protocol (id or lookup)."""
     if entity_query_is_delivery_step(query):
         return False
     return bool((query.id or "").strip()) or bool(query.lookup)
-
-
-def entity_query_is_legacy_entity_key_step(query: EntityQuery) -> bool:
-    """Return True for deprecated step-1 entity_key resolution (internal tests only)."""
-    if entity_query_is_delivery_step(query) or entity_query_is_target_resolve_step(query):
-        return False
-    return bool((query.entity_key or "").strip())
-
-
-def legacy_entity_key_allowed() -> bool:
-    """True when MYCELIUM_ALLOW_LEGACY_ENTITY_KEY enables internal graph tests."""
-    return os.getenv("MYCELIUM_ALLOW_LEGACY_ENTITY_KEY", "").lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
 
 
 _STEP1_PUBLIC_OUTCOMES = frozenset(
@@ -298,9 +262,7 @@ class QueryResponse(BaseModel):
             "quote_required (metering: accept quote before research/delivery), "
             "payment_required (metering: pay_quote before quote_id unlocks work), "
             "principal_required (metering: billing principal missing for funding model), "
-            "or error (internal failure). Legacy outcomes (entity_key_unresolved, "
-            "entity_unknown, entity_bound_provisional, …) remain for internal "
-            "entity_key graph tests only. Mirrors debug outcome=."
+            "or error (internal failure). Mirrors debug outcome=."
         ),
     )
     total_matches: int | None = Field(
@@ -318,23 +280,20 @@ class QueryResponse(BaseModel):
     required_fields: list[str] = Field(
         default_factory=list,
         description=(
-            "MVR bind fields still needed for create. Target protocol: present when "
-            "outcome is lookup_incomplete (partial lookup with 0 hits). Legacy "
-            "entity_key graph: entity_unknown or entity_under_specified. Omitted "
-            "from public JSON when empty."
+            "MVR bind fields still needed for create. Present when outcome is "
+            "lookup_incomplete (partial lookup with 0 hits). Omitted from public "
+            "JSON when empty."
         ),
     )
     suggestions: list[LookupSuggestion] = Field(
         default_factory=list,
         description=(
             "Structured retry hints when lookup did not resolve to a registry row. "
-            "Target protocol: present when outcome is lookup_suggested (same name "
-            "under different employer or fuzzy near-miss). Retry step 1 with "
-            "lookup merged from suggestions[].suggested_lookup (or suggestions[].id "
-            "when the suggestion targets one known row). Set confirm_new_entity "
-            "only to intentionally create after reviewing. Legacy entity_key graph: "
-            "entity_key_unresolved uses suggested_lookup too (typically name). "
-            "Omitted from public JSON when empty."
+            "Present when outcome is lookup_suggested (same name under different "
+            "employer or fuzzy near-miss). Retry step 1 with lookup merged from "
+            "suggestions[].suggested_lookup (or suggestions[].id when the suggestion "
+            "targets one known row). Set confirm_new_entity only to intentionally "
+            "create after reviewing. Omitted from public JSON when empty."
         ),
     )
     results: list[dict[str, Any]] = Field(

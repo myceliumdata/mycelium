@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from pydantic import ValidationError
 
 from agents.classification import get_category_tree, reset_category_tree
 from agents.context import reset_context_builder
@@ -309,15 +310,20 @@ def test_metered_create_on_deliver_target_path(
 
 
 @pytest.mark.smoke
-def test_legacy_entity_key_disabled_without_env_flag(
-    crm_target_env: CoreStorage,
+def test_supervisor_no_legacy_entity_key_path(
+    crm_target_env,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """P25 — legacy entity_key path returns not_found when allow flag is unset."""
-    _ = crm_target_env
-    monkeypatch.delenv("MYCELIUM_ALLOW_LEGACY_ENTITY_KEY", raising=False)
-    reset_core_graph()
+    """Legacy entity_key fields are rejected at the model — no env flag path."""
+    from graphs.core import run_query
 
-    resp = run_query(EntityQuery(entity_key="Andrea Kalmans"))
-    assert resp.outcome == "not_found"
-    assert "Legacy entity_key" in resp.message
+    _ = crm_target_env
+    with pytest.raises(ValidationError):
+        EntityQuery(entity_key="Andrea Kalmans")  # type: ignore[call-arg]
+
+    resp = run_query(
+        EntityQuery(
+            lookup={"name": "Andrea Kalmans", "employer": "Lontra Ventures"},
+        ),
+    )
+    assert resp.outcome == "lookup_resolved"
