@@ -16,7 +16,7 @@ uv run mycelium query --network-dir ~/mycelium-networks/empty-crm \
   --delivery-id d_…
 ```
 
-After refresh, `entities.json` is absent or empty — no bootstrap import runs. The first registry row is created on **step 2 deliver**, not step 1.
+After refresh, `entities.json` is absent or empty — no bootstrap import runs. The first registry row is created on **step 2 deliver**, not step 1. Step 2 ensures MVR `name`/`employer` mappings exist in `categories.json` automatically before writing bind versions to specialist storage.
 
 ## Layout
 

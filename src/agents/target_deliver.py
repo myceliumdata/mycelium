@@ -56,7 +56,11 @@ def delivery_scope_has_attributes(scope: DeliveryScope) -> bool:
 def bind_provisional_from_scope(scope: DeliveryScope) -> RegistryEntity:
     """Create or reuse a provisional registry row from a create-on-deliver scope."""
     from agents.attribute_write import ensure_entity_bind_fields
+    from network.category_mvr_bootstrap import ensure_categories_for_mvr_bind
     from network.mvr import load_mvr
+    from network.paths import NetworkPaths, resolve_network_root
+
+    ensure_categories_for_mvr_bind(NetworkPaths.from_root(resolve_network_root()))
 
     lookup = normalized_lookup_values(
         {str(k): str(v) for k, v in scope.lookup.items()},
