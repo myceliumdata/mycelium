@@ -2,11 +2,11 @@
 
 **Active:** *(empty)*
 
-**Last approved:** [`done/2026-06-14-1420-multi-match-post-validate-specialist-schedule/`](done/2026-06-14-1420-multi-match-post-validate-specialist-schedule/) — **Approved** (pending Paul manual test)
+**Last approved:** [`done/2026-06-14-1420-multi-match-post-validate-specialist-schedule/`](done/2026-06-14-1420-multi-match-post-validate-specialist-schedule/) — **Approved** — Paul manual test **passed** (Wrong Corp provisional → one step-2 → validated + emails)
 
 **Prior:** [`1410`](done/2026-06-14-1410-multi-match-step2-deliver-truncation/) — manual test passed; [`1400`](done/2026-06-14-1400-provisional-validation-step2-deliver/) — manual test passed.
 
-**Process:** Paul manual test `1420` (Wrong Corp provisional → one step-2 with emails). Then Program 2 gate when ready.
+**Process:** Program 2 manual gate next — [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](../../docs/manual-checks/2026-06-13-program2-post-program-gate.md)
 
 **Git:** Ahead of `origin/main`. No push until Paul asks. See `WORKFLOW.md` §4.
 
