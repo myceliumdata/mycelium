@@ -213,6 +213,18 @@ def ensure_entity_bind_fields(
 
     existing = reg.lookup_by_bind_key(name, employer)
     if existing is not None:
+        # Seed refresh may copy legacy registry-only rows; backfill specialist versions.
+        if source == "seed_bootstrap":
+            write_bind_fields(
+                existing.id,
+                bind_values,
+                actor_kind=resolved_actor,
+                source=source,
+                validation_state=validation_state,
+                registry=reg,
+            )
+            updated = reg.lookup_by_id(existing.id)
+            return updated if updated is not None else existing, True
         return existing, True
 
     now = datetime.now(timezone.utc).isoformat()

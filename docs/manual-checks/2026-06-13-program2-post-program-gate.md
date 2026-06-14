@@ -301,7 +301,8 @@ If attempting manually: edit one field in `agents/contact/storage.json` to set c
 | Symptom | Likely cause |
 |---------|----------------|
 | No `categories.json` after refresh | Slice 1 bootstrap regression — check `category_mvr_bootstrap` |
-| Bind rows without `versions` | Specialist storage empty — seed import path or hard-cutover duplicate hit |
+| **Entities ✅ but specialists ❌ after refresh** | **Fixed June 2026:** committed `examples/networks/crm/entities.json` was copied before seed import → duplicate bind skipped specialist writes. Re-refresh on current `main` (skips copying `entities.json`; seed backfills specialist storage). |
+| Bind rows without `versions` | Specialist storage empty — re-run `./bin/refresh-example-network crm --yes` on fixed tree |
 | `provenance` missing bind attrs | Slice 2 — requested attrs not bound on step 1 or no specialist versions |
 | Road Runner step 2 fails | MVR / deliver regression — check daemon logs |
 | Extra version on Check 6 | Polish P3 regression |

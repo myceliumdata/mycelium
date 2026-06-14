@@ -25,12 +25,13 @@ EXAMPLE_CRM_METERING = REPO_ROOT / "examples" / "networks" / "crm-metering"
 _REFRESH_SCRIPT = REPO_ROOT / "bin" / "refresh-example-network"
 _RUNTIME_ARTIFACTS = (
     "categories.json",
+    "entities.json",
     "checkpoints.sqlite",
     "mycelium.db",
     "agent_registry.json",
 )
-# Seed bootstrap materializes categories.json; other runtime artifacts stay absent.
-_BOOTSTRAP_ALLOWED = frozenset({"categories.json"})
+# Seed bootstrap materializes these; they must not be copied from the example tree.
+_BOOTSTRAP_ALLOWED = frozenset({"categories.json", "entities.json"})
 
 
 def _run_refresh(
@@ -165,6 +166,18 @@ def test_refresh_crm_imports_seed_into_entities(tmp_path: Path) -> None:
     assert len(payload["entities"]) == 15
     assert len(payload["bind_index"]) == 15
 
+    demographic = json.loads(
+        (target / "agents" / "demographic" / "storage.json").read_text(encoding="utf-8"),
+    )
+    professional = json.loads(
+        (target / "agents" / "professional" / "storage.json").read_text(encoding="utf-8"),
+    )
+    assert len(demographic.get("records", {})) == 15
+    assert len(professional.get("records", {})) == 15
+    first_id = next(iter(payload["entities"]))
+    name_entry = demographic["records"][first_id]["name"]
+    assert name_entry["versions"][0]["actor"]["kind"] == "seed_bootstrap"
+
 
 @pytest.mark.smoke
 def test_import_seed_file_idempotent(
@@ -187,7 +200,8 @@ def test_import_seed_file_idempotent(
     assert first_count == 15
     assert second_count == 15
     assert len(payload_after_first["entities"]) == 15
-    assert payload_after_first == payload_after_second
+    assert set(payload_after_first["entities"]) == set(payload_after_second["entities"])
+    assert payload_after_first["bind_index"] == payload_after_second["bind_index"]
 
 
 @pytest.mark.smoke
@@ -211,7 +225,8 @@ def test_refresh_replaces_existing_root(tmp_path: Path) -> None:
     categories = json.loads((target / "categories.json").read_text(encoding="utf-8"))
     assert categories.get("version") == "1.0"
     assert categories.get("attribute_map", {}).get("name") == "demographic"
-    assert not (target / "agents").exists()
+    assert (target / "agents" / "demographic" / "storage.json").is_file()
+    assert not (target / "agents" / "junk.json").exists()
     assert not (target / "specialists").exists()
 
 
