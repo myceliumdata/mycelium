@@ -10,12 +10,11 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 ## Next up (Paul)
 
-- [ ] **Program 3 polish (1560)** — [`prompts/cursor/next/2026-06-14-1560-program3-polish.md`](prompts/cursor/next/2026-06-14-1560-program3-polish.md) — registry bind_values nits P1–P4; optional before Program 4.
 - [ ] **Program 4 — Operator write** — Admin edit + force re-research UI (deferred from Program 3). Plan TBD.
 
 ### Shipped (2026-06-14)
 
-- [x] **Program 3 — Entity protocol legacy cleanup** — Manual gate **CLEAR**; tag `program_3`. Slices 1500–1555 (+ admin poll fix). [`docs/manual-checks/2026-06-14-program3-post-program-gate.md`](docs/manual-checks/2026-06-14-program3-post-program-gate.md). Legacy `entity_key` graph removed; `bind_values` on disk; status `resolve` JSON; admin poll overview-only (1555).
+- [x] **Program 3 — Entity protocol legacy cleanup** — Gate **CLEAR**; tag `program_3`; polish **1560** (P1–P4 `require_full_bind_values`, fail-loud load). Slices 1500–1555 + 1560 + admin poll fix (1555). [`docs/manual-checks/2026-06-14-program3-post-program-gate.md`](docs/manual-checks/2026-06-14-program3-post-program-gate.md).
 
 ---
 
@@ -90,4 +89,4 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ---
 
-Last updated: 2026-06-14 (Program 3 manual gate **CLEAR**; 1560 polish or Program 4 next)
+Last updated: 2026-06-14 (Program 3 **complete** incl. 1560 polish; Program 4 next)
