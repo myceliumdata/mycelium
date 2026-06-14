@@ -60,7 +60,7 @@ uv run mycelium network status --network crm --entity "Andrea Kalmans"
 
 `seed.json` is imported into **`entities.json` at bootstrap only** (refresh/create). Queries read the registry. When a visiting agent binds a new person, use the two-step protocol:
 
-**Step 1** — full MVR `lookup` (for example `{"name":"Paul Murphy","employer":"Acme Corp"}`) plus optional `requested_attributes` on the same request. Response: `lookup_resolved` with `delivery.delivery_id` and `delivery.create_on_deliver: true` when there are 0 registry matches and no same-name collision (or after `confirm_new_entity: true` following `lookup_suggested`). Partial lookup with missing MVR fields returns `lookup_incomplete` with `required_fields`.
+**Step 1** — full MVR `lookup` (for example `{"name":"Paul Murphy","employer":"Acme Corp"}`) plus optional `requested_attributes` on the same request. Response: `lookup_resolved` with `delivery.delivery_id` and `delivery.create_on_deliver: true` when there are 0 registry matches and no same-name collision (or after `confirm_new_entity: true` following `lookup_suggested`). Partial lookup with missing MVR fields returns `lookup_incomplete` with `required_fields` when there are no near-miss name matches; partial name-only lookup with 0 exact hits but a fuzzy name match returns `lookup_suggested` (same `sequence_ratio` path as full MVR).
 
 **Step 2** — `delivery_id` (+ `quote_id` when metered). Mycelium then:
 

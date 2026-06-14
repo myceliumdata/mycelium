@@ -99,6 +99,18 @@ def resolve_target_step1(query: EntityQuery) -> TargetResolveResult:
 
         mvr = load_mvr()
         if not is_full_mvr_lookup(query.lookup, mvr):
+            norm = normalized_lookup_values(query.lookup)
+            name_value = norm.get("name")
+            if name_value:
+                suggestions = _rank_suggestions(name_value)
+                if suggestions:
+                    return TargetResolveResult(
+                        kind="lookup_suggested",
+                        entity_ids=[],
+                        lookup_snapshot=dict(query.lookup),
+                        suggestions=suggestions,
+                    )
+
             missing = missing_mvr_bind_fields(query.lookup, mvr=mvr)
             return TargetResolveResult(
                 kind="lookup_incomplete",

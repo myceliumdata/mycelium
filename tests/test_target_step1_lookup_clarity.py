@@ -81,6 +81,20 @@ def crm_lookup_clarity_env(
 
 
 @pytest.mark.smoke
+def test_partial_fuzzy_name_lookup_suggested(
+    crm_lookup_clarity_env: CoreStorage,
+) -> None:
+    _ = crm_lookup_clarity_env
+    response = run_query(EntityQuery(lookup={"name": "Andrea Kalman"}))
+    assert response.outcome == "lookup_suggested"
+    assert response.total_matches == 0
+    assert response.delivery is None
+    assert len(response.suggestions) >= 1
+    assert response.suggestions[0].entity_key == "Andrea Kalmans"
+    assert response.suggestions[0].reason == "sequence_ratio"
+
+
+@pytest.mark.smoke
 def test_partial_lookup_missing_employer_lookup_incomplete(
     crm_lookup_clarity_env: CoreStorage,
 ) -> None:
