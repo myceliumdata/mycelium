@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from agents.entity_registry import _normalize_name_for_bind, get_entity_registry
-from agents.entity_resolution import _rank_suggestions
+from agents.entity_resolution import _rank_employer_suggestions, _rank_suggestions
 from models.state import DeliveryPayload, EntityKeySuggestion, EntityQuery
 from network.delivery import get_delivery_store, issue_delivery
 from network.mvr import (
@@ -103,6 +103,17 @@ def resolve_target_step1(query: EntityQuery) -> TargetResolveResult:
             name_value = norm.get("name")
             if name_value:
                 suggestions = _rank_suggestions(name_value)
+                if suggestions:
+                    return TargetResolveResult(
+                        kind="lookup_suggested",
+                        entity_ids=[],
+                        lookup_snapshot=dict(query.lookup),
+                        suggestions=suggestions,
+                    )
+
+            employer_value = norm.get("employer")
+            if employer_value:
+                suggestions = _rank_employer_suggestions(employer_value)
                 if suggestions:
                     return TargetResolveResult(
                         kind="lookup_suggested",

@@ -8,6 +8,7 @@ from difflib import SequenceMatcher
 from typing import Any, Literal
 
 from agents.entity_registry import get_entity_registry, registry_entity_to_match
+from agents.field_index import normalize_field_index_value
 from models.state import EntityKeySuggestion, EntityQuery
 from network.mvr import load_mvr, normalize_binding
 
@@ -107,6 +108,41 @@ def _rank_suggestions(entity_key: str) -> list[EntityKeySuggestion]:
                 entity_key=name,
                 id=entity.id,
                 name=name,
+                employer=entity.employer,
+                score=round(score, 4),
+                reason="sequence_ratio",
+            ),
+        )
+
+    candidates.sort(key=lambda item: item.score, reverse=True)
+    return candidates[:SUGGESTION_MAX_COUNT]
+
+
+def _rank_employer_suggestions(employer: str) -> list[EntityKeySuggestion]:
+    query_norm = normalize_field_index_value(employer)
+    if not query_norm:
+        return []
+
+    representatives: dict[str, Any] = {}
+    for entity in get_entity_registry().list_entities():
+        raw_employer = entity.employer
+        if raw_employer is None or not str(raw_employer).strip():
+            continue
+        candidate_norm = normalize_field_index_value(str(raw_employer))
+        if not candidate_norm or candidate_norm in representatives:
+            continue
+        representatives[candidate_norm] = entity
+
+    candidates: list[EntityKeySuggestion] = []
+    for candidate_norm, entity in representatives.items():
+        score = SequenceMatcher(None, query_norm, candidate_norm).ratio()
+        if score < SUGGESTION_MIN_SCORE:
+            continue
+        candidates.append(
+            EntityKeySuggestion(
+                entity_key=entity.name,
+                id=entity.id,
+                name=entity.name,
                 employer=entity.employer,
                 score=round(score, 4),
                 reason="sequence_ratio",

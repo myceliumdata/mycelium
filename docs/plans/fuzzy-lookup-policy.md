@@ -1,6 +1,6 @@
 # Fuzzy lookup policy (bind fields → any field)
 
-**Status:** In progress (slices `1430` name, `1435` employer).  
+**Status:** Partial 0-hit bind-field fuzzy **shipped** (`1430` name, `1435` employer). Alias/prefix upgrades remain on TODO.
 **Owners:** Grok + Paul.
 
 ## Scope today (MVR v1)
@@ -30,8 +30,8 @@
 
 | Slice | Field | Status |
 |-------|-------|--------|
-| `1430` | `name` (partial 0-hit) | Cursor delivered — pending Grok review |
-| `1435` | `employer` (partial 0-hit) | Queued |
+| `1430` | `name` (partial 0-hit) | **Approved** |
+| `1435` | `employer` (partial 0-hit) | **Approved** |
 
 ## References
 

@@ -1,12 +1,14 @@
 # Cursor queue
 
-**Active:** [`next/2026-06-14-1435-partial-lookup-fuzzy-employer-suggestions.md`](next/2026-06-14-1435-partial-lookup-fuzzy-employer-suggestions.md)
+**Active:** *(empty)*
 
-**Last approved:** [`done/2026-06-14-1430-partial-lookup-fuzzy-name-suggestions/`](done/2026-06-14-1430-partial-lookup-fuzzy-name-suggestions/) — **Approved + polish nits**
+**Last approved:** [`done/2026-06-14-1435-partial-lookup-fuzzy-employer-suggestions/`](done/2026-06-14-1435-partial-lookup-fuzzy-employer-suggestions/) — **Approved**
 
-**Design:** [`docs/plans/fuzzy-lookup-policy.md`](../../docs/plans/fuzzy-lookup-policy.md)
+**Prior:** [`1430`](done/2026-06-14-1430-partial-lookup-fuzzy-name-suggestions/) — Approved + polish nits
 
-**Process:** Cursor `1435` → Grok review → Program 2 gate when ready.
+**Design:** [`docs/plans/fuzzy-lookup-policy.md`](../../docs/plans/fuzzy-lookup-policy.md) — alias/prefix upgrades still on TODO
+
+**Process:** Program 2 manual gate. Restart MCP for `1430` + `1435`.
 
 **Git:** Ahead of `origin/main`. No push until Paul asks. See `WORKFLOW.md` §4.
 
