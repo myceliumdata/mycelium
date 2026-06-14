@@ -10,7 +10,6 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 ## Next up (Paul)
 
-- [ ] **Program 4 — Operator write** — Admin edit + force re-research UI (deferred from Program 3). Plan TBD.
 - [ ] **Non-CRM example network** — Second committed example beside `crm` / `empty-crm` / `crm-metering`: distinct MVR `bind_fields`, ontology, and seed (not people-at-funds). `examples/networks/<name>/` + `refresh-example-network` + onboarding/docs second path; CRM stays default. Domain TBD (e.g. companies, vehicles — see [`docs/plans/networks-terminology.md`](docs/plans/networks-terminology.md) vision).
 
 ### Shipped (2026-06-14)
@@ -90,4 +89,4 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ---
 
-Last updated: 2026-06-14 (Program 3 **complete** incl. 1560 polish; Program 4 next; non-CRM example queued)
+Last updated: 2026-06-14 (Program 3 **complete** incl. 1560 polish; operator work in **Admin UI** below; non-CRM example queued)

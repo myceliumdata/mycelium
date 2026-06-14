@@ -2,7 +2,7 @@
 
 **Status:** **Complete** — manual gate **CLEAR** (2026-06-14); tag `program_3`. Polish slice **1560** complete (P1–P4).  
 **Prerequisite:** Program 2 manual gate **CLEAR** (2026-06-14) — tag `program_2`  
-**Supersedes:** Prior “Program 3 = operator write” ordering — operator UI moves to **Program 4**
+**Supersedes:** Prior “Program 3 = operator write” ordering — operator UI stays on **`TODO.md` Admin UI** backlog (no numbered program)
 
 ---
 
@@ -51,7 +51,7 @@ Program 2 fixed bind **storage** (specialist `versions[]`). Program 3 removes le
 | **Legacy graph** | Remove `EntityQuery.entity_key` / `binding`, `resolve_entity()`, `MYCELIUM_ALLOW_LEGACY_ENTITY_KEY` |
 | **`lookup_by_name`** | Remove; use name field index internally |
 | **`describe_network` policy** | Target protocol only on primary policy surface |
-| **Operator write UI** | Program 4 |
+| **Operator write UI** | `TODO.md` Admin UI (deferred) |
 
 ---
 
@@ -75,7 +75,7 @@ Each slice: smoke tests + `./bin/ci-local`. Cursor does **not** edit `TODO.md`.
 
 ## Explicit non-goals
 
-- Operator edit / force re-research UI (Program 4)
+- Operator edit / force re-research UI (`TODO.md` Admin UI)
 - Fuzzy suggestions on `GET /status`
 - Production network migration beyond documented refresh posture
 

@@ -148,4 +148,4 @@ Archived Paul + Grok threads: [`conversations/README.md`](conversations/README.m
 
 ---
 
-*Last updated: June 2026 (Program 3 gate **CLEAR**; 1560 polish queued; Program 4 next).*
+*Last updated: June 2026 (Program 3 **complete**, tag `program_3`; operator work in `TODO.md` Admin UI).*
