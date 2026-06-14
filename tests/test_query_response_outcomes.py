@@ -15,7 +15,7 @@ from agents.responses import (
     response_not_found,
 )
 from network.mvr import MvrPolicy
-from models.state import EntityKeySuggestion, EntityQuery, IdentityRecord, QueryResponse
+from models.state import EntityQuery, IdentityRecord, LookupSuggestion, QueryResponse
 from mycelium_mcp.server import _neutral_json_schema
 
 
@@ -46,8 +46,8 @@ def _assert_outcome(response: QueryResponse, expected: str) -> None:
             {
                 "query": EntityQuery(entity_key="Andrea Kalman"),
                 "suggestions": [
-                    EntityKeySuggestion(
-                        entity_key="Andrea Kalmans",
+                    LookupSuggestion(
+                        suggested_lookup={"name": "Andrea Kalmans"},
                         id="s1",
                         name="Andrea Kalmans",
                         employer="Lontra Ventures",

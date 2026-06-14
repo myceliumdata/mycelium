@@ -46,11 +46,11 @@ export interface EntityMatchSummary {
   research_allowed: boolean;
 }
 
-export interface EntityKeySuggestion {
-  entity_key: string;
-  id: string;
-  name: string;
-  employer: string | null;
+export interface LookupSuggestion {
+  suggested_lookup: Record<string, string>;
+  id?: string | null;
+  name?: string | null;
+  employer?: string | null;
   score: number;
   reason?: string;
 }
@@ -68,7 +68,7 @@ export interface StatusResponse {
   entity_matches: number;
   entity_resolution_kind: string | null;
   entity_required_fields: string[];
-  entity_suggestions: EntityKeySuggestion[];
+  entity_suggestions: LookupSuggestion[];
   entity_match_summaries: EntityMatchSummary[];
   entity_fields: EntityFieldStatus[];
 }
@@ -126,7 +126,7 @@ export interface QueryResponse {
   total_matches?: number | null;
   delivery?: DeliveryPayload | null;
   required_fields?: string[];
-  suggestions?: EntityKeySuggestion[];
+  suggestions?: LookupSuggestion[];
   results: Record<string, unknown>[];
   message: string;
   debug: string;

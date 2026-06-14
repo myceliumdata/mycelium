@@ -1,4 +1,4 @@
-import type { EntityKeySuggestion } from "./types";
+import type { LookupSuggestion } from "./types";
 
 /** CRM default while capabilities are loading. */
 export const DEFAULT_MVR_BIND_FIELDS = ["name", "employer"] as const;
@@ -65,23 +65,38 @@ export function statusEntityKeyForResolve(
   return null;
 }
 
+export function formatSuggestedLookup(item: LookupSuggestion): string {
+  const parts = Object.entries(item.suggested_lookup ?? {})
+    .filter(([, value]) => value.trim())
+    .map(([field, value]) => `${field}: ${value}`);
+  return parts.join(" · ") || "—";
+}
+
+export function suggestionListKey(item: LookupSuggestion, index: number): string {
+  const id = item.id?.trim();
+  if (id) {
+    return id;
+  }
+  const lookupKey = JSON.stringify(item.suggested_lookup ?? {});
+  return lookupKey || `suggestion-${index}`;
+}
+
 export function lookupFromSuggestion(
-  item: EntityKeySuggestion,
+  item: LookupSuggestion,
   bindFields: string[],
   previous: Record<string, string>,
 ): Record<string, string> {
   const next = { ...previous };
   const fieldSet = new Set(bindFields);
 
-  if (fieldSet.has("name")) {
-    next.name = item.entity_key || item.name || previous.name || "";
-  }
-  if (fieldSet.has("employer") && item.employer) {
-    next.employer = item.employer;
+  for (const [field, value] of Object.entries(item.suggested_lookup ?? {})) {
+    if (fieldSet.has(field) && value.trim()) {
+      next[field] = value.trim();
+    }
   }
 
   for (const field of bindFields) {
-    if (field === "name" || field === "employer") {
+    if (next[field]?.trim()) {
       continue;
     }
     const raw = (item as unknown as Record<string, unknown>)[field];

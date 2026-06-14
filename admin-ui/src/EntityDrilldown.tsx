@@ -1,7 +1,8 @@
 import { Fragment } from "react";
 import { formatTimestamp } from "./format";
+import { formatSuggestedLookup, suggestionListKey } from "./mvr";
 import type {
-  EntityKeySuggestion,
+  LookupSuggestion,
   OntologyCategory,
   QueryResponse,
   StatusResponse,
@@ -140,7 +141,7 @@ export interface EntityDrilldownProps {
   categoryLimit: string;
   ontologyCategories: OntologyCategory[];
   onCategoryChange: (category: string) => void;
-  onApplySuggestion: (item: EntityKeySuggestion) => void;
+  onApplySuggestion: (item: LookupSuggestion) => void;
 }
 
 export default function EntityDrilldown({
@@ -212,14 +213,14 @@ export default function EntityDrilldown({
             <strong>Suggestions:</strong>
           </p>
           <ul className="suggestion-list">
-            {status.entity_suggestions.map((item) => (
-              <li key={item.id}>
+            {status.entity_suggestions.map((item, index) => (
+              <li key={suggestionListKey(item, index)}>
                 <button
                   type="button"
                   className="link-button"
                   onClick={() => onApplySuggestion(item)}
                 >
-                  {item.entity_key}
+                  {formatSuggestedLookup(item)}
                 </button>{" "}
                 <span className="muted">
                   score {item.score}

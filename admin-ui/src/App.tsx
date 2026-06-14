@@ -15,14 +15,16 @@ import {
   hasStatusTarget,
   inspectDisplayKey,
   inspectStatusParams,
+  formatSuggestedLookup,
   lookupFromSuggestion,
   mvrBindFieldsFromPolicy,
+  suggestionListKey,
   type StatusFetchParams,
 } from "./mvr";
 import type {
   CapabilitiesResponse,
-  EntityKeySuggestion,
   HealthResponse,
+  LookupSuggestion,
   QueryResponse,
   StatusResponse,
 } from "./types";
@@ -476,7 +478,7 @@ export default function App() {
     void runQueryStep2(String(quoteId));
   };
 
-  const applySuggestion = (item: EntityKeySuggestion) => {
+  const applySuggestion = (item: LookupSuggestion) => {
     const nextLookup = lookupFromSuggestion(item, bindFields, lookupValues);
     setResolveMode("lookup");
     setQueryRegistryId("");
@@ -723,14 +725,14 @@ export default function App() {
                       <strong>Suggestions:</strong>
                     </p>
                     <ul className="suggestion-list">
-                      {(queryResult.suggestions ?? []).map((item) => (
-                        <li key={item.id}>
+                      {(queryResult.suggestions ?? []).map((item, index) => (
+                        <li key={suggestionListKey(item, index)}>
                           <button
                             type="button"
                             className="link-button"
                             onClick={() => applySuggestion(item)}
                           >
-                            {item.entity_key}
+                            {formatSuggestedLookup(item)}
                           </button>{" "}
                           <span className="muted">
                             score {item.score}

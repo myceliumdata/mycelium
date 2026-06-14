@@ -634,9 +634,10 @@ _POLICY_ENTITY_GROWTH = (
 _POLICY_ENTITY_KEY_UNRESOLVED = (
     'When outcome is "entity_key_unresolved", the entity_key had no exact registry match '
     "but near-miss suggestions are provided in suggestions[]. Re-query with "
-    "query_entity using a chosen suggestions[].entity_key (usually the highest score). "
-    "No attribute data is authoritative until an exact match resolves. "
-    "If suggestions are empty and the name is not a near-miss, expect entity_unknown."
+    "query_entity using suggestions[].suggested_lookup (typically name) or "
+    "suggestions[].id when row-specific. No attribute data is authoritative until "
+    "an exact match resolves. If suggestions are empty and the name is not a "
+    "near-miss, expect entity_unknown."
 )
 _POLICY_MULTI_MATCH = (
     "When entity_key matches multiple registry entities, results contains every match. "
@@ -659,9 +660,10 @@ _POLICY_MVR_REDESIGN_TARGET = (
     "no near-miss bind-field matches; partial name or employer 0-hit may return "
     "lookup_suggested. "
     "Full MVR with 0 hits returns lookup_suggested when the same name exists "
-    "under a different employer or a near-miss name matches — retry with "
-    "suggestions[].id or corrected lookup; set confirm_new_entity=true only "
-    "to intentionally create a new bind after reviewing suggestions. "
+    "under a different employer or a near-miss bind-field matches — retry step 1 "
+    "with lookup merged from suggestions[].suggested_lookup (or suggestions[].id "
+    "for one known row); set confirm_new_entity=true only to intentionally create "
+    "a new bind after reviewing suggestions. "
     "lookup_resolved issues delivery.delivery_id (create_on_deliver true only "
     "when step 2 will create from full MVR with 0 registry hits). Step 2 — "
     "send delivery_id and optional quote_id only. Bind field names come from "
@@ -925,8 +927,13 @@ def _format_entity_drill_down(summary: NetworkStatusSummary) -> list[str]:
     if summary.entity_suggestions:
         lines.append("  Suggestions:")
         for item in summary.entity_suggestions[:3]:
+            suggested = item.get("suggested_lookup") or {}
+            if suggested:
+                label = ", ".join(f"{key}={value!r}" for key, value in suggested.items())
+            else:
+                label = item.get("name") or "?"
             lines.append(
-                f"    {item.get('entity_key')} (score={item.get('score')})",
+                f"    {label} (score={item.get('score')})",
             )
     if summary.entity_matches == 0:
         lines.append("  No match.")

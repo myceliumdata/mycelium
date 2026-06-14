@@ -43,7 +43,7 @@ _CHECKPOINT_MSGPACK_ALLOWLIST: tuple[tuple[str, str], ...] = (
     ("models.state", "IdentityRecord"),
     ("models.state", "EntityQuery"),
     ("models.state", "QueryResponse"),
-    ("models.state", "EntityKeySuggestion"),
+    ("models.state", "LookupSuggestion"),
 )
 
 AfterTargetResolve = Literal["supervisor", "assemble_response"]

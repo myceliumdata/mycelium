@@ -87,7 +87,7 @@ def test_resolve_kalman_suggests_kalmans(crm_seed_env: CoreStorage) -> None:
     resolution = resolve_entity_key("Andrea Kalman")
     assert resolution.kind == "suggest"
     assert len(resolution.suggestions) == 1
-    assert resolution.suggestions[0].entity_key == "Andrea Kalmans"
+    assert resolution.suggestions[0].suggested_lookup == {"name": "Andrea Kalmans"}
     assert resolution.suggestions[0].employer == "Lontra Ventures"
     assert resolution.suggestions[0].score >= 0.85
 
@@ -103,7 +103,7 @@ def test_andrea_kalman_email_unresolved_no_specialist_invoke(
     assert response.outcome == "entity_key_unresolved"
     assert response.results == []
     assert len(response.suggestions) == 1
-    assert response.suggestions[0].entity_key == "Andrea Kalmans"
+    assert response.suggestions[0].suggested_lookup == {"name": "Andrea Kalmans"}
     assert "Andrea Kalmans" in response.message
     assert "Lontra Ventures" in response.message
     assert "outcome='entity_key_unresolved'" in response.debug
@@ -187,7 +187,7 @@ def test_same_thread_retry_after_unresolved_no_serde_warning(
     serde_warnings = [
         record.message
         for record in caplog.records
-        if "EntityKeySuggestion" in record.message
+        if "LookupSuggestion" in record.message
         or "Blocked deserialization" in record.message
     ]
     assert serde_warnings == []

@@ -7,7 +7,7 @@ from typing import Any
 
 from agents.entity_registry import _normalize_name_for_bind, get_entity_registry
 from agents.entity_resolution import _rank_employer_suggestions, _rank_suggestions
-from models.state import DeliveryPayload, EntityKeySuggestion, EntityQuery
+from models.state import DeliveryPayload, EntityQuery, LookupSuggestion, lookup_suggestion
 from network.delivery import get_delivery_store, issue_delivery
 from network.mvr import (
     is_full_mvr_lookup,
@@ -25,12 +25,12 @@ class TargetResolveResult:
     delivery: DeliveryPayload | None = None
     create_on_deliver: bool = False
     required_fields: list[str] = field(default_factory=list)
-    suggestions: list[EntityKeySuggestion] = field(default_factory=list)
+    suggestions: list[LookupSuggestion] = field(default_factory=list)
 
 
 def _same_name_different_employer_suggestions(
     lookup: dict[str, str],
-) -> list[EntityKeySuggestion]:
+) -> list[LookupSuggestion]:
     norm = normalized_lookup_values(lookup)
     name = norm.get("name")
     employer = norm.get("employer")
@@ -38,14 +38,17 @@ def _same_name_different_employer_suggestions(
         return []
 
     lookup_employer = _normalize_name_for_bind(employer)
-    suggestions: list[EntityKeySuggestion] = []
+    suggestions: list[LookupSuggestion] = []
     for entity in get_entity_registry().lookup_by_name(name):
         entity_employer = _normalize_name_for_bind(entity.employer or "")
         if entity_employer == lookup_employer:
             continue
+        suggested_lookup: dict[str, str] = {"name": entity.name}
+        if entity.employer:
+            suggested_lookup["employer"] = entity.employer
         suggestions.append(
-            EntityKeySuggestion(
-                entity_key=entity.name,
+            lookup_suggestion(
+                suggested_lookup=suggested_lookup,
                 id=entity.id,
                 name=entity.name,
                 employer=entity.employer,
@@ -58,7 +61,7 @@ def _same_name_different_employer_suggestions(
 
 def _lookup_suggestions_for_full_mvr(
     lookup: dict[str, str],
-) -> list[EntityKeySuggestion]:
+) -> list[LookupSuggestion]:
     same_name = _same_name_different_employer_suggestions(lookup)
     if same_name:
         return same_name

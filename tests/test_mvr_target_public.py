@@ -228,6 +228,22 @@ def test_cli_create_pending_public_json(
 
 
 @pytest.mark.smoke
+def test_mcp_employer_fuzzy_public_json_omits_person_fields(
+    crm_public_env: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _ = crm_public_env
+    payload = _mcp_public_json({"lookup": {"employer": "645 Venture"}})
+    assert payload["outcome"] == "lookup_suggested"
+    suggestion = payload["suggestions"][0]
+    assert suggestion["suggested_lookup"] == {"employer": "645 Ventures"}
+    assert suggestion["reason"] == "employer_sequence_ratio"
+    assert "entity_key" not in suggestion
+    assert "id" not in suggestion
+    assert "name" not in suggestion
+
+
+@pytest.mark.smoke
 def test_cli_existing_match_public_json(
     crm_public_env: Path,
     monkeypatch: pytest.MonkeyPatch,

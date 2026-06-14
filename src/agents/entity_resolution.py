@@ -9,7 +9,7 @@ from typing import Any, Literal
 
 from agents.entity_registry import get_entity_registry, registry_entity_to_match
 from agents.field_index import normalize_field_index_value
-from models.state import EntityKeySuggestion, EntityQuery
+from models.state import EntityQuery, LookupSuggestion, lookup_suggestion
 from network.mvr import load_mvr, normalize_binding
 
 SUGGESTION_MIN_SCORE = 0.85
@@ -30,7 +30,7 @@ EntityResolutionKind = Literal[
 class EntityResolution:
     kind: EntityResolutionKind
     matches: list[dict[str, Any]] = field(default_factory=list)
-    suggestions: list[EntityKeySuggestion] = field(default_factory=list)
+    suggestions: list[LookupSuggestion] = field(default_factory=list)
     required_fields: list[str] = field(default_factory=list)
     duplicate_bind: bool = False
 
@@ -85,13 +85,13 @@ def lookup_entities_by_key(entity_key: str) -> list[dict[str, Any]]:
     return [registry_entity_to_match(entity) for entity in by_name]
 
 
-def _rank_suggestions(entity_key: str) -> list[EntityKeySuggestion]:
+def _rank_suggestions(entity_key: str) -> list[LookupSuggestion]:
     query_norm = normalize_name_for_comparison(entity_key)
     if not query_norm:
         return []
 
     query_first = _first_token(query_norm)
-    candidates: list[EntityKeySuggestion] = []
+    candidates: list[LookupSuggestion] = []
 
     for entity in get_entity_registry().list_entities():
         name = entity.name or ""
@@ -104,12 +104,12 @@ def _rank_suggestions(entity_key: str) -> list[EntityKeySuggestion]:
         if score < SUGGESTION_MIN_SCORE:
             continue
         candidates.append(
-            EntityKeySuggestion(
-                entity_key=name,
+            lookup_suggestion(
+                suggested_lookup={"name": name},
                 id=entity.id,
                 name=name,
                 employer=entity.employer,
-                score=round(score, 4),
+                score=score,
                 reason="sequence_ratio",
             ),
         )
@@ -118,7 +118,7 @@ def _rank_suggestions(entity_key: str) -> list[EntityKeySuggestion]:
     return candidates[:SUGGESTION_MAX_COUNT]
 
 
-def _rank_employer_suggestions(employer: str) -> list[EntityKeySuggestion]:
+def _rank_employer_suggestions(employer: str) -> list[LookupSuggestion]:
     query_norm = normalize_field_index_value(employer)
     if not query_norm:
         return []
@@ -134,16 +134,16 @@ def _rank_employer_suggestions(employer: str) -> list[EntityKeySuggestion]:
             continue
         canonical_by_norm[candidate_norm] = canonical
 
-    candidates: list[EntityKeySuggestion] = []
+    candidates: list[LookupSuggestion] = []
     for candidate_norm, canonical_employer in canonical_by_norm.items():
         score = SequenceMatcher(None, query_norm, candidate_norm).ratio()
         if score < SUGGESTION_MIN_SCORE:
             continue
         candidates.append(
-            EntityKeySuggestion(
-                entity_key=canonical_employer,
+            lookup_suggestion(
+                suggested_lookup={"employer": canonical_employer},
                 employer=canonical_employer,
-                score=round(score, 4),
+                score=score,
                 reason="employer_sequence_ratio",
             ),
         )

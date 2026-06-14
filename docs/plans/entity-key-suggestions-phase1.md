@@ -1,5 +1,7 @@
 # Entity key suggestions — Phase 1 spec (locked)
 
+> **Superseded field (June 2026, slice 1450):** Public `suggestions[]` use `suggested_lookup` (target-protocol lookup map), not `entity_key`. This doc retains historical `entity_key` naming for slice 1 context; see [`fuzzy-lookup-policy.md`](fuzzy-lookup-policy.md).
+
 **Status:** Approved for implementation (Paul + Grok, June 2026)  
 **Conversation:** [`docs/plans/conversations/2026-06-08-entity-key-negotiation.md`](conversations/2026-06-08-entity-key-negotiation.md)  
 **Cursor slice:** `prompts/cursor/next/2026-06-09-1000-entity-key-suggestions-protocol.md`  

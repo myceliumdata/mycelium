@@ -25,13 +25,13 @@ class IdentityRecord(BaseModel):
         return self.model_dump(exclude_none=True)
 
 
-class EntityKeySuggestion(BaseModel):
+class LookupSuggestion(BaseModel):
     """Near-miss registry suggestion when lookup has no exact match."""
 
-    entity_key: str = Field(
+    suggested_lookup: dict[str, str] = Field(
         description=(
-            "Retry key — registry display name or canonical bind-field value "
-            "for re-query."
+            "Partial or full MVR bind map to send on step-1 retry "
+            "(merge into query.lookup)."
         ),
     )
     id: str | None = Field(
@@ -51,6 +51,34 @@ class EntityKeySuggestion(BaseModel):
             "employer_sequence_ratio (fuzzy employer), "
             "same_name_different_employer (exact name, different employer)."
         ),
+    )
+
+
+def lookup_suggestion(
+    *,
+    suggested_lookup: dict[str, str],
+    score: float,
+    reason: str,
+    id: str | None = None,
+    name: str | None = None,
+    employer: str | None = None,
+) -> LookupSuggestion:
+    """Build a suggestion with a consistent target-protocol retry map."""
+    cleaned = {
+        key.strip().lower(): value.strip()
+        for key, value in suggested_lookup.items()
+        if key.strip() and value.strip()
+    }
+    if not cleaned:
+        msg = "lookup_suggestion requires a non-empty suggested_lookup map"
+        raise ValueError(msg)
+    return LookupSuggestion(
+        suggested_lookup=cleaned,
+        id=id,
+        name=name,
+        employer=employer,
+        score=round(score, 4),
+        reason=reason,
     )
 
 
@@ -296,15 +324,17 @@ class QueryResponse(BaseModel):
             "from public JSON when empty."
         ),
     )
-    suggestions: list[EntityKeySuggestion] = Field(
+    suggestions: list[LookupSuggestion] = Field(
         default_factory=list,
         description=(
             "Structured retry hints when lookup did not resolve to a registry row. "
             "Target protocol: present when outcome is lookup_suggested (same name "
-            "under different employer or fuzzy name near-miss). Retry with "
-            "suggestions[].id or a corrected lookup map; set confirm_new_entity "
-            "only to intentionally create after reviewing. Legacy entity_key "
-            "graph: entity_key_unresolved. Omitted from public JSON when empty."
+            "under different employer or fuzzy near-miss). Retry step 1 with "
+            "lookup merged from suggestions[].suggested_lookup (or suggestions[].id "
+            "when the suggestion targets one known row). Set confirm_new_entity "
+            "only to intentionally create after reviewing. Legacy entity_key graph: "
+            "entity_key_unresolved uses suggested_lookup too (typically name). "
+            "Omitted from public JSON when empty."
         ),
     )
     results: list[dict[str, Any]] = Field(
@@ -468,7 +498,7 @@ class MyceliumGraphState(BaseModel):
             "under_specified, bind_provisional, or none."
         ),
     )
-    entity_suggestions: list[EntityKeySuggestion] = Field(
+    entity_suggestions: list[LookupSuggestion] = Field(
         default_factory=list,
         description="Populated when entity_resolution_kind is suggest.",
     )

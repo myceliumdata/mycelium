@@ -373,7 +373,7 @@ def test_status_near_miss_suggestions(
     assert summary.entity_resolution_kind == "suggest"
     assert summary.entity_matches == 0
     assert summary.entity_suggestions
-    assert summary.entity_suggestions[0]["entity_key"]
+    assert summary.entity_suggestions[0]["suggested_lookup"]["name"] == "Andrea Kalmans"
 
 
 @pytest.mark.full

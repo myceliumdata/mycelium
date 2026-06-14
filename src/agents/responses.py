@@ -11,7 +11,7 @@ from typing import Any
 
 from models.state import (
     DeliveryPayload,
-    EntityKeySuggestion,
+    LookupSuggestion,
     EntityQuery,
     QueryResponse,
     IdentityRecord,
@@ -341,7 +341,7 @@ def _make_response(
     message: str,
     debug: str,
     outcome: str | None = None,
-    suggestions: list[EntityKeySuggestion] | None = None,
+    suggestions: list[LookupSuggestion] | None = None,
     required_fields: list[str] | None = None,
     quote: dict[str, Any] | None = None,
     trace_id: str | None = None,
@@ -515,29 +515,30 @@ def response_lookup_incomplete(
 
 
 def _lookup_suggested_message(
-    suggestions: list[EntityKeySuggestion],
+    suggestions: list[LookupSuggestion],
 ) -> str:
     reasons = {item.reason for item in suggestions}
     if "same_name_different_employer" in reasons:
         return (
             "A registry row with the same name exists under a different employer. "
-            "Retry with suggestions[].id or a corrected lookup map. Set "
+            "Retry with suggestions[].suggested_lookup or suggestions[].id. Set "
             "confirm_new_entity=true only if you intend a new bind."
         )
     if "employer_sequence_ratio" in reasons:
         return (
-            "Near-miss registry employer found. Retry with a corrected lookup map."
+            "Near-miss registry employer found. Retry with a corrected lookup map "
+            "(suggestions[].suggested_lookup)."
         )
     return (
-        "Near-miss registry names found. Retry with suggestions[].id or a corrected "
-        "lookup map."
+        "Near-miss registry names found. Retry with suggestions[].suggested_lookup "
+        "or suggestions[].id."
     )
 
 
 def response_lookup_suggested(
     query: EntityQuery,
     *,
-    suggestions: list[EntityKeySuggestion],
+    suggestions: list[LookupSuggestion],
     trace_id: str | None = None,
     thread_id: str | None = None,
 ) -> QueryResponse:
@@ -560,7 +561,7 @@ def response_lookup_suggested(
 
 def response_entity_unresolved(
     query: EntityQuery,
-    suggestions: list[EntityKeySuggestion],
+    suggestions: list[LookupSuggestion],
     *,
     trace_id: str | None = None,
     thread_id: str | None = None,
@@ -569,20 +570,30 @@ def response_entity_unresolved(
     if not suggestions:
         return response_not_found(query, trace_id=trace_id, thread_id=thread_id)
 
+    def _suggestion_label(item: LookupSuggestion) -> str:
+        name = item.suggested_lookup.get("name") or item.name
+        if name:
+            employer_hint = f" ({item.employer})" if item.employer else ""
+            return f"{name!r}{employer_hint}"
+        employer = item.suggested_lookup.get("employer") or item.employer
+        if employer:
+            return f"{employer!r}"
+        return repr(item.suggested_lookup)
+
     top = suggestions[0]
-    employer_hint = f" ({top.employer})" if top.employer else ""
     if len(suggestions) == 1:
         message = (
             f"No exact match for {query.entity_key!r}. "
-            f"Did you mean {top.entity_key!r}{employer_hint}? "
-            "Re-query with that entity_key to continue."
+            f"Did you mean {_suggestion_label(top)}? "
+            "Re-query with suggested_lookup merged into lookup (legacy: use "
+            "suggested_lookup['name'] as entity_key)."
         )
     else:
-        names = ", ".join(f"{item.entity_key!r}" for item in suggestions[:3])
+        labels = ", ".join(_suggestion_label(item) for item in suggestions[:3])
         message = (
             f"No exact match for {query.entity_key!r}. "
-            f"Did you mean one of: {names}? "
-            "Re-query with a suggested entity_key to continue."
+            f"Did you mean one of: {labels}? "
+            "Re-query with a suggested_lookup map to continue."
         )
 
     return _make_response(
