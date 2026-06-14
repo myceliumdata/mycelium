@@ -10,7 +10,7 @@
 
 **Process:** Program 2 manual gate. **Restart MCP** for `1430`–`1450`.
 
-**Git:** Ahead of `origin/main`. No push until Paul asks. See `WORKFLOW.md` §4.
+**Git:** **Shipped** `fc18486` to `origin/main` (2026-06-14). 52 commits (Program 2 + fuzzy lookup `1430`–`1450` + admin polish).
 
 ---
 
