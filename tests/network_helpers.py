@@ -36,6 +36,10 @@ def import_seed_for_test(
 ) -> int:
     """Import ``seed.json`` into ``entities.json`` after ``MYCELIUM_*`` env is set.
 
+    Simulates the **seed-import / refresh bootstrap** path: calls
+    ``ensure_categories_for_mvr_bind`` before ``import_seed_file``. Do not use
+    in create-on-deliver or empty-crm cold-start tests unless that path is under test.
+
     When ``seed_src`` and ``tmp_path`` are given, copies the file to
     ``tmp_path/seed.json``, sets network path env vars, then imports.
     Otherwise ``seed_path`` must already be configured via env.
@@ -74,7 +78,10 @@ def import_seed_for_test(
 
 
 def import_seed_at_root(root: Path) -> int:
-    """Import ``root/seed.json`` when present (uses ``apply_network_paths``)."""
+    """Import ``root/seed.json`` when present (uses ``apply_network_paths``).
+
+    Simulates **refresh-example-network** seed bootstrap (includes MVR category merge).
+    """
     from agents.entity_registry import reset_entity_registry
     from network.paths import NetworkPaths, apply_network_paths
     from network.seed_import import import_seed_file

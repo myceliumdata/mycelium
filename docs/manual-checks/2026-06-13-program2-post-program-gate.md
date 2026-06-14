@@ -43,6 +43,8 @@ uv run mycelium network list
 - `~/mycelium-networks/crm/categories.json` exists
 - `~/mycelium-networks/crm/agents/demographic/storage.json` and `…/professional/storage.json` exist (seed import wrote MVR bind versions)
 
+**Automated:** `test_crm_refresh_capstone_seed_specialist_storage` (smoke; `./bin/ci-local`)
+
 **Spot-check on disk (optional):**
 
 ```bash
@@ -72,6 +74,25 @@ View Source on either URL always shows empty `<div id="root"></div>` until JS ru
 
 ---
 
+## Check 0b — Seed vs empty contrast (required)
+
+Refresh both registered networks and compare status:
+
+```bash
+./bin/refresh-example-network empty-crm --yes
+./bin/refresh-example-network crm --yes
+
+uv run mycelium network status --network empty-crm
+echo "---"
+uv run mycelium network status --network crm
+```
+
+**Pass:** `empty-crm` → Entities ❌, Existing specialists ❌ (no seed import line). `crm` → Entities ✅ (15), Existing specialists `demographic (15)` + `professional (15)` (refresh prints `seed: … → 15 entities imported`).
+
+**Automated:** `test_matrix_a_crm_refresh_seed_bootstrap_storage` + `test_matrix_b_empty_crm_refresh_create_on_deliver_bind` (smoke)
+
+---
+
 ## Quick smoke (optional)
 
 ```bash
@@ -97,6 +118,8 @@ uv run mycelium network status --network crm --entity "Andrea Kalmans" --json
 - Both bind rows have non-empty `versions` arrays
 - At least one version has `actor.kind` in `seed_bootstrap`, `bind`, or `research`
 - `value` on bind rows matches entity cache (display from registry, history from specialist)
+
+**Automated:** `test_status_entity_fields_include_versions_json` (smoke)
 
 ---
 
@@ -175,6 +198,8 @@ jq --arg id "$ID" '.records[$id].employer.versions[0].actor.kind' \
   "$CRM_ROOT/agents/professional/storage.json"
 ```
 
+**Automated:** `test_matrix_c_crm_road_runner_create_on_deliver` (smoke)
+
 ---
 
 ## Check 5 — Empty employer row in status (polish P5)
@@ -225,6 +250,8 @@ jq --arg id "$ID" '.records[$id].name.versions | length' \
 
 Expect `1`. (Registry duplicate short-circuit without backfill is documented in CRM README — Check 6 validates no-op append only when write path runs.)
 
+**Automated:** `test_matrix_d_crm_road_runner_no_duplicate_bind_version` (smoke)
+
 ---
 
 ## Check 7 — Seed refresh idempotency (Slice 1 + P7 doc)
@@ -241,6 +268,8 @@ uv run mycelium network status --network crm --entity "Andrea Kalmans" --json | 
 
 - Both bind fields show `versions` length ≥ 1
 - No errors; ontology + specialist counts healthy on `network status` overview
+
+**Automated:** `test_refresh_crm_imports_seed_into_entities` + `test_crm_refresh_capstone_seed_specialist_storage` (smoke)
 
 ---
 
@@ -301,7 +330,8 @@ If attempting manually: edit one field in `agents/contact/storage.json` to set c
 | Symptom | Likely cause |
 |---------|----------------|
 | No `categories.json` after refresh | Slice 1 bootstrap regression — check `category_mvr_bootstrap` |
-| **Entities ✅ but specialists ❌ after refresh** | **Fixed June 2026:** committed `examples/networks/crm/entities.json` was copied before seed import → duplicate bind skipped specialist writes. Re-refresh on current `main` (skips copying `entities.json`; seed backfills specialist storage). |
+| **Entities ✅ but specialists ❌ after refresh** | **Fixed June 2026:** committed `examples/networks/crm/entities.json` was copied before seed import → duplicate bind skipped specialist writes. Re-refresh on current `main` (skips copying `entities.json`; seed backfills specialist storage). Re-run **Check 0b** to confirm crm vs `empty-crm` contrast. |
+| **empty-crm shows entities or specialists after refresh** | Should not happen — example has no `seed.json`. Re-run `./bin/refresh-example-network empty-crm --yes`. |
 | Bind rows without `versions` | Specialist storage empty — re-run `./bin/refresh-example-network crm --yes` on fixed tree |
 | `provenance` missing bind attrs | Slice 2 — requested attrs not bound on step 1 or no specialist versions |
 | Road Runner step 2 fails | MVR / deliver regression — check daemon logs |

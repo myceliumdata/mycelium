@@ -450,8 +450,11 @@ def test_create_network_query_uses_custom_ontology_not_crm_fallback(
         reset_fn()
 
     categories_on_disk = json.loads((root / "categories.json").read_text(encoding="utf-8"))
-    assert set(categories_on_disk["categories"].keys()) == {"telemetry", "maintenance"}
-    assert set(categories_on_disk["categories"].keys()).isdisjoint(_CRM_SIX)
+    cat_keys = set(categories_on_disk["categories"].keys())
+    assert {"telemetry", "maintenance"}.issubset(cat_keys)
+    # Program 2: seed bootstrap merges MVR demographic/professional when custom ontology omits them.
+    assert cat_keys - {"demographic", "professional"} == {"telemetry", "maintenance"}
+    assert categories_on_disk["attribute_map"].get("name") == "demographic"
 
     response = run_query(
         EntityQuery(

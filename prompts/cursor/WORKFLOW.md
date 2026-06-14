@@ -135,14 +135,17 @@ When Cursor finishes, run this **completion checklist** in order. Do not tell Pa
 
 #### Grok review rules (mandatory)
 
+**Standing behavior:** [`AGENTS.md`](../../AGENTS.md) at the repo root defines Grok’s default **diagnose-only** mode for all sessions (debugging, gate testing, ad-hoc Q&A — not only slice review). The rules below are the slice-review subset; they do not relax `AGENTS.md`.
+
 | Rule | Detail |
 |------|--------|
-| **Read-only review** | Grok **must not write or edit source code** during slice review — no “fixing” failing CI, no patching missing implementation. Exception: Paul explicitly authorizes Grok to implement in that message. |
+| **Read-only review** | Grok **must not write or edit source code** during slice review — no “fixing” failing CI, no patching missing implementation. Same as `AGENTS.md` diagnose-only default. Exception: Paul explicitly authorizes Grok to implement in that message. |
 | **Full diff review** | Before any **Approved** verdict, Grok reads the **entire** slice diff — every changed and new file. Use `git diff` (staged + unstaged + untracked via the WORKFLOW local-diff recipe) or read each file in the changed-files list. Spot-checking key files alone is **not** sufficient. |
 | **Substantive critique** | Grok applies real engineering judgment: architecture fit, edge cases, naming, duplication, scope creep, test gaps, and whether the approach is the **best** option — not merely “CI green.” **Push back** when Cursor’s implementation is sub-optimal; say why and what to do instead. Blocking design/spec issues → **Not Approved** + fix slice; improvements that can wait → **Approved + polish nits** with concrete rows in `review.md`. |
 | **Cursor implements** | Blocking failures (CI red, incomplete delivery, spec miss, unacceptable design) → **fix / remedial slice** in `prompts/cursor/next/` for Cursor — **before** the next planned slice. Do not queue the next slice until the fix slice is approved (unless Paul waives). |
 | **Verify delivery** | Compare `output.md` claims to `git diff` / changed files. Tests-only or docs-only delivery when the prompt required code is **Not Approved**. |
 | **Run CI** | `./bin/ci-local` before any **Approved** verdict (mandatory). |
+| **Full integration (program final slice)** | When approving the **last slice of a program** (or a remedial slice that completes the program), Grok also runs `LANGCHAIN_TRACING_V2=false uv run pytest -m full -q` and records pass/fail + counts in `review.md`. CI stays smoke-only; this is Grok’s extra gate before Paul’s manual program gate. |
 | **Large slices** | When the diff is large (graph, state, metering, multi-module), Grok may additionally run the **`/review` skill** (reviewer subagent on the full diff) and fold findings into `review.md`. That supplements — does not replace — Grok’s own full read. |
 
 ```bash
@@ -320,8 +323,13 @@ To avoid slow full test runs during rapid iteration:
 - This policy applies even if a task prompt vaguely says "run tests" or "verify". Interpret "tests" as smoke-only unless the task is adding full-suite tests.
 - Update the relevant test file with the correct `@pytest.mark.smoke` or `@pytest.mark.full` decorator as part of the change.
 - See `pyproject.toml` for marker definitions, `README.md` and `TODO.md` for usage, and the current reset file for session context.
+- **After a program’s final slice is approved**, Grok runs `LANGCHAIN_TRACING_V2=false uv run pytest -m full -q` (not part of `./bin/ci-local`).
 
 This keeps frequent work fast while ensuring new full tests are validated immediately.
+
+### Negative fixtures (integration tests)
+
+When a test claims to cover a **production code path**, fixtures must not pre-apply bootstrap helpers that path never calls (e.g. do not call `ensure_categories_for_mvr_bind` in empty-crm create-on-deliver tests unless the test targets the seed-import path). Prefer disk state that mirrors real cold-start (e.g. classification `_SEED_CATEGORIES` without MVR `attribute_map` keys) over `sample-categories.json` when testing cold-start gaps. Document in `tests/network_helpers.py` which helpers simulate which paths.
 
 ## Current Status (as of creation)
 

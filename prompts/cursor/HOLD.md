@@ -1,6 +1,10 @@
 # Cursor queue
 
-**Active:** None — **Program 2 + polish complete** (committed locally)
+**Active:** *(empty — pick next program slice when ready)*
+
+**Done (approved):** [`done/2026-06-14-0800-example-network-capstone-tests-gate-pairing/`](done/2026-06-14-0800-example-network-capstone-tests-gate-pairing/) — **Approved**
+
+**Prior:** [`done/2026-06-14-0715-empty-crm-mvr-bootstrap-create-on-deliver/`](done/2026-06-14-0715-empty-crm-mvr-bootstrap-create-on-deliver/) — **Approved**
 
 **Program:** [`docs/plans/attribute-provenance-program2.md`](../../docs/plans/attribute-provenance-program2.md) — **Complete**
 
@@ -8,11 +12,11 @@
 
 **Prior:** Slices 1–3 — Approved
 
-**Manual gate:** [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](../../docs/manual-checks/2026-06-13-program2-post-program-gate.md) — pending.
+**Manual gate:** [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](../../docs/manual-checks/2026-06-13-program2-post-program-gate.md) — pending Paul run; automated pairing in place.
 
 **Next:** Push after gate CLEAR; **Program 3** = entity protocol legacy cleanup ([`entity-protocol-legacy-cleanup-program.md`](../../docs/plans/entity-protocol-legacy-cleanup-program.md)).
 
-**Git:** 5 commits ahead of `origin/main` (Program 2 + polish). No push until Paul asks. See `WORKFLOW.md` §4.
+**Git:** Ahead of `origin/main` (Program 2 + polish + fixes + capstones). No push until Paul asks. See `WORKFLOW.md` §4.
 
 ---
 
