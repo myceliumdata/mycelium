@@ -18,6 +18,7 @@ _SKIP_NAMES = frozenset(
         "prepare_seed.py",
         "categories.json",
         "entities.json",
+        "deliveries.json",
         "agent_registry.json",
         "agents",
         "specialists",

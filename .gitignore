@@ -20,14 +20,8 @@ data/
 # Framework src/agents/specialists/*_specialist.py are committed (CI + import_module fallback).
 # Regenerate from specialist_agent.py.j2 when the template changes.
 
-# Runtime artifacts under committed example networks (seed.json + network.json stay tracked)
-examples/networks/**/categories.json
-examples/networks/**/entities.json
-examples/networks/**/mycelium.db
-examples/networks/**/checkpoints.sqlite
-examples/networks/**/checkpoints.sqlite-*
-examples/networks/**/agent_registry.json
-examples/networks/**/agents/
+# Example networks: runtime artifacts must not exist under examples/networks/ — enforced by
+# tests/test_example_network.py (no gitignore; stray files stay visible in git status).
 
 # User scratch/dump area for files to share with the AI (e.g. logs, outputs, traces)
 tmp/

@@ -22,14 +22,17 @@ from network.seed_import import import_seed_file
 REPO_ROOT = Path(__file__).resolve().parent.parent
 EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
 EXAMPLE_CRM_METERING = REPO_ROOT / "examples" / "networks" / "crm-metering"
+EXAMPLE_EMPTY_CRM = REPO_ROOT / "examples" / "networks" / "empty-crm"
 _REFRESH_SCRIPT = REPO_ROOT / "bin" / "refresh-example-network"
 _RUNTIME_ARTIFACTS = (
     "categories.json",
     "entities.json",
+    "deliveries.json",
     "checkpoints.sqlite",
     "mycelium.db",
     "agent_registry.json",
 )
+_RUNTIME_DIRS = ("agents",)
 # Seed bootstrap materializes these; they must not be copied from the example tree.
 _BOOTSTRAP_ALLOWED = frozenset({"categories.json", "entities.json"})
 
@@ -51,20 +54,39 @@ def _run_refresh(
     )
 
 
+def _assert_example_tree_clean(example_dir: Path, *, expect_seed: bool) -> None:
+    """Committed example trees ship reference files only — no live network_root artifacts."""
+    assert (example_dir / "network.json").is_file()
+    assert (example_dir / "guide.md").is_file()
+    assert (example_dir / "README.md").is_file()
+    if expect_seed:
+        assert (example_dir / "seed.json").is_file()
+    else:
+        assert not (example_dir / "seed.json").exists()
+    for name in _RUNTIME_ARTIFACTS:
+        assert not (example_dir / name).exists(), (
+            f"runtime artifact {name!r} must not exist under {example_dir}; "
+            "live data belongs under your network_root only"
+        )
+    for name in _RUNTIME_DIRS:
+        assert not (example_dir / name).exists(), (
+            f"runtime directory {name!r} must not exist under {example_dir}"
+        )
+
+
 @pytest.mark.smoke
 def test_example_crm_layout() -> None:
-    assert (EXAMPLE_CRM / "seed.json").is_file()
-    assert (EXAMPLE_CRM / "network.json").is_file()
-    assert (EXAMPLE_CRM / "guide.md").is_file()
-    assert (EXAMPLE_CRM / "README.md").is_file()
-    for runtime_artifact in _RUNTIME_ARTIFACTS:
-        assert not (EXAMPLE_CRM / runtime_artifact).exists()
+    _assert_example_tree_clean(EXAMPLE_CRM, expect_seed=True)
+
+
+@pytest.mark.smoke
+def test_example_empty_crm_layout() -> None:
+    _assert_example_tree_clean(EXAMPLE_EMPTY_CRM, expect_seed=False)
 
 
 @pytest.mark.smoke
 def test_example_crm_metering_layout() -> None:
-    assert (EXAMPLE_CRM_METERING / "seed.json").is_file()
-    assert (EXAMPLE_CRM_METERING / "network.json").is_file()
+    _assert_example_tree_clean(EXAMPLE_CRM_METERING, expect_seed=True)
     assert (EXAMPLE_CRM_METERING / "queries" / "02-quote-email.json").is_file()
     meta = json.loads((EXAMPLE_CRM_METERING / "network.json").read_text(encoding="utf-8"))
     assert meta["metering"]["enabled"] is True
