@@ -65,10 +65,11 @@ Program 2 fixed bind **storage** (specialist `versions[]`). Program 3 removes le
 | 4 | `2026-06-14-1530-legacy-graph-removal.md` | Remove legacy resolution graph, models, responses, supervisor gate |
 | 5 | `2026-06-14-1540-test-migration.md` | Migrate/delete legacy `entity_key` test corpus; drop conftest env flag |
 | 6 | `2026-06-14-1550-policy-docs-hygiene.md` | `describe_network`, docs, manual gates, program complete |
+| 7 | `2026-06-14-1560-program3-polish.md` | Review nits — see [`entity-protocol-legacy-cleanup-polish.md`](entity-protocol-legacy-cleanup-polish.md) |
 
 Each slice: smoke tests + `./bin/ci-local`. Cursor does **not** edit `TODO.md`.
 
-**Program final slice:** `1550` — Grok runs full integration (`pytest -m full`) at review.
+**Program final slice:** `1560` (polish) — Grok runs full integration (`pytest -m full`) at review.
 
 ---
 

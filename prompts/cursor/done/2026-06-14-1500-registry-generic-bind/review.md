@@ -36,10 +36,10 @@
 
 | # | Nit | Suggested follow-up |
 |---|-----|---------------------|
-| N1 | `RegistryEntity.name` / `.employer` **properties** — Paul locked **Option A** (map-only on disk). Properties are fine for transition but add CRM-flavored accessors; prefer `bind_value("name")` in new code. | Optional cleanup in 1530 when legacy callers shrink |
-| N2 | `ensure_entity_bind_fields` still **`require lookup.name`** — CRM-specific gate not replaced by “all `mvr.bind_fields` present” policy. | Slice **1510** or small fix in 1530 |
-| N3 | **No fail-loud load** for legacy rows with top-level `name`/`employer` (Pydantic ignores extras → empty `bind_values`). `output.md` documents refresh cutover; operators who skip refresh get silent breakage. | Optional hardening: reject legacy shape in `_load` with clear error |
-| N4 | `lookup_by_bind_values` with **partial** `bind_values` pads missing bind fields as `""` in `make_bind_key` — acceptable while binds always pass full CRM pairs; document when generic 3+ field networks land. | Watch in future network create tests |
+| N1 | `RegistryEntity.name` / `.employer` **properties** — Paul locked **Option A** (map-only on disk). Properties are fine for transition but add CRM-flavored accessors; prefer `bind_value("name")` in new code. | **P1** → slice **1560** ([`entity-protocol-legacy-cleanup-polish.md`](../../../docs/plans/entity-protocol-legacy-cleanup-polish.md)) |
+| N2 | `ensure_entity_bind_fields` still **`require lookup.name`** — CRM-specific gate not replaced by “all `mvr.bind_fields` present” policy. | **P2** → verify in **1510**; else **1560** |
+| N3 | **No fail-loud load** for legacy rows with top-level `name`/`employer` (Pydantic ignores extras → empty `bind_values`). `output.md` documents refresh cutover; operators who skip refresh get silent breakage. | **P3** → slice **1560** |
+| N4 | `lookup_by_bind_values` with **partial** `bind_values` pads missing bind fields as `""` in `make_bind_key` — acceptable while binds always pass full CRM pairs; document when generic 3+ field networks land. | **P4** → slice **1560** |
 
 ---
 
@@ -62,4 +62,4 @@ feat(registry): generic bind_values and bind_index for MVR fields
 
 **Breaking:** refresh live networks after pull (`./bin/refresh-example-network crm --yes`).
 
-**Next slice:** `1510-mvr-helper-legacy-removal` (queued).
+**Next slice:** `1510-mvr-helper-legacy-removal` (queued). **Polish nits:** `1560-program3-polish`.

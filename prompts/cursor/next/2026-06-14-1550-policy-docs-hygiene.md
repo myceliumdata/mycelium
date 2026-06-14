@@ -5,7 +5,7 @@
 **Program:** [`docs/plans/entity-protocol-legacy-cleanup-program.md`](../../docs/plans/entity-protocol-legacy-cleanup-program.md)  
 **Prerequisite:** Slices **1500–1540** approved.
 
-**Note:** This is the **program final slice** — Grok runs `pytest -m full` at review per `WORKFLOW.md`.
+**Note:** Program **final** slice is **1560-polish** (full integration gate). This slice completes docs/policy only.
 
 ---
 
