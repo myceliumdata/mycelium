@@ -1,14 +1,12 @@
 # Cursor queue
 
-**Active:** [`next/2026-06-14-1000-query-response-omit-empty-lists.md`](next/2026-06-14-1000-query-response-omit-empty-lists.md) — omit empty `required_fields`/`suggestions`, null `trace_id`
+**Active:** [`next/2026-06-14-1100-target-step1-lookup-clarity.md`](next/2026-06-14-1100-target-step1-lookup-clarity.md) — step-1 lookup clarity (outcomes, suggestions, confirm_new_entity)
+
+**Supersedes:** `2026-06-14-1000-query-response-omit-empty-lists.md` (merged into 1100)
 
 **Done (approved):** [`done/2026-06-14-0900-query-response-omit-na-fields/`](done/2026-06-14-0900-query-response-omit-na-fields/) — **Approved**
 
-**Prior:** [`done/2026-06-14-0800-example-network-capstone-tests-gate-pairing/`](done/2026-06-14-0800-example-network-capstone-tests-gate-pairing/) — **Approved**
-
 **Manual gate:** [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](../../docs/manual-checks/2026-06-13-program2-post-program-gate.md) — pending Paul run.
-
-**Next:** Push after gate CLEAR; **Program 3** = entity protocol legacy cleanup.
 
 **Git:** Ahead of `origin/main`. No push until Paul asks. See `WORKFLOW.md` §4.
 
