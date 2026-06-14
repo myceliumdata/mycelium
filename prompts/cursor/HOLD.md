@@ -1,6 +1,6 @@
 # Cursor queue
 
-**Active:** *(empty — pick next program slice when ready)*
+**Active:** [`next/2026-06-14-0900-query-response-omit-na-fields.md`](next/2026-06-14-0900-query-response-omit-na-fields.md) — omit N/A `QueryResponse` public JSON fields by outcome
 
 **Done (approved):** [`done/2026-06-14-0800-example-network-capstone-tests-gate-pairing/`](done/2026-06-14-0800-example-network-capstone-tests-gate-pairing/) — **Approved**
 
