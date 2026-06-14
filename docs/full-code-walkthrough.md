@@ -133,7 +133,7 @@ From `TODO.md` (June 2026):
 
 - **MVR redesign M1–M10** — shipped (two-step protocol, `DeliveryStore`, admin query UI).
 - **Networks Phases 1–5** — delivered (`network create`, per-network `specialists/`, skeleton ontology).
-- **Next:** Program 2 (versioned bind storage), query-as-seed launch (v2), inter-network handoff (Phase 6).
+- **Next:** Program 3 (entity protocol legacy cleanup), query-as-seed launch (v2), inter-network handoff (Phase 6).
 - LangSmith E2E verification in operator `.env`.
 
 ---

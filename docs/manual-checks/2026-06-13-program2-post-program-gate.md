@@ -1,6 +1,6 @@
 # Manual checks — Program 2 post-program gate (MVR / entity storage)
 
-**Status:** ⏳ **PENDING** — run this checklist from scratch; mark **CLEAR** when all required checks pass.
+**Status:** ✅ **CLEAR** (2026-06-14) — Paul manual gate passed; Program 2 verified on `origin/main`
 
 **Context:** Program 2 (Slices 1–3 + polish P1–P7 + remedial fixes + capstone tests + **step-1 lookup clarity** + **fuzzy bind-field suggestions 1430–1450**) is **on `origin/main`** (`f5cf089` and later). This gate validates hands-on behavior on a synced checkout — **restart MCP** after pulling so suggestion shape matches code.
 
@@ -575,4 +575,4 @@ Report failures to Grok with **check number + command output**.
 
 ---
 
-*Created: 2026-06-13 · Rewritten: 2026-06-14 (seed-refresh, empty-crm MVR, capstone tests) · Updated: 2026-06-14 (step-1 lookup clarity, fuzzy suggestions 1430–1450, `suggested_lookup`)*
+*Created: 2026-06-13 · Rewritten: 2026-06-14 (seed-refresh, empty-crm MVR, capstone tests) · Updated: 2026-06-14 (step-1 lookup clarity, fuzzy suggestions 1430–1450, `suggested_lookup`) · **CLEAR** 2026-06-14*

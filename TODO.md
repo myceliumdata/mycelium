@@ -10,7 +10,7 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 ## Next up (Paul)
 
-- [ ] **Program 2 manual gate** — [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](docs/manual-checks/2026-06-13-program2-post-program-gate.md). Fresh run from scratch on `origin/main` (`f5cf089`). Update gate table: partial name/employer typo → `lookup_suggested` + `suggested_lookup`. **Restart MCP** before testing. Mark **CLEAR** when done.
+- [ ] **Program 3 — Entity protocol legacy cleanup** — [`docs/plans/entity-protocol-legacy-cleanup-program.md`](docs/plans/entity-protocol-legacy-cleanup-program.md). One MVR `lookup` story for query, status, admin; remove name/`entity_key`/status `--entity` special cases.
 
 ---
 
@@ -50,7 +50,6 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ## Query, entity & research (open)
 
-- [ ] **Program 2 gate sign-off** — code shipped (`origin/main`); manual gate is the remaining exit.
 - [ ] **Settlement protocol** — Real x402 `PaymentProvider`, fundable-wallet harness, HTTP 402 gateway, rebate/pool ledger. Deferred from metering Slice 11.
 - [ ] **Per-record query messages (multi-match)** — Collective `message` today; per-id status when attrs diverge per match.
 - [ ] **Multi-turn thread semantics** — Reuse specialist cache across attributes on one `thread_id` without redundant research.
@@ -86,4 +85,4 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ---
 
-Last updated: 2026-06-14 (pruned done items; Program 2 + fuzzy `1430`–`1450` shipped to `origin/main`)
+Last updated: 2026-06-14 (Program 2 manual gate **CLEAR**; Program 3 next)

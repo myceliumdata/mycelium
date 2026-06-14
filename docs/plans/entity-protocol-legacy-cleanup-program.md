@@ -1,7 +1,7 @@
 # Program 3 — Entity protocol legacy cleanup (draft)
 
-**Status:** Draft — **next program** after Program 2 ships (Paul, June 2026)  
-**Prerequisite:** Program 2 manual gate clear + push  
+**Status:** **Next program** — ready to lock (Paul, June 2026)  
+**Prerequisite:** Program 2 manual gate **CLEAR** (2026-06-14) — code on `origin/main`  
 **Supersedes:** Prior “Program 3 = operator write” ordering — operator UI moves to **Program 4**
 
 ---

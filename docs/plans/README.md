@@ -99,10 +99,10 @@ Implementation handoffs live in `prompts/cursor/done/<slug>/` with `prompt.md`, 
 
 | Doc | Status |
 |-----|--------|
-| [`attribute-provenance-program2.md`](attribute-provenance-program2.md) | **Complete** — on `origin/main`; manual gate pending |
+| [`attribute-provenance-program2.md`](attribute-provenance-program2.md) | **Complete** — on `origin/main`; manual gate **CLEAR** (2026-06-14) |
 | [`attribute-provenance-program2-polish.md`](attribute-provenance-program2-polish.md) | Polish P1–P7 — done |
 | [`attribute-provenance-program2-slice1.md`](attribute-provenance-program2-slice1.md) … [`slice3.md`](attribute-provenance-program2-slice3.md) | Done |
-| [`../manual-checks/2026-06-13-program2-post-program-gate.md`](../manual-checks/2026-06-13-program2-post-program-gate.md) | Post-program manual gate — **PENDING** |
+| [`../manual-checks/2026-06-13-program2-post-program-gate.md`](../manual-checks/2026-06-13-program2-post-program-gate.md) | Post-program manual gate — **CLEAR** (2026-06-14) |
 
 ### Cleared / superseded backlogs
 
@@ -118,8 +118,7 @@ Implementation handoffs live in `prompts/cursor/done/<slug>/` with `prompt.md`, 
 |-----|-------|
 | [`attribute-provenance-and-storage.md`](attribute-provenance-and-storage.md) | Architecture — entity/index/protocol split |
 | [`entity-protocol-legacy-cleanup-program.md`](entity-protocol-legacy-cleanup-program.md) | **Next** — Program 3 legacy protocol cleanup |
-| [`next-chunk-prep.md`](next-chunk-prep.md) | Handoff notes; Program 2 shipped; Program 3 next |
-| [`../manual-checks/2026-06-13-program2-post-program-gate.md`](../manual-checks/2026-06-13-program2-post-program-gate.md) | **PENDING** — run on `origin/main` before Program 3 |
+| [`next-chunk-prep.md`](next-chunk-prep.md) | Handoff notes; Program 2 gate **CLEAR**; Program 3 next |
 | [`research-robustness-backlog.md`](research-robustness-backlog.md) | Post-2010 research hardening |
 | [`historical-assumptions-audit.md`](historical-assumptions-audit.md) | Phase 1 audit; Phase 2 cleanup recommendations |
 
@@ -142,4 +141,4 @@ Archived Paul + Grok threads: [`conversations/README.md`](conversations/README.m
 
 ---
 
-*Last updated: June 2026 (Program 2 + fuzzy lookup on `origin/main`; Program 2 manual gate pending).*
+*Last updated: June 2026 (Program 2 gate **CLEAR**; Program 3 next).*
