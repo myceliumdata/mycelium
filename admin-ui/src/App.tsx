@@ -483,10 +483,10 @@ export default function App() {
     setLookupValues(nextLookup);
     setQueryConfirmNewEntity(false);
 
-    if (lastInspectKey) {
-      refreshInspectFromForm("lookup", "", nextLookup);
-    } else if (queryDrilldownActive) {
+    if (queryDrilldownActive) {
       refreshQueryDrilldownWith("lookup", "", nextLookup);
+    } else if (lastInspectKey) {
+      refreshInspectFromForm("lookup", "", nextLookup);
     }
   };
 
