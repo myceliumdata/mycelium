@@ -1,10 +1,12 @@
 # Cursor queue
 
-**Active:** [`next/2026-06-14-1410-multi-match-step2-deliver-truncation.md`](next/2026-06-14-1410-multi-match-step2-deliver-truncation.md) — **after** Paul manual validation test on `1400`
+**Active:** *(empty — queue after 1410)*
 
-**Last approved:** [`done/2026-06-14-1400-provisional-validation-step2-deliver/`](done/2026-06-14-1400-provisional-validation-step2-deliver/) — **Approved + polish nits** (pending Paul manual test)
+**Last approved:** [`done/2026-06-14-1410-multi-match-step2-deliver-truncation/`](done/2026-06-14-1410-multi-match-step2-deliver-truncation/) — **Approved + polish nits** (pending Paul manual test)
 
-**Process:** Paul + Grok manual test `1400` before starting `1410`.
+**Prior:** [`1400`](done/2026-06-14-1400-provisional-validation-step2-deliver/) — manual validation test **passed** (Paul).
+
+**Process:** Paul manual test `1410` (truncation / `len(results)`), then Program 2 gate when ready.
 
 **Git:** Ahead of `origin/main`. No push until Paul asks. See `WORKFLOW.md` §4.
 

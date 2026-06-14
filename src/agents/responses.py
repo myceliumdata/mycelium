@@ -879,28 +879,62 @@ def response_validation_failed(
 
 def response_research_gated(
     query: EntityQuery,
-    record: dict[str, Any],
+    records: list[dict[str, Any]],
     *,
     trace_id: str | None = None,
     thread_id: str | None = None,
 ) -> QueryResponse:
-    """Provisional registry entity with attrs requested: identity only, gate message."""
+    """Registry batch with attrs requested but gate blocks research: identity rows only."""
     from agents.research_gate import RESEARCH_GATE_MESSAGE
 
-    name = record.get("name") or query.entity_key
-    employer = record.get("employer")
-    employer_phrase = f" at {employer}" if employer else ""
-    message = (
-        f"Found provisional record for {name}{employer_phrase}. "
-        f"{RESEARCH_GATE_MESSAGE}"
-    )
+    matched = list(records)
+    if not matched:
+        return _make_response(
+            results=[],
+            message=RESEARCH_GATE_MESSAGE,
+            outcome="found",
+            required_fields=[],
+            debug=debug_for_query(query, outcome="found", research_gated=True),
+            trace_id=trace_id,
+            thread_id=thread_id,
+        )
+
     results = [
         {
-            "id": record.get("id", ""),
-            "name": name,
-            "employer": employer,
-        },
+            "id": rec.get("id", ""),
+            "name": rec.get("name", ""),
+            "employer": rec.get("employer"),
+        }
+        for rec in matched
     ]
+
+    provisional_count = sum(
+        1 for rec in matched if rec.get("_validation_state") != "validated"
+    )
+    total = len(matched)
+
+    if total == 1:
+        rec = matched[0]
+        name = rec.get("name") or query.entity_key
+        employer = rec.get("employer")
+        employer_phrase = f" at {employer}" if employer else ""
+        if rec.get("_validation_state") == "validated":
+            message = (
+                f"Found record for {name}{employer_phrase}. "
+                f"{RESEARCH_GATE_MESSAGE}"
+            )
+        else:
+            message = (
+                f"Found provisional record for {name}{employer_phrase}. "
+                f"{RESEARCH_GATE_MESSAGE}"
+            )
+    else:
+        message = (
+            f"Found {total} records. Attribute research blocked for "
+            f"{provisional_count} provisional row(s). "
+            f"{RESEARCH_GATE_MESSAGE}"
+        )
+
     return _make_response(
         results=results,
         message=message,
@@ -910,7 +944,7 @@ def response_research_gated(
             query,
             outcome="found",
             research_gated=True,
-            registry_id=record.get("id"),
+            registry_id=matched[0].get("id"),
         ),
         trace_id=trace_id,
         thread_id=thread_id,

@@ -724,7 +724,7 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
         }
 
     if is_research_gated(current):
-        gated = response_research_gated(query, matched[0], **id_kwargs)
+        gated = response_research_gated(query, matched, **id_kwargs)
         return {
             "response": _attach_provenance(gated, current, matched),
             "audit_log": ["assemble_response: research gate (provisional + attrs)."],

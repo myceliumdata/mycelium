@@ -211,6 +211,43 @@ def test_batch_step2_provenance_entities_shape(
 
 
 @pytest.mark.smoke
+def test_multi_match_research_gate_returns_all_identity_rows(
+    crm_batch_deliver_env: CoreStorage,
+) -> None:
+    """Research-gated batch deliver returns every scope identity row (M8 shape)."""
+    _ = crm_batch_deliver_env
+    registry = get_entity_registry()
+    bad_row, _ = registry.bind_provisional("Andrea Kalmans", "A")
+
+    step1 = run_query(
+        EntityQuery(
+            lookup={"name": "Andrea Kalmans"},
+            requested_attributes=["email"],
+        ),
+    )
+    assert step1.outcome == "lookup_resolved"
+    assert step1.total_matches == 2
+    assert step1.delivery is not None
+
+    stored = get_delivery_store().get(step1.delivery.delivery_id)
+    assert stored is not None
+    assert len(stored.entity_ids) == 2
+    assert bad_row.id in stored.entity_ids
+
+    step2 = run_query(EntityQuery(delivery_id=step1.delivery.delivery_id))
+    assert step2.outcome == "found"
+    assert len(step2.results) == 2
+    result_ids = {row["id"] for row in step2.results}
+    assert result_ids == set(stored.entity_ids)
+    employers = {row.get("employer") for row in step2.results}
+    assert "A" in employers
+    assert "Lontra Ventures" in employers
+    assert "provisional record for" not in step2.message.lower()
+    assert "2 records" in step2.message
+    assert "1 provisional row" in step2.message
+
+
+@pytest.mark.smoke
 def test_metered_batch_step1_step2_quote_roundtrip(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
