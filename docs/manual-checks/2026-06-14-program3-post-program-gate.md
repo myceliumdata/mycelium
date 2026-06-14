@@ -1,6 +1,6 @@
 # Manual checks — Program 3 post-program gate (entity protocol legacy cleanup)
 
-**Status:** **PENDING**
+**Status:** ✅ **CLEAR** (2026-06-14) — Paul manual gate passed; tag `program_3` on local `main`
 
 **Context:** Program 3 (Slices 1500–1550 + polish 1560) removes legacy `entity_key` / `binding` from public surfaces, migrates registry rows to `bind_values`, and aligns status inspect with query step-1 (`id` / `lookup` + `resolve` JSON). Run after code is on your branch and `./bin/ci-local` is green.
 

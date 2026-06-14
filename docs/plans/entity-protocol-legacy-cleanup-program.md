@@ -1,6 +1,6 @@
 # Program 3 — Entity protocol legacy cleanup
 
-**Status:** **Complete** — slices 1500–1560 queued in `prompts/cursor/` (June 2026); manual gate pending Paul  
+**Status:** **Complete** — manual gate **CLEAR** (2026-06-14); tag `program_3`. Polish slice **1560** still queued (P1–P4 nits).  
 **Prerequisite:** Program 2 manual gate **CLEAR** (2026-06-14) — tag `program_2`  
 **Supersedes:** Prior “Program 3 = operator write” ordering — operator UI moves to **Program 4**
 

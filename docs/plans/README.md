@@ -110,7 +110,7 @@ Implementation handoffs live in `prompts/cursor/done/<slug>/` with `prompt.md`, 
 |-----|--------|
 | [`entity-protocol-legacy-cleanup-program.md`](entity-protocol-legacy-cleanup-program.md) | **Complete** — `bind_values`, status `resolve` JSON, legacy graph removed |
 | [`entity-protocol-legacy-cleanup-polish.md`](entity-protocol-legacy-cleanup-polish.md) | Polish P1–P2 — slice 1560 |
-| [`../manual-checks/2026-06-14-program3-post-program-gate.md`](../manual-checks/2026-06-14-program3-post-program-gate.md) | Post-program manual gate — **PENDING** |
+| [`../manual-checks/2026-06-14-program3-post-program-gate.md`](../manual-checks/2026-06-14-program3-post-program-gate.md) | Post-program manual gate — **CLEAR** (2026-06-14) |
 
 ### Cleared / superseded backlogs
 
@@ -148,4 +148,4 @@ Archived Paul + Grok threads: [`conversations/README.md`](conversations/README.m
 
 ---
 
-*Last updated: June 2026 (Program 3 code complete; manual gate pending; Program 4 operator write next).*
+*Last updated: June 2026 (Program 3 gate **CLEAR**; 1560 polish queued; Program 4 next).*
