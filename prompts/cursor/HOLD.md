@@ -1,6 +1,6 @@
 # Cursor queue
 
-**Active:** *(none — awaiting next slice)*
+**Active:** [`next/2026-06-14-1200-admin-query-unified-mvr-lookup.md`](next/2026-06-14-1200-admin-query-unified-mvr-lookup.md) — admin unified query + dynamic MVR fields
 
 **Last approved:** [`done/2026-06-14-1100-target-step1-lookup-clarity/`](done/2026-06-14-1100-target-step1-lookup-clarity/) — **Approved** (Grok, 2026-06-14)
 
