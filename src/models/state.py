@@ -280,15 +280,21 @@ class QueryResponse(BaseModel):
     required_fields: list[str] = Field(
         default_factory=list,
         description=(
-            "MVR bind fields still needed when outcome is entity_unknown or "
-            "entity_under_specified (legacy entity_key path; name may come from entity_key)."
+            "MVR bind fields still needed for create. Target protocol: present when "
+            "outcome is lookup_incomplete (partial lookup with 0 hits). Legacy "
+            "entity_key graph: entity_unknown or entity_under_specified. Omitted "
+            "from public JSON when empty."
         ),
     )
     suggestions: list[EntityKeySuggestion] = Field(
         default_factory=list,
         description=(
-            "Near-miss entity_key suggestions when outcome is entity_key_unresolved; "
-            "empty otherwise. Re-query with suggestions[].entity_key to confirm."
+            "Structured retry hints when lookup did not resolve to a registry row. "
+            "Target protocol: present when outcome is lookup_suggested (same name "
+            "under different employer or fuzzy name near-miss). Retry with "
+            "suggestions[].id or a corrected lookup map; set confirm_new_entity "
+            "only to intentionally create after reviewing. Legacy entity_key "
+            "graph: entity_key_unresolved. Omitted from public JSON when empty."
         ),
     )
     results: list[dict[str, Any]] = Field(

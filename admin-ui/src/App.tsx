@@ -40,7 +40,7 @@ function outcomeBadgeClass(outcome: string | null | undefined): string {
     outcome === "lookup_incomplete" ||
     outcome === "lookup_suggested"
   ) {
-    return "badge metering";
+    return "badge negotiation";
   }
   if (outcome === "error" || outcome === "not_found") {
     return "badge bad";

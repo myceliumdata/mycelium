@@ -83,6 +83,11 @@ header.app-header h1 {
   color: #9a5b00;
 }
 
+.badge.negotiation {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--accent);
+}
+
 @media (prefers-color-scheme: dark) {
   .badge.metering {
     color: #f0b429;
