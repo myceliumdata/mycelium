@@ -510,6 +510,30 @@ def test_admin_query_step1_wire_json_shape(
 
 
 @pytest.mark.smoke
+def test_admin_query_lookup_suggested_shape(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root = _populated_root(tmp_path)
+    client = _client_for_root(monkeypatch, tmp_path, root)
+
+    response = client.post(
+        "/query",
+        json={
+            "lookup": {
+                "name": "Andrea Kalmans",
+                "employer": "Wrong Corp",
+            },
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["outcome"] == "lookup_suggested"
+    assert payload.get("delivery") is None
+    assert len(payload.get("suggestions") or []) >= 1
+
+
+@pytest.mark.smoke
 def test_admin_query_passes_quote_id(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

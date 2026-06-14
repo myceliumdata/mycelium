@@ -6,6 +6,16 @@
 
 **Paul’s direction:** Early build — no backward-compat burden. Reduce JSON noise; never omit fields that help agents understand state. **Same-name / different-employer** is **suggestions territory** (like typos). Creating a genuinely new bind (Andrea @ Another Co) stays allowed but requires **`confirm_new_entity: true`** after seeing suggestions — removes ambiguity.
 
+### Design rationale (locked)
+
+Today, full MVR + 0 index hits can silently return `lookup_resolved` with `create_on_deliver: true` even when the **same name** already exists under a different employer. That overloads `not_found` on the other side (partial lookup missing MVR) and gives agents no structured signal. This slice fixes both problems with one rule:
+
+1. **Partial lookup, 0 hits** → `lookup_incomplete` + `required_fields` (not `not_found`).
+2. **Full MVR, 0 hits, collision or near-miss** → `lookup_suggested` + `suggestions[]` (no delivery).
+3. **Full MVR, 0 hits, agent still wants a new row** → re-query with **`confirm_new_entity: true`** → `lookup_resolved` + `create_on_deliver`.
+
+`not_found` is reserved for true dead ends (unknown `id`, expired `delivery_id`). Agents learn MVR bind field names from `describe_network` → `policy.mvr.bind_fields`; responses only surface **what’s missing** or **what’s similar**.
+
 **Supersedes:** `2026-06-14-1000-query-response-omit-empty-lists.md` (merged into this slice).
 
 **Prerequisites:** `74a7f94` (outcome-aware `public_dict` omission) on `main`.

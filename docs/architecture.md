@@ -286,7 +286,7 @@ Multi-match step-1 scopes carry `entity_ids[]` (N > 1). Step-2 deliver hydrates 
 
 ### Public surfaces (CLI, MCP, admin) — M9
 
-CLI `query`, MCP `query_entity`, and admin `POST /query` use the **target protocol only** — no `entity_key` / `binding` on public entry points. Public JSON uses `QueryResponse.public_dict()` / `public_json()` — omits fields that do not apply to the response `outcome` (e.g. step-2 `found` omits `total_matches` and `delivery`; null `quote` and `provenance` are absent keys, not `null`; `delivery.create_on_deliver` only when true). Example query JSON under `examples/networks/*/queries/` documents two-step resolve → deliver. Admin UI (`admin-ui/`) uses lookup fields + stored `delivery_id` (M10); shows `total_matches: 0 (full MVR)` when `create_on_deliver` is true.
+CLI `query`, MCP `query_entity`, and admin `POST /query` use the **target protocol only** — no `entity_key` / `binding` on public entry points. Public JSON uses `QueryResponse.public_dict()` / `public_json()` — omits fields that do not apply to the response `outcome` (e.g. step-2 `found` omits `total_matches` and `delivery`; empty `required_fields`/`suggestions` and null `quote`/`provenance`/`trace_id` are absent keys; `delivery.create_on_deliver` only when true). Step-1 adds `lookup_incomplete` (partial lookup missing MVR fields) and `lookup_suggested` (same-name or fuzzy near-miss); `confirm_new_entity` on step-1 lookup opts into create after suggestions. Example query JSON under `examples/networks/*/queries/` documents two-step resolve → deliver. Admin UI (`admin-ui/`) uses lookup fields + stored `delivery_id` (M10); shows `total_matches: 0 (full MVR)` when `create_on_deliver` is true.
 
 ### Legacy graph path — M10
 

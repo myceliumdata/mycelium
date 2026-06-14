@@ -100,6 +100,14 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Step 2: deliver a prior delivery_id from lookup_resolved",
     )
     query_cmd.add_argument(
+        "--confirm-new-entity",
+        action="store_true",
+        help=(
+            "Step 1: create a new entity even when same-name rows exist under "
+            "a different employer (use after lookup_suggested)"
+        ),
+    )
+    query_cmd.add_argument(
         "--attributes",
         nargs="*",
         default=[],
@@ -317,6 +325,7 @@ def _entity_query_from_args(args: argparse.Namespace) -> EntityQuery:
         requested_attributes=list(args.attributes),
         quote_id=args.quote_id,
         provenance=bool(args.provenance),
+        confirm_new_entity=bool(getattr(args, "confirm_new_entity", False)),
     )
 
 

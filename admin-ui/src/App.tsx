@@ -36,6 +36,12 @@ function outcomeBadgeClass(outcome: string | null | undefined): string {
   ) {
     return "badge metering";
   }
+  if (
+    outcome === "lookup_incomplete" ||
+    outcome === "lookup_suggested"
+  ) {
+    return "badge metering";
+  }
   if (outcome === "error" || outcome === "not_found") {
     return "badge bad";
   }
@@ -197,6 +203,7 @@ export default function App() {
   const [queryEmployer, setQueryEmployer] = useState("");
   const [queryDeliveryId, setQueryDeliveryId] = useState("");
   const [queryQuoteId, setQueryQuoteId] = useState("");
+  const [queryConfirmNewEntity, setQueryConfirmNewEntity] = useState(false);
   const [queryLoading, setQueryLoading] = useState(false);
   const [queryError, setQueryError] = useState<string | null>(null);
   const [queryResult, setQueryResult] = useState<QueryResponse | null>(null);
@@ -392,6 +399,7 @@ export default function App() {
         body = {
           lookup,
           requested_attributes: attrs.length > 0 ? attrs : undefined,
+          confirm_new_entity: queryConfirmNewEntity || undefined,
         };
       }
 
@@ -435,6 +443,7 @@ export default function App() {
       queryEmployer,
       queryName,
       queryQuoteId,
+      queryConfirmNewEntity,
     ],
   );
 
@@ -452,8 +461,12 @@ export default function App() {
     void runQueryRequest(String(quoteId));
   };
 
-  const applySuggestion = (suggestedKey: string) => {
+  const applySuggestion = (suggestedKey: string, employer?: string | null) => {
     setQueryName(suggestedKey);
+    if (employer) {
+      setQueryEmployer(employer);
+    }
+    setQueryConfirmNewEntity(false);
     setEntityInput(suggestedKey);
     setEntityKey(suggestedKey);
     void fetchStatusNow({
@@ -603,6 +616,16 @@ export default function App() {
             <button type="submit" disabled={queryLoading}>
               {queryLoading ? "Running…" : "Run"}
             </button>
+            {queryResult?.outcome === "lookup_suggested" && (
+              <label className="confirm-new-entity">
+                <input
+                  type="checkbox"
+                  checked={queryConfirmNewEntity}
+                  onChange={(e) => setQueryConfirmNewEntity(e.target.checked)}
+                />
+                Confirm new entity (ignore suggestions)
+              </label>
+            )}
           </form>
           {queryError && <p className="error">Query error: {queryError}</p>}
           {queryResult && (
@@ -632,24 +655,26 @@ export default function App() {
                     Run again to deliver.
                   </p>
                 )}
-              {queryResult.required_fields.length > 0 && (
+              {(queryResult.required_fields ?? []).length > 0 && (
                 <p>
                   <strong>Required fields:</strong>{" "}
-                  {queryResult.required_fields.join(", ")}
+                  {(queryResult.required_fields ?? []).join(", ")}
                 </p>
               )}
-              {queryResult.suggestions.length > 0 && (
+              {(queryResult.suggestions ?? []).length > 0 && (
                 <div>
                   <p>
                     <strong>Suggestions:</strong>
                   </p>
                   <ul className="suggestion-list">
-                    {queryResult.suggestions.map((item) => (
+                    {(queryResult.suggestions ?? []).map((item) => (
                       <li key={item.id}>
                         <button
                           type="button"
                           className="link-button"
-                          onClick={() => applySuggestion(item.entity_key)}
+                          onClick={() =>
+                            applySuggestion(item.entity_key, item.employer)
+                          }
                         >
                           {item.entity_key}
                         </button>{" "}

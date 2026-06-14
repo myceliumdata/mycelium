@@ -37,7 +37,10 @@ class EntityKeySuggestion(BaseModel):
     score: float = Field(description="Similarity score 0.0–1.0 (sequence_ratio).")
     reason: str = Field(
         default="sequence_ratio",
-        description="Why this candidate was suggested (slice 1: sequence_ratio only).",
+        description=(
+            "Why this candidate was suggested: sequence_ratio (fuzzy name), "
+            "same_name_different_employer (exact name, different employer)."
+        ),
     )
 
 
@@ -161,11 +164,21 @@ class EntityQuery(BaseModel):
             "(metering: query_provenance consumption line)."
         ),
     )
+    confirm_new_entity: bool = Field(
+        default=False,
+        description=(
+            "Step 1 only. When true with full MVR lookup, issue create_on_deliver "
+            "even if same-name registry rows exist under different employers. "
+            "Use only after reviewing lookup_suggested."
+        ),
+    )
 
     @model_validator(mode="after")
     def _validate_target_protocol_step(self) -> EntityQuery:
         delivery_id = (self.delivery_id or "").strip()
         if delivery_id:
+            if self.confirm_new_entity:
+                raise ValueError("confirm_new_entity is step 1 only")
             if (self.entity_key or "").strip():
                 raise ValueError("step 2 accepts only delivery_id")
             if self.lookup:
@@ -185,6 +198,8 @@ class EntityQuery(BaseModel):
         has_id = bool((self.id or "").strip())
         has_lookup = bool(self.lookup)
         has_entity_key = bool(self.entity_key)
+        if self.confirm_new_entity and has_id and not has_lookup:
+            raise ValueError("confirm_new_entity applies to lookup create path only")
         if not (has_id or has_lookup or has_entity_key):
             raise ValueError("step 1 requires id, lookup, or entity_key")
         return self
@@ -222,6 +237,8 @@ def legacy_entity_key_allowed() -> bool:
 _STEP1_PUBLIC_OUTCOMES = frozenset(
     {
         "lookup_resolved",
+        "lookup_incomplete",
+        "lookup_suggested",
         "quote_required",
         "payment_required",
         "principal_required",
@@ -236,7 +253,9 @@ class QueryResponse(BaseModel):
         default=None,
         description=(
             "Machine-readable query outcome on every response: lookup_resolved (step 1; "
-            "total_matches + delivery_id), found (registry identity only), "
+            "total_matches + delivery_id), lookup_incomplete (partial lookup missing MVR "
+            "fields), lookup_suggested (near-miss or same-name different employer), "
+            "found (registry identity only), "
             "assembled (requested attributes merged), not_found, "
             "quote_required (metering: accept quote before research/delivery), "
             "payment_required (metering: pay_quote before quote_id unlocks work), "
@@ -334,6 +353,11 @@ class QueryResponse(BaseModel):
         else:
             data.pop("total_matches", None)
             data.pop("delivery", None)
+
+        if not data.get("required_fields"):
+            data.pop("required_fields", None)
+        if not data.get("suggestions"):
+            data.pop("suggestions", None)
 
         return data
 

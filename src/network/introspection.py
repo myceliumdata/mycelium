@@ -551,7 +551,8 @@ _POLICY_OUT_OF_SCOPE = (
 )
 _POLICY_OUTCOME = (
     "Every query_entity response includes a machine-readable outcome field "
-    "(found, assembled, not_found, entity_key_unresolved, entity_unknown, or error). "
+    "(lookup_resolved, lookup_incomplete, lookup_suggested, found, assembled, "
+    "not_found, quote_required, payment_required, principal_required, or error). "
     "Read outcome before results; use message for per-attribute detail."
 )
 _POLICY_ENTITY_UNKNOWN = (
@@ -619,14 +620,17 @@ _POLICY_QUERY_PROVENANCE = (
 # Target protocol (MVR redesign M2–M9). Public CLI/MCP/admin use target fields since M9.
 _POLICY_MVR_REDESIGN_TARGET = (
     "Target query protocol (MVR redesign M9+): Step 1 — send id OR "
-    "lookup (AND within map); optional requested_attributes and provenance on step 1 "
-    "only. Response lookup_resolved with total_matches, empty results[], and "
-    "delivery.delivery_id (delivery.create_on_deliver true only when step 2 will "
-    "create from full MVR lookup with 0 registry hits; omitted for existing matches). "
-    "Plus quote when metering.enabled. Step 2 — send delivery_id "
-    "and optional quote_id only; receive assembled/found with full results[]. Identity "
-    "is UUID id only; MVR bind_fields gate create + research. See docs/plans/"
-    "mvr-redesign-program.md and mvr-best-practices.md."
+    "lookup (AND within map); optional requested_attributes, provenance, and "
+    "confirm_new_entity on step 1 only. Partial lookup searches the registry; "
+    "lookup_incomplete returns required_fields for missing MVR bind keys. "
+    "Full MVR with 0 hits returns lookup_suggested when the same name exists "
+    "under a different employer or a near-miss name matches — retry with "
+    "suggestions[].id or corrected lookup; set confirm_new_entity=true only "
+    "to intentionally create a new bind after reviewing suggestions. "
+    "lookup_resolved issues delivery.delivery_id (create_on_deliver true only "
+    "when step 2 will create from full MVR with 0 registry hits). Step 2 — "
+    "send delivery_id and optional quote_id only. Bind field names come from "
+    "policy.mvr.bind_fields. See docs/plans/mvr-redesign-program.md."
 )
 _MVR_REDESIGN_STEP1_EXAMPLE: dict[str, Any] = {
     "request": {
@@ -770,6 +774,7 @@ def build_network_capabilities() -> dict[str, Any]:
                     "quote_id",
                     "principal",
                     "provenance",
+                    "confirm_new_entity",
                 ],
                 "response_provenance": {
                     "description": _POLICY_QUERY_PROVENANCE,

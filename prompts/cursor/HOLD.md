@@ -1,12 +1,10 @@
 # Cursor queue
 
-**Active:** [`next/2026-06-14-1100-target-step1-lookup-clarity.md`](next/2026-06-14-1100-target-step1-lookup-clarity.md) — step-1 lookup clarity (outcomes, suggestions, confirm_new_entity)
+**Active:** *(none — awaiting next slice)*
 
-**Supersedes:** `2026-06-14-1000-query-response-omit-empty-lists.md` (merged into 1100)
+**Last approved:** [`done/2026-06-14-1100-target-step1-lookup-clarity/`](done/2026-06-14-1100-target-step1-lookup-clarity/) — **Approved** (Grok, 2026-06-14)
 
-**Done (approved):** [`done/2026-06-14-0900-query-response-omit-na-fields/`](done/2026-06-14-0900-query-response-omit-na-fields/) — **Approved**
-
-**Manual gate:** [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](../../docs/manual-checks/2026-06-13-program2-post-program-gate.md) — pending Paul run.
+**Manual gate:** [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](../../docs/manual-checks/2026-06-13-program2-post-program-gate.md) — updated for Check 0c; pending Paul run.
 
 **Git:** Ahead of `origin/main`. No push until Paul asks. See `WORKFLOW.md` §4.
 

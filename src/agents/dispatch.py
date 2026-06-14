@@ -25,7 +25,9 @@ from agents.responses import (
     response_entity_unresolved,
     response_entity_validated,
     response_found,
+    response_lookup_incomplete,
     response_lookup_resolved,
+    response_lookup_suggested,
     response_not_found,
     response_principal_required,
     response_payment_required,
@@ -225,6 +227,31 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
         return {
             "response": response_not_found(query, message=message, **id_kwargs),
             "audit_log": ["target_resolve: not_found (no delivery issued)."],
+        }
+
+    if resolved.kind == "lookup_incomplete":
+        return {
+            "response": response_lookup_incomplete(
+                query,
+                required_fields=list(resolved.required_fields),
+                **id_kwargs,
+            ),
+            "audit_log": [
+                "target_resolve: lookup_incomplete "
+                f"required_fields={resolved.required_fields!r}.",
+            ],
+        }
+
+    if resolved.kind == "lookup_suggested":
+        return {
+            "response": response_lookup_suggested(
+                query,
+                suggestions=list(resolved.suggestions),
+                **id_kwargs,
+            ),
+            "audit_log": [
+                f"target_resolve: lookup_suggested count={len(resolved.suggestions)}.",
+            ],
         }
 
     if resolved.kind not in {"resolved", "create_pending"} or (

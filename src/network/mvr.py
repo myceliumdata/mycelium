@@ -127,6 +127,18 @@ def can_create_on_zero_matches(
     return is_full_mvr_lookup(lookup, policy)
 
 
+def missing_mvr_bind_fields(
+    lookup: dict[str, str],
+    *,
+    mvr: MvrPolicy | None = None,
+) -> list[str]:
+    """MVR bind fields absent from a normalized lookup (for lookup_incomplete)."""
+    policy = mvr if mvr is not None else load_mvr()
+    required = [field.strip().lower() for field in policy.bind_fields if field.strip()]
+    provided = set(normalized_lookup_values(lookup).keys())
+    return [field for field in required if field not in provided]
+
+
 def load_mvr(*, paths: NetworkPaths | None = None) -> MvrPolicy:
     """Load MVR policy from ``network.json``; CRM default when ``mvr`` is absent."""
     if paths is None:

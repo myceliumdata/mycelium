@@ -120,8 +120,8 @@ export interface QueryResponse {
   outcome: string | null;
   total_matches?: number | null;
   delivery?: DeliveryPayload | null;
-  required_fields: string[];
-  suggestions: EntityKeySuggestion[];
+  required_fields?: string[];
+  suggestions?: EntityKeySuggestion[];
   results: Record<string, unknown>[];
   message: string;
   debug: string;

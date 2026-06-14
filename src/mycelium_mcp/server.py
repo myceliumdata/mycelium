@@ -104,8 +104,9 @@ def _neutral_json_schema(model: type[EntityQuery] | type[QueryResponse] | type[I
     if model is EntityQuery:
         schema["description"] = (
             "Target two-step protocol: step 1 — id or lookup (AND), optional "
-            "requested_attributes and provenance; step 2 — delivery_id plus optional "
-            "quote_id. Public clients must not send entity_key or binding (removed M9)."
+            "requested_attributes, provenance, and confirm_new_entity (after "
+            "lookup_suggested); step 2 — delivery_id plus optional quote_id. "
+            "Public clients must not send entity_key or binding (removed M9)."
         )
         props = schema.setdefault("properties", {})
         for legacy_field in ("entity_key", "binding"):
@@ -118,13 +119,15 @@ def _neutral_json_schema(model: type[EntityQuery] | type[QueryResponse] | type[I
                     )
     elif model is QueryResponse:
         schema["description"] = (
-            "Query outcome: outcome (machine-readable, including lookup_resolved on step 1), "
+            "Query outcome: outcome (machine-readable — lookup_resolved, "
+            "lookup_incomplete, lookup_suggested, quote_required, found, assembled, …), "
             "total_matches and delivery (step-1 only, when applicable), suggestions "
-            "(near-miss retries), required_fields (MVR gaps when entity_unknown), "
-            "results (attribute values), message (status narrative), provenance "
-            "(version history when request provenance=true and present), quote (when "
-            "quote_required/payment_required), debug, trace_id, thread_id. Optional "
-            "fields are omitted when not applicable — not emitted as null."
+            "(same-name or fuzzy near-miss retries), required_fields (missing MVR bind "
+            "fields on lookup_incomplete), results (attribute values), message (status "
+            "narrative), provenance (version history when request provenance=true and "
+            "present), quote (when quote_required/payment_required), debug, trace_id, "
+            "thread_id. Optional fields are omitted when not applicable — not emitted "
+            "as null."
         )
     elif model is IdentityRecord:
         schema.setdefault("description", "Registry identity record (id, name, employer).")

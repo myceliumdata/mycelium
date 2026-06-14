@@ -485,6 +485,75 @@ def response_lookup_resolved(
     )
 
 
+def response_lookup_incomplete(
+    query: EntityQuery,
+    *,
+    required_fields: list[str],
+    trace_id: str | None = None,
+    thread_id: str | None = None,
+) -> QueryResponse:
+    """Step-1 partial lookup with 0 hits — missing MVR bind fields for create."""
+    missing = ", ".join(required_fields) if required_fields else "MVR bind fields"
+    message = (
+        f"No registry match for lookup {query.lookup!r}. Partial lookup searches "
+        f"the registry only. To create a new entity, include: {missing}."
+    )
+    return QueryResponse(
+        outcome="lookup_incomplete",
+        total_matches=0,
+        required_fields=list(required_fields),
+        results=[],
+        message=message,
+        debug=debug_for_query(
+            query,
+            outcome="lookup_incomplete",
+            required_fields=required_fields,
+        ),
+        trace_id=trace_id,
+        thread_id=thread_id,
+    )
+
+
+def _lookup_suggested_message(
+    suggestions: list[EntityKeySuggestion],
+) -> str:
+    reasons = {item.reason for item in suggestions}
+    if "same_name_different_employer" in reasons:
+        return (
+            "A registry row with the same name exists under a different employer. "
+            "Retry with suggestions[].id or a corrected lookup map. Set "
+            "confirm_new_entity=true only if you intend a new bind."
+        )
+    return (
+        "Near-miss registry names found. Retry with suggestions[].id or a corrected "
+        "lookup map."
+    )
+
+
+def response_lookup_suggested(
+    query: EntityQuery,
+    *,
+    suggestions: list[EntityKeySuggestion],
+    trace_id: str | None = None,
+    thread_id: str | None = None,
+) -> QueryResponse:
+    """Step-1 full MVR with 0 hits — structured near-miss or same-name guidance."""
+    return QueryResponse(
+        outcome="lookup_suggested",
+        total_matches=0,
+        suggestions=list(suggestions),
+        results=[],
+        message=_lookup_suggested_message(suggestions),
+        debug=debug_for_query(
+            query,
+            outcome="lookup_suggested",
+            suggestion_count=len(suggestions),
+        ),
+        trace_id=trace_id,
+        thread_id=thread_id,
+    )
+
+
 def response_entity_unresolved(
     query: EntityQuery,
     suggestions: list[EntityKeySuggestion],

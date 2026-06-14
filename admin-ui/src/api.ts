@@ -87,6 +87,7 @@ export function runQuery(body: {
   thread_id?: string;
   quote_id?: string;
   provenance?: boolean;
+  confirm_new_entity?: boolean;
 }): Promise<QueryResponse> {
   return fetchJson<QueryResponse>("/query", {
     method: "POST",

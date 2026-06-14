@@ -127,7 +127,7 @@ def crm_create_on_deliver_env(
 
 
 @pytest.mark.smoke
-def test_partial_lookup_zero_matches_not_found(
+def test_partial_lookup_zero_matches_lookup_incomplete(
     crm_create_on_deliver_env: CoreStorage,
 ) -> None:
     _ = crm_create_on_deliver_env
@@ -137,9 +137,9 @@ def test_partial_lookup_zero_matches_not_found(
             requested_attributes=["email"],
         ),
     )
-    assert response.outcome == "not_found"
+    assert response.outcome == "lookup_incomplete"
     assert response.delivery is None
-    assert "No records found" in response.message
+    assert "name" in response.required_fields
 
 
 @pytest.mark.smoke

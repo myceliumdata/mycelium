@@ -2,7 +2,7 @@
 
 **Status:** ⏳ **PENDING** — run this checklist from scratch; mark **CLEAR** when all required checks pass.
 
-**Context:** Program 2 (Slices 1–3 + polish P1–P7 + remedial fixes + capstone tests) is **committed locally** on `main` — **16 commits ahead of `origin/main`** (local-only until push). This gate validates hands-on behavior before **pushing** to `origin/main`.
+**Context:** Program 2 (Slices 1–3 + polish P1–P7 + remedial fixes + capstone tests + **step-1 lookup clarity**) is **committed locally** on `main` — **23 commits ahead of `origin/main`** (local-only until push). This gate validates hands-on behavior before **pushing** to `origin/main`.
 
 **What Program 2 proves:**
 
@@ -10,10 +10,31 @@
 - Unified write on seed import, registry bind, and create-on-deliver
 - Read surfaces: `provenance=true`, CLI/admin `entity_fields[].versions[]` for bind fields
 - Research operator deference (prompt) + polish fixes (ordering, no-op skip, rollback, empty employer row)
+- **Step-1 lookup clarity:** `lookup_incomplete`, `lookup_suggested`, and `confirm_new_entity` — no overloaded `not_found`, no silent create on same-name collision
 
 **Prereqs:** Framework repo root; `uv sync` done. Live roots under `~/mycelium-networks/` (never test in-place under `examples/networks/…`). Optional checks 8–10 need API keys in `.env`.
 
-**Estimated time:** ~60–75 min (required checks 0–7 + **4b**); optional 8–10 add ~20 min.
+**Estimated time:** ~75–90 min (required checks 0–7 + **0c** + **4b**); optional 8–10 add ~20 min.
+
+---
+
+## Step-1 outcomes (know before you run)
+
+Target protocol step 1 now returns **distinct outcomes** — agents should branch on `outcome` before reading `results` or issuing step 2.
+
+| Case | Example lookup | Outcome | `delivery` | Key response fields |
+|------|----------------|---------|------------|---------------------|
+| Partial lookup, 0 hits | `{"name":"Paul Murphy"}` | `lookup_incomplete` | none | `required_fields: ["employer"]` |
+| Partial lookup, ≥1 hit | `{"name":"Andrea Kalmans"}` | `lookup_resolved` | yes | `total_matches: N` |
+| Full MVR, same name elsewhere | Andrea @ Wrong Corp (Lontra in seed) | `lookup_suggested` | none | `suggestions[]` (`same_name_different_employer`) |
+| Full MVR, fuzzy name | `{"name":"Andrea Kalman","employer":"Acme Corp"}` | `lookup_suggested` | none | `suggestions[]` (`sequence_ratio`) |
+| Full MVR, safe create | Road Runner @ Acme (no collision) | `lookup_resolved` | yes | `create_on_deliver: true` |
+| Full MVR, intentional new bind | Andrea @ Wrong + `confirm_new_entity` | `lookup_resolved` | yes | `create_on_deliver: true` |
+| True dead end | unknown `id`, expired `delivery_id` | `not_found` | none | unchanged |
+
+**MVR bind field names** come from `describe_network` → `policy.mvr.bind_fields` — not from every query response. Responses surface **what is missing** (`required_fields`) or **what is similar** (`suggestions`).
+
+**`confirm_new_entity`:** Step-1 only. Re-query the same full MVR lookup with `confirm_new_entity: true` (CLI: `--confirm-new-entity`) after reviewing `lookup_suggested` to intentionally create a new registry row.
 
 ---
 
@@ -26,6 +47,8 @@ These bugs slipped past smoke CI until June 2026 remedial work. The checklist be
 | **Committed runtime in example tree** | `refresh` copied `examples/networks/crm/entities.json` → seed import saw duplicates → **Entities ✅ but specialists ❌** | Example tree must ship **reference files only** (`seed.json`, `network.json`, `guide.md`, README). Layout tests fail if `entities.json`, `deliveries.json`, or `agents/` exist under `examples/networks/`. **Not gitignored** — stray files show in `git status`. |
 | **Seed refresh specialist storage** | Same as above on crm refresh | `refresh` skips copying `entities.json`; seed bootstrap backfills demographic + professional storage with `seed_bootstrap` versions. |
 | **empty-crm step 2 MVR bootstrap** | Step 1 OK; step 2 → `not_found` / **"No valid delivery"** (misleading — real error was missing `attribute_map` for `name`/`employer`) | `target_deliver` calls `ensure_categories_for_mvr_bind` before bind write on create-on-deliver. **Check 4b** is the hands-on proof. |
+| **Silent create on same-name collision** | Andrea @ Wrong Corp issued `create_on_deliver` without warning | Step 1 returns `lookup_suggested`; create requires `confirm_new_entity`. **Check 0c** is the hands-on proof. |
+| **Partial lookup overloads `not_found`** | `{"name":"Paul Murphy"}` → `not_found` | Now `lookup_incomplete` + `required_fields`. **Check 0c** |
 | **Test fixtures pre-wired MVR** | CI green while production cold-start failed | Capstone + matrix smoke tests use **negative fixtures** (no `ensure_categories_for_mvr_bind` in setup). See `prompts/cursor/WORKFLOW.md` § Negative fixtures. |
 
 ---
@@ -51,7 +74,7 @@ git status
 ./bin/ci-local
 ```
 
-**Pass:** all steps green (~390 smoke tests). This already covers capstones and path matrix A–D; manual checks prove **your** deployed roots and UI/MCP surfaces.
+**Pass:** all steps green (~403 smoke tests). This already covers capstones, path matrix A–D, and step-1 lookup clarity; manual checks prove **your** deployed roots and UI/MCP surfaces.
 
 | Gate area | Smoke tests (in `./bin/ci-local`) |
 |-----------|-------------------------------------|
@@ -62,6 +85,7 @@ git status
 | Road Runner create-on-deliver | `test_matrix_c_crm_road_runner_create_on_deliver` |
 | No duplicate bind version | `test_matrix_d_crm_road_runner_no_duplicate_bind_version` |
 | Seed refresh idempotency | `test_refresh_crm_imports_seed_into_entities` + capstone |
+| **Step-1 lookup clarity** | `tests/test_target_step1_lookup_clarity.py` (8 tests) |
 
 Full integration (18 tests) was run at Grok review — not part of `ci-local`.
 
@@ -87,7 +111,7 @@ View Source showing empty `<div id="root"></div>` is normal until JS runs. Blank
 
 ## Fresh-start sequence (required checks in order)
 
-Run checks **0 → 0b → 4b → 1 → 2 → 3 → 4 → 6 → 7**. Checks 4b before 4 because empty-crm is the cold-start path; crm Road Runner in Check 4 assumes seeded network. Check 5 is **automated only** (skip manual).
+Run checks **0 → 0b → 0c → 4b → 1 → 2 → 3 → 4 → 6 → 7**. Check **0c** (lookup clarity) needs seeded `crm`. Check **4b** before **4** because empty-crm is the cold-start path; crm Road Runner in Check 4 assumes seeded network. Check 5 is **automated only** (skip manual).
 
 Set once:
 
@@ -164,6 +188,104 @@ jq '.entities | length' "$CRM_ROOT/entities.json"   # 15
 
 ---
 
+## Check 0c — Step-1 lookup clarity (required)
+
+Proves new step-1 outcomes and `confirm_new_entity`. Run on **seeded crm** after Check 0.
+
+### 0c-i — `lookup_incomplete` (partial lookup, 0 hits)
+
+```bash
+uv run mycelium query --network crm \
+  --lookup-json '{"name":"Paul Murphy"}'
+```
+
+**Pass:**
+
+- `outcome` = `lookup_incomplete`
+- `required_fields` includes `employer`
+- **No** `delivery` / `delivery_id`
+- `total_matches` = 0 (may be present on wire)
+
+**Automated:** `test_partial_lookup_missing_employer_lookup_incomplete`
+
+### 0c-ii — Partial lookup with hit (unchanged R4 search)
+
+```bash
+uv run mycelium query --network crm \
+  --lookup-json '{"name":"Andrea Kalmans"}'
+```
+
+**Pass:**
+
+- `outcome` = `lookup_resolved`
+- `total_matches` ≥ 1
+- `delivery.delivery_id` present
+- **No** `create_on_deliver`
+
+**Automated:** `test_partial_lookup_name_hit_lookup_resolved`
+
+### 0c-iii — `lookup_suggested` (same name, wrong employer)
+
+```bash
+uv run mycelium query --network crm \
+  --lookup-json '{"name":"Andrea Kalmans","employer":"Wrong Corp"}'
+```
+
+**Pass:**
+
+- `outcome` = `lookup_suggested`
+- `suggestions[]` non-empty; at least one entry has `reason: same_name_different_employer` and `employer: Lontra Ventures`
+- **No** `delivery` / `delivery_id`
+- Message mentions retry with `id` or `confirm_new_entity`
+
+**Automated:** `test_full_mvr_wrong_employer_lookup_suggested`
+
+### 0c-iv — `confirm_new_entity` (intentional create after warning)
+
+```bash
+uv run mycelium query --network crm \
+  --lookup-json '{"name":"Andrea Kalmans","employer":"Wrong Corp"}' \
+  --confirm-new-entity
+```
+
+**Pass:**
+
+- `outcome` = `lookup_resolved`
+- `total_matches` = 0
+- `delivery.create_on_deliver` = true
+- `delivery.delivery_id` present
+
+Optional: run step 2 with that `delivery_id` — should create Andrea @ Wrong Corp (distinct UUID from seed Andrea).
+
+**Automated:** `test_full_mvr_wrong_employer_confirm_creates`
+
+### 0c-v — Fuzzy name suggestion (optional manual)
+
+```bash
+uv run mycelium query --network crm \
+  --lookup-json '{"name":"Andrea Kalman","employer":"Acme Corp"}'
+```
+
+**Pass:** `lookup_suggested`, `suggestions[0].reason` = `sequence_ratio`, suggests `Andrea Kalmans`.
+
+**Automated:** `test_fuzzy_name_lookup_suggested`
+
+### 0c-vi — Admin UI (recommended)
+
+```bash
+./bin/restart-admin crm
+```
+
+Open **http://127.0.0.1:8741/** → Query tab.
+
+1. Run step 1: name `Andrea Kalmans`, employer `Wrong Corp` → badge `lookup_suggested`, suggestions list visible.
+2. Click a suggestion → name + employer fields populate.
+3. **Confirm new entity** checkbox appears → check it → Run again → `lookup_resolved` + `create_on_deliver`.
+
+**Automated:** `test_admin_query_lookup_suggested_shape`
+
+---
+
 ## Check 4b — empty-crm Paul Murphy create-on-deliver (required)
 
 **Gate blocker fix (June 2026).** Cold-start network: no seed, no pre-existing MVR mappings in `categories.json`. Step 2 must bootstrap MVR mappings and write bind versions.
@@ -196,7 +318,7 @@ jq --arg id "$ID" '.records[$id].employer.versions[0].actor.kind' \
 
 Expect both `bind`.
 
-**Automated:** `test_empty_crm_refresh_capstone_create_on_deliver_storage`
+**Automated:** `test_empty_crm_refresh_capstone_create_on_deliver_storage`, `test_empty_crm_safe_create_without_confirm`
 
 ---
 
@@ -262,7 +384,7 @@ Open **http://127.0.0.1:8741/** → Status → **Andrea Kalmans** → entity dri
 
 ## Check 4 — crm Road Runner create-on-deliver (required)
 
-Seeded network; entity not in seed.
+Seeded network; entity not in seed; **no name collision** → safe create without `confirm_new_entity`.
 
 ```bash
 uv run mycelium query --network crm \
@@ -284,7 +406,7 @@ jq --arg id "$ID" '.records[$id].name.versions[0].actor.kind' \
   "$CRM_ROOT/agents/demographic/storage.json"
 ```
 
-**Automated:** `test_matrix_c_crm_road_runner_create_on_deliver`
+**Automated:** `test_matrix_c_crm_road_runner_create_on_deliver`, `test_full_mvr_no_collision_create`
 
 ---
 
@@ -296,7 +418,8 @@ jq --arg id "$ID" '.records[$id].name.versions[0].actor.kind' \
 
 **Why manual reproduction is misleading:** Empty employer is blocked in real flows:
 
-- Query step 1 requires a **full MVR** lookup (non-empty `employer`) before issuing `delivery_id`
+- Query step 1 requires a **full MVR** lookup (non-empty `employer`) before issuing `delivery_id` for create
+- Partial lookup with only `name` returns `lookup_incomplete` — not create
 - `validate_entity` fails employer &lt; 2 characters on provisional binds
 
 The smoke test uses a **fixture shortcut** (`bind_provisional` + `promote_validated`, bypassing validation) to manufacture a registry row that query flow would never create. That is a regression test for introspection code, not proof that empty employer is valid CRM data.
@@ -357,6 +480,14 @@ Restart MCP for **crm**. Step 1 `query_entity` with `lookup`, `requested_attribu
 
 **Pass:** step 2 includes `provenance.entities[].attributes.name` and `.employer` with `versions[]`.
 
+### Check 8b — MCP / `describe_network` step-1 policy (optional)
+
+```bash
+# Via MCP describe_network or introspection output
+```
+
+**Pass:** Policy text mentions `lookup_incomplete`, `lookup_suggested`, and `confirm_new_entity` under target protocol rules.
+
 ### Check 9 — `crm-metering` provenance quote
 
 ```bash
@@ -382,8 +513,10 @@ Skip unless deep validation desired. Automated: `tests/test_research.py` operato
 | No `categories.json` after refresh | `category_mvr_bootstrap` regression | Report to Grok with `git log -1` |
 | **Entities ✅ but specialists ❌** (crm) | Stale example tree or old refresh copy path | Confirm example tree clean; re-refresh on current `main`; re-run **0b** |
 | **empty-crm has entities/specialists after refresh only** | Should never happen (no seed) | Re-refresh empty-crm; check you are not pointing at `crm` root |
-| Step 2 **"No valid delivery"** on empty-crm | MVR bootstrap regression (pre-fix) or stale code | Confirm `848ba02`+ on branch; re-run **4b** |
-| Step 1 `not_found`, no `delivery_id`, `employer: ""` | **Expected** — not full MVR lookup | Empty employer is not a valid create path; Check 5 is automated-only |
+| Step 2 **"No valid delivery"** on empty-crm | MVR bootstrap regression (pre-fix) or stale code | Confirm remedial slices on branch; re-run **4b** |
+| Partial lookup `{"name":"…"}` → `not_found` | Pre–lookup-clarity code | Expect `lookup_incomplete` + `required_fields`; re-run **0c-i** |
+| Andrea @ Wrong Corp → silent `create_on_deliver` | Pre–lookup-clarity code | Expect `lookup_suggested`; re-run **0c-iii** |
+| Step 1 `not_found`, `employer: ""` in lookup | Empty employer — not full MVR | Expected; use `lookup_incomplete` path or supply employer |
 | Bind rows without `versions` | Specialist storage empty | Re-refresh crm; verify Check 0 spot-check |
 | `provenance` missing bind attrs | Slice 2 / step 1 binding | Re-run Check 2 with fresh delivery |
 | Extra Road Runner version (Check 6) | Polish P3 regression | Report check number + `jq` output |
@@ -406,4 +539,4 @@ git push origin main
 
 ---
 
-*Created: 2026-06-13 · Rewritten: 2026-06-14 (post seed-refresh, empty-crm MVR, capstone tests)*
+*Created: 2026-06-13 · Rewritten: 2026-06-14 (seed-refresh, empty-crm MVR, capstone tests) · Updated: 2026-06-14 (step-1 lookup clarity, Check 0c)*

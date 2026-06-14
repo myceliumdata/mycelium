@@ -182,6 +182,32 @@ def test_public_dict_quote_required_includes_quote() -> None:
 
 
 @pytest.mark.smoke
+def test_public_dict_omits_empty_negotiation_fields() -> None:
+    response = QueryResponse(
+        outcome="found",
+        results=[{"id": "u1", "name": "Ada"}],
+        message="Found record for Ada.",
+    )
+    payload = response.public_dict()
+    assert "required_fields" not in payload
+    assert "suggestions" not in payload
+
+
+@pytest.mark.smoke
+def test_public_dict_includes_required_fields_when_incomplete() -> None:
+    response = QueryResponse(
+        outcome="lookup_incomplete",
+        total_matches=0,
+        required_fields=["employer"],
+        results=[],
+        message="Missing employer.",
+    )
+    payload = response.public_dict()
+    assert payload["required_fields"] == ["employer"]
+    assert "delivery" not in payload
+
+
+@pytest.mark.smoke
 def test_mcp_entity_query_schema_includes_target_fields() -> None:
     schema = _neutral_json_schema(EntityQuery)
     props = schema.get("properties") or {}
