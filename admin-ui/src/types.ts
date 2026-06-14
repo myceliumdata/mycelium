@@ -55,6 +55,11 @@ export interface LookupSuggestion {
   reason?: string;
 }
 
+export interface StatusResolve {
+  id?: string | null;
+  lookup?: Record<string, string> | null;
+}
+
 export interface StatusResponse {
   network_name: string | null;
   network_root: string;
@@ -64,12 +69,12 @@ export interface StatusResponse {
   ontology_message: string;
   categories: CategorySummary[];
   specialists: SpecialistSummary[];
-  entity_key: string | null;
-  entity_matches: number;
-  entity_resolution_kind: string | null;
-  entity_required_fields: string[];
-  entity_suggestions: LookupSuggestion[];
-  entity_match_summaries: EntityMatchSummary[];
+  resolve: StatusResolve | null;
+  resolve_matches: number;
+  resolve_kind: string | null;
+  resolve_required_fields: string[];
+  resolve_suggestions: LookupSuggestion[];
+  resolve_match_summaries: EntityMatchSummary[];
   entity_fields: EntityFieldStatus[];
 }
 

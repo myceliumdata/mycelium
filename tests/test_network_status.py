@@ -226,8 +226,72 @@ def test_status_json_round_trip(
     assert payload["registry_entity_count"] == 15
     assert payload["ontology_present"] is True
     assert isinstance(payload["specialists"], list)
+    assert "entity_key" not in payload
     seeded = {item["category"] for item in payload["specialists"] if item["record_count"] > 0}
     assert seeded == {"demographic", "professional"}
+
+
+@pytest.mark.smoke
+def test_status_json_omits_entity_key(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root = _seed_only_root(tmp_path)
+    _configure_root(monkeypatch, tmp_path, root)
+    import_seed_for_test(root / "seed.json")
+
+    overview = status_to_dict(build_network_status())
+    assert "entity_key" not in overview
+
+    drill = status_to_dict(
+        build_network_status(resolve_lookup={"name": "Andrea Kalmans"}),
+    )
+    assert "entity_key" not in drill
+    assert drill["resolve"]["lookup"] == {"name": "Andrea Kalmans"}
+
+
+@pytest.mark.smoke
+def test_status_cli_lookup_json(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root = _seed_only_root(tmp_path)
+    _configure_root(monkeypatch, tmp_path, root)
+    import_seed_for_test(root / "seed.json")
+    env = {
+        **os.environ,
+        "MYCELIUM_NETWORKS_CONFIG": str(tmp_path / "missing.json"),
+        "LANGCHAIN_TRACING_V2": "false",
+        "NO_COLOR": "1",
+        "PYTHONPATH": str(REPO_ROOT / "src"),
+    }
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "main",
+            "network",
+            "status",
+            "--network-dir",
+            str(root),
+            "--lookup-json",
+            json.dumps({"name": "Andrea Kalmans", "employer": "Lontra Ventures"}),
+            "--json",
+        ],
+        cwd=REPO_ROOT / "src",
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+    payload = json.loads(result.stdout)
+    assert payload["resolve_matches"] == 1
+    assert payload["resolve"]["lookup"] == {
+        "name": "Andrea Kalmans",
+        "employer": "Lontra Ventures",
+    }
+    assert "entity_key" not in payload
 
 
 @pytest.mark.smoke
@@ -322,7 +386,7 @@ def test_status_bind_rows_include_empty_employer(
     entity, _ = registry.bind_provisional("Solo Name", "")
     registry.promote_validated(entity.id)
 
-    summary = build_network_status(entity_key=entity.id)
+    summary = build_network_status(resolve_id=entity.id)
     employer = next(
         item for item in summary.entity_fields if item.field == "employer"
     )
@@ -345,12 +409,12 @@ def test_status_registry_entity_lookup(
         {"email": ("contact", "2026-06-09T12:00:00+00:00")},
     )
 
-    summary = build_network_status(entity_key=entity.id)
-    assert summary.entity_matches == 1
-    assert summary.entity_resolution_kind == "exact"
-    assert summary.entity_match_summaries[0].source == "registry"
-    assert summary.entity_match_summaries[0].validation_state == "validated"
-    assert summary.entity_match_summaries[0].research_allowed is True
+    summary = build_network_status(resolve_id=entity.id)
+    assert summary.resolve_matches == 1
+    assert summary.resolve_kind == "exact"
+    assert summary.resolve_match_summaries[0].source == "registry"
+    assert summary.resolve_match_summaries[0].validation_state == "validated"
+    assert summary.resolve_match_summaries[0].research_allowed is True
     bind_fields = [item for item in summary.entity_fields if item.field_kind == "bind"]
     assert {item.field for item in bind_fields} == {"name", "employer"}
     extended = [item for item in summary.entity_fields if item.field_kind == "extended"]
@@ -361,19 +425,21 @@ def test_status_registry_entity_lookup(
 
 
 @pytest.mark.smoke
-def test_status_near_miss_suggestions(
+def test_status_exact_inspect_no_fuzzy(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
+    """Inspect uses exact lookup only — no fuzzy suggestion ranking."""
     root = _seed_only_root(tmp_path)
     _configure_root(monkeypatch, tmp_path, root)
     import_seed_for_test(root / "seed.json")
 
-    summary = build_network_status(entity_key="Andrea Kalman")
-    assert summary.entity_resolution_kind == "suggest"
-    assert summary.entity_matches == 0
-    assert summary.entity_suggestions
-    assert summary.entity_suggestions[0]["suggested_lookup"]["name"] == "Andrea Kalmans"
+    summary = build_network_status(resolve_lookup={"name": "Andrea Kalman"})
+    assert summary.resolve_kind == "none"
+    assert summary.resolve_matches == 0
+    assert summary.resolve_suggestions == []
+    assert summary.resolve is not None
+    assert summary.resolve.lookup == {"name": "Andrea Kalman"}
 
 
 @pytest.mark.full
@@ -406,11 +472,14 @@ def test_status_person_drill_down(
         encoding="utf-8",
     )
 
-    summary = build_network_status(entity_key="Andrea Kalmans", category_filter="contact")
+    summary = build_network_status(
+        resolve_lookup={"name": "Andrea Kalmans"},
+        category_filter="contact",
+    )
     demo = format_status_demo(summary)
-    assert "Entity lookup:" in demo
+    assert "Resolve:" in demo
     assert "email (contact/contact_specialist): pending" in demo
-    assert summary.entity_matches == 1
+    assert summary.resolve_matches == 1
 
 
 @pytest.mark.smoke
@@ -463,7 +532,9 @@ def test_status_entity_fields_include_versions_json(
         encoding="utf-8",
     )
 
-    payload = status_to_dict(build_network_status(entity_key="Andrea Kalmans"))
+    payload = status_to_dict(
+        build_network_status(resolve_lookup={"name": "Andrea Kalmans"}),
+    )
     email = next(
         item for item in payload["entity_fields"] if item["field"] == "email"
     )
@@ -528,4 +599,4 @@ def test_status_flat_v1_field_fails_loud_on_drill_down(
     )
 
     with pytest.raises(ValueError, match="deprecated flat field format"):
-        build_network_status(entity_key="Andrea Kalmans")
+        build_network_status(resolve_lookup={"name": "Andrea Kalmans"})

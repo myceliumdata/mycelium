@@ -115,12 +115,12 @@ def create_app() -> FastAPI:
     @app.get("/status")
     def status(
         category: str | None = None,
-        entity: str | None = None,
+        id: str | None = None,
         lookup: str | None = None,
     ) -> dict[str, Any]:
         """Read-only network snapshot. ``lookup`` is a JSON-encoded MVR bind map."""
         _refresh_read_cache()
-        target_lookup: dict[str, str] | None = None
+        resolve_lookup: dict[str, str] | None = None
         if lookup:
             try:
                 parsed = json.loads(lookup)
@@ -134,15 +134,21 @@ def create_app() -> FastAPI:
                     status_code=400,
                     detail="lookup must be a JSON object",
                 )
-            target_lookup = {
+            resolve_lookup = {
                 str(key): str(value)
                 for key, value in parsed.items()
                 if str(value).strip()
             } or None
+        resolve_id = (id or "").strip() or None
+        if resolve_id and resolve_lookup:
+            raise HTTPException(
+                status_code=400,
+                detail="Use id or lookup for drill-down, not both",
+            )
         summary = build_network_status(
             category_filter=category,
-            entity_key=entity if not target_lookup else None,
-            target_lookup=target_lookup,
+            resolve_id=resolve_id,
+            resolve_lookup=resolve_lookup,
         )
         return status_to_dict(summary)
 

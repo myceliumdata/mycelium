@@ -68,6 +68,14 @@ class EntityMatchSummary:
 
 
 @dataclass(frozen=True)
+class StatusResolve:
+    """Active inspect target — exactly one of id or lookup is set."""
+
+    id: str | None = None
+    lookup: dict[str, str] | None = None
+
+
+@dataclass(frozen=True)
 class NetworkStatusSummary:
     network_name: str | None
     network_root: str
@@ -77,12 +85,12 @@ class NetworkStatusSummary:
     categories: list[CategorySummary] = field(default_factory=list)
     specialists: list[SpecialistSummary] = field(default_factory=list)
     registry_entity_count: int = 0
-    entity_key: str | None = None
-    entity_matches: int = 0
-    entity_resolution_kind: str | None = None
-    entity_required_fields: list[str] = field(default_factory=list)
-    entity_suggestions: list[dict[str, Any]] = field(default_factory=list)
-    entity_match_summaries: list[EntityMatchSummary] = field(default_factory=list)
+    resolve: StatusResolve | None = None
+    resolve_matches: int = 0
+    resolve_kind: str | None = None
+    resolve_required_fields: list[str] = field(default_factory=list)
+    resolve_suggestions: list[dict[str, Any]] = field(default_factory=list)
+    resolve_match_summaries: list[EntityMatchSummary] = field(default_factory=list)
     entity_fields: list[EntityFieldStatus] = field(default_factory=list)
 
 
@@ -465,22 +473,11 @@ def _entity_fields_for_match(
     return fields
 
 
-def _target_lookup_display_key(lookup: dict[str, str]) -> str:
-    name = lookup.get("name", "").strip()
-    if name:
-        return name
-    for value in lookup.values():
-        text = str(value).strip()
-        if text:
-            return text
-    return ""
-
-
 def build_network_status(
     *,
     category_filter: str | None = None,
-    entity_key: str | None = None,
-    target_lookup: dict[str, str] | None = None,
+    resolve_id: str | None = None,
+    resolve_lookup: dict[str, str] | None = None,
 ) -> NetworkStatusSummary:
     """Build a read-only snapshot of the active network."""
     paths = _paths()
@@ -497,44 +494,48 @@ def build_network_status(
     agent_map = _agent_category_map(categories_doc, registry_agents)
 
     entity_fields: list[EntityFieldStatus] = []
-    entity_matches = 0
-    entity_resolution_kind: str | None = None
-    entity_required_fields: list[str] = []
-    entity_suggestions: list[dict[str, Any]] = []
-    entity_match_summaries: list[EntityMatchSummary] = []
-    status_entity_key = entity_key
-    if target_lookup:
-        from agents.entity_resolution import resolve_status_for_target_lookup
+    resolve_matches = 0
+    resolve_kind: str | None = None
+    resolve_required_fields: list[str] = []
+    resolve_suggestions: list[dict[str, Any]] = []
+    resolve_match_summaries: list[EntityMatchSummary] = []
+    status_resolve: StatusResolve | None = None
 
-        resolution = resolve_status_for_target_lookup(target_lookup)
-        entity_resolution_kind = resolution.kind
-        entity_required_fields = list(resolution.required_fields)
-        entity_suggestions = [
-            item.model_dump() for item in resolution.suggestions
-        ]
-        matches = resolution.matches
-        entity_matches = len(matches)
-        entity_match_summaries = _match_summaries(matches)
-        status_entity_key = _target_lookup_display_key(target_lookup) or status_entity_key
-        if len(matches) == 1:
+    if resolve_id and resolve_lookup:
+        raise ValueError("Use resolve_id or resolve_lookup for drill-down, not both")
+
+    if resolve_id:
+        from agents.entity_registry import get_entity_registry, registry_entity_to_match
+
+        status_resolve = StatusResolve(id=resolve_id.strip(), lookup=None)
+        registry = get_entity_registry()
+        entity = registry.lookup_by_id(resolve_id.strip())
+        if entity is not None:
+            matches = [registry_entity_to_match(entity)]
+            resolve_kind = "exact"
+            resolve_matches = 1
+            resolve_match_summaries = _match_summaries(matches)
             entity_fields = _entity_fields_for_match(
                 paths,
                 matches[0],
                 agent_map,
                 category_filter=category_filter,
             )
-    elif entity_key:
-        from agents.entity_resolution import resolve_entity_for_lookup
+        else:
+            resolve_kind = "none"
+    elif resolve_lookup:
+        from agents.entity_resolution import resolve_status_for_target_lookup
 
-        resolution = resolve_entity_for_lookup(entity_key)
-        entity_resolution_kind = resolution.kind
-        entity_required_fields = list(resolution.required_fields)
-        entity_suggestions = [
+        status_resolve = StatusResolve(id=None, lookup=dict(resolve_lookup))
+        resolution = resolve_status_for_target_lookup(resolve_lookup)
+        resolve_kind = resolution.kind
+        resolve_required_fields = list(resolution.required_fields)
+        resolve_suggestions = [
             item.model_dump() for item in resolution.suggestions
         ]
         matches = resolution.matches
-        entity_matches = len(matches)
-        entity_match_summaries = _match_summaries(matches)
+        resolve_matches = len(matches)
+        resolve_match_summaries = _match_summaries(matches)
         if len(matches) == 1:
             entity_fields = _entity_fields_for_match(
                 paths,
@@ -556,19 +557,29 @@ def build_network_status(
             category_filter=category_filter,
         ),
         registry_entity_count=_registry_entity_count(),
-        entity_key=status_entity_key,
-        entity_matches=entity_matches,
-        entity_resolution_kind=entity_resolution_kind,
-        entity_required_fields=entity_required_fields,
-        entity_suggestions=entity_suggestions,
-        entity_match_summaries=entity_match_summaries,
+        resolve=status_resolve,
+        resolve_matches=resolve_matches,
+        resolve_kind=resolve_kind,
+        resolve_required_fields=resolve_required_fields,
+        resolve_suggestions=resolve_suggestions,
+        resolve_match_summaries=resolve_match_summaries,
         entity_fields=entity_fields,
     )
 
 
 def status_to_dict(summary: NetworkStatusSummary) -> dict[str, Any]:
     """Serialize a status summary for ``--json`` output."""
-    return json.loads(json.dumps(asdict(summary)))
+    data = asdict(summary)
+    if summary.resolve is None:
+        data.pop("resolve", None)
+    else:
+        resolve_out: dict[str, Any] = {}
+        if summary.resolve.id:
+            resolve_out["id"] = summary.resolve.id
+        if summary.resolve.lookup:
+            resolve_out["lookup"] = summary.resolve.lookup
+        data["resolve"] = resolve_out
+    return json.loads(json.dumps(data))
 
 
 _POLICY_EXTENSIBILITY = (
@@ -913,20 +924,29 @@ def format_category_examples(category_name: str, examples: list[str] | tuple[str
     return f"{category_name} (e.g., {items[0]}, {items[1]}, …)"
 
 
+def _format_resolve_label(resolve: StatusResolve) -> str:
+    if resolve.id:
+        return resolve.id
+    if resolve.lookup:
+        return ", ".join(f"{key}={value!r}" for key, value in resolve.lookup.items())
+    return "?"
+
+
 def _format_entity_drill_down(summary: NetworkStatusSummary) -> list[str]:
-    if not summary.entity_key:
+    if summary.resolve is None:
         return []
-    kind = summary.entity_resolution_kind or "unknown"
+    kind = summary.resolve_kind or "unknown"
+    label = _format_resolve_label(summary.resolve)
     lines = [
-        f"Entity lookup: {summary.entity_key!r} ({summary.entity_matches} match(es), {kind})",
+        f"Resolve: {label!r} ({summary.resolve_matches} match(es), {kind})",
     ]
-    if summary.entity_required_fields:
+    if summary.resolve_required_fields:
         lines.append(
-            f"  Required fields: {', '.join(summary.entity_required_fields)}",
+            f"  Required fields: {', '.join(summary.resolve_required_fields)}",
         )
-    if summary.entity_suggestions:
+    if summary.resolve_suggestions:
         lines.append("  Suggestions:")
-        for item in summary.entity_suggestions[:3]:
+        for item in summary.resolve_suggestions[:3]:
             suggested = item.get("suggested_lookup") or {}
             if suggested:
                 label = ", ".join(f"{key}={value!r}" for key, value in suggested.items())
@@ -935,11 +955,11 @@ def _format_entity_drill_down(summary: NetworkStatusSummary) -> list[str]:
             lines.append(
                 f"    {label} (score={item.get('score')})",
             )
-    if summary.entity_matches == 0:
+    if summary.resolve_matches == 0:
         lines.append("  No match.")
-    elif summary.entity_matches > 1:
+    elif summary.resolve_matches > 1:
         lines.append("  Multiple matches — narrow the key.")
-        for match in summary.entity_match_summaries:
+        for match in summary.resolve_match_summaries:
             source = match.source
             validation = (
                 f" {match.validation_state}" if match.validation_state else ""
@@ -985,7 +1005,7 @@ def format_status_demo(summary: NetworkStatusSummary) -> str:
     else:
         lines.append("Existing specialists: ❌")
 
-    if summary.entity_key:
+    if summary.resolve is not None:
         lines.extend(_format_entity_drill_down(summary))
     return "\n".join(lines)
 

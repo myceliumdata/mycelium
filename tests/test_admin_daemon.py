@@ -194,14 +194,19 @@ def test_status_entity_drill_down(
         encoding="utf-8",
     )
     client = _client_for_root(monkeypatch, tmp_path, root)
-    entity = "Andrea Kalmans"
+    lookup = {"name": "Andrea Kalmans", "employer": "Lontra Ventures"}
 
-    response = client.get("/status", params={"entity": entity})
+    response = client.get(
+        "/status",
+        params={"lookup": json.dumps(lookup)},
+    )
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["entity_key"] == entity
-    assert payload["entity_matches"] == 1
+    assert payload["resolve_matches"] == 1
+    assert payload["resolve"]["lookup"] == lookup
+    assert payload["resolve_kind"] == "exact"
+    assert "entity_key" not in payload
     fields = payload["entity_fields"]
     email = next(item for item in fields if item["field"] == "email")
     assert email["field_kind"] == "extended"
@@ -533,13 +538,36 @@ def test_status_lookup_map_single_match(
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["entity_matches"] == 1
-    assert payload["entity_key"] == "Andrea Kalmans"
-    assert payload["entity_resolution_kind"] == "exact"
+    assert payload["resolve_matches"] == 1
+    assert payload["resolve"]["lookup"] == {
+        "name": "Andrea Kalmans",
+        "employer": "Lontra Ventures",
+    }
+    assert payload["resolve_kind"] == "exact"
+    assert "entity_key" not in payload
     bind_fields = [
         item for item in payload["entity_fields"] if item["field_kind"] == "bind"
     ]
     assert {item["field"] for item in bind_fields} == {"name", "employer"}
+
+
+@pytest.mark.smoke
+def test_status_by_id(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root = _populated_root(tmp_path)
+    client = _client_for_root(monkeypatch, tmp_path, root)
+    person_id = lookup_entities_by_key("Andrea Kalmans")[0]["id"]
+
+    response = client.get("/status", params={"id": person_id})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["resolve_matches"] == 1
+    assert payload["resolve"]["id"] == person_id
+    assert payload["resolve_kind"] == "exact"
+    assert "entity_key" not in payload
 
 
 @pytest.mark.smoke

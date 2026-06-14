@@ -114,7 +114,7 @@ export function emptyLookupValues(bindFields: string[]): Record<string, string> 
 
 export type StatusFetchParams = {
   category?: string;
-  entity?: string;
+  id?: string;
   lookup?: Record<string, string>;
 };
 
@@ -132,7 +132,7 @@ export function inspectStatusParams(
   if (mode === "id") {
     const id = registryId.trim();
     if (id) {
-      params.entity = id;
+      params.id = id;
     }
   } else {
     const lookup = buildLookupPayload(lookupValues, bindFields);
@@ -157,5 +157,5 @@ export function inspectDisplayKey(
 }
 
 export function hasStatusTarget(params: StatusFetchParams): boolean {
-  return Boolean(params.entity) || Boolean(params.lookup);
+  return Boolean(params.id) || Boolean(params.lookup);
 }

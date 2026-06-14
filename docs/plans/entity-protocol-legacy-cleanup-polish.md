@@ -26,7 +26,7 @@ Non-blocking nits from Grok review of Program 3 slices. One polish pass at progr
 | # | Source | Nit | Polish action |
 |---|--------|-----|----------------|
 | P5 | 1510 review | *(none)* | — |
-| P6 | — | *(add from 1520 review)* | |
+| P6 | 1520 review | *(none)* | — |
 | P7 | — | *(add from 1530 review)* | |
 | P8 | — | *(add from 1540 review)* | |
 | P9 | — | *(add from 1550 review)* | |
@@ -42,4 +42,4 @@ Non-blocking nits from Grok review of Program 3 slices. One polish pass at progr
 
 ---
 
-*Last updated: 2026-06-14 (1500 review nits)*
+*Last updated: 2026-06-14 (1520 review — P6 none)*

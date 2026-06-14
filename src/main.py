@@ -220,10 +220,16 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Filter to one ontology category",
     )
     status_cmd.add_argument(
-        "--entity",
+        "--id",
         default=None,
-        metavar="KEY",
-        help="Drill down to one entity (name or id)",
+        metavar="UUID",
+        help="Drill down to one entity by registry UUID",
+    )
+    status_cmd.add_argument(
+        "--lookup-json",
+        default=None,
+        metavar="JSON",
+        help='Drill down via MVR lookup map, e.g. \'{"name":"Ada","employer":"Acme"}\'',
     )
     status_cmd.add_argument(
         "--verbose",
@@ -422,9 +428,25 @@ def _run_network_command(args: argparse.Namespace) -> int:
                     cli_network_dir=args.network_dir,
                     cli_network_name=args.network,
                 )
+                resolve_id = (args.id or "").strip() or None
+                resolve_lookup: dict[str, str] | None = None
+                if args.lookup_json:
+                    raw = json.loads(args.lookup_json)
+                    if not isinstance(raw, dict):
+                        raise ValueError("--lookup-json must be a JSON object")
+                    resolve_lookup = {
+                        str(key): str(value)
+                        for key, value in raw.items()
+                        if str(value).strip()
+                    } or None
+                if resolve_id and resolve_lookup:
+                    raise ValueError(
+                        "Use --id or --lookup-json for drill-down, not both",
+                    )
                 summary = build_network_status(
                     category_filter=args.category,
-                    entity_key=args.entity,
+                    resolve_id=resolve_id,
+                    resolve_lookup=resolve_lookup,
                 )
             except (ValueError, FileNotFoundError) as exc:
                 console.print(f"[red]Error:[/red] {exc}")

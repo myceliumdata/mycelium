@@ -364,7 +364,7 @@ Expect both `bind`.
 ## Check 1 — CLI status: bind field `versions[]` (required)
 
 ```bash
-uv run mycelium network status --network crm --entity "Andrea Kalmans" --json
+uv run mycelium network status --network crm --lookup-json '{"name":"Andrea Kalmans"}' --json
 ```
 
 **Pass:**
@@ -498,7 +498,7 @@ jq --arg id "$ID" '.records[$id].name.versions | length' \
 
 ```bash
 ./bin/refresh-example-network crm --yes
-uv run mycelium network status --network crm --entity "Andrea Kalmans" --json | \
+uv run mycelium network status --network crm --lookup-json '{"name":"Andrea Kalmans"}' --json | \
   jq '[.entity_fields[] | select(.field_kind=="bind") | {field, versions: (.versions|length)}]'
 ```
 

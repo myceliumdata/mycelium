@@ -5,8 +5,24 @@ import type {
   LookupSuggestion,
   OntologyCategory,
   QueryResponse,
+  StatusResolve,
   StatusResponse,
 } from "./types";
+
+function formatStatusResolve(resolve: StatusResolve | null): string {
+  if (!resolve) {
+    return "—";
+  }
+  if (resolve.id) {
+    return resolve.id;
+  }
+  if (resolve.lookup) {
+    return Object.entries(resolve.lookup)
+      .map(([field, value]) => `${field}=${value}`)
+      .join(", ");
+  }
+  return "—";
+}
 
 function versionStatusBadgeClass(status: string): string {
   if (status === "found") {
@@ -157,12 +173,12 @@ export default function EntityDrilldown({
   const querySuggestions = queryResult?.suggestions ?? [];
   const queryRequiredFields = queryResult?.required_fields ?? [];
   const showStatusSuggestions =
-    querySuggestions.length === 0 && status.entity_suggestions.length > 0;
+    querySuggestions.length === 0 && status.resolve_suggestions.length > 0;
   const showStatusRequiredFields =
     queryRequiredFields.length === 0 &&
-    status.entity_required_fields.length > 0;
+    status.resolve_required_fields.length > 0;
   const singleMatch =
-    status.entity_matches === 1 ? status.entity_match_summaries[0] : null;
+    status.resolve_matches === 1 ? status.resolve_match_summaries[0] : null;
 
   return (
     <div className="entity-drilldown">
@@ -191,20 +207,20 @@ export default function EntityDrilldown({
         </div>
       )}
       <p>
-        {label}: <code>{status.entity_key ?? "—"}</code> — {status.entity_matches}{" "}
-        match(es)
-        {status.entity_resolution_kind && (
+        {label}: <code>{formatStatusResolve(status.resolve)}</code> —{" "}
+        {status.resolve_matches} match(es)
+        {status.resolve_kind && (
           <>
             {" "}
             ·{" "}
-            <span className="muted">{status.entity_resolution_kind}</span>
+            <span className="muted">{status.resolve_kind}</span>
           </>
         )}
       </p>
       {showStatusRequiredFields && (
         <p>
           <strong>Required fields:</strong>{" "}
-          {status.entity_required_fields.join(", ")}
+          {status.resolve_required_fields.join(", ")}
         </p>
       )}
       {showStatusSuggestions && (
@@ -213,7 +229,7 @@ export default function EntityDrilldown({
             <strong>Suggestions:</strong>
           </p>
           <ul className="suggestion-list">
-            {status.entity_suggestions.map((item, index) => (
+            {status.resolve_suggestions.map((item, index) => (
               <li key={suggestionListKey(item, index)}>
                 <button
                   type="button"
@@ -231,12 +247,12 @@ export default function EntityDrilldown({
           </ul>
         </div>
       )}
-      {status.entity_matches === 0 && <p className="empty">No match.</p>}
-      {status.entity_matches > 1 && (
+      {status.resolve_matches === 0 && <p className="empty">No match.</p>}
+      {status.resolve_matches > 1 && (
         <div>
           <p className="empty">Multiple matches — narrow the key.</p>
           <ul className="match-list">
-            {status.entity_match_summaries.map((match) => (
+            {status.resolve_match_summaries.map((match) => (
               <li key={match.id}>
                 <strong>{match.name}</strong>{" "}
                 <span className="muted">
@@ -259,7 +275,7 @@ export default function EntityDrilldown({
           Research: {singleMatch.research_allowed ? "allowed" : "gated"}
         </p>
       )}
-      {status.entity_matches === 1 && status.entity_fields.length > 0 && (
+      {status.resolve_matches === 1 && status.entity_fields.length > 0 && (
         <table>
           <thead>
             <tr>
@@ -302,7 +318,7 @@ export default function EntityDrilldown({
           </tbody>
         </table>
       )}
-      {status.entity_matches === 1 && status.entity_fields.length === 0 && (
+      {status.resolve_matches === 1 && status.entity_fields.length === 0 && (
         <p className="empty">No specialist storage for this record yet.</p>
       )}
     </div>
