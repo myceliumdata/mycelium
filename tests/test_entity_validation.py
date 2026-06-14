@@ -1,4 +1,4 @@
-"""Smoke tests for MVR validation orchestration (entity protocol slice 5)."""
+"""Smoke tests for MVR validation orchestration (target protocol)."""
 
 from __future__ import annotations
 
@@ -11,9 +11,9 @@ import pytest
 from agents.classification import reset_category_tree
 from agents.context import reset_context_builder
 from agents.entity_registry import get_entity_registry, reset_entity_registry
-from graphs.core import reset_core_graph, run_query
+from graphs.core import reset_core_graph
 from network_helpers import import_seed_for_test
-from models.state import EntityQuery
+from registry_helpers import resolve_and_deliver, step1_resolve, step2_deliver
 from storage.core import CoreStorage, get_storage, reset_storage
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -90,11 +90,14 @@ def _entities_path() -> Path:
 @pytest.mark.smoke
 def test_provisional_murphy_validates_identity_only(crm_validation_env: CoreStorage) -> None:
     _ = crm_validation_env
-    response = run_query(
-        EntityQuery(entity_key="Paul Murphy", binding={"employer": "Acme Corp"}),
+    step1 = step1_resolve(
+        lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
     )
+    assert step1.outcome == "lookup_resolved"
+    assert step1.delivery is not None
+    response = step2_deliver(step1.delivery.delivery_id)
 
-    assert response.outcome == "entity_validated"
+    assert response.outcome == "found"
     assert response.message == "Core record validated."
     assert response.results[0]["employer"] == "Acme Corp"
     payload = json.loads(_entities_path().read_text(encoding="utf-8"))
@@ -107,13 +110,18 @@ def test_provisional_murphy_validates_identity_only(crm_validation_env: CoreStor
 @pytest.mark.smoke
 def test_requery_after_bind_validates_same_turn(crm_validation_env: CoreStorage) -> None:
     _ = crm_validation_env
-    first = run_query(
-        EntityQuery(entity_key="Paul Murphy", binding={"employer": "Acme Corp"}),
+    first_step1 = step1_resolve(
+        lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
     )
-    assert first.outcome == "entity_validated"
+    assert first_step1.delivery is not None
+    first = step2_deliver(first_step1.delivery.delivery_id)
+    assert first.outcome == "found"
     entity_id = first.results[0]["id"]
 
-    second = run_query(EntityQuery(entity_key=entity_id))
+    second_step1 = step1_resolve(entity_id=entity_id)
+    assert second_step1.outcome == "lookup_resolved"
+    assert second_step1.delivery is not None
+    second = step2_deliver(second_step1.delivery.delivery_id)
     assert second.outcome == "found"
     assert "Core record validated" not in second.message
 
@@ -123,9 +131,12 @@ def test_absurd_employer_fails_validation_stays_provisional(
     crm_validation_env: CoreStorage,
 ) -> None:
     _ = crm_validation_env
-    response = run_query(
-        EntityQuery(entity_key="Paul Murphy", binding={"employer": "A"}),
+    step1 = step1_resolve(
+        lookup={"name": "Paul Murphy", "employer": "A"},
     )
+    assert step1.outcome == "lookup_resolved"
+    assert step1.delivery is not None
+    response = step2_deliver(step1.delivery.delivery_id)
 
     assert response.outcome == "found"
     assert "validation failed" in response.message.lower()
@@ -138,8 +149,9 @@ def test_absurd_employer_fails_validation_stays_provisional(
 @pytest.mark.smoke
 def test_seed_andrea_kalmans_no_validation_invoke(crm_validation_env: CoreStorage) -> None:
     _ = crm_validation_env
-    response = run_query(
-        EntityQuery(entity_key="Andrea Kalmans", requested_attributes=["email"]),
+    _step1, response = resolve_and_deliver(
+        lookup={"name": "Andrea Kalmans", "employer": "Lontra Ventures"},
+        requested_attributes=["email"],
     )
 
     assert response.outcome == "assembled"
@@ -151,12 +163,9 @@ def test_murphy_bind_plus_email_validates_then_assembles_same_turn(
     crm_validation_env: CoreStorage,
 ) -> None:
     _ = crm_validation_env
-    response = run_query(
-        EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
-            requested_attributes=["email"],
-        ),
+    _step1, response = resolve_and_deliver(
+        lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
+        requested_attributes=["email"],
     )
 
     assert response.outcome == "assembled"

@@ -77,7 +77,7 @@ def test_create_specialist_writes_files_and_registers(
     assert strategy_path.exists()
     assert storage_path.exists()
 
-    state = MyceliumGraphState(query=EntityQuery(entity_key="__no_such_person__"))
+    state = MyceliumGraphState(query=EntityQuery(id="00000000-0000-0000-0000-000000000000"))
     result = fn(state)
     assert "response" in result
     assert result["response"].results == []
@@ -85,7 +85,7 @@ def test_create_specialist_writes_files_and_registers(
 
     test_id = "test-person-uuid-1540"
     state_pending = MyceliumGraphState(
-        query=EntityQuery(entity_key="Test User", requested_attributes=["email"]),
+        query=EntityQuery(id=test_id, requested_attributes=["email"]),
         current_id=test_id,
         context={
             "entity_id": test_id,

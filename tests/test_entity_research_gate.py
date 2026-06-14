@@ -12,9 +12,10 @@ from agents.classification import reset_category_tree
 from agents.context import reset_context_builder
 from agents.entity_registry import get_entity_registry, reset_entity_registry
 from agents.research_gate import RESEARCH_GATE_MESSAGE, is_research_gated, research_gate_allows
-from graphs.core import reset_core_graph, run_query
+from graphs.core import reset_core_graph
 from network_helpers import import_seed_for_test
 from models.state import EntityQuery, MyceliumGraphState
+from registry_helpers import resolve_and_deliver, step1_resolve, step2_deliver
 from storage.core import CoreStorage, get_storage, reset_storage
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -91,15 +92,18 @@ def _entities_path() -> Path:
 @pytest.mark.smoke
 def test_validated_murphy_email_invokes_specialist(crm_gate_env: CoreStorage) -> None:
     _ = crm_gate_env
-    bound = run_query(
-        EntityQuery(entity_key="Paul Murphy", binding={"employer": "Acme Corp"}),
+    bound_step1 = step1_resolve(
+        lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
     )
-    assert bound.outcome == "entity_validated"
+    assert bound_step1.delivery is not None
+    bound = step2_deliver(bound_step1.delivery.delivery_id)
+    assert bound.outcome == "found"
     entity_id = bound.results[0]["id"]
 
-    response = run_query(
-        EntityQuery(entity_key=entity_id, requested_attributes=["email"]),
-    )
+    step1_email = step1_resolve(entity_id=entity_id, requested_attributes=["email"])
+    assert step1_email.outcome == "lookup_resolved"
+    assert step1_email.delivery is not None
+    response = step2_deliver(step1_email.delivery.delivery_id)
 
     assert response.outcome == "assembled"
     assert "invoke_specialists" not in response.debug or response.outcome == "assembled"
@@ -111,13 +115,13 @@ def test_provisional_murphy_email_validation_fail_no_invoke(
     crm_gate_env: CoreStorage,
 ) -> None:
     _ = crm_gate_env
-    response = run_query(
-        EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "A"},
-            requested_attributes=["email"],
-        ),
+    step1 = step1_resolve(
+        lookup={"name": "Paul Murphy", "employer": "A"},
+        requested_attributes=["email"],
     )
+    assert step1.outcome == "lookup_resolved"
+    assert step1.delivery is not None
+    response = step2_deliver(step1.delivery.delivery_id)
 
     assert response.outcome == "found"
     assert "validation failed" in response.message.lower()
@@ -132,12 +136,9 @@ def test_provisional_murphy_email_validates_then_invokes_same_turn(
     crm_gate_env: CoreStorage,
 ) -> None:
     _ = crm_gate_env
-    response = run_query(
-        EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
-            requested_attributes=["email"],
-        ),
+    _step1, response = resolve_and_deliver(
+        lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
+        requested_attributes=["email"],
     )
 
     assert response.outcome == "assembled"
@@ -149,8 +150,9 @@ def test_provisional_murphy_email_validates_then_invokes_same_turn(
 @pytest.mark.smoke
 def test_seed_andrea_kalmans_email_invokes(crm_gate_env: CoreStorage) -> None:
     _ = crm_gate_env
-    response = run_query(
-        EntityQuery(entity_key="Andrea Kalmans", requested_attributes=["email"]),
+    _step1, response = resolve_and_deliver(
+        lookup={"name": "Andrea Kalmans", "employer": "Lontra Ventures"},
+        requested_attributes=["email"],
     )
 
     assert response.outcome == "assembled"
@@ -169,11 +171,12 @@ def test_seed_andrea_kalmans_email_invokes(crm_gate_env: CoreStorage) -> None:
 @pytest.mark.smoke
 def test_kalman_unresolved_email_no_invoke(crm_gate_env: CoreStorage) -> None:
     _ = crm_gate_env
-    response = run_query(
-        EntityQuery(entity_key="Andrea Kalman", requested_attributes=["email"]),
+    response = step1_resolve(
+        lookup={"name": "Andrea Kalman"},
+        requested_attributes=["email"],
     )
 
-    assert response.outcome == "entity_key_unresolved"
+    assert response.outcome == "lookup_suggested"
     assert response.results == []
     assert "invoke_specialists" not in response.debug
 
@@ -191,7 +194,7 @@ def test_research_gate_message_on_provisional_attrs(crm_gate_env: CoreStorage) -
     }
     state = MyceliumGraphState(
         query=EntityQuery(
-            entity_key="ent-test",
+            id="ent-test",
             requested_attributes=["email"],
         ),
         matched_records=[provisional_match],
@@ -201,13 +204,12 @@ def test_research_gate_message_on_provisional_attrs(crm_gate_env: CoreStorage) -
     assert is_research_gated(state)
     assert not research_gate_allows(current_id="ent-test", matched=[provisional_match])
 
-    gated = run_query(
-        EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "A"},
-            requested_attributes=["email"],
-        ),
+    gated_step1 = step1_resolve(
+        lookup={"name": "Paul Murphy", "employer": "A"},
+        requested_attributes=["email"],
     )
+    assert gated_step1.delivery is not None
+    gated = step2_deliver(gated_step1.delivery.delivery_id)
     assert gated.outcome == "found"
     assert "invoke_specialists" not in gated.debug
 
@@ -229,7 +231,7 @@ def test_assemble_emits_gate_message_for_provisional_attrs() -> None:
     }
     state = MyceliumGraphState(
         query=EntityQuery(
-            entity_key="ent-test",
+            id="ent-test",
             requested_attributes=["email"],
         ),
         matched_records=[provisional_match],

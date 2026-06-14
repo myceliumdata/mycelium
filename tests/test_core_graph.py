@@ -13,6 +13,7 @@ from agents.entity_registry import reset_entity_registry
 from graphs.core import reset_core_graph, run_query
 from models.state import EntityQuery
 from network_helpers import import_seed_for_test
+from registry_helpers import resolve_and_deliver, step1_resolve
 from storage.core import CoreStorage, reset_storage
 
 
@@ -61,6 +62,7 @@ def temp_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> CoreStorage
     )
     monkeypatch.setenv("MYCELIUM_SPECIALISTS_DIR", str(tmp_path / "specialists"))
     monkeypatch.setenv("MYCELIUM_AGENT_DATA_DIR", str(tmp_path / "agent_data"))
+    monkeypatch.setenv("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
     monkeypatch.delenv("LANGCHAIN_TRACING_V2", raising=False)
     monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
     from agents.factory.agent_factory import reset_agent_factory
@@ -84,7 +86,10 @@ def temp_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> CoreStorage
 @pytest.mark.full
 def test_query_existing_person(temp_storage: CoreStorage) -> None:
     _ = temp_storage
-    response = run_query(EntityQuery(entity_key="Test User"))
+    _step1, response = resolve_and_deliver(
+        lookup={"name": "Test User", "employer": "Test Co"},
+        thread_id="core-existing",
+    )
     assert len(response.results) == 1
     assert response.results[0]["name"] == "Test User"
     assert response.results[0]["employer"] == "Test Co"
@@ -94,30 +99,28 @@ def test_query_existing_person(temp_storage: CoreStorage) -> None:
     assert len(pid.split("-")) == 5
     assert "Found record for" in response.message
     assert "core record" not in response.message.lower()
-    assert "entity_key='Test User'" in response.debug
 
 
 @pytest.mark.full
 def test_query_missing_person(temp_storage: CoreStorage) -> None:
     _ = temp_storage
-    response = run_query(EntityQuery(entity_key="Missing Person"))
+    response = step1_resolve(lookup={"name": "Missing Person"})
     assert response.results == []
-    assert response.outcome == "entity_unknown"
+    assert response.outcome == "lookup_incomplete"
     assert response.required_fields == ["employer"]
     assert "Missing Person" in response.message
     assert "employer" in response.message.lower()
     assert "core record" not in response.message.lower()
-    assert "outcome='entity_unknown'" in response.debug
+    assert "outcome='lookup_incomplete'" in response.debug
 
 
 @pytest.mark.full
 def test_query_non_core_attributes(temp_storage: CoreStorage) -> None:
     _ = temp_storage
-    response = run_query(
-        EntityQuery(
-            entity_key="Test User",
-            requested_attributes=["age", "x_handle"],
-        ),
+    _step1, response = resolve_and_deliver(
+        lookup={"name": "Test User", "employer": "Test Co"},
+        requested_attributes=["age", "x_handle"],
+        thread_id="core-non-core",
     )
     assert len(response.results) == 1
     assert "name" not in response.results[0]
@@ -138,7 +141,7 @@ def test_query_non_core_attributes(temp_storage: CoreStorage) -> None:
 @pytest.mark.full
 def test_results_are_plain_dicts(temp_storage: CoreStorage) -> None:
     _ = temp_storage
-    response = run_query(EntityQuery(entity_key="Test User"))
+    response = run_query(EntityQuery(lookup={"name": "Test User", "employer": "Test Co"}))
     for item in response.results:
         assert isinstance(item, dict)
         assert set(item.keys()) <= {"id", "name", "employer"}
@@ -149,7 +152,7 @@ def test_results_are_plain_dicts(temp_storage: CoreStorage) -> None:
 def test_run_query_echoes_thread_id_on_lookup(temp_storage: CoreStorage) -> None:
     _ = temp_storage
     response = run_query(
-        EntityQuery(entity_key="Test User"),
+        EntityQuery(lookup={"name": "Test User", "employer": "Test Co"}),
         thread_id="thread-lookup-1",
     )
     assert response.thread_id == "thread-lookup-1"
@@ -159,23 +162,25 @@ def test_run_query_echoes_thread_id_on_lookup(temp_storage: CoreStorage) -> None
 @pytest.mark.full
 def test_run_query_default_thread_id(temp_storage: CoreStorage) -> None:
     _ = temp_storage
-    response = run_query(EntityQuery(entity_key="Test User"))
+    response = run_query(EntityQuery(lookup={"name": "Test User", "employer": "Test Co"}))
     assert response.thread_id == "default"
     assert response.trace_id is None
 
 
 @pytest.mark.full
 def test_graph_invokes_supervisor_assemble_response(temp_storage: CoreStorage) -> None:
-    """End-to-end graph: supervisor + assemble_response for name-only query."""
+    """End-to-end graph: supervisor + assemble_response for delivery step query."""
     import asyncio
 
     from graphs.core import build_core_graph
     from models.state import MyceliumGraphState
 
     _ = temp_storage
+    step1 = step1_resolve(lookup={"name": "Test User", "employer": "Test Co"})
+    assert step1.delivery is not None
     graph = build_core_graph(setup_checkpointer=False)
     initial = MyceliumGraphState(
-        query=EntityQuery(entity_key="Test User"),
+        query=EntityQuery(delivery_id=step1.delivery.delivery_id),
         invocation_thread_id="graph-path-test",
     )
     final = asyncio.run(
@@ -195,6 +200,6 @@ def test_graph_invokes_supervisor_assemble_response(temp_storage: CoreStorage) -
     assert "Found record for" in state.response.message
     assert "core record" not in state.response.message.lower()
     joined_logs = " ".join(state.audit_log)
-    assert "Supervisor" in joined_logs
+    assert "target_resolve" in joined_logs
     assert "assemble_response" in joined_logs
     assert state.route is None

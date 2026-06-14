@@ -12,10 +12,10 @@ import pytest
 from agents.classification import reset_category_tree
 from agents.context import reset_context_builder
 from agents.entity_registry import get_entity_registry, make_bind_key, reset_entity_registry
-from agents.entity_resolution import lookup_entities_by_key, resolve_entity
-from graphs.core import reset_core_graph, run_query
-from network_helpers import import_seed_for_test
+from graphs.core import reset_core_graph
 from models.state import EntityQuery
+from network_helpers import import_seed_for_test
+from registry_helpers import lookup_entities_by_name, resolve_and_deliver, step1_resolve, step2_deliver
 from storage.core import CoreStorage, get_storage, reset_storage
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -93,14 +93,14 @@ def test_murphy_bind_creates_provisional_entity(crm_registry_env: CoreStorage) -
         __import__("os").environ["MYCELIUM_ENTITIES_PATH"],
     )
 
-    response = run_query(
-        EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
-        ),
+    step1 = step1_resolve(
+        lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
     )
+    assert step1.outcome == "lookup_resolved"
+    assert step1.delivery is not None
+    response = step2_deliver(step1.delivery.delivery_id)
 
-    assert response.outcome == "entity_validated"
+    assert response.outcome == "found"
     assert response.required_fields == []
     assert len(response.results) == 1
     assert response.results[0]["name"] == "Paul Murphy"
@@ -119,18 +119,22 @@ def test_murphy_bind_creates_provisional_entity(crm_registry_env: CoreStorage) -
 @pytest.mark.smoke
 def test_repeat_bind_is_idempotent_found(crm_registry_env: CoreStorage) -> None:
     _ = crm_registry_env
-    query = EntityQuery(
-        entity_key="Paul Murphy",
-        binding={"employer": "Acme Corp"},
+    first_step1 = step1_resolve(
+        lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
     )
-
-    first = run_query(query)
-    assert first.outcome == "entity_validated"
+    assert first_step1.delivery is not None
+    first = step2_deliver(first_step1.delivery.delivery_id)
+    assert first.outcome == "found"
     first_id = first.results[0]["id"]
 
-    second = run_query(query)
-    assert second.outcome == "found"
-    assert second.results[0]["id"] == first_id
+    second = step1_resolve(
+        lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
+    )
+    assert second.outcome == "lookup_resolved"
+    assert second.delivery is not None
+    second_delivered = step2_deliver(second.delivery.delivery_id)
+    assert second_delivered.outcome == "found"
+    assert second_delivered.results[0]["id"] == first_id
 
     entities_path = Path(__import__("os").environ["MYCELIUM_ENTITIES_PATH"])
     payload = json.loads(entities_path.read_text(encoding="utf-8"))
@@ -140,22 +144,35 @@ def test_repeat_bind_is_idempotent_found(crm_registry_env: CoreStorage) -> None:
 @pytest.mark.smoke
 def test_name_only_two_registry_rows_requires_employer(crm_registry_env: CoreStorage) -> None:
     _ = crm_registry_env
-    run_query(EntityQuery(entity_key="Paul Murphy", binding={"employer": "Acme Corp"}))
-    run_query(EntityQuery(entity_key="Paul Murphy", binding={"employer": "Beta LLC"}))
+    step1a = step1_resolve(lookup={"name": "Paul Murphy", "employer": "Acme Corp"})
+    assert step1a.delivery is not None
+    step2_deliver(step1a.delivery.delivery_id)
+    step1b = step1_resolve(
+        lookup={"name": "Paul Murphy", "employer": "Beta LLC"},
+        confirm_new_entity=True,
+    )
+    assert step1b.delivery is not None
+    step2_deliver(step1b.delivery.delivery_id)
 
-    response = run_query(
-        EntityQuery(entity_key="Paul Murphy", requested_attributes=["email"]),
+    response = step1_resolve(
+        lookup={"name": "Paul Murphy"},
+        requested_attributes=["email"],
     )
 
-    assert response.outcome == "entity_unknown"
-    assert response.required_fields == ["employer"]
-    assert response.results == []
+    assert response.outcome == "lookup_resolved"
+    assert response.delivery is not None
+    delivered = step2_deliver(response.delivery.delivery_id)
+    assert delivered.outcome == "assembled"
+    assert delivered.results
     from agents.supervisor import supervisor_agent
     from models.state import MyceliumGraphState
 
     planned = supervisor_agent(
         MyceliumGraphState(
-            query=EntityQuery(entity_key="Paul Murphy", requested_attributes=["email"]),
+            query=EntityQuery(
+                lookup={"name": "Paul Murphy"},
+                requested_attributes=["email"],
+            ),
         ),
     )
     assert planned["context"]["_meta"]["specialists_to_invoke"] == []
@@ -165,15 +182,20 @@ def test_name_only_two_registry_rows_requires_employer(crm_registry_env: CoreSto
 def test_same_name_different_employers_get_two_ids(crm_registry_env: CoreStorage) -> None:
     _ = crm_registry_env
 
-    acme = run_query(
-        EntityQuery(entity_key="Paul Murphy", binding={"employer": "Acme Corp"}),
+    acme_step1 = step1_resolve(
+        lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
     )
-    beta = run_query(
-        EntityQuery(entity_key="Paul Murphy", binding={"employer": "Beta LLC"}),
+    assert acme_step1.delivery is not None
+    acme = step2_deliver(acme_step1.delivery.delivery_id)
+    beta_step1 = step1_resolve(
+        lookup={"name": "Paul Murphy", "employer": "Beta LLC"},
+        confirm_new_entity=True,
     )
+    assert beta_step1.delivery is not None
+    beta = step2_deliver(beta_step1.delivery.delivery_id)
 
-    assert acme.outcome == "entity_validated"
-    assert beta.outcome == "entity_validated"
+    assert acme.outcome == "found"
+    assert beta.outcome == "found"
     assert acme.results[0]["id"] != beta.results[0]["id"]
 
     payload = json.loads(
@@ -192,12 +214,9 @@ def test_murphy_bound_plus_email_no_specialist_invoke(
     crm_registry_env: CoreStorage,
 ) -> None:
     _ = crm_registry_env
-    bound = run_query(
-        EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
-            requested_attributes=["email"],
-        ),
+    _step1, bound = resolve_and_deliver(
+        lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
+        requested_attributes=["email"],
     )
     assert bound.outcome == "assembled"
     assert bound.results[0]["id"]
@@ -208,11 +227,15 @@ def test_murphy_bound_plus_email_no_specialist_invoke(
     assert murphy["validation_state"] == "validated"
 
     entity_id = bound.results[0]["id"]
-    follow_up = run_query(
-        EntityQuery(entity_key=entity_id, requested_attributes=["email"]),
+    follow_up = step1_resolve(
+        entity_id=entity_id,
+        requested_attributes=["email"],
     )
-    assert follow_up.outcome == "assembled"
-    assert follow_up.results[0]["id"] == entity_id
+    assert follow_up.outcome == "lookup_resolved"
+    assert follow_up.delivery is not None
+    follow_up_step2 = step2_deliver(follow_up.delivery.delivery_id)
+    assert follow_up_step2.outcome == "assembled"
+    assert follow_up_step2.results[0]["id"] == entity_id
 
 
 @pytest.mark.smoke
@@ -220,8 +243,14 @@ def test_aaron_holiday_seed_creates_registry_mirror(crm_registry_env: CoreStorag
     _ = crm_registry_env
     entities_path = Path(__import__("os").environ["MYCELIUM_ENTITIES_PATH"])
 
-    response = run_query(
-        EntityQuery(entity_key="Aaron Holiday", requested_attributes=["email"]),
+    aaron_seed = lookup_entities_by_name("Aaron Holiday")
+    assert aaron_seed
+    _step1, response = resolve_and_deliver(
+        lookup={
+            "name": "Aaron Holiday",
+            "employer": str(aaron_seed[0]["employer"]),
+        },
+        requested_attributes=["email"],
     )
 
     assert response.outcome == "assembled"
@@ -239,15 +268,12 @@ def test_aaron_holiday_seed_creates_registry_mirror(crm_registry_env: CoreStorag
 @pytest.mark.smoke
 def test_partial_binding_under_specified(crm_registry_env: CoreStorage) -> None:
     _ = crm_registry_env
-    response = run_query(
-        EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": ""},
-            requested_attributes=["email"],
-        ),
+    response = step1_resolve(
+        lookup={"name": "Paul Murphy", "employer": ""},
+        requested_attributes=["email"],
     )
 
-    assert response.outcome == "entity_under_specified"
+    assert response.outcome == "lookup_incomplete"
     assert response.required_fields == ["employer"]
     assert response.results == []
 
@@ -255,51 +281,58 @@ def test_partial_binding_under_specified(crm_registry_env: CoreStorage) -> None:
 @pytest.mark.smoke
 def test_uuid_lookup_after_bind(crm_registry_env: CoreStorage) -> None:
     _ = crm_registry_env
-    bound = run_query(
-        EntityQuery(entity_key="Paul Murphy", binding={"employer": "Acme Corp"}),
+    bound_step1 = step1_resolve(
+        lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
     )
+    assert bound_step1.delivery is not None
+    bound = step2_deliver(bound_step1.delivery.delivery_id)
     entity_id = bound.results[0]["id"]
 
-    resolution = resolve_entity(EntityQuery(entity_key=entity_id))
-    assert resolution.kind == "exact"
-    assert resolution.matches[0]["id"] == entity_id
+    resolution = step1_resolve(entity_id=entity_id)
+    assert resolution.outcome == "lookup_resolved"
+    assert resolution.delivery is not None
+    resolution_step2 = step2_deliver(resolution.delivery.delivery_id)
+    assert resolution_step2.outcome == "found"
+    assert resolution_step2.results[0]["id"] == entity_id
 
 
 @pytest.mark.smoke
 def test_bind_index_lookup_by_name_and_binding(crm_registry_env: CoreStorage) -> None:
     _ = crm_registry_env
-    bound = run_query(
-        EntityQuery(entity_key="Paul Murphy", binding={"employer": "Acme Corp"}),
+    bound_step1 = step1_resolve(
+        lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
     )
+    assert bound_step1.delivery is not None
+    bound = step2_deliver(bound_step1.delivery.delivery_id)
     entity_id = bound.results[0]["id"]
 
-    by_name = run_query(
-        EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
-        ),
+    by_name = step1_resolve(
+        lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
     )
-    assert by_name.outcome == "found"
-    assert by_name.results[0]["id"] == entity_id
+    assert by_name.outcome == "lookup_resolved"
+    assert by_name.delivery is not None
+    by_name_step2 = step2_deliver(by_name.delivery.delivery_id)
+    assert by_name_step2.outcome == "found"
+    assert by_name_step2.results[0]["id"] == entity_id
 
 
 @pytest.mark.smoke
 def test_unknown_binding_keys_ignored(crm_registry_env: CoreStorage) -> None:
     _ = crm_registry_env
-    response = run_query(
-        EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp", "malicious": "x"},
-        ),
+    step1 = step1_resolve(
+        lookup={"name": "Paul Murphy", "employer": "Acme Corp", "malicious": "x"},
     )
-    assert response.outcome == "entity_validated"
+    assert step1.outcome == "lookup_resolved"
+    assert step1.delivery is not None
+    response = step2_deliver(step1.delivery.delivery_id)
+    assert response.outcome == "found"
 
 
 @pytest.mark.smoke
 def test_missing_uuid_stays_not_found(crm_registry_env: CoreStorage) -> None:
     _ = crm_registry_env
     missing_id = str(uuid.uuid4())
-    response = run_query(EntityQuery(entity_key=missing_id))
+    response = step1_resolve(entity_id=missing_id)
     assert response.outcome == "not_found"
 
 
@@ -310,6 +343,10 @@ def test_ensure_bound_entity_allocates_uuid4(
 ) -> None:
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
     monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(tmp_path / "entities.json"))
+    categories_path = tmp_path / "categories.json"
+    shutil.copy(SAMPLE_CATEGORIES, categories_path)
+    monkeypatch.setenv("MYCELIUM_CATEGORIES_PATH", str(categories_path))
+    reset_category_tree()
     reset_entity_registry()
     registry = get_entity_registry()
     entity, duplicate = registry.ensure_bound_entity(
@@ -330,6 +367,10 @@ def test_ensure_bound_entity_duplicate_preserves_source(
 ) -> None:
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
     monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(tmp_path / "entities.json"))
+    categories_path = tmp_path / "categories.json"
+    shutil.copy(SAMPLE_CATEGORIES, categories_path)
+    monkeypatch.setenv("MYCELIUM_CATEGORIES_PATH", str(categories_path))
+    reset_category_tree()
     reset_entity_registry()
     registry = get_entity_registry()
     seed_row, _ = registry.ensure_bound_entity(
@@ -366,10 +407,10 @@ def test_lookup_entities_by_key_stable_after_reimport(
     monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(entities))
 
     import_seed_for_test(seed)
-    first_id = lookup_entities_by_key("Andrea Kalmans")[0]["id"]
+    first_id = lookup_entities_by_name("Andrea Kalmans")[0]["id"]
 
     import_seed_for_test(seed)
-    second_id = lookup_entities_by_key("Andrea Kalmans")[0]["id"]
+    second_id = lookup_entities_by_name("Andrea Kalmans")[0]["id"]
 
     assert first_id == second_id
     assert entities.is_file()
@@ -380,12 +421,11 @@ def test_registry_entity_json_omits_top_level_name_employer(
     crm_registry_env: CoreStorage,
 ) -> None:
     _ = crm_registry_env
-    run_query(
-        EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
-        ),
+    step1 = step1_resolve(
+        lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
     )
+    assert step1.delivery is not None
+    step2_deliver(step1.delivery.delivery_id)
     payload = json.loads(
         Path(__import__("os").environ["MYCELIUM_ENTITIES_PATH"]).read_text(
             encoding="utf-8",

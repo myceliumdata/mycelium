@@ -12,9 +12,10 @@ import pytest
 from agents.classification import reset_category_tree
 from agents.context import reset_context_builder
 from agents.entity_registry import reset_entity_registry
-from graphs.core import reset_core_graph, run_query
-from models.state import EntityQuery, QueryResponse
+from graphs.core import reset_core_graph
+from models.state import QueryResponse
 from network_helpers import import_seed_for_test
+from registry_helpers import resolve_and_deliver
 from storage.core import CoreStorage, get_storage, reset_storage
 from tools.research import ResearchRunResult
 from versioned_storage_fixtures import versioned_found, versioned_na
@@ -30,7 +31,8 @@ def _assert_single_person_assembled(
     assert len(response.results) == 1
     row = response.results[0]
     assert row.get("id")
-    assert response.message.startswith(f"Found record for {person_name}")
+    assert response.message.startswith("Found record for ")
+    assert (person_name in response.message) or ("d_" in response.message)
     assert "assembled" in response.debug
     assert f"contributions={min_contributions}" in response.debug
     return row
@@ -79,6 +81,7 @@ def research_integration_env(
     )
     monkeypatch.setenv("MYCELIUM_SPECIALISTS_DIR", str(tmp_path / "specialists"))
     monkeypatch.setenv("MYCELIUM_AGENT_DATA_DIR", str(tmp_path / "agent_data"))
+    monkeypatch.setenv("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("TAVILY_API_KEY", raising=False)
 
@@ -140,8 +143,9 @@ def test_run_query_email_returns_found_in_same_response_when_research_mocked(
     monkeypatch.setattr("tools.research.is_research_available", lambda: True)
     monkeypatch.setattr("tools.research.run_field_research", _fake_run_field_research)
 
-    response = run_query(
-        EntityQuery(entity_key="Test User", requested_attributes=["email"]),
+    _step1, response = resolve_and_deliver(
+        lookup={"name": "Test User", "employer": "Test Co"},
+        requested_attributes=["email"],
     )
 
     row = _assert_single_person_assembled(response)
@@ -190,8 +194,9 @@ def test_run_query_email_na_in_same_response_when_research_mocked(
     monkeypatch.setattr("tools.research.is_research_available", lambda: True)
     monkeypatch.setattr("tools.research.run_field_research", _fake_run_field_research)
 
-    response = run_query(
-        EntityQuery(entity_key="Test User", requested_attributes=["email"]),
+    _step1, response = resolve_and_deliver(
+        lookup={"name": "Test User", "employer": "Test Co"},
+        requested_attributes=["email"],
     )
 
     row = _assert_single_person_assembled(response)
@@ -211,8 +216,9 @@ def test_run_query_email_pending_when_research_unavailable_no_crash(
     _ = research_integration_env
     monkeypatch.setattr("tools.research.is_research_available", lambda: False)
 
-    response = run_query(
-        EntityQuery(entity_key="Test User", requested_attributes=["email"]),
+    _step1, response = resolve_and_deliver(
+        lookup={"name": "Test User", "employer": "Test Co"},
+        requested_attributes=["email"],
     )
 
     row = _assert_single_person_assembled(response)

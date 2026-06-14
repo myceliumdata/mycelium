@@ -14,9 +14,9 @@ from agents.classification import reset_category_tree
 from agents.context import reset_context_builder
 from agents.entity_growth import parse_research_fields_updated
 from agents.entity_registry import get_entity_registry, reset_entity_registry
-from graphs.core import reset_core_graph, run_query
+from graphs.core import reset_core_graph
 from network_helpers import import_seed_for_test
-from models.state import EntityQuery
+from registry_helpers import resolve_and_deliver, step1_resolve, step2_deliver
 from storage.core import CoreStorage, get_storage, reset_storage
 from tools.research import ResearchRunResult
 from versioned_storage_fixtures import versioned_found
@@ -169,24 +169,26 @@ def test_paul_murphy_full_growth_arc(crm_growth_env: CoreStorage, monkeypatch: p
     _ = crm_growth_env
     _mock_email_research(monkeypatch)
 
-    unknown = run_query(
-        EntityQuery(entity_key="Paul Murphy", requested_attributes=["email"]),
+    unknown = step1_resolve(
+        lookup={"name": "Paul Murphy"},
+        requested_attributes=["email"],
     )
-    assert unknown.outcome == "entity_unknown"
+    assert unknown.outcome == "lookup_incomplete"
     assert unknown.required_fields == ["employer"]
 
-    bound = run_query(
-        EntityQuery(entity_key="Paul Murphy", binding={"employer": "Acme Corp"}),
+    bound_step1 = step1_resolve(
+        lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
     )
-    assert bound.outcome == "entity_validated"
+    assert bound_step1.outcome == "lookup_resolved"
+    assert bound_step1.delivery is not None
+    bound = step2_deliver(bound_step1.delivery.delivery_id)
+    assert bound.outcome == "found"
     entity_id = bound.results[0]["id"]
 
-    researched = run_query(
-        EntityQuery(
-            entity_key=entity_id,
-            requested_attributes=["email"],
-        ),
-    )
+    researched_step1 = step1_resolve(entity_id=entity_id, requested_attributes=["email"])
+    assert researched_step1.outcome == "lookup_resolved"
+    assert researched_step1.delivery is not None
+    researched = step2_deliver(researched_step1.delivery.delivery_id)
     assert researched.outcome == "assembled"
 
     payload = json.loads(_entities_path().read_text(encoding="utf-8"))
@@ -195,12 +197,9 @@ def test_paul_murphy_full_growth_arc(crm_growth_env: CoreStorage, monkeypatch: p
     assert entity["attr_sources"]["email"] == "contact"
     assert entity["last_researched_at"]["email"]
 
-    requery = run_query(
-        EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
-            requested_attributes=["email"],
-        ),
+    _requery_step1, requery = resolve_and_deliver(
+        lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
+        requested_attributes=["email"],
     )
     assert requery.outcome == "assembled"
     assert requery.results[0]["id"] == entity_id
@@ -215,19 +214,17 @@ def test_seed_person_unchanged_after_registry_growth(
     _ = crm_growth_env
     _mock_email_research(monkeypatch)
 
-    run_query(
-        EntityQuery(entity_key="Paul Murphy", binding={"employer": "Acme Corp"}),
-    )
-    run_query(
-        EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
-            requested_attributes=["email"],
-        ),
+    step1 = step1_resolve(lookup={"name": "Paul Murphy", "employer": "Acme Corp"})
+    assert step1.delivery is not None
+    step2_deliver(step1.delivery.delivery_id)
+    resolve_and_deliver(
+        lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
+        requested_attributes=["email"],
     )
 
-    andrea = run_query(
-        EntityQuery(entity_key="Andrea Kalmans", requested_attributes=["email"]),
+    _step1_andrea, andrea = resolve_and_deliver(
+        lookup={"name": "Andrea Kalmans", "employer": "Lontra Ventures"},
+        requested_attributes=["email"],
     )
     assert andrea.outcome == "assembled"
 

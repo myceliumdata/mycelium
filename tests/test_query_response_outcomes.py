@@ -8,13 +8,12 @@ import pytest
 
 from agents.responses import (
     response_assembled,
-    response_entity_unknown,
-    response_entity_unresolved,
     response_found,
+    response_lookup_incomplete,
+    response_lookup_suggested,
     response_non_core,
     response_not_found,
 )
-from network.mvr import MvrPolicy
 from models.state import EntityQuery, IdentityRecord, LookupSuggestion, QueryResponse
 from mycelium_mcp.server import _neutral_json_schema
 
@@ -31,20 +30,20 @@ def _assert_outcome(response: QueryResponse, expected: str) -> None:
         (
             response_found,
             {
-                "query": EntityQuery(entity_key="Ada"),
+                "query": EntityQuery(lookup={"name": "Ada", "employer": "Lab"}),
                 "identity_records": [IdentityRecord(id="p1", name="Ada", employer="Lab")],
             },
             "found",
         ),
         (
             response_not_found,
-            {"query": EntityQuery(entity_key="Missing")},
+            {"query": EntityQuery(lookup={"name": "Missing"})},
             "not_found",
         ),
         (
-            response_entity_unresolved,
+            response_lookup_suggested,
             {
-                "query": EntityQuery(entity_key="Andrea Kalman"),
+                "query": EntityQuery(lookup={"name": "Andrea Kalman"}),
                 "suggestions": [
                     LookupSuggestion(
                         suggested_lookup={"name": "Andrea Kalmans"},
@@ -55,12 +54,15 @@ def _assert_outcome(response: QueryResponse, expected: str) -> None:
                     ),
                 ],
             },
-            "entity_key_unresolved",
+            "lookup_suggested",
         ),
         (
             response_non_core,
             {
-                "query": EntityQuery(entity_key="Ada", requested_attributes=["email"]),
+                "query": EntityQuery(
+                    lookup={"name": "Ada", "employer": "Lab"},
+                    requested_attributes=["email"],
+                ),
                 "identity_records": [IdentityRecord(id="p1", name="Ada", employer="Lab")],
                 "attributes": ["email"],
             },
@@ -69,21 +71,24 @@ def _assert_outcome(response: QueryResponse, expected: str) -> None:
         (
             response_assembled,
             {
-                "query": EntityQuery(entity_key="Ada", requested_attributes=["email"]),
+                "query": EntityQuery(
+                    lookup={"name": "Ada", "employer": "Lab"},
+                    requested_attributes=["email"],
+                ),
                 "merged_records": [{"id": "p1", "email": "a@b.c"}],
             },
             "assembled",
         ),
         (
-            response_entity_unknown,
+            response_lookup_incomplete,
             {
-                "query": EntityQuery(entity_key="Paul Murphy", requested_attributes=["email"]),
-                "mvr": MvrPolicy(
-                    bind_fields=["name", "employer"],
-                    description="test",
+                "query": EntityQuery(
+                    lookup={"name": "Paul Murphy"},
+                    requested_attributes=["email"],
                 ),
+                "required_fields": ["employer"],
             },
-            "entity_unknown",
+            "lookup_incomplete",
         ),
     ],
 )
@@ -97,16 +102,6 @@ def test_response_builders_set_outcome(
     payload = json.loads(response.model_dump_json())
     assert payload["outcome"] == expected_outcome
     assert "suggestions" in payload
-
-
-@pytest.mark.smoke
-def test_entity_unresolved_empty_suggestions_falls_back_to_not_found() -> None:
-    response = response_entity_unresolved(
-        EntityQuery(entity_key="Nobody"),
-        suggestions=[],
-    )
-    _assert_outcome(response, "not_found")
-    assert response.suggestions == []
 
 
 @pytest.mark.smoke

@@ -18,6 +18,7 @@ from agents.entity_registry import reset_entity_registry
 from graphs.core import reset_core_graph, run_query
 from network_helpers import import_seed_for_test
 from models.state import EntityQuery, MyceliumGraphState
+from registry_helpers import lookup_entities_by_name
 from storage.core import CoreStorage, get_storage, reset_storage
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -109,7 +110,7 @@ def test_factory_storage_record_has_no_bind_fields(
     test_id = "boundary-test-uuid"
     fn(
         MyceliumGraphState(
-            query=EntityQuery(entity_key="Test", requested_attributes=["email"]),
+            query=EntityQuery(id=test_id, requested_attributes=["email"]),
             current_id=test_id,
             context={
                 "entity_id": test_id,
@@ -156,8 +157,12 @@ def test_build_context_resolves_bind_from_registry_by_id(
     from agents.entity_registry import get_entity_registry, reset_entity_registry
 
     entities = tmp_path / "entities.json"
+    categories_path = tmp_path / "categories.json"
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
     monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(entities))
+    shutil.copy(SAMPLE_CATEGORIES, categories_path)
+    monkeypatch.setenv("MYCELIUM_CATEGORIES_PATH", str(categories_path))
+    reset_category_tree()
     reset_entity_registry()
     registry = get_entity_registry()
     entity, _ = registry.ensure_bound_entity(
@@ -201,16 +206,21 @@ def test_validated_entity_email_research_receives_bind_context(
     monkeypatch.setattr("tools.research.is_research_available", lambda: True)
     monkeypatch.setattr("tools.research.run_field_research", _capture_research)
 
-    bound = run_query(
-        EntityQuery(entity_key="Paul Murphy", binding={"employer": "Acme Corp"}),
-    )
-    entity_id = bound.results[0]["id"]
-    run_query(EntityQuery(entity_key=entity_id, requested_attributes=["email"]))
+    matches = lookup_entities_by_name("Andrea Kalmans")
+    entity_id = next(row["id"] for row in matches if row.get("employer") == "Lontra Ventures")
+    bound = run_query(EntityQuery(id=entity_id))
+    assert bound.outcome == "lookup_resolved"
+    assert bound.delivery is not None
+    run_query(EntityQuery(delivery_id=bound.delivery.delivery_id))
+    with_email = run_query(EntityQuery(id=entity_id, requested_attributes=["email"]))
+    assert with_email.outcome == "lookup_resolved"
+    assert with_email.delivery is not None
+    run_query(EntityQuery(delivery_id=with_email.delivery.delivery_id))
 
     assert captured.get("person_id") == entity_id
     ctx = captured.get("context") or {}
     assert ctx.get("entity_id") == entity_id
-    assert ctx.get("bind", {}).get("name") == "Paul Murphy"
+    assert ctx.get("bind", {}).get("name") == "Andrea Kalmans"
     assert "seed" not in ctx
 
 

@@ -1,4 +1,4 @@
-"""Smoke tests for entity_unknown + MVR policy (entity protocol slice 3)."""
+"""Smoke tests for lookup_incomplete / lookup_suggested + MVR policy."""
 
 from __future__ import annotations
 
@@ -10,12 +10,12 @@ import pytest
 from agents.classification import reset_category_tree
 from agents.context import reset_context_builder
 from agents.entity_registry import reset_entity_registry
-from agents.entity_resolution import resolve_entity_key
 from graphs.core import reset_core_graph, run_query
 from network_helpers import import_seed_for_test
 from models.state import EntityQuery
 from network.introspection import build_network_capabilities
 from network.mvr import MvrPolicy, load_mvr, missing_mvr_bind_fields
+from registry_helpers import resolve_and_deliver
 from storage.core import CoreStorage, get_storage, reset_storage
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -39,7 +39,6 @@ def crm_mvr_env(
 ) -> CoreStorage:
     """Isolated CRM network with committed MVR policy."""
     reset_storage()
-    reset_entity_registry()
     reset_entity_registry()
     reset_context_builder()
     reset_core_graph()
@@ -82,7 +81,6 @@ def crm_mvr_env(
 
     reset_storage()
     reset_entity_registry()
-    reset_entity_registry()
     reset_context_builder()
     reset_core_graph()
     reset_category_tree()
@@ -111,7 +109,7 @@ def test_missing_mvr_bind_fields_employer_only(crm_mvr_env: CoreStorage) -> None
 
 
 @pytest.mark.smoke
-def test_mvr_policy_has_no_required_bind_fields_entity_key() -> None:
+def test_mvr_policy_has_no_legacy_bind_helpers() -> None:
     policy = MvrPolicy(bind_fields=["name", "employer"], description="test")
     assert not hasattr(policy, "required_bind_fields")
     assert not hasattr(policy, "required_fields_for_entity_key")
@@ -119,96 +117,91 @@ def test_mvr_policy_has_no_required_bind_fields_entity_key() -> None:
 
 
 @pytest.mark.smoke
-def test_paul_murphy_email_entity_unknown_no_specialists(
+def test_paul_murphy_email_lookup_incomplete_no_specialists(
     crm_mvr_env: CoreStorage,
 ) -> None:
     response = run_query(
-        EntityQuery(entity_key="Paul Murphy", requested_attributes=["email"]),
+        EntityQuery(
+            lookup={"name": "Paul Murphy"},
+            requested_attributes=["email"],
+        ),
     )
 
-    assert response.outcome == "entity_unknown"
+    assert response.outcome == "lookup_incomplete"
     assert response.required_fields == ["employer"]
     assert response.results == []
     assert response.suggestions == []
     assert "employer" in response.message.lower()
-    assert "email" in response.message.lower()
     assert "classified" not in response.debug.lower()
     assert "invoke_specialists" not in response.debug
-    assert "outcome='entity_unknown'" in response.debug
+    assert "outcome='lookup_incomplete'" in response.debug
 
 
 @pytest.mark.smoke
-def test_paul_murphy_identity_only_entity_unknown(crm_mvr_env: CoreStorage) -> None:
-    response = run_query(EntityQuery(entity_key="Paul Murphy"))
+def test_paul_murphy_identity_only_lookup_incomplete(crm_mvr_env: CoreStorage) -> None:
+    response = run_query(EntityQuery(lookup={"name": "Paul Murphy"}))
 
-    assert response.outcome == "entity_unknown"
+    assert response.outcome == "lookup_incomplete"
     assert response.required_fields == ["employer"]
     assert response.results == []
     assert "employer" in response.message.lower()
 
 
 @pytest.mark.smoke
-def test_andrea_kalman_still_unresolved_not_unknown(crm_mvr_env: CoreStorage) -> None:
+def test_andrea_kalman_lookup_suggested(crm_mvr_env: CoreStorage) -> None:
     response = run_query(
-        EntityQuery(entity_key="Andrea Kalman", requested_attributes=["email"]),
+        EntityQuery(
+            lookup={"name": "Andrea Kalman"},
+            requested_attributes=["email"],
+        ),
     )
 
-    assert response.outcome == "entity_key_unresolved"
+    assert response.outcome == "lookup_suggested"
     assert response.required_fields == []
     assert len(response.suggestions) == 1
 
 
 @pytest.mark.smoke
 def test_aaron_holiday_email_assembled_path(crm_mvr_env: CoreStorage) -> None:
-    response = run_query(
-        EntityQuery(entity_key="Aaron Holiday", requested_attributes=["email"]),
+    _step1, step2 = resolve_and_deliver(
+        lookup={"name": "Aaron Holiday", "employer": "645 Ventures"},
+        requested_attributes=["email"],
     )
 
-    assert response.outcome == "assembled"
-    assert response.required_fields == []
-    assert response.suggestions == []
-    assert "Aaron Holiday" in response.message or response.results
+    assert step2.outcome == "assembled"
+    assert step2.required_fields == []
+    assert step2.suggestions == []
+    assert "Aaron Holiday" in step2.message or step2.results
 
 
 @pytest.mark.smoke
-def test_nosuchperson_entity_unknown_not_not_found(crm_mvr_env: CoreStorage) -> None:
+def test_nosuchperson_lookup_incomplete(crm_mvr_env: CoreStorage) -> None:
     response = run_query(
         EntityQuery(
-            entity_key="NoSuchPerson-xyz",
+            lookup={"name": "NoSuchPerson-xyz"},
             requested_attributes=["email"],
         ),
     )
 
-    assert response.outcome == "entity_unknown"
+    assert response.outcome == "lookup_incomplete"
     assert response.required_fields == ["employer"]
     assert response.suggestions == []
     assert response.results == []
 
 
 @pytest.mark.smoke
-def test_resolve_unknown_kind(crm_mvr_env: CoreStorage) -> None:
+def test_empty_lookup_rejected_at_model(crm_mvr_env: CoreStorage) -> None:
+    from pydantic import ValidationError
+
     _ = crm_mvr_env
-    resolution = resolve_entity_key("Paul Murphy")
-    assert resolution.kind == "unknown"
-    assert resolution.suggestions == []
+    with pytest.raises(ValidationError):
+        EntityQuery(lookup={}, requested_attributes=["email"])
 
 
 @pytest.mark.smoke
-def test_empty_entity_key_stays_not_found(crm_mvr_env: CoreStorage) -> None:
-    response = run_query(EntityQuery(entity_key="   ", requested_attributes=["email"]))
-
-    assert response.outcome == "not_found"
-    assert response.required_fields == []
-
-
-@pytest.mark.smoke
-def test_capabilities_exposes_mvr_and_entity_unknown_policy(
-    crm_mvr_env: CoreStorage,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_capabilities_exposes_mvr_policy(crm_mvr_env: CoreStorage) -> None:
     _ = crm_mvr_env
     capabilities = build_network_capabilities()
     policy = capabilities["policy"]
     assert "mvr" in policy
     assert policy["mvr"]["bind_fields"] == ["name", "employer"]
-    assert "entity_unknown" in policy

@@ -10,12 +10,12 @@ import pytest
 
 from agents.classification.models import Category, CategoryTreeData
 from agents.registry import RegisteredAgent
-from graphs.core import reset_core_graph, run_query
-from models.state import EntityQuery
+from graphs.core import reset_core_graph
 from network.create import create_network
 from network.ontology import SkeletonOntologyResult
 from network.paths import NetworkPaths, apply_network_paths
 from network.registry import load_network_registry
+from registry_helpers import resolve_and_deliver
 
 _CRM_SIX = frozenset(
     {
@@ -456,16 +456,14 @@ def test_create_network_query_uses_custom_ontology_not_crm_fallback(
     assert cat_keys - {"demographic", "professional"} == {"telemetry", "maintenance"}
     assert categories_on_disk["attribute_map"].get("name") == "demographic"
 
-    response = run_query(
-        EntityQuery(
-            entity_key="Query Person",
-            requested_attributes=["signal_strength"],
-        ),
+    _step1, response = resolve_and_deliver(
+        lookup={"name": "Query Person", "employer": "Q Co"},
+        requested_attributes=["signal_strength"],
         thread_id="network-create-integration",
     )
     assert len(response.results) == 1
     assert response.results[0]["id"]
-    assert "Query Person" in response.message
+    assert response.message.startswith("Found record for ")
     assert "signal_strength" in response.message or "signal_strength" in response.debug
     assert "telemetry" in response.debug
     assert config.is_file()

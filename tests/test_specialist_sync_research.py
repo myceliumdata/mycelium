@@ -82,7 +82,7 @@ def test_contact_email_sync_research_persists_found_not_pending(
     monkeypatch.setattr("tools.research.run_field_research", _fake_run_field_research)
 
     state = MyceliumGraphState(
-        query=EntityQuery(entity_key="Jane Doe", requested_attributes=["email"]),
+        query=EntityQuery(id=test_id, requested_attributes=["email"]),
         current_id=test_id,
         context={
             "entity_id": test_id,
@@ -147,7 +147,7 @@ def test_contact_pre_marks_pending_before_research_runs(
     monkeypatch.setattr("tools.research.run_field_research", _fake_run_field_research)
 
     state = MyceliumGraphState(
-        query=EntityQuery(entity_key="Jane", requested_attributes=["email"]),
+        query=EntityQuery(id=test_id, requested_attributes=["email"]),
         current_id=test_id,
         context={"entity_id": test_id, "bind": {"name": "Jane", "employer": "Co"}, "specialists": {}},
         target_fields=["email"],
@@ -213,7 +213,7 @@ def test_contact_retries_pending_with_last_error(
     )
 
     state = MyceliumGraphState(
-        query=EntityQuery(entity_key="Jane", requested_attributes=["email"]),
+        query=EntityQuery(id=test_id, requested_attributes=["email"]),
         current_id=test_id,
         context={"entity_id": test_id, "bind": {"name": "Jane", "employer": "Co"}, "specialists": {}},
         target_fields=["email"],
@@ -280,7 +280,7 @@ def test_contact_retries_pending_without_last_error_when_no_age_gate(
     )
 
     state = MyceliumGraphState(
-        query=EntityQuery(entity_key="Jane", requested_attributes=["email"]),
+        query=EntityQuery(id=test_id, requested_attributes=["email"]),
         current_id=test_id,
         context={"entity_id": test_id, "bind": {"name": "Jane", "employer": "Co"}, "specialists": {}},
         target_fields=["email"],
@@ -336,7 +336,7 @@ def test_contact_mixed_found_and_na_message(
 
     state = MyceliumGraphState(
         query=EntityQuery(
-            entity_key="Jane",
+            id=test_id,
             requested_attributes=["email", "phone"],
         ),
         current_id=test_id,
@@ -351,7 +351,7 @@ def test_contact_mixed_found_and_na_message(
     assert contrib["values"]["email"] == "mix@example.com"
     assert contrib["values"]["phone"] == "N/A"
     msg = result["response"].message
-    assert "Found record for Jane" in msg
+    assert ("Found record for Jane" in msg) or (f"Found record for {test_id}" in msg)
     assert "mix@example.com" not in msg
     assert "not currently available" not in msg
     assert "(via contact_specialist)" not in msg

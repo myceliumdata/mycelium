@@ -69,7 +69,7 @@ def test_run_query_clears_trace_id_when_tracing_disabled(
     get_storage()
     reset_entity_registry()
     response = run_query(
-        EntityQuery(entity_key="Test User"),
+        EntityQuery(lookup={"name": "Test User", "employer": "Test Co"}),
         thread_id="trace-test-thread",
     )
 
@@ -110,7 +110,7 @@ def test_run_query_sets_trace_id_on_response_when_captured(
     monkeypatch.setenv("MYCELIUM_SPECIALISTS_DIR", str(tmp_path / "specialists"))
     monkeypatch.setenv("MYCELIUM_AGENT_DATA_DIR", str(tmp_path / "agent_data"))
     monkeypatch.setenv("LANGCHAIN_TRACING_V2", "true")
-    monkeypatch.delenv("MYCELIUM_USE_SYNC_CHECKPOINTER", raising=False)
+    monkeypatch.setenv("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
 
     from storage.core import get_storage
 
@@ -143,7 +143,7 @@ def test_run_query_sets_trace_id_on_response_when_captured(
         initial: object,
         config: dict[str, Any],
     ) -> object:
-        return _set_trace_after_invoke(graph, initial, config, sync=False)
+        return _set_trace_after_invoke(graph, initial, config, sync=True)
 
     def _mock_sync_invoke(
         graph: object,
@@ -157,7 +157,7 @@ def test_run_query_sets_trace_id_on_response_when_captured(
         patch("graphs.core._invoke_sync_graph", _mock_sync_invoke),
     ):
         response = run_query(
-            EntityQuery(entity_key="Test User"),
+            EntityQuery(lookup={"name": "Test User", "employer": "Test Co"}),
             thread_id="traced-thread",
         )
 

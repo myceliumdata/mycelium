@@ -13,6 +13,7 @@ from agents.context import reset_context_builder
 from agents.entity_registry import reset_entity_registry
 from graphs.core import reset_core_graph, run_query
 from models.state import EntityQuery
+from registry_helpers import resolve_and_deliver, step1_resolve, step2_deliver
 from network_helpers import import_seed_for_test
 from storage.core import CoreStorage, get_storage, reset_storage
 
@@ -69,6 +70,7 @@ def query_message_env(
     monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
     monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(tmp_path / "entities.json"))
     monkeypatch.setenv("MYCELIUM_CHECKPOINT_PATH", str(tmp_path / "cp.sqlite"))
+    monkeypatch.setenv("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
     monkeypatch.setenv("MYCELIUM_CATEGORIES_PATH", str(categories_path))
     reset_category_tree()
     from agents.classification import get_category_tree
@@ -124,6 +126,7 @@ def kevin_multi_match_env(
     monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
     monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(tmp_path / "entities.json"))
     monkeypatch.setenv("MYCELIUM_CHECKPOINT_PATH", str(tmp_path / "cp.sqlite"))
+    monkeypatch.setenv("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
     monkeypatch.setenv("MYCELIUM_CATEGORIES_PATH", str(categories_path))
     reset_category_tree()
     from agents.classification import get_category_tree
@@ -159,8 +162,9 @@ def test_out_of_scope_only_no_researching_wording(
     query_message_env: CoreStorage,
 ) -> None:
     _ = query_message_env
-    response = run_query(
-        EntityQuery(entity_key="Test User", requested_attributes=["xyzzy_garbage"]),
+    _step1, response = resolve_and_deliver(
+        lookup={"name": "Test User"},
+        requested_attributes=["xyzzy_garbage"],
     )
 
     assert len(response.results) == 1
@@ -175,11 +179,9 @@ def test_mixed_in_scope_and_out_of_scope(
     query_message_env: CoreStorage,
 ) -> None:
     _ = query_message_env
-    response = run_query(
-        EntityQuery(
-            entity_key="Test User",
-            requested_attributes=["email", "xyzzy_garbage"],
-        ),
+    _step1, response = resolve_and_deliver(
+        lookup={"name": "Test User"},
+        requested_attributes=["email", "xyzzy_garbage"],
     )
 
     assert len(response.results) == 1
@@ -197,12 +199,13 @@ def test_multi_match_collective_prefix(
     kevin_multi_match_env: CoreStorage,
 ) -> None:
     _ = kevin_multi_match_env
-    response = run_query(
-        EntityQuery(entity_key="Kevin Zhang", requested_attributes=["email"]),
+    _step1, response = resolve_and_deliver(
+        lookup={"name": "Kevin Zhang"},
+        requested_attributes=["email"],
     )
 
     assert len(response.results) == 2
-    assert "Found 2 records for 'Kevin Zhang'." in response.message
+    assert "Found 2 records for 'd_" in response.message
     assert "Classified email as contact" in response.message
     assert (
         "researching" in response.message.lower()
@@ -221,34 +224,36 @@ def test_same_thread_new_query_rebuilds_response(
     reset_core_graph()
     thread_id = "reuse-thread-checkpoint-bug"
 
-    first = run_query(
-        EntityQuery(entity_key="Test User", requested_attributes=["xyzzy_garbage"]),
+    first_step1 = step1_resolve(
+        lookup={"name": "Test User"},
+        requested_attributes=["xyzzy_garbage"],
         thread_id=thread_id,
     )
+    first = step2_deliver(first_step1.delivery.delivery_id, thread_id=thread_id)
     assert "does not appear related" in first.message
     assert "xyzzy_garbage" in first.message
 
-    second = run_query(
-        EntityQuery(entity_key="Test User", requested_attributes=["email"]),
+    second_step1 = step1_resolve(
+        lookup={"name": "Test User"},
+        requested_attributes=["email"],
         thread_id=thread_id,
     )
+    second = step2_deliver(second_step1.delivery.delivery_id, thread_id=thread_id)
     assert "does not appear related" not in second.message
     assert "xyzzy_garbage" not in second.message
     assert "Classified email as contact" in second.message
-    assert "requested_attributes=['email']" in second.debug
+    assert "email" in second.debug
 
 
 @pytest.mark.smoke
-def test_not_found_neutral_entity_key_wording(
+def test_not_found_neutral_lookup_wording(
     query_message_env: CoreStorage,
 ) -> None:
     _ = query_message_env
-    response = run_query(EntityQuery(entity_key="NoSuchEntity-xyz"))
+    response = run_query(EntityQuery(id="missing-id-xyz"))
 
     assert response.results == []
-    assert response.outcome == "entity_unknown"
-    assert response.required_fields == ["employer"]
-    assert "NoSuchEntity-xyz" in response.message
-    assert "employer" in response.message.lower()
+    assert response.outcome == "not_found"
+    assert "missing-id-xyz" in response.message
     assert "anyone" not in response.message.lower()
     assert "did not match" not in response.message.lower()

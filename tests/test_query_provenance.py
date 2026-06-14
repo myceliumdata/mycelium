@@ -12,14 +12,14 @@ import pytest
 from agents.classification import get_category_tree, reset_category_tree
 from agents.context import reset_context_builder
 from agents.dispatch import assemble_response_node
-from agents.entity_resolution import lookup_entities_by_key
-from agents.entity_registry import get_entity_registry, reset_entity_registry
+from agents.entity_registry import reset_entity_registry
 from agents.query_provenance import build_query_provenance
 from graphs.core import reset_core_graph, run_query
 from models.state import EntityQuery, MyceliumGraphState, QueryResponse
 from mycelium_mcp.server import _neutral_json_schema
 from network.paths import NetworkPaths
 from network_helpers import import_seed_for_test
+from registry_helpers import lookup_entities_by_name
 from storage.core import reset_storage
 from versioned_storage_fixtures import versioned_found
 
@@ -73,10 +73,9 @@ def _configure_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
 
 
 def _seed_entity_id() -> str:
-    registry = get_entity_registry()
-    matches = registry.lookup_by_name("Paul Murphy")
+    matches = lookup_entities_by_name("Paul Murphy")
     assert matches
-    return str(matches[0].id)
+    return str(matches[0]["id"])
 
 
 def _write_linkedin_storage(agent_data: Path, entity_id: str) -> dict:
@@ -215,7 +214,7 @@ def test_assemble_response_provenance_includes_bind_fields_when_requested(
     entity_id, _agent_data = provenance_env
     state = MyceliumGraphState(
         query=EntityQuery(
-            entity_key="Paul Murphy",
+            id=entity_id,
             requested_attributes=["name", "employer"],
             provenance=True,
         ),
@@ -247,7 +246,7 @@ def test_assemble_response_attaches_provenance_when_requested(
     entity_id, _agent_data = provenance_env
     state = MyceliumGraphState(
         query=EntityQuery(
-            entity_key="Paul Murphy",
+            id=entity_id,
             requested_attributes=["linkedin"],
             provenance=True,
         ),
@@ -280,7 +279,7 @@ def test_assemble_response_omits_provenance_when_flag_false(
     entity_id, _agent_data = provenance_env
     state = MyceliumGraphState(
         query=EntityQuery(
-            entity_key="Paul Murphy",
+            id=entity_id,
             requested_attributes=["linkedin"],
             provenance=False,
         ),
@@ -307,24 +306,26 @@ def test_run_query_with_provenance_flag(
     provenance_env: tuple[str, str],
 ) -> None:
     entity_id, _agent_data = provenance_env
-    with_prov = run_query(
+    step1_with = run_query(
         EntityQuery(
-            entity_key="Paul Murphy",
+            id=entity_id,
             requested_attributes=["linkedin"],
             provenance=True,
         ),
     )
+    with_prov = run_query(EntityQuery(delivery_id=step1_with.delivery.delivery_id))
     assert with_prov.outcome == "assembled"
     assert with_prov.provenance is not None
     assert with_prov.provenance["entities"][0]["id"] == entity_id
 
-    without_prov = run_query(
+    step1_without = run_query(
         EntityQuery(
-            entity_key="Paul Murphy",
+            id=entity_id,
             requested_attributes=["linkedin"],
             provenance=False,
         ),
     )
+    without_prov = run_query(EntityQuery(delivery_id=step1_without.delivery.delivery_id))
     assert without_prov.provenance is None
 
 
@@ -341,7 +342,7 @@ def test_build_query_provenance_multi_match_entities(
     reset_category_tree()
     get_category_tree()
     import_seed_for_test(tmp_path / "seed.json")
-    matches = lookup_entities_by_key("Kevin Zhang")
+    matches = lookup_entities_by_name("Kevin Zhang")
     assert len(matches) == 2
     entity_ids = [str(match["id"]) for match in matches]
     agent_path = Path(agent_data)

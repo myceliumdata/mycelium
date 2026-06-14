@@ -14,10 +14,10 @@ from typing import Any
 import pytest
 
 from network_helpers import NETWORK_PATH_ENV_KEYS, clear_network_path_env, import_seed_at_root
-from graphs.core import reset_core_graph, run_query
-from models.state import EntityQuery
+from graphs.core import reset_core_graph
 from network.paths import NetworkPaths, apply_network_paths, resolve_network_root
 from network.registry import register_network
+from registry_helpers import resolve_and_deliver, step1_resolve
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
@@ -225,8 +225,8 @@ def test_network_dir_overrides_registry_default_query(
     root = resolve_network_root(cli_network_dir=str(override_root))
     _activate_network(root)
 
-    response = run_query(
-        EntityQuery(entity_key="Override Only"),
+    _step1, response = resolve_and_deliver(
+        lookup={"name": "Override Only"},
         thread_id=_unique_thread_id("override"),
     )
     assert len(response.results) == 1
@@ -249,8 +249,8 @@ def test_query_via_registered_network_name(
     root = resolve_network_root(cli_network_name="my_net")
     _activate_network(root)
 
-    response = run_query(
-        EntityQuery(entity_key="Registry Person"),
+    _step1, response = resolve_and_deliver(
+        lookup={"name": "Registry Person"},
         thread_id=_unique_thread_id("named"),
     )
     assert response.results[0]["employer"] == "Reg Co"
@@ -272,8 +272,8 @@ def test_plain_query_uses_default_network(
     root = resolve_network_root()
     _activate_network(root)
 
-    response = run_query(
-        EntityQuery(entity_key="Default Person"),
+    _step1, response = resolve_and_deliver(
+        lookup={"name": "Default Person"},
         thread_id=_unique_thread_id("default"),
     )
     assert len(response.results) == 1
@@ -401,15 +401,31 @@ def test_two_network_roots_isolated_query_results(
     _write_network_seed(net_b, [{"name": "Iso B", "employer": "Co B"}])
 
     _activate_network(net_a)
-    resp_a = run_query(EntityQuery(entity_key="Iso A"), thread_id=_unique_thread_id("iso-a"))
+    _step1_a, resp_a = resolve_and_deliver(
+        lookup={"name": "Iso A"},
+        thread_id=_unique_thread_id("iso-a"),
+    )
     assert resp_a.results[0]["employer"] == "Co A"
-    assert run_query(EntityQuery(entity_key="Iso B"), thread_id=_unique_thread_id("iso-a-miss")).results == []
+    miss_a = step1_resolve(
+        lookup={"name": "Iso B"},
+        thread_id=_unique_thread_id("iso-a-miss"),
+    )
+    assert miss_a.outcome == "lookup_incomplete"
+    assert miss_a.results == []
 
     _activate_network(net_b)
     reset_core_graph()
-    resp_b = run_query(EntityQuery(entity_key="Iso B"), thread_id=_unique_thread_id("iso-b"))
+    _step1_b, resp_b = resolve_and_deliver(
+        lookup={"name": "Iso B"},
+        thread_id=_unique_thread_id("iso-b"),
+    )
     assert resp_b.results[0]["employer"] == "Co B"
-    assert run_query(EntityQuery(entity_key="Iso A"), thread_id=_unique_thread_id("iso-b-miss")).results == []
+    miss_b = step1_resolve(
+        lookup={"name": "Iso A"},
+        thread_id=_unique_thread_id("iso-b-miss"),
+    )
+    assert miss_b.outcome == "lookup_incomplete"
+    assert miss_b.results == []
 
 
 # --- 4. Example network bootstrap ---

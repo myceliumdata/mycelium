@@ -302,7 +302,14 @@ def test_metering_disabled_no_quote(
     _mock_email_research(monkeypatch)
     import_seed_for_test(seed)
     reset_core_graph()
-    resp = run_query(EntityQuery(entity_key="Andrea Kalmans", requested_attributes=["email"]))
+    registry = get_entity_registry()
+    entity_ids = registry.lookup_by_target_lookup(
+        {"name": "Andrea Kalmans", "employer": "Lontra Ventures"},
+    )
+    assert len(entity_ids) == 1
+    step1 = run_query(EntityQuery(id=entity_ids[0], requested_attributes=["email"]))
+    assert step1.delivery is not None
+    resp = run_query(EntityQuery(delivery_id=step1.delivery.delivery_id))
     assert resp.outcome == "assembled"
     assert resp.quote is None
 
@@ -315,15 +322,9 @@ def test_production_quote_then_accept(
     _ = crm_metering_env
     _mock_email_research(monkeypatch)
 
-    bound = run_query(
-        EntityQuery(entity_key="Paul Murphy", binding={"employer": "Acme Corp"}),
-    )
-    assert bound.outcome == "entity_validated"
-
     quoted = run_query(
         EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
+            lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
             requested_attributes=["email"],
         ),
     )
@@ -334,12 +335,11 @@ def test_production_quote_then_accept(
     assert "research" in meters
     assert "query_value" in meters
     quote_id = quoted.quote["quote_id"]
+    assert quoted.delivery is not None
 
     accepted = run_query(
         EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
-            requested_attributes=["email"],
+            delivery_id=quoted.delivery.delivery_id,
             quote_id=quote_id,
         ),
     )
@@ -359,21 +359,17 @@ def test_consumption_quote_cache_hit(
 ) -> None:
     _ = crm_metering_env
     calls = _mock_email_research(monkeypatch)
-
-    run_query(EntityQuery(entity_key="Paul Murphy", binding={"employer": "Acme Corp"}))
     first = run_query(
         EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
+            lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
             requested_attributes=["email"],
         ),
     )
     quote_id = first.quote["quote_id"]
+    assert first.delivery is not None
     run_query(
         EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
-            requested_attributes=["email"],
+            delivery_id=first.delivery.delivery_id,
             quote_id=quote_id,
         ),
     )
@@ -381,8 +377,7 @@ def test_consumption_quote_cache_hit(
 
     second = run_query(
         EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
+            lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
             requested_attributes=["email"],
         ),
     )
@@ -402,16 +397,17 @@ def test_auto_accept_bypasses_gate(
     _mock_email_research(monkeypatch)
     monkeypatch.setenv("MYCELIUM_AUTO_ACCEPT_QUOTES", "1")
     reset_core_graph()
-
-    run_query(EntityQuery(entity_key="Paul Murphy", binding={"employer": "Acme Corp"}))
-    resp = run_query(
+    step1 = run_query(
         EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
+            lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
             requested_attributes=["email"],
         ),
     )
+    assert step1.outcome == "lookup_resolved"
+    assert step1.delivery is not None
+    resp = run_query(EntityQuery(delivery_id=step1.delivery.delivery_id))
     assert resp.outcome == "assembled"
+    assert step1.quote is None
     assert resp.quote is None
 
 
@@ -422,12 +418,17 @@ def test_invalid_quote_id_rejected(
 ) -> None:
     _ = crm_metering_env
     _mock_email_research(monkeypatch)
-    run_query(EntityQuery(entity_key="Paul Murphy", binding={"employer": "Acme Corp"}))
+    step1 = run_query(
+        EntityQuery(
+            lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
+            requested_attributes=["email"],
+        ),
+    )
+    assert step1.outcome == "quote_required"
+    assert step1.delivery is not None
     resp = run_query(
         EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
-            requested_attributes=["email"],
+            delivery_id=step1.delivery.delivery_id,
             quote_id="q_invalid",
         ),
     )
@@ -443,17 +444,19 @@ def test_validation_still_free(
     _ = crm_metering_env
     _mock_email_research(monkeypatch)
     resp = run_query(
-        EntityQuery(entity_key="Paul Murphy", binding={"employer": "Acme Corp"}),
+        EntityQuery(lookup={"name": "Paul Murphy", "employer": "Acme Corp"}),
     )
-    assert resp.outcome == "entity_validated"
+    assert resp.outcome == "lookup_resolved"
+    assert resp.delivery is not None
     assert resp.quote is None
 
 
 @pytest.mark.smoke
 def test_should_meter_skips_unknown() -> None:
     state = MyceliumGraphState(
-        query=EntityQuery(entity_key="X", requested_attributes=["email"]),
+        query=EntityQuery(lookup={"name": "X"}, requested_attributes=["email"]),
         entity_resolution_kind="unknown",
+        validation_passed=False,
     )
     assert should_meter(state) is False
 
@@ -479,7 +482,7 @@ def test_resolve_cache_state_hit_from_entitlement(
 @pytest.mark.smoke
 def test_build_workload_spec_from_state() -> None:
     state = MyceliumGraphState(
-        query=EntityQuery(entity_key="Paul", requested_attributes=["email"]),
+        query=EntityQuery(id="uuid-1", requested_attributes=["email"]),
         current_id="uuid-1",
     )
     spec = build_workload_spec(state)
@@ -509,7 +512,7 @@ def test_provenance_meter_on_quote(tmp_path: Path) -> None:
 
     state = MyceliumGraphState(
         query=EntityQuery(
-            entity_key="Paul",
+            id="uuid-prov",
             requested_attributes=["email"],
             provenance=True,
         ),
@@ -536,29 +539,24 @@ def test_full_duplicate_cache_hit_includes_production(
         default_funding_model="full_duplicate",
     )
     reset_core_graph()
-
-    run_query(EntityQuery(entity_key="Paul Murphy", binding={"employer": "Acme Corp"}))
     first = run_query(
         EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
+            lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
             requested_attributes=["email"],
         ),
     )
     quote_id = first.quote["quote_id"]
+    assert first.delivery is not None
     run_query(
         EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
-            requested_attributes=["email"],
+            delivery_id=first.delivery.delivery_id,
             quote_id=quote_id,
         ),
     )
 
     second = run_query(
         EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
+            lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
             requested_attributes=["email"],
         ),
     )
@@ -584,12 +582,9 @@ def test_meter_first_delivery_false_first_quote(
         meter_first_delivery=False,
     )
     reset_core_graph()
-
-    run_query(EntityQuery(entity_key="Paul Murphy", binding={"employer": "Acme Corp"}))
     first = run_query(
         EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
+            lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
             requested_attributes=["email"],
         ),
     )
@@ -598,18 +593,16 @@ def test_meter_first_delivery_false_first_quote(
     assert meters == {"research"}
 
     quote_id = first.quote["quote_id"]
+    assert first.delivery is not None
     run_query(
         EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
-            requested_attributes=["email"],
+            delivery_id=first.delivery.delivery_id,
             quote_id=quote_id,
         ),
     )
     second = run_query(
         EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
+            lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
             requested_attributes=["email"],
         ),
     )
@@ -634,12 +627,9 @@ def test_sponsor_public_principal_required_e2e(
         default_funding_model="sponsor_public",
     )
     reset_core_graph()
-
-    run_query(EntityQuery(entity_key="Paul Murphy", binding={"employer": "Acme Corp"}))
     resp = run_query(
         EntityQuery(
-            entity_key="Paul Murphy",
-            binding={"employer": "Acme Corp"},
+            lookup={"name": "Paul Murphy", "employer": "Acme Corp"},
             requested_attributes=["email"],
         ),
     )
