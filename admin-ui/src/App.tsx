@@ -404,6 +404,7 @@ export default function App() {
     setResolveMode(mode);
     if (mode === "id") {
       setLookupValues(emptyLookupValues(bindFields));
+      setQueryConfirmNewEntity(false);
     } else {
       setQueryRegistryId("");
     }
@@ -444,7 +445,6 @@ export default function App() {
         body = {
           id,
           requested_attributes: attrs.length > 0 ? attrs : undefined,
-          confirm_new_entity: queryConfirmNewEntity || undefined,
         };
       } else {
         const lookup = buildLookupPayload(lookupValues, bindFields);
@@ -550,6 +550,14 @@ export default function App() {
 
   const singleMatch =
     status?.entity_matches === 1 ? status.entity_match_summaries[0] : null;
+
+  const querySuggestions = queryResult?.suggestions ?? [];
+  const queryRequiredFields = queryResult?.required_fields ?? [];
+  const showStatusSuggestions =
+    querySuggestions.length === 0 && (status?.entity_suggestions.length ?? 0) > 0;
+  const showStatusRequiredFields =
+    queryRequiredFields.length === 0 &&
+    (status?.entity_required_fields.length ?? 0) > 0;
 
   return (
     <div className="app">
@@ -880,13 +888,13 @@ export default function App() {
                   </>
                 )}
               </p>
-              {status.entity_required_fields.length > 0 && (
+              {showStatusRequiredFields && (
                 <p>
                   <strong>Required fields:</strong>{" "}
                   {status.entity_required_fields.join(", ")}
                 </p>
               )}
-              {status.entity_suggestions.length > 0 && (
+              {showStatusSuggestions && (
                 <div>
                   <p>
                     <strong>Suggestions:</strong>
