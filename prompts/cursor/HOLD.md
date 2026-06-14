@@ -10,7 +10,7 @@
 
 **Manual gate:** [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](../../docs/manual-checks/2026-06-13-program2-post-program-gate.md) — pending.
 
-**Next:** Push after gate CLEAR; Program 3 when ready.
+**Next:** Push after gate CLEAR; **Program 3** = entity protocol legacy cleanup ([`entity-protocol-legacy-cleanup-program.md`](../../docs/plans/entity-protocol-legacy-cleanup-program.md)).
 
 **Git:** 5 commits ahead of `origin/main` (Program 2 + polish). No push until Paul asks. See `WORKFLOW.md` §4.
 

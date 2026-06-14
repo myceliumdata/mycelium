@@ -11,14 +11,15 @@
 | **Program 1 — Provenance** | **Complete** — pushed June 2026 |
 | **MVR redesign** | **Complete** (M1–M10) — on `origin/main` |
 | **Program 2 — MVR / entity storage** | **Complete locally** (Slices 1–3 + polish) — manual gate pending → push |
-| **Program 3 — Operator write** | Next — admin edit + force re-research |
+| **Program 3 — Entity protocol legacy cleanup** | **Next** (Paul) — remove name/`entity_key`/status `--entity` special cases — [`entity-protocol-legacy-cleanup-program.md`](entity-protocol-legacy-cleanup-program.md) |
+| **Program 4 — Operator write** | Deferred — admin edit + force re-research (after Program 3) |
 | **Toolbox** | TBD (Paul to define) |
 | **Research robustness** | Backlog — [`research-robustness-backlog.md`](research-robustness-backlog.md) |
 | **Website sync** | Review [myceliumdata.org](https://myceliumdata.org) after major pushes |
 
 **Manual gate:** [`2026-06-13-program2-post-program-gate.md`](../manual-checks/2026-06-13-program2-post-program-gate.md) — run before push.
 
-**Active Cursor prompt:** None — Program 2 complete; queue Program 3 when ready.
+**Active Cursor prompt:** None — finish Program 2 manual gate; then lock Program 3.
 
 ---
 
@@ -50,7 +51,8 @@
 
 | Track | Why |
 |-------|-----|
-| **Program 3** | Operator edit + force re-research UI |
+| **Program 3** | Legacy protocol cleanup — one MVR `lookup` story for query, status, admin |
+| **Program 4** | Operator edit + force re-research UI |
 | **Research robustness** | Independent hardening |
 | **Toolbox** | Paul defines |
 
@@ -64,4 +66,4 @@
 
 ---
 
-*Updated: June 2026 (Program 2 complete; Program 3 next)*
+*Updated: June 2026 (Program 2 gate pending; Program 3 = legacy cleanup per Paul)*
