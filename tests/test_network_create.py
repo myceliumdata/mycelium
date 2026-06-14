@@ -239,7 +239,7 @@ def test_create_network_rejects_existing_without_force(
     root = tmp_path / "existing"
     root.mkdir()
     (root / "network.json").write_text("{}", encoding="utf-8")
-    seed = _write_seed(tmp_path / "seed.json", [{"name": "X"}])
+    seed = _write_seed(tmp_path / "seed.json", [{"name": "X", "employer": "Y"}])
 
     with pytest.raises(ValueError, match="network.json present"):
         create_network(
@@ -278,7 +278,10 @@ def test_create_network_force_overwrites_ontology(
 ) -> None:
     _isolated_registry(monkeypatch, tmp_path)
     root = tmp_path / "force_net"
-    seed = _write_seed(tmp_path / "seed.json", [{"name": "Force Person"}])
+    seed = _write_seed(
+        tmp_path / "seed.json",
+        [{"name": "Force Person", "employer": "Force Co"}],
+    )
 
     create_network(
         "force_net",
@@ -357,7 +360,10 @@ def test_create_network_force_without_seed_clears_stale_bootstrap(
 ) -> None:
     _isolated_registry(monkeypatch, tmp_path)
     root = tmp_path / "stale_net"
-    seed = _write_seed(tmp_path / "seed.json", [{"name": "Stale Person"}])
+    seed = _write_seed(
+        tmp_path / "seed.json",
+        [{"name": "Stale Person", "employer": "Stale Co"}],
+    )
 
     create_network(
         "stale_net",
@@ -390,7 +396,10 @@ def test_create_network_mcp_snippet_contains_network_root(
 ) -> None:
     _isolated_registry(monkeypatch, tmp_path)
     root = tmp_path / "mcp_net"
-    seed = _write_seed(tmp_path / "seed.json", [{"name": "MCP Person"}])
+    seed = _write_seed(
+        tmp_path / "seed.json",
+        [{"name": "MCP Person", "employer": "MCP Co"}],
+    )
 
     result = create_network(
         "mcp_net",

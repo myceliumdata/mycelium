@@ -22,17 +22,64 @@ def _default_entities_path() -> Path:
     return runtime_path("MYCELIUM_ENTITIES_PATH")
 
 
+def require_full_bind_values(
+    bind_values: dict[str, str],
+    bind_fields: list[str],
+) -> dict[str, str]:
+    """Require every MVR bind field present and non-empty (no silent padding)."""
+    fields = [field.strip().lower() for field in bind_fields if field.strip()]
+    if not fields:
+        raise ValueError("bind_fields must not be empty")
+    normalized: dict[str, str] = {}
+    missing: list[str] = []
+    for field in fields:
+        raw = bind_values.get(field)
+        if raw is None or not str(raw).strip():
+            missing.append(field)
+        else:
+            normalized[field] = str(raw).strip()
+    if missing:
+        raise ValueError(
+            f"bind_values missing or empty MVR fields: {missing}",
+        )
+    return normalized
+
+
 def make_bind_key(
     bind_values: dict[str, str],
     bind_fields: list[str],
 ) -> str:
     """Normalized compound bind index key from MVR bind field values."""
-    parts: list[str] = []
-    for field in bind_fields:
-        key = field.strip().lower()
-        raw = bind_values.get(key, "")
-        parts.append(normalize_field_index_value(str(raw)))
+    fields = [field.strip().lower() for field in bind_fields if field.strip()]
+    values = require_full_bind_values(bind_values, bind_fields)
+    parts = [normalize_field_index_value(values[field]) for field in fields]
     return "|".join(parts)
+
+
+class LegacyEntitiesSchemaError(ValueError):
+    """entities.json row uses pre-Program-3 top-level name/employer without bind_values."""
+
+
+def _reject_legacy_entity_rows(raw: object, path: Path) -> None:
+    if not isinstance(raw, dict):
+        return
+    entities = raw.get("entities")
+    if not isinstance(entities, dict):
+        return
+    for entity_id, row in entities.items():
+        if not isinstance(row, dict):
+            continue
+        bind_values = row.get("bind_values")
+        has_bind = isinstance(bind_values, dict) and bool(bind_values)
+        has_legacy_top = ("name" in row and row.get("name")) or (
+            "employer" in row and row.get("employer")
+        )
+        if has_legacy_top and not has_bind:
+            raise LegacyEntitiesSchemaError(
+                f"entities.json entity {entity_id!r} at {path} has legacy "
+                f"top-level name/employer without bind_values. "
+                f"Run: ./bin/refresh-example-network <network> --yes",
+            )
 
 
 class RegistryEntity(BaseModel):
@@ -57,14 +104,6 @@ class RegistryEntity(BaseModel):
             return None
         return str(raw).strip()
 
-    @property
-    def name(self) -> str:
-        return self.bind_value("name") or ""
-
-    @property
-    def employer(self) -> str | None:
-        return self.bind_value("employer")
-
 
 class EntitiesDocument(BaseModel):
     version: str = "1.0"
@@ -77,8 +116,8 @@ def registry_entity_to_match(entity: RegistryEntity) -> dict[str, Any]:
     """Shape registry row for supervisor / response builders."""
     return {
         "id": entity.id,
-        "name": entity.name,
-        "employer": entity.employer,
+        "name": entity.bind_value("name"),
+        "employer": entity.bind_value("employer"),
         "_registry": True,
         "_validation_state": entity.validation_state,
     }
@@ -110,7 +149,10 @@ class EntityRegistry:
             return
         try:
             raw = json.loads(self.path.read_text(encoding="utf-8"))
+            _reject_legacy_entity_rows(raw, self.path)
             self._data = EntitiesDocument.model_validate(raw)
+        except LegacyEntitiesSchemaError:
+            raise
         except (OSError, json.JSONDecodeError, ValueError):
             self._data = EntitiesDocument()
         self._rebuild_field_indexes()
@@ -196,10 +238,12 @@ class EntityRegistry:
         return entities
 
     def assign_bind_index(self, entity_id: str, bind_values: dict[str, str]) -> None:
-        self._data.bind_index[make_bind_key(bind_values, self._bind_fields())] = entity_id
+        bind_fields = self._bind_fields()
+        self._data.bind_index[make_bind_key(bind_values, bind_fields)] = entity_id
 
     def pop_bind_index(self, bind_values: dict[str, str]) -> None:
-        self._data.bind_index.pop(make_bind_key(bind_values, self._bind_fields()), None)
+        bind_fields = self._bind_fields()
+        self._data.bind_index.pop(make_bind_key(bind_values, bind_fields), None)
 
     def register_entity(self, entity: RegistryEntity) -> None:
         self._data.entities[entity.id] = entity

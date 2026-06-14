@@ -41,18 +41,22 @@ def _same_name_different_employer_suggestions(
     lookup_employer = normalize_field_index_value(employer)
     suggestions: list[LookupSuggestion] = []
     for entity in get_entity_registry().lookup_by_field("name", name):
-        entity_employer = normalize_field_index_value(entity.employer or "")
+        entity_employer = normalize_field_index_value(
+            entity.bind_value("employer") or "",
+        )
         if entity_employer == lookup_employer:
             continue
-        suggested_lookup: dict[str, str] = {"name": entity.name}
-        if entity.employer:
-            suggested_lookup["employer"] = entity.employer
+        entity_name = entity.bind_value("name") or ""
+        entity_employer_value = entity.bind_value("employer")
+        suggested_lookup: dict[str, str] = {"name": entity_name}
+        if entity_employer_value:
+            suggested_lookup["employer"] = entity_employer_value
         suggestions.append(
             lookup_suggestion(
                 suggested_lookup=suggested_lookup,
                 id=entity.id,
-                name=entity.name,
-                employer=entity.employer,
+                name=entity_name,
+                employer=entity_employer_value,
                 score=1.0,
                 reason="same_name_different_employer",
             ),

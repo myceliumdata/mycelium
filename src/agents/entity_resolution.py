@@ -60,7 +60,7 @@ def _rank_suggestions(entity_key: str) -> list[LookupSuggestion]:
     candidates: list[LookupSuggestion] = []
 
     for entity in get_entity_registry().list_entities():
-        name = entity.name or ""
+        name = entity.bind_value("name") or ""
         candidate_norm = normalize_name_for_comparison(name)
         if not candidate_norm:
             continue
@@ -74,7 +74,7 @@ def _rank_suggestions(entity_key: str) -> list[LookupSuggestion]:
                 suggested_lookup={"name": name},
                 id=entity.id,
                 name=name,
-                employer=entity.employer,
+                employer=entity.bind_value("employer"),
                 score=score,
                 reason="sequence_ratio",
             ),
@@ -91,7 +91,7 @@ def _rank_employer_suggestions(employer: str) -> list[LookupSuggestion]:
 
     canonical_by_norm: dict[str, str] = {}
     for entity in get_entity_registry().list_entities():
-        raw_employer = entity.employer
+        raw_employer = entity.bind_value("employer")
         if raw_employer is None or not str(raw_employer).strip():
             continue
         canonical = str(raw_employer)

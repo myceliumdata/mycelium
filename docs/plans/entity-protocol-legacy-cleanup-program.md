@@ -1,6 +1,6 @@
 # Program 3 — Entity protocol legacy cleanup
 
-**Status:** **Complete** — manual gate **CLEAR** (2026-06-14); tag `program_3`. Polish slice **1560** still queued (P1–P4 nits).  
+**Status:** **Complete** — manual gate **CLEAR** (2026-06-14); tag `program_3`. Polish slice **1560** complete (P1–P4).  
 **Prerequisite:** Program 2 manual gate **CLEAR** (2026-06-14) — tag `program_2`  
 **Supersedes:** Prior “Program 3 = operator write” ordering — operator UI moves to **Program 4**
 
@@ -69,7 +69,7 @@ Program 2 fixed bind **storage** (specialist `versions[]`). Program 3 removes le
 
 Each slice: smoke tests + `./bin/ci-local`. Cursor does **not** edit `TODO.md`.
 
-**Program final slice:** `1560` (polish) — Grok runs full integration (`pytest -m full`) at review.
+**Program final slice:** `1560` (polish) — **complete**; Grok runs full integration (`pytest -m full`) at review.
 
 ---
 

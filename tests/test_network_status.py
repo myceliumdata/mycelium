@@ -7,11 +7,13 @@ import os
 import shutil
 import subprocess
 import sys
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
-from agents.entity_registry import get_entity_registry, reset_entity_registry
+from agents.entity_registry import RegistryEntity, get_entity_registry, reset_entity_registry
 from registry_helpers import lookup_entities_by_name as lookup_entities_by_key
 from network_helpers import import_seed_for_test
 from network.introspection import (
@@ -370,12 +372,11 @@ def test_status_bind_rows_include_empty_employer(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    """Regression: status lists every MVR bind row even when employer value is null.
+    """Regression: status lists every MVR bind row even when employer is absent.
 
-    Uses a synthetic registry row (bind_provisional + promote_validated) because
-    query flow cannot produce this state — full MVR is required for deliver and
-    validate_entity rejects empty employer. Guards polish P5 (removed skip that
-    hid empty employer in _bind_field_statuses), not a production bind scenario.
+    Uses a synthetic registry row (direct ``bind_values`` without employer) because
+    bind_index operations require full MVR (Program 3 polish P4). Guards status
+    display of missing bind fields, not a production bind scenario.
     """
     root = tmp_path / "empty_employer"
     root.mkdir()
@@ -383,10 +384,18 @@ def test_status_bind_rows_include_empty_employer(
     shutil.copy(SAMPLE_CATEGORIES, root / "categories.json")
     _configure_root(monkeypatch, tmp_path, root)
     registry = get_entity_registry()
-    entity, _ = registry.bind_provisional("Solo Name", "")
-    registry.promote_validated(entity.id)
+    entity_id = str(uuid.uuid4())
+    entity = RegistryEntity(
+        id=entity_id,
+        bind_values={"name": "Solo Name"},
+        validation_state="validated",
+        source="test_fixture",
+        created_at=datetime.now(timezone.utc).isoformat(),
+    )
+    registry.register_entity(entity)
+    registry.save_entity(entity)
 
-    summary = build_network_status(resolve_id=entity.id)
+    summary = build_network_status(resolve_id=entity_id)
     employer = next(
         item for item in summary.entity_fields if item.field == "employer"
     )

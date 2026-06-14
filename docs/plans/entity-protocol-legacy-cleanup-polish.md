@@ -1,6 +1,6 @@
 # Program 3 — Polish backlog (post Slice 1550)
 
-**Status:** Queued — run **after** slices 1500–1550  
+**Status:** **Complete** — polish slice 1560 (June 2026)  
 **Cursor prompt:** `prompts/cursor/next/2026-06-14-1560-program3-polish.md`  
 **Program:** [`entity-protocol-legacy-cleanup-program.md`](entity-protocol-legacy-cleanup-program.md)
 
@@ -16,10 +16,10 @@ Non-blocking nits from Grok review of Program 3 slices. One polish pass at progr
 
 | # | Source | Nit | Polish action |
 |---|--------|-----|----------------|
-| P1 | 1500 review N1 | `RegistryEntity.name` / `.employer` **properties** — disk is `bind_values` only (Option A); properties keep CRM-flavored accessors alive | Remove properties; migrate internal callers to `bind_value("name")` / `bind_value("employer")` or explicit map reads |
-| P2 | 1500 review N2 | `ensure_entity_bind_fields` still **`require lookup.name`** | **Still open** (1510 closed `mvr.py` helpers only) — require all `mvr.bind_fields` for new entity / bind_index key in `attribute_write.py` |
-| P3 | 1500 review N3 | Legacy `entities.json` rows with top-level `name`/`employer` load as empty `bind_values` (Pydantic ignores extras) | Fail loud in `EntityRegistry._load` with actionable error (“refresh network” / invalid schema version) |
-| P4 | 1500 review N4 | `lookup_by_bind_values` / `make_bind_key` with **partial** `bind_values` pads missing fields as `""` | Require full MVR `bind_values` for bind_index lookup/assign; raise `ValueError` if any `mvr.bind_fields` key missing or empty |
+| P1 | 1500 review N1 | `RegistryEntity.name` / `.employer` **properties** — disk is `bind_values` only (Option A); properties keep CRM-flavored accessors alive | **Done** — properties removed; callers use `bind_value()` |
+| P2 | 1500 review N2 | `ensure_entity_bind_fields` still **`require lookup.name`** | **Done** — `require_full_bind_values` for all `mvr.bind_fields`; `test_ensure_entity_bind_fields_requires_all_mvr_fields` |
+| P3 | 1500 review N3 | Legacy `entities.json` rows with top-level `name`/`employer` load as empty `bind_values` (Pydantic ignores extras) | **Done** — `LegacyEntitiesSchemaError` in `_load`; `test_legacy_entities_json_load_fails_loud` |
+| P4 | 1500 review N4 | `lookup_by_bind_values` / `make_bind_key` with **partial** `bind_values` pads missing fields as `""` | **Done** — `require_full_bind_values`; `test_make_bind_key_partial_bind_values_raises`, `test_lookup_by_bind_values_requires_full_mvr` |
 
 ### From later slices (Grok fills before 1560)
 
@@ -35,11 +35,11 @@ Non-blocking nits from Grok review of Program 3 slices. One polish pass at progr
 
 ## Exit criteria
 
-- [ ] P1–P4 addressed (P2 verified or fixed)
-- [ ] P5–P9 addressed or marked **waived** in `output.md`
-- [ ] `./bin/ci-local` green
-- [ ] No Program 4 scope creep
+- [x] P1–P4 addressed (P2 verified or fixed)
+- [x] P5–P9 addressed or marked **waived** in `output.md`
+- [x] `./bin/ci-local` green
+- [x] No Program 4 scope creep
 
 ---
 
-*Last updated: 2026-06-14 (1550 review — P9 none)*
+*Last updated: 2026-06-14 (1560 polish complete)*

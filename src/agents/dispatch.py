@@ -351,7 +351,10 @@ def validate_entity_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str
             logs.append(f"validate_entity: skip (registry row missing {entity_id}).")
             continue
 
-        contribs = run_mvr_validation(entity.name, entity.employer)
+        contribs = run_mvr_validation(
+            entity.bind_value("name") or "",
+            entity.bind_value("employer"),
+        )
         all_contribs.extend(contribs)
         if not logs:
             logs.append(

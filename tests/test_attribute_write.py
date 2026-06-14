@@ -97,8 +97,8 @@ def test_bind_creates_specialist_versions_and_cache(attribute_write_env: CoreSto
         validation_state="provisional",
     )
     assert created is False
-    assert entity.name == "Road Runner"
-    assert entity.employer == "Acme Corp"
+    assert entity.bind_value("name") == "Road Runner"
+    assert entity.bind_value("employer") == "Acme Corp"
     assert entity.attr_sources["name"] == "demographic"
     assert entity.attr_sources["employer"] == "professional"
 
@@ -169,6 +169,19 @@ def test_unmapped_mvr_field_raises(attribute_write_env: CoreStorage) -> None:
 
 
 @pytest.mark.smoke
+def test_ensure_entity_bind_fields_requires_all_mvr_fields(
+    attribute_write_env: CoreStorage,
+) -> None:
+    _ = attribute_write_env
+    with pytest.raises(ValueError, match="missing or empty MVR fields"):
+        ensure_entity_bind_fields(
+            {"name": "Paul Murphy"},
+            source="query_bind",
+            validation_state="provisional",
+        )
+
+
+@pytest.mark.smoke
 def test_import_seed_writes_specialist_versions(attribute_write_env: CoreStorage) -> None:
     _ = attribute_write_env
     import os
@@ -200,8 +213,8 @@ def test_bind_provisional_from_scope_uses_unified_write(
         create_on_deliver=True,
     )
     entity = bind_provisional_from_scope(scope)
-    assert entity.name == "Scope Person"
-    assert entity.employer == "Scope Inc"
+    assert entity.bind_value("name") == "Scope Person"
+    assert entity.bind_value("employer") == "Scope Inc"
 
     name_entry = _specialist_field(entity.id, "demographic", "name")
     assert name_entry is not None
@@ -301,8 +314,8 @@ def test_bind_provisional_from_scope_collects_all_mvr_bind_fields(
         create_on_deliver=True,
     )
     entity = bind_provisional_from_scope(scope)
-    assert entity.name == "Acct Person"
-    assert entity.employer == "Acct Co"
+    assert entity.bind_value("name") == "Acct Person"
+    assert entity.bind_value("employer") == "Acct Co"
 
     account_entry = _specialist_field(entity.id, "contact", "account_id")
     assert account_entry is not None

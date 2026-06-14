@@ -19,6 +19,7 @@ from agents.entity_registry import (
     RegistryEntity,
     get_entity_registry,
     make_bind_key,
+    require_full_bind_values,
 )
 from agents.specialist_fields import append_version, current_value_matches
 from agents.specialists.base import SpecialistStorage
@@ -108,11 +109,7 @@ def _apply_cache_field(entity: RegistryEntity, field: str, value: str) -> None:
 def _cache_values(entity: RegistryEntity, mvr: Any | None = None) -> dict[str, str]:
     """Snapshot bind_values used for ``bind_index`` (all ``mvr.bind_fields``)."""
     policy = mvr if mvr is not None else load_mvr()
-    return {
-        field.strip().lower(): entity.bind_values.get(field.strip().lower(), "")
-        for field in policy.bind_fields
-        if field.strip()
-    }
+    return require_full_bind_values(entity.bind_values, list(policy.bind_fields))
 
 
 def write_bind_fields(
@@ -144,8 +141,13 @@ def write_bind_fields(
     if unknown:
         raise ValueError(f"fields not in mvr.bind_fields: {sorted(unknown)}")
 
-    old_values = _cache_values(entity, mvr)
-    old_key = make_bind_key(old_values, list(mvr.bind_fields))
+    old_values: dict[str, str] | None = None
+    old_key: str | None = None
+    try:
+        old_values = _cache_values(entity, mvr)
+        old_key = make_bind_key(old_values, list(mvr.bind_fields))
+    except ValueError:
+        pass
     now = datetime.now(timezone.utc).isoformat()
 
     _apply_specialist_bind_writes(
@@ -171,7 +173,7 @@ def write_bind_fields(
 
     new_values = _cache_values(entity, mvr)
     new_key = make_bind_key(new_values, list(mvr.bind_fields))
-    if new_key != old_key:
+    if old_values is not None and new_key != old_key:
         reg.pop_bind_index(old_values)
 
     reg.assign_bind_index(entity_id, new_values)
@@ -191,13 +193,7 @@ def ensure_entity_bind_fields(
     reg = registry if registry is not None else get_entity_registry()
     values = normalized_lookup_values({str(k): str(v) for k, v in fields.items()})
     mvr = load_mvr()
-    bind_values = {
-        field.strip().lower(): values[field.strip().lower()]
-        for field in mvr.bind_fields
-        if field.strip().lower() in values
-    }
-    if "name" not in bind_values:
-        raise ValueError("bind fields require lookup.name")
+    bind_values = require_full_bind_values(values, list(mvr.bind_fields))
 
     resolved_actor = actor_kind or (
         "seed_bootstrap" if source == "seed_bootstrap" else "bind"

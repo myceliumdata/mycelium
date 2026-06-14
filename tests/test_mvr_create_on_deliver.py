@@ -252,8 +252,8 @@ def test_full_mvr_zero_matches_step1_delivery_step2_create(
 
     entity = registry.lookup_by_id(created["id"])
     assert entity is not None
-    assert entity.name == "Brand New Person"
-    assert entity.employer == "Never Seen Inc"
+    assert entity.bind_value("name") == "Brand New Person"
+    assert entity.bind_value("employer") == "Never Seen Inc"
 
 
 @pytest.mark.smoke

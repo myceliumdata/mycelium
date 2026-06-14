@@ -58,6 +58,11 @@ def import_seed_file(
     for row in people:
         name = str(row.get("name") or "").strip()
         employer = str(row.get("employer") or "").strip()
+        if not employer:
+            raise ValueError(
+                "Seed people rows must include all MVR bind fields "
+                f"(missing employer for {name!r})",
+            )
         registry.ensure_bound_entity(
             name,
             employer,

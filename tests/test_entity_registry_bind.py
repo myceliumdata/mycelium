@@ -11,7 +11,13 @@ import pytest
 
 from agents.classification import reset_category_tree
 from agents.context import reset_context_builder
-from agents.entity_registry import get_entity_registry, make_bind_key, reset_entity_registry
+from agents.entity_registry import (
+    EntityRegistry,
+    LegacyEntitiesSchemaError,
+    get_entity_registry,
+    make_bind_key,
+    reset_entity_registry,
+)
 from graphs.core import reset_core_graph
 from models.state import EntityQuery
 from network_helpers import import_seed_for_test
@@ -445,3 +451,46 @@ def test_make_bind_key_respects_bind_fields_order() -> None:
     values = {"name": "Ada", "employer": "Lab"}
     assert make_bind_key(values, ["name", "employer"]) == "ada|lab"
     assert make_bind_key(values, ["employer", "name"]) == "lab|ada"
+
+
+@pytest.mark.smoke
+def test_make_bind_key_partial_bind_values_raises() -> None:
+    with pytest.raises(ValueError, match="missing or empty MVR fields"):
+        make_bind_key({"name": "Ada"}, ["name", "employer"])
+
+
+@pytest.mark.smoke
+def test_lookup_by_bind_values_requires_full_mvr(crm_registry_env: CoreStorage) -> None:
+    _ = crm_registry_env
+    registry = get_entity_registry()
+    with pytest.raises(ValueError, match="missing or empty MVR fields"):
+        registry.lookup_by_bind_values({"name": "Paul Murphy"})
+
+
+@pytest.mark.smoke
+def test_legacy_entities_json_load_fails_loud(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entities_path = tmp_path / "entities.json"
+    entities_path.write_text(
+        json.dumps(
+            {
+                "version": "1.0",
+                "entities": {
+                    "legacy-id": {
+                        "id": "legacy-id",
+                        "name": "Paul Murphy",
+                        "employer": "Acme Corp",
+                        "validation_state": "validated",
+                    },
+                },
+                "bind_index": {},
+            },
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(entities_path))
+    reset_entity_registry()
+    with pytest.raises(LegacyEntitiesSchemaError, match="refresh-example-network"):
+        EntityRegistry(path=entities_path)
