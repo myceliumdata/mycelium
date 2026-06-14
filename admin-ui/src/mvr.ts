@@ -96,3 +96,51 @@ export function lookupFromSuggestion(
 export function emptyLookupValues(bindFields: string[]): Record<string, string> {
   return Object.fromEntries(bindFields.map((field) => [field, ""]));
 }
+
+export type StatusFetchParams = {
+  category?: string;
+  entity?: string;
+  lookup?: Record<string, string>;
+};
+
+export function inspectStatusParams(
+  mode: "id" | "lookup",
+  registryId: string,
+  lookupValues: Record<string, string>,
+  bindFields: string[],
+  category?: string,
+): StatusFetchParams {
+  const params: StatusFetchParams = {};
+  if (category) {
+    params.category = category;
+  }
+  if (mode === "id") {
+    const id = registryId.trim();
+    if (id) {
+      params.entity = id;
+    }
+  } else {
+    const lookup = buildLookupPayload(lookupValues, bindFields);
+    if (lookup) {
+      params.lookup = lookup;
+    }
+  }
+  return params;
+}
+
+export function inspectDisplayKey(
+  mode: "id" | "lookup",
+  registryId: string,
+  lookupValues: Record<string, string>,
+  bindFields: string[],
+): string | null {
+  if (mode === "id") {
+    const id = registryId.trim();
+    return id || null;
+  }
+  return statusEntityKeyForResolve(mode, registryId, lookupValues, bindFields);
+}
+
+export function hasStatusTarget(params: StatusFetchParams): boolean {
+  return Boolean(params.entity) || Boolean(params.lookup);
+}

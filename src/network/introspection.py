@@ -465,10 +465,22 @@ def _entity_fields_for_match(
     return fields
 
 
+def _target_lookup_display_key(lookup: dict[str, str]) -> str:
+    name = lookup.get("name", "").strip()
+    if name:
+        return name
+    for value in lookup.values():
+        text = str(value).strip()
+        if text:
+            return text
+    return ""
+
+
 def build_network_status(
     *,
     category_filter: str | None = None,
     entity_key: str | None = None,
+    target_lookup: dict[str, str] | None = None,
 ) -> NetworkStatusSummary:
     """Build a read-only snapshot of the active network."""
     paths = _paths()
@@ -490,7 +502,28 @@ def build_network_status(
     entity_required_fields: list[str] = []
     entity_suggestions: list[dict[str, Any]] = []
     entity_match_summaries: list[EntityMatchSummary] = []
-    if entity_key:
+    status_entity_key = entity_key
+    if target_lookup:
+        from agents.entity_resolution import resolve_status_for_target_lookup
+
+        resolution = resolve_status_for_target_lookup(target_lookup)
+        entity_resolution_kind = resolution.kind
+        entity_required_fields = list(resolution.required_fields)
+        entity_suggestions = [
+            item.model_dump() for item in resolution.suggestions
+        ]
+        matches = resolution.matches
+        entity_matches = len(matches)
+        entity_match_summaries = _match_summaries(matches)
+        status_entity_key = _target_lookup_display_key(target_lookup) or status_entity_key
+        if len(matches) == 1:
+            entity_fields = _entity_fields_for_match(
+                paths,
+                matches[0],
+                agent_map,
+                category_filter=category_filter,
+            )
+    elif entity_key:
         from agents.entity_resolution import resolve_entity_for_lookup
 
         resolution = resolve_entity_for_lookup(entity_key)
@@ -523,7 +556,7 @@ def build_network_status(
             category_filter=category_filter,
         ),
         registry_entity_count=_registry_entity_count(),
-        entity_key=entity_key,
+        entity_key=status_entity_key,
         entity_matches=entity_matches,
         entity_resolution_kind=entity_resolution_kind,
         entity_required_fields=entity_required_fields,

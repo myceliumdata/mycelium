@@ -510,6 +510,37 @@ def test_admin_query_step1_wire_json_shape(
 
 
 @pytest.mark.smoke
+def test_status_lookup_map_single_match(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root = _populated_root(tmp_path)
+    client = _client_for_root(monkeypatch, tmp_path, root)
+
+    response = client.get(
+        "/status",
+        params={
+            "lookup": json.dumps(
+                {
+                    "name": "Andrea Kalmans",
+                    "employer": "Lontra Ventures",
+                },
+            ),
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["entity_matches"] == 1
+    assert payload["entity_key"] == "Andrea Kalmans"
+    assert payload["entity_resolution_kind"] == "exact"
+    bind_fields = [
+        item for item in payload["entity_fields"] if item["field_kind"] == "bind"
+    ]
+    assert {item["field"] for item in bind_fields} == {"name", "employer"}
+
+
+@pytest.mark.smoke
 def test_admin_query_lookup_suggested_shape(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

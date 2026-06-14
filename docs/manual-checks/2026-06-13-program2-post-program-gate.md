@@ -276,13 +276,18 @@ uv run mycelium query --network crm \
 ./bin/restart-admin crm
 ```
 
-Open **http://127.0.0.1:8741/** → **Query & entity lookup** panel.
+**Entity lookup** — Inspect only (no `POST /query`):
 
-1. Run step 1: name `Andrea Kalmans`, employer `Wrong Corp` → badge `lookup_suggested`, suggestions list visible.
-2. Click a suggestion → name + employer fields populate.
-3. **Confirm new entity** checkbox appears → check it → Run again → `lookup_resolved` + `create_on_deliver`.
+1. MVR mode: name `Andrea Kalmans` → **Inspect** → drill-down table via `GET /status`.
+2. Full MVR: name + employer `Lontra Ventures` → **Inspect** uses `GET /status?lookup=…`.
 
-**Automated:** `test_admin_query_lookup_suggested_shape`
+**Run query** — separate step buttons:
+
+1. Step 1 **Run**: Andrea @ Wrong Corp → `lookup_suggested`, suggestions visible.
+2. Click suggestion → fields populate; **Confirm new entity** → Step 1 **Run** → `lookup_resolved` + `create_on_deliver`.
+3. Step 2 **Deliver** with `delivery_id` (not the only Run on the page).
+
+**Automated:** `test_admin_query_lookup_suggested_shape`, `test_status_lookup_map_single_match`
 
 ---
 

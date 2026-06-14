@@ -63,6 +63,7 @@ export function fetchHealth(): Promise<HealthResponse> {
 export function fetchStatus(params?: {
   category?: string;
   entity?: string;
+  lookup?: Record<string, string>;
 }): Promise<StatusResponse> {
   const search = new URLSearchParams();
   if (params?.category) {
@@ -70,6 +71,9 @@ export function fetchStatus(params?: {
   }
   if (params?.entity) {
     search.set("entity", params.entity);
+  }
+  if (params?.lookup && Object.keys(params.lookup).length > 0) {
+    search.set("lookup", JSON.stringify(params.lookup));
   }
   const query = search.toString();
   return fetchJson<StatusResponse>(query ? `/status?${query}` : "/status");

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import uuid
 from typing import Any
@@ -115,11 +116,26 @@ def create_app() -> FastAPI:
     def status(
         category: str | None = None,
         entity: str | None = None,
+        lookup: str | None = None,
     ) -> dict[str, Any]:
+        """Read-only network snapshot. ``lookup`` is a JSON-encoded MVR bind map."""
         _refresh_read_cache()
+        target_lookup: dict[str, str] | None = None
+        if lookup:
+            try:
+                parsed = json.loads(lookup)
+            except json.JSONDecodeError:
+                parsed = None
+            if isinstance(parsed, dict):
+                target_lookup = {
+                    str(key): str(value)
+                    for key, value in parsed.items()
+                    if str(value).strip()
+                } or None
         summary = build_network_status(
             category_filter=category,
-            entity_key=entity,
+            entity_key=entity if not target_lookup else None,
+            target_lookup=target_lookup,
         )
         return status_to_dict(summary)
 

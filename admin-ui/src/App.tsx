@@ -1,20 +1,23 @@
 import {
   FormEvent,
-  Fragment,
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
 import { fetchCapabilities, fetchHealth, fetchStatus, runQuery } from "./api";
-import { formatTimestamp, networkLabel } from "./format";
+import EntityDrilldown from "./EntityDrilldown";
+import { networkLabel } from "./format";
+import ResolveForm from "./ResolveForm";
 import {
-  bindFieldLabel,
   buildLookupPayload,
   emptyLookupValues,
+  hasStatusTarget,
+  inspectDisplayKey,
+  inspectStatusParams,
   lookupFromSuggestion,
   mvrBindFieldsFromPolicy,
-  statusEntityKeyForResolve,
+  type StatusFetchParams,
 } from "./mvr";
 import type {
   CapabilitiesResponse,
@@ -64,131 +67,6 @@ function parseAttributes(raw: string): string[] {
     .filter(Boolean);
 }
 
-function versionStatusBadgeClass(status: string): string {
-  if (status === "found") {
-    return "badge ok";
-  }
-  if (status === "na") {
-    return "badge bad";
-  }
-  if (status === "pending") {
-    return "badge metering";
-  }
-  return "badge neutral";
-}
-
-function formatVersionActor(actor: unknown): string {
-  if (typeof actor !== "object" || actor === null) {
-    return String(actor ?? "");
-  }
-  const typed = actor as {
-    kind?: string;
-    category?: string;
-    specialist?: string;
-  };
-  return [typed.kind, typed.category, typed.specialist]
-    .filter(Boolean)
-    .join(" · ");
-}
-
-function versionSourceUrl(source: unknown): string {
-  if (typeof source === "object" && source !== null && "url" in source) {
-    return String((source as { url?: string }).url ?? "");
-  }
-  return String(source ?? "");
-}
-
-function VersionHistoryPanel({
-  fieldName,
-  versions,
-}: {
-  fieldName: string;
-  versions: Array<Record<string, unknown>>;
-}) {
-  const ordered = [...versions].reverse();
-
-  return (
-    <details className="version-history">
-      <summary>
-        {fieldName} — {versions.length} version
-        {versions.length === 1 ? "" : "s"}
-      </summary>
-      <ol className="version-list">
-        {ordered.map((version) => {
-          const status = String(version.status ?? "—");
-          const sources = Array.isArray(version.sources)
-            ? version.sources
-                .map(versionSourceUrl)
-                .filter((url) => url.length > 0)
-            : [];
-
-          return (
-            <li
-              key={String(version.id ?? version.at)}
-              className="version-card"
-            >
-              <div className="version-card-header">
-                <span className={versionStatusBadgeClass(status)}>
-                  {status}
-                </span>
-                <span className="version-id">
-                  {String(version.id ?? "?")}
-                </span>
-                <time
-                  className="version-time"
-                  dateTime={String(version.at ?? "")}
-                >
-                  {formatTimestamp(version.at)}
-                </time>
-              </div>
-              {version.value != null && String(version.value) !== "" && (
-                <p className="version-detail">
-                  <span className="version-label">Value</span>
-                  {String(version.value)}
-                </p>
-              )}
-              {version.reason != null && String(version.reason) !== "" && (
-                <p className="version-detail">
-                  <span className="version-label">Reason</span>
-                  {String(version.reason)}
-                </p>
-              )}
-              {version.last_error != null &&
-                String(version.last_error) !== "" && (
-                  <p className="version-detail">
-                    <span className="version-label">Error</span>
-                    {String(version.last_error)}
-                  </p>
-                )}
-              {sources.length > 0 && (
-                <p className="version-detail">
-                  <span className="version-label">Sources</span>
-                  {sources.map((url) => (
-                    <a
-                      key={url}
-                      href={url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="version-source-link"
-                    >
-                      {url}
-                    </a>
-                  ))}
-                </p>
-              )}
-              {version.actor != null && (
-                <p className="version-detail muted">
-                  {formatVersionActor(version.actor)}
-                </p>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-    </details>
-  );
-}
-
 export default function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [status, setStatus] = useState<StatusResponse | null>(null);
@@ -200,8 +78,11 @@ export default function App() {
   const [pollError, setPollError] = useState<string | null>(null);
 
   const [entityCategoryLimit, setEntityCategoryLimit] = useState("");
-  const [entityKey, setEntityKey] = useState("");
+  const [statusParams, setStatusParams] = useState<StatusFetchParams>({});
+  const [lastInspectKey, setLastInspectKey] = useState<string | null>(null);
+  const [queryDrilldownActive, setQueryDrilldownActive] = useState(false);
 
+  const [entityLookupPanelOpen, setEntityLookupPanelOpen] = useState(false);
   const [guideCardOpen, setGuideCardOpen] = useState(false);
   const [queryPanelOpen, setQueryPanelOpen] = useState(false);
 
@@ -223,13 +104,20 @@ export default function App() {
   const capsInFlight = useRef(false);
   const prevOntologyPresent = useRef<boolean | null>(null);
 
-  const statusQueryParams = useCallback(
-    () => ({
-      category: entityCategoryLimit || undefined,
-      entity: entityKey || undefined,
-    }),
-    [entityCategoryLimit, entityKey],
-  );
+  const statusQueryParams = useCallback((): StatusFetchParams => {
+    if (lastInspectKey || queryDrilldownActive) {
+      return {
+        ...statusParams,
+        category: entityCategoryLimit || undefined,
+      };
+    }
+    return {};
+  }, [
+    entityCategoryLimit,
+    lastInspectKey,
+    queryDrilldownActive,
+    statusParams,
+  ]);
 
   const fetchCapabilitiesSilent = useCallback(async () => {
     if (capsInFlight.current) {
@@ -360,7 +248,7 @@ export default function App() {
   }, [bindFields.join("|")]);
 
   const fetchStatusNow = useCallback(
-    async (params: { category?: string; entity?: string }) => {
+    async (params: StatusFetchParams) => {
       if (statusInFlight.current) {
         return;
       }
@@ -385,21 +273,6 @@ export default function App() {
     [fetchCapabilitiesSilent],
   );
 
-  const refreshEntityDrilldown = useCallback(
-    (mode: "id" | "lookup", registryId: string, lookup: Record<string, string>) => {
-      const key = statusEntityKeyForResolve(mode, registryId, lookup, bindFields);
-      if (!key) {
-        return;
-      }
-      setEntityKey(key);
-      void fetchStatusNow({
-        category: entityCategoryLimit || undefined,
-        entity: key,
-      });
-    },
-    [bindFields, entityCategoryLimit, fetchStatusNow],
-  );
-
   const onResolveModeChange = (mode: "id" | "lookup") => {
     setResolveMode(mode);
     if (mode === "id") {
@@ -416,47 +289,135 @@ export default function App() {
 
   const onCategoryLimitChange = (category: string) => {
     setEntityCategoryLimit(category);
-    if (entityKey) {
-      void fetchStatusNow({
-        category: category || undefined,
-        entity: entityKey,
-      });
+    const next = {
+      ...statusParams,
+      category: category || undefined,
+    };
+    setStatusParams(next);
+    if (lastInspectKey || queryDrilldownActive) {
+      void fetchStatusNow(next);
     }
   };
 
-  const runQueryRequest = useCallback(
+  const onInspect = () => {
+    const params = inspectStatusParams(
+      resolveMode,
+      queryRegistryId,
+      lookupValues,
+      bindFields,
+      entityCategoryLimit || undefined,
+    );
+    if (!hasStatusTarget(params)) {
+      return;
+    }
+    const label = inspectDisplayKey(
+      resolveMode,
+      queryRegistryId,
+      lookupValues,
+      bindFields,
+    );
+    setStatusParams(params);
+    setLastInspectKey(label);
+    setQueryDrilldownActive(false);
+    void fetchStatusNow(params);
+  };
+
+  const refreshQueryDrilldown = useCallback(() => {
+    const params = inspectStatusParams(
+      resolveMode,
+      queryRegistryId,
+      lookupValues,
+      bindFields,
+      entityCategoryLimit || undefined,
+    );
+    if (!hasStatusTarget(params)) {
+      return;
+    }
+    setStatusParams(params);
+    setQueryDrilldownActive(true);
+    void fetchStatusNow(params);
+  }, [
+    bindFields,
+    entityCategoryLimit,
+    fetchStatusNow,
+    lookupValues,
+    queryRegistryId,
+    resolveMode,
+  ]);
+
+  const runQueryStep1 = useCallback(async () => {
+    const attrs = parseAttributes(queryAttributes);
+    let body: Parameters<typeof runQuery>[0];
+
+    if (resolveMode === "id") {
+      const id = queryRegistryId.trim();
+      if (!id) {
+        return;
+      }
+      body = {
+        id,
+        requested_attributes: attrs.length > 0 ? attrs : undefined,
+      };
+    } else {
+      const lookup = buildLookupPayload(lookupValues, bindFields);
+      if (!lookup) {
+        return;
+      }
+      body = {
+        lookup,
+        requested_attributes: attrs.length > 0 ? attrs : undefined,
+        confirm_new_entity: queryConfirmNewEntity || undefined,
+      };
+    }
+
+    setQueryLoading(true);
+    setQueryError(null);
+    try {
+      const result = await runQuery(body);
+      setQueryResult(result);
+
+      if (result.delivery?.delivery_id) {
+        setQueryDeliveryId(String(result.delivery.delivery_id));
+        setLookupValues(emptyLookupValues(bindFields));
+        setQueryRegistryId("");
+        setQueryAttributes("");
+      }
+      if (
+        result.quote?.quote_id &&
+        (result.outcome === "quote_required" ||
+          result.outcome === "payment_required")
+      ) {
+        setQueryQuoteId(String(result.quote.quote_id));
+      }
+
+      refreshQueryDrilldown();
+    } catch (err) {
+      setQueryError(err instanceof Error ? err.message : String(err));
+      setQueryResult(null);
+      setQueryDrilldownActive(false);
+    } finally {
+      setQueryLoading(false);
+    }
+  }, [
+    bindFields,
+    lookupValues,
+    queryAttributes,
+    queryConfirmNewEntity,
+    queryRegistryId,
+    refreshQueryDrilldown,
+    resolveMode,
+  ]);
+
+  const runQueryStep2 = useCallback(
     async (quoteIdOverride?: string) => {
       const deliveryId = queryDeliveryId.trim();
-      const quoteId = (quoteIdOverride ?? queryQuoteId).trim();
-      const attrs = parseAttributes(queryAttributes);
-
-      let body: Parameters<typeof runQuery>[0];
-      const wasStep2 = Boolean(deliveryId);
-
-      if (deliveryId) {
-        body = quoteId
-          ? { delivery_id: deliveryId, quote_id: quoteId }
-          : { delivery_id: deliveryId };
-      } else if (resolveMode === "id") {
-        const id = queryRegistryId.trim();
-        if (!id) {
-          return;
-        }
-        body = {
-          id,
-          requested_attributes: attrs.length > 0 ? attrs : undefined,
-        };
-      } else {
-        const lookup = buildLookupPayload(lookupValues, bindFields);
-        if (!lookup) {
-          return;
-        }
-        body = {
-          lookup,
-          requested_attributes: attrs.length > 0 ? attrs : undefined,
-          confirm_new_entity: queryConfirmNewEntity || undefined,
-        };
+      if (!deliveryId) {
+        return;
       }
+      const quoteId = (quoteIdOverride ?? queryQuoteId).trim();
+      const body: Parameters<typeof runQuery>[0] = quoteId
+        ? { delivery_id: deliveryId, quote_id: quoteId }
+        : { delivery_id: deliveryId };
 
       setQueryLoading(true);
       setQueryError(null);
@@ -472,11 +433,7 @@ export default function App() {
         if (terminalOutcome) {
           setQueryDeliveryId("");
           setQueryQuoteId("");
-        } else if (result.delivery?.delivery_id) {
-          setQueryDeliveryId(String(result.delivery.delivery_id));
-          setLookupValues(emptyLookupValues(bindFields));
-          setQueryRegistryId("");
-          setQueryAttributes("");
+          setQueryDrilldownActive(false);
         }
         if (
           result.quote?.quote_id &&
@@ -485,10 +442,6 @@ export default function App() {
         ) {
           setQueryQuoteId(String(result.quote.quote_id));
         }
-
-        if (!wasStep2) {
-          refreshEntityDrilldown(resolveMode, queryRegistryId, lookupValues);
-        }
       } catch (err) {
         setQueryError(err instanceof Error ? err.message : String(err));
         setQueryResult(null);
@@ -496,23 +449,8 @@ export default function App() {
         setQueryLoading(false);
       }
     },
-    [
-      bindFields,
-      lookupValues,
-      queryAttributes,
-      queryDeliveryId,
-      queryQuoteId,
-      queryConfirmNewEntity,
-      queryRegistryId,
-      refreshEntityDrilldown,
-      resolveMode,
-    ],
+    [queryDeliveryId, queryQuoteId],
   );
-
-  const onQuerySubmit = (event: FormEvent) => {
-    event.preventDefault();
-    void runQueryRequest();
-  };
 
   const onAcceptQuote = () => {
     const quoteId = queryQuoteId.trim() || queryResult?.quote?.quote_id;
@@ -520,7 +458,7 @@ export default function App() {
       return;
     }
     setQueryQuoteId(String(quoteId));
-    void runQueryRequest(String(quoteId));
+    void runQueryStep2(String(quoteId));
   };
 
   const applySuggestion = (item: EntityKeySuggestion) => {
@@ -528,14 +466,11 @@ export default function App() {
     setQueryRegistryId("");
     setLookupValues(lookupFromSuggestion(item, bindFields, lookupValues));
     setQueryConfirmNewEntity(false);
-    const key = item.entity_key || item.name;
-    if (key) {
-      setEntityKey(key);
-      void fetchStatusNow({
-        category: entityCategoryLimit || undefined,
-        entity: key,
-      });
-    }
+  };
+
+  const onDeliverSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    void runQueryStep2();
   };
 
   const storedSpecialists =
@@ -548,16 +483,15 @@ export default function App() {
     | undefined;
   const meteringEnabled = meteringPolicy?.enabled === true;
 
-  const singleMatch =
-    status?.entity_matches === 1 ? status.entity_match_summaries[0] : null;
-
-  const querySuggestions = queryResult?.suggestions ?? [];
-  const queryRequiredFields = queryResult?.required_fields ?? [];
-  const showStatusSuggestions =
-    querySuggestions.length === 0 && (status?.entity_suggestions.length ?? 0) > 0;
-  const showStatusRequiredFields =
-    queryRequiredFields.length === 0 &&
-    (status?.entity_required_fields.length ?? 0) > 0;
+  const resolveFormProps = {
+    bindFields,
+    mode: resolveMode,
+    registryId: queryRegistryId,
+    lookupValues,
+    onModeChange: onResolveModeChange,
+    onRegistryIdChange: setQueryRegistryId,
+    onLookupFieldChange,
+  };
 
   return (
     <div className="app">
@@ -642,369 +576,237 @@ export default function App() {
       {status && (
         <details
           className="card collapsible-card"
+          open={entityLookupPanelOpen}
+          onToggle={(event) =>
+            setEntityLookupPanelOpen(event.currentTarget.open)
+          }
+        >
+          <summary className="collapsible-summary disclosure-summary">
+            Entity lookup
+          </summary>
+          <p className="step-helper muted">
+            Read-only inspect via <code>GET /status</code> — no{" "}
+            <code>POST /query</code>. Bind fields: {bindFields.join(", ")}.
+          </p>
+          <ResolveForm
+            {...resolveFormProps}
+            radioName="resolve-mode-inspect"
+          />
+          <div className="panel-actions">
+            <button type="button" onClick={onInspect}>
+              Inspect
+            </button>
+          </div>
+          {lastInspectKey && (
+            <EntityDrilldown
+              status={status}
+              label="Lookup"
+              categoryLimit={entityCategoryLimit}
+              ontologyCategories={ontologyCategories}
+              onCategoryChange={onCategoryLimitChange}
+              onApplySuggestion={applySuggestion}
+            />
+          )}
+        </details>
+      )}
+
+      {status && (
+        <details
+          className="card collapsible-card"
           open={queryPanelOpen}
           onToggle={(event) => setQueryPanelOpen(event.currentTarget.open)}
         >
           <summary className="collapsible-summary disclosure-summary">
-            Query &amp; entity lookup
+            Run query
           </summary>
-          <form className="query-form" onSubmit={onQuerySubmit}>
-            <fieldset
-              className="query-step-fieldset"
+          <div className="query-form">
+            <ResolveForm
+              {...resolveFormProps}
               disabled={step2Active || queryLoading}
-            >
-              <legend>Step 1 — resolve</legend>
-              <p className="step-helper muted">
-                Use <strong>registry ID</strong> or <strong>MVR lookup</strong>{" "}
-                (not both). Bind fields: {bindFields.join(", ")}. Step 2 uses{" "}
-                <code>delivery_id</code> below.
-              </p>
-              <div className="mode-radio-row" role="radiogroup" aria-label="Resolve mode">
-                <label>
-                  <input
-                    type="radio"
-                    name="resolve-mode"
-                    checked={resolveMode === "id"}
-                    onChange={() => onResolveModeChange("id")}
-                  />
-                  Registry ID
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    name="resolve-mode"
-                    checked={resolveMode === "lookup"}
-                    onChange={() => onResolveModeChange("lookup")}
-                  />
-                  MVR lookup
-                </label>
-              </div>
-              {resolveMode === "id" ? (
+              radioName="resolve-mode-query"
+            />
+            <div className="query-step-extras">
+              <label className="attributes-field">
+                <span className="muted">Requested attributes</span>
                 <input
                   type="search"
-                  placeholder="Registry UUID"
-                  value={queryRegistryId}
-                  onChange={(e) => setQueryRegistryId(e.target.value)}
-                  aria-label="Registry ID"
+                  placeholder="email, linkedin"
+                  value={queryAttributes}
+                  onChange={(event) => setQueryAttributes(event.target.value)}
+                  aria-label="Requested attributes"
+                  disabled={step2Active || queryLoading}
                 />
-              ) : (
-                <div className="lookup-fields">
-                  {bindFields.map((field) => (
-                    <input
-                      key={field}
-                      type="search"
-                      placeholder={bindFieldLabel(field)}
-                      value={lookupValues[field] ?? ""}
-                      onChange={(e) => onLookupFieldChange(field, e.target.value)}
-                      aria-label={`Lookup ${field}`}
-                    />
-                  ))}
-                </div>
-              )}
-              <input
-                type="search"
-                placeholder="Attributes (email, linkedin)"
-                value={queryAttributes}
-                onChange={(e) => setQueryAttributes(e.target.value)}
-                aria-label="Requested attributes"
-              />
-            </fieldset>
-
-            <fieldset className="query-step-fieldset">
-              <legend>Step 2 — deliver</legend>
-              <div className="row-actions">
-                <input
-                  type="search"
-                  placeholder="Delivery id (from step 1)"
-                  value={queryDeliveryId}
-                  onChange={(e) => setQueryDeliveryId(e.target.value)}
-                  aria-label="Delivery id"
-                />
-                <input
-                  type="search"
-                  placeholder="Quote id (retry after quote_required)"
-                  value={queryQuoteId}
-                  onChange={(e) => setQueryQuoteId(e.target.value)}
-                  aria-label="Quote id"
-                />
-                <button type="submit" disabled={queryLoading}>
-                  {queryLoading ? "Running…" : "Run"}
-                </button>
-                {queryResult?.outcome === "lookup_suggested" && !step2Active && (
+              </label>
+              {queryResult?.outcome === "lookup_suggested" &&
+                !step2Active &&
+                resolveMode === "lookup" && (
                   <label className="confirm-new-entity">
                     <input
                       type="checkbox"
                       checked={queryConfirmNewEntity}
-                      onChange={(e) => setQueryConfirmNewEntity(e.target.checked)}
+                      onChange={(event) =>
+                        setQueryConfirmNewEntity(event.target.checked)
+                      }
                     />
                     Confirm new entity (ignore suggestions)
                   </label>
                 )}
-              </div>
-            </fieldset>
-          </form>
-          {queryError && <p className="error">Query error: {queryError}</p>}
-          {queryResult && (
-            <div className="query-result">
-              <p>
-                Outcome:{" "}
-                <span className={outcomeBadgeClass(queryResult.outcome)}>
-                  {queryResult.outcome ?? "—"}
-                </span>
-              </p>
-              {queryResult.total_matches != null && (
-                <p className="muted">
-                  total_matches: {queryResult.total_matches}
-                  {queryResult.delivery?.create_on_deliver === true
-                    ? " (full MVR)"
-                    : ""}
+              <button
+                type="button"
+                disabled={queryLoading || step2Active}
+                onClick={() => void runQueryStep1()}
+              >
+                {queryLoading ? "Running…" : "Run"}
+              </button>
+            </div>
+            {queryError && <p className="error">Query error: {queryError}</p>}
+            {queryResult && (
+              <div className="query-result">
+                <p>
+                  Outcome:{" "}
+                  <span className={outcomeBadgeClass(queryResult.outcome)}>
+                    {queryResult.outcome ?? "—"}
+                  </span>
                 </p>
-              )}
-              {queryResult.delivery?.delivery_id &&
-                (queryResult.outcome === "lookup_resolved" ||
-                  queryResult.outcome === "quote_required" ||
-                  queryResult.outcome === "payment_required") && (
+                {queryResult.total_matches != null && (
                   <p className="muted">
-                    delivery_id:{" "}
-                    <code>{String(queryResult.delivery.delivery_id)}</code>
-                    {" · "}
-                    Run again to deliver.
+                    total_matches: {queryResult.total_matches}
+                    {queryResult.delivery?.create_on_deliver === true
+                      ? " (full MVR)"
+                      : ""}
                   </p>
                 )}
-              {(queryResult.required_fields ?? []).length > 0 && (
-                <p>
-                  <strong>Required fields:</strong>{" "}
-                  {(queryResult.required_fields ?? []).join(", ")}
-                </p>
-              )}
-              {(queryResult.suggestions ?? []).length > 0 && (
-                <div>
-                  <p>
-                    <strong>Suggestions:</strong>
-                  </p>
-                  <ul className="suggestion-list">
-                    {(queryResult.suggestions ?? []).map((item) => (
-                      <li key={item.id}>
-                        <button
-                          type="button"
-                          className="link-button"
-                          onClick={() => applySuggestion(item)}
-                        >
-                          {item.entity_key}
-                        </button>{" "}
-                        <span className="muted">
-                          score {item.score}
-                          {item.employer ? ` · ${item.employer}` : ""}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {queryResult.message && (
-                <p className="query-message">{queryResult.message}</p>
-              )}
-              {(queryResult.outcome === "quote_required" ||
-                queryResult.outcome === "payment_required") &&
-                queryResult.quote && (
-                  <details className="nested-details quote-details" open>
-                    <summary className="disclosure-summary">Quote</summary>
+                {queryResult.delivery?.delivery_id &&
+                  (queryResult.outcome === "lookup_resolved" ||
+                    queryResult.outcome === "quote_required" ||
+                    queryResult.outcome === "payment_required") && (
                     <p className="muted">
-                      quote_id:{" "}
-                      <code>{String(queryResult.quote.quote_id)}</code>
-                      {queryResult.quote.total_usd != null && (
-                        <>
-                          {" "}
-                          · total_usd {String(queryResult.quote.total_usd)}
-                        </>
-                      )}
-                      {queryResult.quote.cache_state && (
-                        <>
-                          {" "}
-                          · cache {String(queryResult.quote.cache_state)}
-                        </>
-                      )}
+                      delivery_id:{" "}
+                      <code>{String(queryResult.delivery.delivery_id)}</code>
+                      {" · "}
+                      Use Deliver below for step 2.
                     </p>
-                    <pre className="query-json">
-                      {JSON.stringify(queryResult.quote, null, 2)}
-                    </pre>
-                    {queryResult.outcome === "quote_required" && (
-                      <button
-                        type="button"
-                        disabled={queryLoading}
-                        onClick={onAcceptQuote}
-                      >
-                        Accept quote
-                      </button>
-                    )}
-                    {queryResult.outcome === "payment_required" && (
-                      <p className="muted">
-                        Settlement required — call MCP{" "}
-                        <code>pay_quote</code> with this quote_id, then retry.
-                      </p>
-                    )}
-                  </details>
-                )}
-              {queryResult.results.length > 0 && (
-                <pre className="query-json">
-                  {JSON.stringify(queryResult.results, null, 2)}
-                </pre>
-              )}
-            </div>
-          )}
-
-          {entityKey && (
-            <div className="entity-drilldown">
-              <div className="row-actions">
-                <label className="field-inline">
-                  <span className="muted">Category</span>
-                  <select
-                    value={entityCategoryLimit}
-                    onChange={(e) => onCategoryLimitChange(e.target.value)}
-                    aria-label="Limit entity drill-down to category"
-                  >
-                    <option value="">All</option>
-                    {(status.categories.length > 0
-                      ? status.categories
-                      : ontologyCategories.map((c) => ({ name: c.name }))
-                    ).map((cat) => (
-                      <option key={cat.name} value={cat.name}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <p>
-                Drill-down: <code>{entityKey}</code> — {status.entity_matches}{" "}
-                match(es)
-                {status.entity_resolution_kind && (
-                  <>
-                    {" "}
-                    ·{" "}
-                    <span className="muted">
-                      {status.entity_resolution_kind}
-                    </span>
-                  </>
-                )}
-              </p>
-              {showStatusRequiredFields && (
-                <p>
-                  <strong>Required fields:</strong>{" "}
-                  {status.entity_required_fields.join(", ")}
-                </p>
-              )}
-              {showStatusSuggestions && (
-                <div>
+                  )}
+                {(queryResult.required_fields ?? []).length > 0 && (
                   <p>
-                    <strong>Suggestions:</strong>
+                    <strong>Required fields:</strong>{" "}
+                    {(queryResult.required_fields ?? []).join(", ")}
                   </p>
-                  <ul className="suggestion-list">
-                    {status.entity_suggestions.map((item) => (
-                      <li key={item.id}>
+                )}
+                {(queryResult.suggestions ?? []).length > 0 && (
+                  <div>
+                    <p>
+                      <strong>Suggestions:</strong>
+                    </p>
+                    <ul className="suggestion-list">
+                      {(queryResult.suggestions ?? []).map((item) => (
+                        <li key={item.id}>
+                          <button
+                            type="button"
+                            className="link-button"
+                            onClick={() => applySuggestion(item)}
+                          >
+                            {item.entity_key}
+                          </button>{" "}
+                          <span className="muted">
+                            score {item.score}
+                            {item.employer ? ` · ${item.employer}` : ""}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {queryResult.message && (
+                  <p className="query-message">{queryResult.message}</p>
+                )}
+                {(queryResult.outcome === "quote_required" ||
+                  queryResult.outcome === "payment_required") &&
+                  queryResult.quote && (
+                    <details className="nested-details quote-details" open>
+                      <summary className="disclosure-summary">Quote</summary>
+                      <p className="muted">
+                        quote_id:{" "}
+                        <code>{String(queryResult.quote.quote_id)}</code>
+                        {queryResult.quote.total_usd != null && (
+                          <>
+                            {" "}
+                            · total_usd {String(queryResult.quote.total_usd)}
+                          </>
+                        )}
+                        {queryResult.quote.cache_state && (
+                          <>
+                            {" "}
+                            · cache {String(queryResult.quote.cache_state)}
+                          </>
+                        )}
+                      </p>
+                      <pre className="query-json">
+                        {JSON.stringify(queryResult.quote, null, 2)}
+                      </pre>
+                      {queryResult.outcome === "quote_required" && (
                         <button
                           type="button"
-                          className="link-button"
-                          onClick={() => applySuggestion(item)}
+                          disabled={queryLoading}
+                          onClick={onAcceptQuote}
                         >
-                          {item.entity_key}
-                        </button>{" "}
-                        <span className="muted">
-                          score {item.score}
-                          {item.employer ? ` · ${item.employer}` : ""}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {status.entity_matches === 0 && (
-                <p className="empty">No match.</p>
-              )}
-              {status.entity_matches > 1 && (
-                <div>
-                  <p className="empty">Multiple matches — narrow the key.</p>
-                  <ul className="match-list">
-                    {status.entity_match_summaries.map((match) => (
-                      <li key={match.id}>
-                        <strong>{match.name}</strong>{" "}
-                        <span className="muted">
-                          {match.source}
-                          {match.validation_state
-                            ? ` · ${match.validation_state}`
-                            : ""}
-                          {match.employer ? ` · ${match.employer}` : ""}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {singleMatch && (
-                <p className="muted">
-                  Source: {singleMatch.source}
-                  {singleMatch.validation_state
-                    ? ` · ${singleMatch.validation_state}`
-                    : ""}
-                  {" · "}
-                  Research:{" "}
-                  {singleMatch.research_allowed ? "allowed" : "gated"}
-                </p>
-              )}
-              {status.entity_matches === 1 &&
-                status.entity_fields.length > 0 && (
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Kind</th>
-                        <th>Field</th>
-                        <th>Category</th>
-                        <th>Status</th>
-                        <th>Value</th>
-                        <th>Source</th>
-                        <th>Researched</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {status.entity_fields.map((field) => {
-                        const hasVersions = Boolean(field.versions?.length);
-                        return (
-                          <Fragment key={`${field.field_kind}-${field.field}`}>
-                            <tr>
-                              <td>{field.field_kind ?? "extended"}</td>
-                              <td>{field.field}</td>
-                              <td>{field.category}</td>
-                              <td>{field.status}</td>
-                              <td>{field.value ?? "—"}</td>
-                              <td>{field.attr_source ?? "—"}</td>
-                              <td>
-                                {formatTimestamp(field.last_researched_at)}
-                              </td>
-                            </tr>
-                            {hasVersions && field.versions && (
-                              <tr className="version-history-row">
-                                <td colSpan={7}>
-                                  <VersionHistoryPanel
-                                    fieldName={field.field}
-                                    versions={field.versions}
-                                  />
-                                </td>
-                              </tr>
-                            )}
-                          </Fragment>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                          Accept quote
+                        </button>
+                      )}
+                      {queryResult.outcome === "payment_required" && (
+                        <p className="muted">
+                          Settlement required — call MCP{" "}
+                          <code>pay_quote</code> with this quote_id, then retry.
+                        </p>
+                      )}
+                    </details>
+                  )}
+                {queryResult.results.length > 0 && (
+                  <pre className="query-json">
+                    {JSON.stringify(queryResult.results, null, 2)}
+                  </pre>
                 )}
-              {status.entity_matches === 1 &&
-                status.entity_fields.length === 0 && (
-                  <p className="empty">
-                    No specialist storage for this record yet.
-                  </p>
-                )}
-            </div>
-          )}
+              </div>
+            )}
+            {queryDrilldownActive && queryResult && (
+              <EntityDrilldown
+                status={status}
+                label="Drill-down"
+                queryResult={queryResult}
+                showCategoryFilter={false}
+                categoryLimit={entityCategoryLimit}
+                ontologyCategories={ontologyCategories}
+                onCategoryChange={onCategoryLimitChange}
+                onApplySuggestion={applySuggestion}
+              />
+            )}
+            <form className="deliver-form" onSubmit={onDeliverSubmit}>
+              <fieldset className="query-step-fieldset">
+                <legend>Step 2 — deliver</legend>
+                <div className="deliver-fields">
+                  <input
+                    type="search"
+                    placeholder="Delivery id (from step 1)"
+                    value={queryDeliveryId}
+                    onChange={(event) =>
+                      setQueryDeliveryId(event.target.value)
+                    }
+                    aria-label="Delivery id"
+                  />
+                  <input
+                    type="search"
+                    placeholder="Quote id (retry after quote_required)"
+                    value={queryQuoteId}
+                    onChange={(event) => setQueryQuoteId(event.target.value)}
+                    aria-label="Quote id"
+                  />
+                  <button type="submit" disabled={queryLoading}>
+                    {queryLoading ? "Delivering…" : "Deliver"}
+                  </button>
+                </div>
+              </fieldset>
+            </form>
+          </div>
         </details>
       )}
 

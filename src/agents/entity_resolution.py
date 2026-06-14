@@ -202,6 +202,29 @@ def resolve_entity_key(entity_key: str) -> EntityResolution:
     return resolve_entity(EntityQuery(entity_key=entity_key))
 
 
+def resolve_status_for_target_lookup(lookup: dict[str, str]) -> EntityResolution:
+    """Read-only MVR AND lookup for admin status (never creates or runs graph)."""
+    from network.mvr import normalized_lookup_values
+
+    normalized = normalized_lookup_values(lookup)
+    if not normalized:
+        return EntityResolution(kind="none")
+
+    registry = get_entity_registry()
+    entity_ids = registry.lookup_by_target_lookup(normalized)
+    matches: list[dict[str, Any]] = []
+    for entity_id in entity_ids:
+        entity = registry.lookup_by_id(entity_id)
+        if entity is not None:
+            matches.append(registry_entity_to_match(entity))
+
+    if len(matches) == 1:
+        return EntityResolution(kind="exact", matches=matches)
+    if len(matches) >= 2:
+        return EntityResolution(kind="multiple", matches=matches)
+    return EntityResolution(kind="none")
+
+
 def resolve_entity_for_lookup(entity_key: str) -> EntityResolution:
     """Read-only resolution for admin/CLI status (never creates provisional binds)."""
     key = entity_key.strip()
