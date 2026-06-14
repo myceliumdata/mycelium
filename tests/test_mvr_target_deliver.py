@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -185,8 +184,9 @@ def test_step2_deliver_serializes_without_delivery_fields(crm_deliver_env: CoreS
     _ = crm_deliver_env
     step1 = run_query(EntityQuery(lookup={"employer": "Accel"}))
     step2 = run_query(EntityQuery(delivery_id=step1.delivery.delivery_id))
-    payload = json.loads(step2.model_dump_json())
+    payload = step2.public_dict()
     assert payload["outcome"] == "found"
     assert payload["results"]
-    assert payload.get("delivery") is None
-    assert payload.get("total_matches") is None
+    assert "total_matches" not in payload
+    assert "delivery" not in payload
+    assert "quote" not in payload

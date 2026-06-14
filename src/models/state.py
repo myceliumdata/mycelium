@@ -219,6 +219,16 @@ def legacy_entity_key_allowed() -> bool:
     }
 
 
+_STEP1_PUBLIC_OUTCOMES = frozenset(
+    {
+        "lookup_resolved",
+        "quote_required",
+        "payment_required",
+        "principal_required",
+    },
+)
+
+
 class QueryResponse(BaseModel):
     """Lightweight response for external consumers (CLI + MCP agents)."""
 
@@ -305,10 +315,26 @@ class QueryResponse(BaseModel):
     )
 
     def public_dict(self) -> dict[str, Any]:
-        """Serialize for CLI, MCP, and admin; delivery omits create_on_deliver unless true."""
-        data = self.model_dump()
+        """Serialize for CLI, MCP, and admin with outcome-aware field omission.
+
+        Step-1 outcomes (``lookup_resolved``, ``quote_required``, …) may include
+        ``total_matches``, ``delivery``, and ``quote`` when set. Deliver/terminal
+        outcomes (``found``, ``assembled``, ``not_found``, …) omit step-1-only
+        keys. Null ``quote`` and ``provenance`` are omitted (absent key, not
+        ``null``). Nested ``delivery`` uses ``DeliveryPayload.public_dict()``.
+        """
+        data = self.model_dump(exclude_none=True)
         if self.delivery is not None:
             data["delivery"] = self.delivery.public_dict()
+        else:
+            data.pop("delivery", None)
+
+        if self.outcome in _STEP1_PUBLIC_OUTCOMES:
+            data.pop("provenance", None)
+        else:
+            data.pop("total_matches", None)
+            data.pop("delivery", None)
+
         return data
 
     def public_json(self, *, indent: int | None = 2) -> str:

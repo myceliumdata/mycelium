@@ -180,8 +180,7 @@ def test_mcp_create_pending_wire_json(
     assert payload["total_matches"] == 0
     assert payload["delivery"]["create_on_deliver"] is True
     assert "step 2 will create" in payload["message"]
-    assert "quote" in payload
-    assert payload["quote"] is None
+    assert "quote" not in payload
 
 
 @pytest.mark.smoke
@@ -204,8 +203,7 @@ def test_mcp_existing_match_wire_json(
     assert payload["delivery"].get("create_on_deliver") is not False
     assert "1 registry match" in payload["message"]
     assert "step 2" in payload["message"]
-    assert "quote" in payload
-    assert payload["quote"] is None
+    assert "quote" not in payload
 
 
 @pytest.mark.smoke
@@ -226,8 +224,7 @@ def test_cli_create_pending_public_json(
     assert payload["total_matches"] == 0
     assert payload["delivery"]["create_on_deliver"] is True
     assert "step 2 will create" in payload["message"]
-    assert "quote" in payload
-    assert payload["quote"] is None
+    assert "quote" not in payload
 
 
 @pytest.mark.smoke
@@ -249,5 +246,4 @@ def test_cli_existing_match_public_json(
     assert "create_on_deliver" not in payload["delivery"]
     assert payload["delivery"].get("create_on_deliver") is not False
     assert "1 registry match" in payload["message"]
-    assert "quote" in payload
-    assert payload["quote"] is None
+    assert "quote" not in payload

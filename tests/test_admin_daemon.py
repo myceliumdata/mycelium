@@ -488,8 +488,7 @@ def test_admin_query_step1_wire_json_shape(
     assert create_payload["total_matches"] == 0
     assert create_payload["delivery"]["create_on_deliver"] is True
     assert "step 2 will create" in create_payload["message"]
-    assert "quote" in create_payload
-    assert create_payload["quote"] is None
+    assert "quote" not in create_payload
 
     existing = client.post(
         "/query",
@@ -507,8 +506,7 @@ def test_admin_query_step1_wire_json_shape(
     assert "create_on_deliver" not in existing_payload["delivery"]
     assert existing_payload["delivery"].get("create_on_deliver") is not False
     assert "1 registry match" in existing_payload["message"]
-    assert "quote" in existing_payload
-    assert existing_payload["quote"] is None
+    assert "quote" not in existing_payload
 
 
 @pytest.mark.smoke

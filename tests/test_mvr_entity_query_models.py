@@ -114,12 +114,12 @@ def test_query_response_lookup_resolved_serializes() -> None:
     }
     assert "create_on_deliver" not in payload["delivery"]
     assert payload["results"] == []
-    assert "quote" in payload
-    assert payload["quote"] is None
+    assert "quote" not in payload
+    assert "provenance" not in payload
 
 
 @pytest.mark.smoke
-def test_public_dict_preserves_explicit_null_top_level_fields() -> None:
+def test_public_dict_step2_found_omits_step1_fields() -> None:
     response = QueryResponse(
         outcome="found",
         total_matches=None,
@@ -130,10 +130,55 @@ def test_public_dict_preserves_explicit_null_top_level_fields() -> None:
         message="Found record for Ada.",
     )
     payload = response.public_dict()
-    assert payload["quote"] is None
-    assert payload["total_matches"] is None
-    assert payload["delivery"] is None
-    assert payload["provenance"] is None
+    assert payload["outcome"] == "found"
+    assert payload["results"] == [{"id": "u1", "name": "Ada"}]
+    assert "total_matches" not in payload
+    assert "delivery" not in payload
+    assert "quote" not in payload
+    assert "provenance" not in payload
+
+
+@pytest.mark.smoke
+def test_public_dict_step1_lookup_resolved_includes_matches() -> None:
+    response = QueryResponse(
+        outcome="lookup_resolved",
+        total_matches=0,
+        delivery=DeliveryPayload(
+            delivery_id="d_abc123",
+            expires_at="2026-06-13T12:05:00Z",
+            create_on_deliver=True,
+        ),
+        quote=None,
+        provenance=None,
+        results=[],
+        message="0 matches; step 2 will create.",
+    )
+    payload = response.public_dict()
+    assert payload["total_matches"] == 0
+    assert payload["delivery"]["delivery_id"] == "d_abc123"
+    assert payload["delivery"]["create_on_deliver"] is True
+    assert "quote" not in payload
+    assert "provenance" not in payload
+
+
+@pytest.mark.smoke
+def test_public_dict_quote_required_includes_quote() -> None:
+    response = QueryResponse(
+        outcome="quote_required",
+        total_matches=1,
+        delivery=DeliveryPayload(
+            delivery_id="d_quote",
+            expires_at="2026-06-13T12:05:00Z",
+        ),
+        quote={"quote_id": "q_1", "total_usd": 1.0},
+        results=[],
+        message="Quote required.",
+    )
+    payload = response.public_dict()
+    assert payload["total_matches"] == 1
+    assert payload["delivery"]["delivery_id"] == "d_quote"
+    assert payload["quote"] == {"quote_id": "q_1", "total_usd": 1.0}
+    assert "provenance" not in payload
 
 
 @pytest.mark.smoke
