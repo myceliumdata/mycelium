@@ -119,14 +119,20 @@ def test_resolve_example_crm_network_dir(
 def test_example_crm_seed_loads_via_network_paths(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
+    """Seed import via NetworkPaths — must not write into committed example tree."""
+    root = tmp_path / "crm-live"
+    root.mkdir()
+    shutil.copy(EXAMPLE_CRM / "seed.json", root / "seed.json")
+    shutil.copy(EXAMPLE_CRM / "network.json", root / "network.json")
     monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(tmp_path / "missing.json"))
-    paths = NetworkPaths.from_root(EXAMPLE_CRM)
+    paths = NetworkPaths.from_root(root)
     apply_network_paths(paths)
     reset_entity_registry()
-    import_seed_at_root(EXAMPLE_CRM)
+    import_seed_at_root(root)
     matches = lookup_entities_by_key("Nichanan Kesonpat")
     assert len(matches) == 1
     assert matches[0]["name"] == "Nichanan Kesonpat"
+    _assert_example_tree_clean(EXAMPLE_CRM, expect_seed=True)
 
 
 @pytest.mark.smoke
