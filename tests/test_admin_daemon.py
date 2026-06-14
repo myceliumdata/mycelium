@@ -541,6 +541,20 @@ def test_status_lookup_map_single_match(
 
 
 @pytest.mark.smoke
+def test_status_lookup_invalid_json_returns_400(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root = _populated_root(tmp_path)
+    client = _client_for_root(monkeypatch, tmp_path, root)
+
+    response = client.get("/status", params={"lookup": "not-json"})
+
+    assert response.status_code == 400
+    assert "lookup must be a JSON object" in response.json()["detail"]
+
+
+@pytest.mark.smoke
 def test_admin_query_lookup_suggested_shape(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

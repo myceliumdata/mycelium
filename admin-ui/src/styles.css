@@ -164,8 +164,14 @@ header.app-header h1 {
   width: 100%;
 }
 
+.query-step-extras {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+}
+
 .panel-actions,
-.query-step-extras,
 .deliver-fields {
   display: flex;
   flex-wrap: wrap;

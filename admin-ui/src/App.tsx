@@ -299,49 +299,64 @@ export default function App() {
     }
   };
 
+  const refreshInspectFromForm = useCallback(
+    (
+      mode: "id" | "lookup",
+      registryId: string,
+      values: Record<string, string>,
+    ) => {
+      const params = inspectStatusParams(
+        mode,
+        registryId,
+        values,
+        bindFields,
+        entityCategoryLimit || undefined,
+      );
+      if (!hasStatusTarget(params)) {
+        return;
+      }
+      const label = inspectDisplayKey(mode, registryId, values, bindFields);
+      setStatusParams(params);
+      setLastInspectKey(label);
+      setQueryDrilldownActive(false);
+      void fetchStatusNow(params);
+    },
+    [bindFields, entityCategoryLimit, fetchStatusNow],
+  );
+
   const onInspect = () => {
-    const params = inspectStatusParams(
-      resolveMode,
-      queryRegistryId,
-      lookupValues,
-      bindFields,
-      entityCategoryLimit || undefined,
-    );
-    if (!hasStatusTarget(params)) {
-      return;
-    }
-    const label = inspectDisplayKey(
-      resolveMode,
-      queryRegistryId,
-      lookupValues,
-      bindFields,
-    );
-    setStatusParams(params);
-    setLastInspectKey(label);
-    setQueryDrilldownActive(false);
-    void fetchStatusNow(params);
+    refreshInspectFromForm(resolveMode, queryRegistryId, lookupValues);
   };
 
+  const refreshQueryDrilldownWith = useCallback(
+    (
+      mode: "id" | "lookup",
+      registryId: string,
+      values: Record<string, string>,
+    ) => {
+      const params = inspectStatusParams(
+        mode,
+        registryId,
+        values,
+        bindFields,
+        entityCategoryLimit || undefined,
+      );
+      if (!hasStatusTarget(params)) {
+        return;
+      }
+      setStatusParams(params);
+      setQueryDrilldownActive(true);
+      void fetchStatusNow(params);
+    },
+    [bindFields, entityCategoryLimit, fetchStatusNow],
+  );
+
   const refreshQueryDrilldown = useCallback(() => {
-    const params = inspectStatusParams(
-      resolveMode,
-      queryRegistryId,
-      lookupValues,
-      bindFields,
-      entityCategoryLimit || undefined,
-    );
-    if (!hasStatusTarget(params)) {
-      return;
-    }
-    setStatusParams(params);
-    setQueryDrilldownActive(true);
-    void fetchStatusNow(params);
+    refreshQueryDrilldownWith(resolveMode, queryRegistryId, lookupValues);
   }, [
-    bindFields,
-    entityCategoryLimit,
-    fetchStatusNow,
     lookupValues,
     queryRegistryId,
+    refreshQueryDrilldownWith,
     resolveMode,
   ]);
 
@@ -462,10 +477,17 @@ export default function App() {
   };
 
   const applySuggestion = (item: EntityKeySuggestion) => {
+    const nextLookup = lookupFromSuggestion(item, bindFields, lookupValues);
     setResolveMode("lookup");
     setQueryRegistryId("");
-    setLookupValues(lookupFromSuggestion(item, bindFields, lookupValues));
+    setLookupValues(nextLookup);
     setQueryConfirmNewEntity(false);
+
+    if (lastInspectKey) {
+      refreshInspectFromForm("lookup", "", nextLookup);
+    } else if (queryDrilldownActive) {
+      refreshQueryDrilldownWith("lookup", "", nextLookup);
+    }
   };
 
   const onDeliverSubmit = (event: FormEvent) => {
@@ -651,6 +673,8 @@ export default function App() {
                     Confirm new entity (ignore suggestions)
                   </label>
                 )}
+            </div>
+            <div className="panel-actions">
               <button
                 type="button"
                 disabled={queryLoading || step2Active}

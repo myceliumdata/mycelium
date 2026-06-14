@@ -13,7 +13,7 @@ from typing import Any
 os.environ["MYCELIUM_USE_SYNC_CHECKPOINTER"] = "1"
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -124,14 +124,21 @@ def create_app() -> FastAPI:
         if lookup:
             try:
                 parsed = json.loads(lookup)
-            except json.JSONDecodeError:
-                parsed = None
-            if isinstance(parsed, dict):
-                target_lookup = {
-                    str(key): str(value)
-                    for key, value in parsed.items()
-                    if str(value).strip()
-                } or None
+            except json.JSONDecodeError as exc:
+                raise HTTPException(
+                    status_code=400,
+                    detail="lookup must be a JSON object",
+                ) from exc
+            if not isinstance(parsed, dict):
+                raise HTTPException(
+                    status_code=400,
+                    detail="lookup must be a JSON object",
+                )
+            target_lookup = {
+                str(key): str(value)
+                for key, value in parsed.items()
+                if str(value).strip()
+            } or None
         summary = build_network_status(
             category_filter=category,
             entity_key=entity if not target_lookup else None,
