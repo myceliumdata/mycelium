@@ -1,6 +1,6 @@
 # Cursor queue
 
-**Active:** *(empty — awaiting next slice)*
+**Active:** [`next/2026-06-14-1305-admin-inspect-polish-nits.md`](next/2026-06-14-1305-admin-inspect-polish-nits.md) — 1300 polish nits (suggestion refresh, Run layout, invalid lookup 400)
 
 **Last approved:** [`done/2026-06-14-1300-admin-restore-inspect-split-query-layout/`](done/2026-06-14-1300-admin-restore-inspect-split-query-layout/) — **Approved + polish nits**
 
