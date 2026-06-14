@@ -9,15 +9,17 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 ## Next up (Paul — June 2026)
 
-**Priority order when back from break:**
+**Priority order:**
 
-0. [ ] **Program 2 manual gate (fresh from scratch)** — Follow [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](docs/manual-checks/2026-06-13-program2-post-program-gate.md) (rewritten June 2026 after seed-refresh, empty-crm MVR, and capstone-test fixes). Branch is **16 commits ahead** of `origin/main` (run `git log origin/main..HEAD --oneline | wc -l` before testing); do not push until gate **CLEAR**.
-1. [x] **Hands-on: `empty-crm` example** — verified June 2026 (refresh → no seed/entities → Paul Murphy bind → 1 validated row; `network status` Entities ✅). Nit fixed: `network_metadata` no longer lets `MYCELIUM_NETWORK` override explicit `--network-dir`. **Re-verify** as part of gate Check 4b (MVR bootstrap fix landed after this checkbox).
-2. [x] **Historical assumptions review** — Phase 1: [`docs/plans/historical-assumptions-audit.md`](docs/plans/historical-assumptions-audit.md). Phase 2 done: legacy ingest + SQLite `people` removed — [`2026-06-10-legacy-ingest-storage-removal`](prompts/cursor/done/2026-06-10-legacy-ingest-storage-removal/); memory in [`docs/legacy-ingest-and-storage-reference.md`](docs/legacy-ingest-and-storage-reference.md).
-3. [x] **Identity vocabulary rename (breaking)** — Done (`538867e`). Reviews: [`rename`](prompts/cursor/done/2026-06-10-entity-identity-vocabulary-rename/review.md), [`fix`](prompts/cursor/done/2026-06-10-entity-identity-vocabulary-rename-fix/review.md).
-4. [x] **Network create optional `--seed`** — Done (reviewed, 305 tests). Review: [`network-create-optional-seed`](prompts/cursor/done/2026-06-10-network-create-optional-seed/review.md).
-5. [x] **Project website copy** — Done (`../mycelium-website`, June 2026). Option A overhaul + copy pass deployed by Paul.
-6. [x] **Contributor doc hygiene (P1)** — [`docs/onboarding.md`](docs/onboarding.md); audit Phase 2 closed; website copy pass done in **mycelium-website** (`cd7e796`).
+0. [ ] **(Current)** — Other issue under investigation (Paul, June 2026) — *before* validation fix below.
+1. [ ] **Provisional validation on step-2 deliver (bug)** — Registry rows from create-on-deliver / query bind stay **`provisional`** forever when core validation never runs. Observed: Andrea @ Wrong Corp after `confirm_new_entity`; MCP reports research gate + “step 1 flagged 2 matches.” **Gaps:** (a) step-2 **identity-only** deliver short-circuits in `target_resolve_node` → `validate_entity` never runs (contradicts CRM README step-2 story); (b) step-2 with **`len(matched) > 1`** skips `validate_entity` (name-only partial lookup → 2 Andreas). **Fix:** ensure promotion on applicable step-2 paths (single- and multi-match policy TBD); smoke tests; gate doc note. Queue Cursor slice after item 0.
+2. [ ] **Program 2 manual gate (fresh from scratch)** — Follow [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](docs/manual-checks/2026-06-13-program2-post-program-gate.md) (rewritten June 2026 after seed-refresh, empty-crm MVR, and capstone-test fixes). Re-run after validation fix if Wrong Corp / multi-match paths are in scope. Branch is **~38 commits ahead** of `origin/main` (run `git log origin/main..HEAD --oneline | wc -l` before testing); do not push until gate **CLEAR**.
+3. [x] **Hands-on: `empty-crm` example** — verified June 2026 (refresh → no seed/entities → Paul Murphy bind → 1 validated row; `network status` Entities ✅). Nit fixed: `network_metadata` no longer lets `MYCELIUM_NETWORK` override explicit `--network-dir`. **Re-verify** as part of gate Check 4b (MVR bootstrap fix landed after this checkbox).
+4. [x] **Historical assumptions review** — Phase 1: [`docs/plans/historical-assumptions-audit.md`](docs/plans/historical-assumptions-audit.md). Phase 2 done: legacy ingest + SQLite `people` removed — [`2026-06-10-legacy-ingest-storage-removal`](prompts/cursor/done/2026-06-10-legacy-ingest-storage-removal/); memory in [`docs/legacy-ingest-and-storage-reference.md`](docs/legacy-ingest-and-storage-reference.md).
+5. [x] **Identity vocabulary rename (breaking)** — Done (`538867e`). Reviews: [`rename`](prompts/cursor/done/2026-06-10-entity-identity-vocabulary-rename/review.md), [`fix`](prompts/cursor/done/2026-06-10-entity-identity-vocabulary-rename-fix/review.md).
+6. [x] **Network create optional `--seed`** — Done (reviewed, 305 tests). Review: [`network-create-optional-seed`](prompts/cursor/done/2026-06-10-network-create-optional-seed/review.md).
+7. [x] **Project website copy** — Done (`../mycelium-website`, June 2026). Option A overhaul + copy pass deployed by Paul.
+8. [x] **Contributor doc hygiene (P1)** — [`docs/onboarding.md`](docs/onboarding.md); audit Phase 2 closed; website copy pass done in **mycelium-website** (`cd7e796`).
 
 ---
 
@@ -287,4 +289,4 @@ Major landed work (no action):
 
 ---
 
-Last updated: 2026-06-14 (Program 2 local complete; manual gate pending; OSS agent-workflow backlog added)
+Last updated: 2026-06-14 (provisional validation bug queued; manual gate after fix; admin 1300–1305 done locally)
