@@ -1,53 +1,83 @@
-# Program 3 — Entity protocol legacy cleanup (draft)
+# Program 3 — Entity protocol legacy cleanup
 
-**Status:** **Next program** — ready to lock (Paul, June 2026)  
-**Prerequisite:** Program 2 manual gate **CLEAR** (2026-06-14) — code on `origin/main`  
+**Status:** **In progress** — slices queued in `prompts/cursor/next/` (June 2026)  
+**Prerequisite:** Program 2 manual gate **CLEAR** (2026-06-14) — tag `program_2`  
 **Supersedes:** Prior “Program 3 = operator write” ordering — operator UI moves to **Program 4**
 
 ---
 
-## Why
+## Goal
 
-Program 2 unified MVR bind **storage** (specialist `versions[]`, taxonomy ownership), but several **resolution and operator surfaces** still treat `name` (and CRM-shaped `employer` / `bind_index`) as special. That confuses newcomers:
+One identity story everywhere public and on disk:
 
-- `mycelium query` uses explicit `lookup` JSON (MVR-correct)
-- `mycelium network status --entity "…"` treats a bare string as **display name** (legacy convenience)
-- Registry row still caches `name` / `employer` columns; extra `mvr.bind_fields` are not generic on the entity row
-- Internal helpers (`lookup_by_name`, `entity_key`, `resolve_entity_for_lookup`) predate the target two-step protocol
+> Resolve by **`id`** or **`lookup` map keyed by `mvr.bind_fields`** — no parallel “bare name implies entity” or CRM-shaped registry columns.
 
-**Goal:** One coherent story — **identity resolution = `id` or `lookup` map keyed by `mvr.bind_fields`** everywhere public; no parallel “name is implied” paths.
+Program 2 fixed bind **storage** (specialist `versions[]`). Program 3 removes legacy **protocol** and **schema** assumptions from the entity-registry era.
 
 ---
 
-## Legacy backlog (to lock in planning)
+## Locked decisions (Paul + Grok, June 2026)
 
-| Area | Today | Target direction |
-|------|--------|------------------|
-| **CLI `network status`** | `--entity KEY` → name or UUID | `--lookup-json` and/or `--id` (same vocabulary as `query`); drop bare-string “entity” |
-| **Registry resolution** | `lookup_by_name()`, `entity_key` paths | MVR field indexes only; UUID for id |
-| **Entity row cache** | `name`, `employer` columns + `bind_index(name, employer)` | Generic bind-field cache aligned with `mvr.bind_fields` (schema + indexes) |
-| **MVR helpers** | `required_bind_fields` assumes `entity_key` satisfies `name` | Remove legacy `entity_key` satisfaction rules |
-| **Admin / introspection** | `resolve_entity_for_lookup(entity_key)` | Explicit lookup map or id |
-| **Docs / help text** | Mixed “entity”, “entity_key”, “name” | Target protocol vocabulary only |
-| **Internal gates** | `MYCELIUM_ALLOW_LEGACY_ENTITY_KEY`, suppressed CLI flags | Remove or hard-fail everywhere |
-| **Operator write UI** | Was “Program 3” | **Program 4** — after protocol is legible |
+### D1 — Registry row shape: **Option A**
+
+- `entities.json` entity rows use **`bind_values: dict[str, str]`** only (no top-level `name` / `employer` columns).
+- **`bind_index`** compound key is **generic**: normalized values for every `mvr.bind_fields` entry, joined in policy order (CRM: `name|employer`).
+- **Hard cutover** — refresh networks; no lazy migration on read.
+- Query `results[]` may still expose flat `name` / `employer` for display — derived from `bind_values`, not a second canonical store.
+
+### D2 — Status surfaces: **D2-b**
+
+- **Input:** CLI/admin `--id` / `?id=` and `--lookup-json` / `?lookup=` only; remove `--entity` / `?entity=`.
+- **Output:** mirror query step-1:
+
+```json
+{
+  "resolve": { "id": null, "lookup": { "name": "…", "employer": "…" } },
+  "resolve_matches": 1,
+  "resolve_kind": "exact",
+  "entity_fields": [ … ]
+}
+```
+
+- Rename resolution fields: `entity_matches` → `resolve_matches`, `entity_resolution_kind` → `resolve_kind`, etc.
+- **No** `entity_key` on status JSON.
+- Inspect stays **exact AND** only — no fuzzy `lookup_suggested` on `GET /status`.
+
+### Other locks
+
+| Topic | Decision |
+|-------|----------|
+| **MVR helpers (item 5)** | Delete `required_bind_fields(entity_key, binding)`; `missing_mvr_bind_fields(lookup)` only |
+| **Legacy graph** | Remove `EntityQuery.entity_key` / `binding`, `resolve_entity()`, `MYCELIUM_ALLOW_LEGACY_ENTITY_KEY` |
+| **`lookup_by_name`** | Remove; use name field index internally |
+| **`describe_network` policy** | Target protocol only on primary policy surface |
+| **Operator write UI** | Program 4 |
 
 ---
 
-## Explicit non-goals (until locked)
+## Slice map (Cursor queue)
 
-- Slice breakdown and Cursor prompts (planning session with Paul + Grok)
+| Order | Prompt | Scope |
+|-------|--------|--------|
+| 1 | `2026-06-14-1500-registry-generic-bind.md` | `bind_values`, generic `bind_index`, `attribute_write`, `seed_import`, `field_index` |
+| 2 | `2026-06-14-1510-mvr-helper-legacy-removal.md` | Remove `required_bind_fields(entity_key,…)`, legacy `binding` on `MvrPolicy` |
+| 3 | `2026-06-14-1520-status-surfaces-target.md` | CLI/admin status `id`/`lookup`; `resolve` JSON; admin-ui |
+| 4 | `2026-06-14-1530-legacy-graph-removal.md` | Remove legacy resolution graph, models, responses, supervisor gate |
+| 5 | `2026-06-14-1540-test-migration.md` | Migrate/delete legacy `entity_key` test corpus; drop conftest env flag |
+| 6 | `2026-06-14-1550-policy-docs-hygiene.md` | `describe_network`, docs, manual gates, program complete |
+
+Each slice: smoke tests + `./bin/ci-local`. Cursor does **not** edit `TODO.md`.
+
+**Program final slice:** `1550` — Grok runs full integration (`pytest -m full`) at review.
+
+---
+
+## Explicit non-goals
+
 - Operator edit / force re-research UI (Program 4)
-- Migration of production networks beyond documented refresh posture (unless Paul asks)
+- Fuzzy suggestions on `GET /status`
+- Production network migration beyond documented refresh posture
 
 ---
 
-## Next steps (after Program 2 gate)
-
-1. Paul finishes [`2026-06-13-program2-post-program-gate.md`](../manual-checks/2026-06-13-program2-post-program-gate.md).
-2. Grok + Paul lock Program 3 scope and slices (likely: CLI/status → registry schema/indexes → admin → docs/hygiene).
-3. Bump `TODO.md` when ready (Grok + Paul only).
-
----
-
-*Created: 2026-06-14 — Paul: legacy cleanup is next program; operator write deferred.*
+*Updated: 2026-06-14 — D1 Option A + D2-b locked; slices queued.*
