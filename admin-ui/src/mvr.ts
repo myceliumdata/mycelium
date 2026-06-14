@@ -1,0 +1,98 @@
+import type { EntityKeySuggestion } from "./types";
+
+/** CRM default while capabilities are loading. */
+export const DEFAULT_MVR_BIND_FIELDS = ["name", "employer"] as const;
+
+export function mvrBindFieldsFromPolicy(
+  policy: Record<string, unknown> | undefined,
+): string[] {
+  const mvr = policy?.mvr;
+  if (typeof mvr === "object" && mvr !== null) {
+    const raw = (mvr as { bind_fields?: unknown }).bind_fields;
+    if (Array.isArray(raw)) {
+      const fields = raw
+        .map((item) => String(item).trim())
+        .filter((item) => item.length > 0);
+      if (fields.length > 0) {
+        return fields;
+      }
+    }
+  }
+  return [...DEFAULT_MVR_BIND_FIELDS];
+}
+
+export function bindFieldLabel(field: string): string {
+  if (!field) {
+    return field;
+  }
+  return field.charAt(0).toUpperCase() + field.slice(1).replace(/_/g, " ");
+}
+
+export function buildLookupPayload(
+  values: Record<string, string>,
+  bindFields: string[],
+): Record<string, string> | null {
+  const lookup: Record<string, string> = {};
+  for (const field of bindFields) {
+    const value = values[field]?.trim();
+    if (value) {
+      lookup[field] = value;
+    }
+  }
+  return Object.keys(lookup).length > 0 ? lookup : null;
+}
+
+export function statusEntityKeyForResolve(
+  mode: "id" | "lookup",
+  registryId: string,
+  lookupValues: Record<string, string>,
+  bindFields: string[],
+): string | null {
+  if (mode === "id") {
+    const id = registryId.trim();
+    return id || null;
+  }
+  const name = lookupValues.name?.trim();
+  if (name) {
+    return name;
+  }
+  for (const field of bindFields) {
+    const value = lookupValues[field]?.trim();
+    if (value) {
+      return value;
+    }
+  }
+  return null;
+}
+
+export function lookupFromSuggestion(
+  item: EntityKeySuggestion,
+  bindFields: string[],
+  previous: Record<string, string>,
+): Record<string, string> {
+  const next = { ...previous };
+  const fieldSet = new Set(bindFields);
+
+  if (fieldSet.has("name")) {
+    next.name = item.entity_key || item.name || previous.name || "";
+  }
+  if (fieldSet.has("employer") && item.employer) {
+    next.employer = item.employer;
+  }
+
+  for (const field of bindFields) {
+    if (field === "name" || field === "employer") {
+      continue;
+    }
+    const raw = (item as unknown as Record<string, unknown>)[field];
+    if (raw != null && String(raw).trim()) {
+      next[field] = String(raw).trim();
+    }
+  }
+
+  return next;
+}
+
+export function emptyLookupValues(bindFields: string[]): Record<string, string> {
+  return Object.fromEntries(bindFields.map((field) => [field, ""]));
+}

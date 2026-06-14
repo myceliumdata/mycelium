@@ -114,6 +114,62 @@ header.app-header h1 {
   flex-wrap: wrap;
 }
 
+.query-step-fieldset {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 0 0 0.75rem;
+  padding: 0.65rem 0.75rem 0.75rem;
+}
+
+.query-step-fieldset legend {
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0 0.25rem;
+}
+
+.query-step-fieldset:disabled {
+  opacity: 0.55;
+}
+
+.mode-radio-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.mode-radio-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.92rem;
+}
+
+.lookup-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.step-helper {
+  margin: 0 0 0.5rem;
+  font-size: 0.88rem;
+}
+
+.confirm-new-entity {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.entity-drilldown {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
 .query-result {
   margin-top: 0.75rem;
 }

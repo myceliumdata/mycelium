@@ -79,6 +79,11 @@ export interface OntologyCategory {
   examples: string[];
 }
 
+export interface MvrPolicy {
+  bind_fields: string[];
+  [key: string]: unknown;
+}
+
 export interface CapabilitiesResponse {
   network_name: string | null;
   display_name: string | null;
@@ -90,7 +95,7 @@ export interface CapabilitiesResponse {
     message: string | null;
     categories: OntologyCategory[];
   };
-  policy: Record<string, unknown>;
+  policy: Record<string, unknown> & { mvr?: MvrPolicy };
 }
 
 export interface QuoteLineItem {

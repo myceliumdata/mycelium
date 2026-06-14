@@ -276,7 +276,7 @@ uv run mycelium query --network crm \
 ./bin/restart-admin crm
 ```
 
-Open **http://127.0.0.1:8741/** → Query tab.
+Open **http://127.0.0.1:8741/** → **Query & entity lookup** panel.
 
 1. Run step 1: name `Andrea Kalmans`, employer `Wrong Corp` → badge `lookup_suggested`, suggestions list visible.
 2. Click a suggestion → name + employer fields populate.

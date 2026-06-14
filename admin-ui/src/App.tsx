@@ -8,8 +8,17 @@ import {
 } from "react";
 import { fetchCapabilities, fetchHealth, fetchStatus, runQuery } from "./api";
 import { formatTimestamp, networkLabel } from "./format";
+import {
+  bindFieldLabel,
+  buildLookupPayload,
+  emptyLookupValues,
+  lookupFromSuggestion,
+  mvrBindFieldsFromPolicy,
+  statusEntityKeyForResolve,
+} from "./mvr";
 import type {
   CapabilitiesResponse,
+  EntityKeySuggestion,
   HealthResponse,
   QueryResponse,
   StatusResponse,
@@ -191,22 +200,24 @@ export default function App() {
   const [pollError, setPollError] = useState<string | null>(null);
 
   const [entityCategoryLimit, setEntityCategoryLimit] = useState("");
-  const [entityInput, setEntityInput] = useState("");
   const [entityKey, setEntityKey] = useState("");
 
-  const [entityLookupOpen, setEntityLookupOpen] = useState(false);
   const [guideCardOpen, setGuideCardOpen] = useState(false);
   const [queryPanelOpen, setQueryPanelOpen] = useState(false);
 
-  const [queryName, setQueryName] = useState("");
+  const [resolveMode, setResolveMode] = useState<"id" | "lookup">("lookup");
+  const [queryRegistryId, setQueryRegistryId] = useState("");
+  const [lookupValues, setLookupValues] = useState<Record<string, string>>({});
   const [queryAttributes, setQueryAttributes] = useState("");
-  const [queryEmployer, setQueryEmployer] = useState("");
   const [queryDeliveryId, setQueryDeliveryId] = useState("");
   const [queryQuoteId, setQueryQuoteId] = useState("");
   const [queryConfirmNewEntity, setQueryConfirmNewEntity] = useState(false);
   const [queryLoading, setQueryLoading] = useState(false);
   const [queryError, setQueryError] = useState<string | null>(null);
   const [queryResult, setQueryResult] = useState<QueryResponse | null>(null);
+
+  const bindFields = mvrBindFieldsFromPolicy(capabilities?.policy);
+  const step2Active = queryDeliveryId.trim().length > 0;
 
   const statusInFlight = useRef(false);
   const capsInFlight = useRef(false);
@@ -336,6 +347,18 @@ export default function App() {
     };
   }, [pollStatus, refreshOnVisible]);
 
+  useEffect(() => {
+    setLookupValues((previous) => {
+      const next = emptyLookupValues(bindFields);
+      for (const field of bindFields) {
+        if (previous[field] != null) {
+          next[field] = previous[field];
+        }
+      }
+      return next;
+    });
+  }, [bindFields.join("|")]);
+
   const fetchStatusNow = useCallback(
     async (params: { category?: string; entity?: string }) => {
       if (statusInFlight.current) {
@@ -362,39 +385,71 @@ export default function App() {
     [fetchCapabilitiesSilent],
   );
 
-  const onEntitySubmit = (event: FormEvent) => {
-    event.preventDefault();
-    const key = entityInput.trim();
-    setEntityKey(key);
-    void fetchStatusNow({
-      category: entityCategoryLimit || undefined,
-      entity: key || undefined,
-    });
+  const refreshEntityDrilldown = useCallback(
+    (mode: "id" | "lookup", registryId: string, lookup: Record<string, string>) => {
+      const key = statusEntityKeyForResolve(mode, registryId, lookup, bindFields);
+      if (!key) {
+        return;
+      }
+      setEntityKey(key);
+      void fetchStatusNow({
+        category: entityCategoryLimit || undefined,
+        entity: key,
+      });
+    },
+    [bindFields, entityCategoryLimit, fetchStatusNow],
+  );
+
+  const onResolveModeChange = (mode: "id" | "lookup") => {
+    setResolveMode(mode);
+    if (mode === "id") {
+      setLookupValues(emptyLookupValues(bindFields));
+    } else {
+      setQueryRegistryId("");
+    }
+  };
+
+  const onLookupFieldChange = (field: string, value: string) => {
+    setLookupValues((previous) => ({ ...previous, [field]: value }));
+  };
+
+  const onCategoryLimitChange = (category: string) => {
+    setEntityCategoryLimit(category);
+    if (entityKey) {
+      void fetchStatusNow({
+        category: category || undefined,
+        entity: entityKey,
+      });
+    }
   };
 
   const runQueryRequest = useCallback(
     async (quoteIdOverride?: string) => {
-      const name = queryName.trim();
-      const employer = queryEmployer.trim();
       const deliveryId = queryDeliveryId.trim();
       const quoteId = (quoteIdOverride ?? queryQuoteId).trim();
       const attrs = parseAttributes(queryAttributes);
 
       let body: Parameters<typeof runQuery>[0];
+      const wasStep2 = Boolean(deliveryId);
+
       if (deliveryId) {
         body = quoteId
           ? { delivery_id: deliveryId, quote_id: quoteId }
           : { delivery_id: deliveryId };
-      } else {
-        if (!name && !employer) {
+      } else if (resolveMode === "id") {
+        const id = queryRegistryId.trim();
+        if (!id) {
           return;
         }
-        const lookup: Record<string, string> = {};
-        if (name) {
-          lookup.name = name;
-        }
-        if (employer) {
-          lookup.employer = employer;
+        body = {
+          id,
+          requested_attributes: attrs.length > 0 ? attrs : undefined,
+          confirm_new_entity: queryConfirmNewEntity || undefined,
+        };
+      } else {
+        const lookup = buildLookupPayload(lookupValues, bindFields);
+        if (!lookup) {
+          return;
         }
         body = {
           lookup,
@@ -419,8 +474,8 @@ export default function App() {
           setQueryQuoteId("");
         } else if (result.delivery?.delivery_id) {
           setQueryDeliveryId(String(result.delivery.delivery_id));
-          setQueryName("");
-          setQueryEmployer("");
+          setLookupValues(emptyLookupValues(bindFields));
+          setQueryRegistryId("");
           setQueryAttributes("");
         }
         if (
@@ -430,6 +485,10 @@ export default function App() {
         ) {
           setQueryQuoteId(String(result.quote.quote_id));
         }
+
+        if (!wasStep2) {
+          refreshEntityDrilldown(resolveMode, queryRegistryId, lookupValues);
+        }
       } catch (err) {
         setQueryError(err instanceof Error ? err.message : String(err));
         setQueryResult(null);
@@ -438,12 +497,15 @@ export default function App() {
       }
     },
     [
+      bindFields,
+      lookupValues,
       queryAttributes,
       queryDeliveryId,
-      queryEmployer,
-      queryName,
       queryQuoteId,
       queryConfirmNewEntity,
+      queryRegistryId,
+      refreshEntityDrilldown,
+      resolveMode,
     ],
   );
 
@@ -461,18 +523,19 @@ export default function App() {
     void runQueryRequest(String(quoteId));
   };
 
-  const applySuggestion = (suggestedKey: string, employer?: string | null) => {
-    setQueryName(suggestedKey);
-    if (employer) {
-      setQueryEmployer(employer);
-    }
+  const applySuggestion = (item: EntityKeySuggestion) => {
+    setResolveMode("lookup");
+    setQueryRegistryId("");
+    setLookupValues(lookupFromSuggestion(item, bindFields, lookupValues));
     setQueryConfirmNewEntity(false);
-    setEntityInput(suggestedKey);
-    setEntityKey(suggestedKey);
-    void fetchStatusNow({
-      category: entityCategoryLimit || undefined,
-      entity: suggestedKey,
-    });
+    const key = item.entity_key || item.name;
+    if (key) {
+      setEntityKey(key);
+      void fetchStatusNow({
+        category: entityCategoryLimit || undefined,
+        entity: key,
+      });
+    }
   };
 
   const storedSpecialists =
@@ -575,57 +638,102 @@ export default function App() {
           onToggle={(event) => setQueryPanelOpen(event.currentTarget.open)}
         >
           <summary className="collapsible-summary disclosure-summary">
-            Run query
+            Query &amp; entity lookup
           </summary>
-          <form className="row-actions query-form" onSubmit={onQuerySubmit}>
-            <input
-              type="search"
-              placeholder="Name (lookup)"
-              value={queryName}
-              onChange={(e) => setQueryName(e.target.value)}
-              aria-label="Query lookup name"
-            />
-            <input
-              type="search"
-              placeholder="Employer (lookup)"
-              value={queryEmployer}
-              onChange={(e) => setQueryEmployer(e.target.value)}
-              aria-label="Query lookup employer"
-            />
-            <input
-              type="search"
-              placeholder="Attributes (email, linkedin)"
-              value={queryAttributes}
-              onChange={(e) => setQueryAttributes(e.target.value)}
-              aria-label="Requested attributes"
-            />
-            <input
-              type="search"
-              placeholder="Delivery id (from step 1)"
-              value={queryDeliveryId}
-              onChange={(e) => setQueryDeliveryId(e.target.value)}
-              aria-label="Delivery id"
-            />
-            <input
-              type="search"
-              placeholder="Quote id (retry after quote_required)"
-              value={queryQuoteId}
-              onChange={(e) => setQueryQuoteId(e.target.value)}
-              aria-label="Quote id"
-            />
-            <button type="submit" disabled={queryLoading}>
-              {queryLoading ? "Running…" : "Run"}
-            </button>
-            {queryResult?.outcome === "lookup_suggested" && (
-              <label className="confirm-new-entity">
+          <form className="query-form" onSubmit={onQuerySubmit}>
+            <fieldset
+              className="query-step-fieldset"
+              disabled={step2Active || queryLoading}
+            >
+              <legend>Step 1 — resolve</legend>
+              <p className="step-helper muted">
+                Use <strong>registry ID</strong> or <strong>MVR lookup</strong>{" "}
+                (not both). Bind fields: {bindFields.join(", ")}. Step 2 uses{" "}
+                <code>delivery_id</code> below.
+              </p>
+              <div className="mode-radio-row" role="radiogroup" aria-label="Resolve mode">
+                <label>
+                  <input
+                    type="radio"
+                    name="resolve-mode"
+                    checked={resolveMode === "id"}
+                    onChange={() => onResolveModeChange("id")}
+                  />
+                  Registry ID
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="resolve-mode"
+                    checked={resolveMode === "lookup"}
+                    onChange={() => onResolveModeChange("lookup")}
+                  />
+                  MVR lookup
+                </label>
+              </div>
+              {resolveMode === "id" ? (
                 <input
-                  type="checkbox"
-                  checked={queryConfirmNewEntity}
-                  onChange={(e) => setQueryConfirmNewEntity(e.target.checked)}
+                  type="search"
+                  placeholder="Registry UUID"
+                  value={queryRegistryId}
+                  onChange={(e) => setQueryRegistryId(e.target.value)}
+                  aria-label="Registry ID"
                 />
-                Confirm new entity (ignore suggestions)
-              </label>
-            )}
+              ) : (
+                <div className="lookup-fields">
+                  {bindFields.map((field) => (
+                    <input
+                      key={field}
+                      type="search"
+                      placeholder={bindFieldLabel(field)}
+                      value={lookupValues[field] ?? ""}
+                      onChange={(e) => onLookupFieldChange(field, e.target.value)}
+                      aria-label={`Lookup ${field}`}
+                    />
+                  ))}
+                </div>
+              )}
+              <input
+                type="search"
+                placeholder="Attributes (email, linkedin)"
+                value={queryAttributes}
+                onChange={(e) => setQueryAttributes(e.target.value)}
+                aria-label="Requested attributes"
+              />
+            </fieldset>
+
+            <fieldset className="query-step-fieldset">
+              <legend>Step 2 — deliver</legend>
+              <div className="row-actions">
+                <input
+                  type="search"
+                  placeholder="Delivery id (from step 1)"
+                  value={queryDeliveryId}
+                  onChange={(e) => setQueryDeliveryId(e.target.value)}
+                  aria-label="Delivery id"
+                />
+                <input
+                  type="search"
+                  placeholder="Quote id (retry after quote_required)"
+                  value={queryQuoteId}
+                  onChange={(e) => setQueryQuoteId(e.target.value)}
+                  aria-label="Quote id"
+                />
+                <button type="submit" disabled={queryLoading}>
+                  {queryLoading ? "Running…" : "Run"}
+                </button>
+                {queryResult?.outcome === "lookup_suggested" && !step2Active && (
+                  <label className="confirm-new-entity">
+                    <input
+                      type="checkbox"
+                      checked={queryConfirmNewEntity}
+                      onChange={(e) => setQueryConfirmNewEntity(e.target.checked)}
+                    />
+                    Confirm new entity (ignore suggestions)
+                  </label>
+                )}
+              </div>
+            </fieldset>
           </form>
           {queryError && <p className="error">Query error: {queryError}</p>}
           {queryResult && (
@@ -672,9 +780,7 @@ export default function App() {
                         <button
                           type="button"
                           className="link-button"
-                          onClick={() =>
-                            applySuggestion(item.entity_key, item.employer)
-                          }
+                          onClick={() => applySuggestion(item)}
                         >
                           {item.entity_key}
                         </button>{" "}
@@ -738,51 +844,31 @@ export default function App() {
               )}
             </div>
           )}
-        </details>
-      )}
-
-      {status && (
-        <details
-          className="card collapsible-card"
-          open={entityLookupOpen}
-          onToggle={(event) => setEntityLookupOpen(event.currentTarget.open)}
-        >
-          <summary className="collapsible-summary disclosure-summary">
-            Entity lookup
-          </summary>
-          <form className="row-actions" onSubmit={onEntitySubmit}>
-            <input
-              type="search"
-              placeholder="Name, employer, or id"
-              value={entityInput}
-              onChange={(e) => setEntityInput(e.target.value)}
-              aria-label="Entity key"
-            />
-            <label className="field-inline">
-              <span className="muted">Category</span>
-              <select
-                value={entityCategoryLimit}
-                onChange={(e) => setEntityCategoryLimit(e.target.value)}
-                aria-label="Limit entity lookup to category"
-              >
-                <option value="">All</option>
-                {(status.categories.length > 0
-                  ? status.categories
-                  : ontologyCategories.map((c) => ({ name: c.name }))
-                ).map((cat) => (
-                  <option key={cat.name} value={cat.name}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button type="submit">Search</button>
-          </form>
 
           {entityKey && (
-            <div>
+            <div className="entity-drilldown">
+              <div className="row-actions">
+                <label className="field-inline">
+                  <span className="muted">Category</span>
+                  <select
+                    value={entityCategoryLimit}
+                    onChange={(e) => onCategoryLimitChange(e.target.value)}
+                    aria-label="Limit entity drill-down to category"
+                  >
+                    <option value="">All</option>
+                    {(status.categories.length > 0
+                      ? status.categories
+                      : ontologyCategories.map((c) => ({ name: c.name }))
+                    ).map((cat) => (
+                      <option key={cat.name} value={cat.name}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
               <p>
-                Lookup: <code>{entityKey}</code> — {status.entity_matches}{" "}
+                Drill-down: <code>{entityKey}</code> — {status.entity_matches}{" "}
                 match(es)
                 {status.entity_resolution_kind && (
                   <>
@@ -811,7 +897,7 @@ export default function App() {
                         <button
                           type="button"
                           className="link-button"
-                          onClick={() => applySuggestion(item.entity_key)}
+                          onClick={() => applySuggestion(item)}
                         >
                           {item.entity_key}
                         </button>{" "}

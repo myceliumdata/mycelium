@@ -1,10 +1,10 @@
 # Cursor queue
 
-**Active:** [`next/2026-06-14-1200-admin-query-unified-mvr-lookup.md`](next/2026-06-14-1200-admin-query-unified-mvr-lookup.md) — admin unified query + dynamic MVR fields
+**Active:** [`next/2026-06-14-1215-admin-query-confirm-new-entity-wire.md`](next/2026-06-14-1215-admin-query-confirm-new-entity-wire.md) — admin confirm_new_entity wire (blocking fix from 1200 review)
 
-**Last approved:** [`done/2026-06-14-1100-target-step1-lookup-clarity/`](done/2026-06-14-1100-target-step1-lookup-clarity/) — **Approved** (Grok, 2026-06-14)
+**Last approved:** [`done/2026-06-14-1200-admin-query-unified-mvr-lookup/`](done/2026-06-14-1200-admin-query-unified-mvr-lookup/) — **Approved + fix slice** (Grok, 2026-06-14)
 
-**Manual gate:** [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](../../docs/manual-checks/2026-06-13-program2-post-program-gate.md) — updated for Check 0c; pending Paul run.
+**Manual gate:** [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](../../docs/manual-checks/2026-06-13-program2-post-program-gate.md) — Check 0c-vi uses unified panel; confirm checkbox needs 1215 fix.
 
 **Git:** Ahead of `origin/main`. No push until Paul asks. See `WORKFLOW.md` §4.
 
