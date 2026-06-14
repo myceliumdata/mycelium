@@ -2,7 +2,7 @@
 
 **Status:** ⏳ **PENDING** — run this checklist from scratch; mark **CLEAR** when all required checks pass.
 
-**Context:** Program 2 (Slices 1–3 + polish P1–P7 + remedial fixes + capstone tests) is **committed locally** on `main` — **14 commits ahead of `origin/main`**. This gate validates hands-on behavior before **pushing** to `origin/main`.
+**Context:** Program 2 (Slices 1–3 + polish P1–P7 + remedial fixes + capstone tests) is **committed locally** on `main` — **16 commits ahead of `origin/main`** (local-only until push). This gate validates hands-on behavior before **pushing** to `origin/main`.
 
 **What Program 2 proves:**
 
@@ -36,7 +36,7 @@ These bugs slipped past smoke CI until June 2026 remedial work. The checklist be
 
 ```bash
 cd /path/to/mycelium
-git log --oneline origin/main..HEAD | wc -l   # expect 14
+git log --oneline origin/main..HEAD | wc -l   # local-only commits until push
 git status
 ```
 
