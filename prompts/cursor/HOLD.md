@@ -1,6 +1,6 @@
 # Cursor queue
 
-**Active:** *(empty)*
+**Active:** [`next/2026-06-14-1000-query-response-omit-empty-lists.md`](next/2026-06-14-1000-query-response-omit-empty-lists.md) — omit empty `required_fields`/`suggestions`, null `trace_id`
 
 **Done (approved):** [`done/2026-06-14-0900-query-response-omit-na-fields/`](done/2026-06-14-0900-query-response-omit-na-fields/) — **Approved**
 
