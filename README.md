@@ -226,7 +226,7 @@ Long-lived **HTTP on localhost** (default `http://127.0.0.1:8741`) — one proce
 | Endpoint | Purpose |
 |----------|---------|
 | `GET /health` | Liveness + bound network metadata |
-| `GET /status` | Full status JSON (`?category=`, `?entity=` mirror CLI flags) |
+| `GET /status` | Full status JSON (`?category=`, `?id=`, `?lookup=` mirror CLI flags) |
 | `GET /capabilities` | Guide, ontology, policy (same payload as MCP `describe_network`) |
 | `POST /query` | Target-protocol query (`EntityQuery` JSON); returns `QueryResponse.public_dict()` |
 
@@ -243,7 +243,7 @@ uv run mycelium network status --network crm --json | jq '.registry_entity_count
 
 Browser client in `admin-ui/` (`mycelium-admin-ui`) — **API-only** (no direct reads of `seed.json` or MCP). Restart the daemon after a Python code deploy; rebuild the SPA after frontend changes.
 
-**Default view** is scannable for demos: **Overview** shows ✅/❌ for entity count, categories, and specialists; specialist rows expand for storage detail. **Run query** exercises the two-step protocol (step 1 pre-fills `delivery_id`; user must click **Run** again for step 2 — no auto-deliver). **Entity lookup** and **Network guide & ontology** start collapsed. The UI polls `/status` every 3s (silent) so specialists appear as MCP/CLI queries populate storage — no manual refresh button.
+**Default view** is scannable for demos: **Overview** shows ✅/❌ for entity count, categories, and specialists; specialist rows expand for storage detail. **Run query** exercises the two-step protocol (step 1 pre-fills `delivery_id`; user must click **Run** again for step 2 — no auto-deliver). **Entity lookup** and **Network guide & ontology** start collapsed. The UI polls bare `GET /status` every 3s for **network overview** only (specialist counts update as MCP/CLI queries populate storage); entity drill-down refreshes on **Inspect** or once after step 1 — poll URLs never include `id` or `lookup`.
 
 **Development** (recommended — one command):
 

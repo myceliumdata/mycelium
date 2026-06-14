@@ -70,7 +70,12 @@ function parseAttributes(raw: string): string[] {
 
 export default function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [status, setStatus] = useState<StatusResponse | null>(null);
+  const [overviewStatus, setOverviewStatus] = useState<StatusResponse | null>(
+    null,
+  );
+  const [inspectStatus, setInspectStatus] = useState<StatusResponse | null>(
+    null,
+  );
   const [capabilities, setCapabilities] = useState<CapabilitiesResponse | null>(
     null,
   );
@@ -105,20 +110,10 @@ export default function App() {
   const capsInFlight = useRef(false);
   const prevOntologyPresent = useRef<boolean | null>(null);
 
-  const statusQueryParams = useCallback((): StatusFetchParams => {
-    if (lastInspectKey || queryDrilldownActive) {
-      return {
-        ...statusParams,
-        category: entityCategoryLimit || undefined,
-      };
-    }
-    return {};
-  }, [
-    entityCategoryLimit,
-    lastInspectKey,
-    queryDrilldownActive,
-    statusParams,
-  ]);
+  const overviewPollParams = useCallback((): StatusFetchParams => {
+    const category = entityCategoryLimit || undefined;
+    return category ? { category } : {};
+  }, [entityCategoryLimit]);
 
   const fetchCapabilitiesSilent = useCallback(async () => {
     if (capsInFlight.current) {
@@ -142,8 +137,8 @@ export default function App() {
     }
     statusInFlight.current = true;
     try {
-      const statusRes = await fetchStatus(statusQueryParams());
-      setStatus(statusRes);
+      const statusRes = await fetchStatus(overviewPollParams());
+      setOverviewStatus(statusRes);
       setPollError(null);
       if (
         prevOntologyPresent.current === false &&
@@ -157,7 +152,7 @@ export default function App() {
     } finally {
       statusInFlight.current = false;
     }
-  }, [fetchCapabilitiesSilent, statusQueryParams]);
+  }, [fetchCapabilitiesSilent, overviewPollParams]);
 
   const refreshOnVisible = useCallback(async () => {
     if (statusInFlight.current || document.hidden) {
@@ -165,14 +160,13 @@ export default function App() {
     }
     statusInFlight.current = true;
     try {
-      const params = statusQueryParams();
       const [healthRes, statusRes, capsRes] = await Promise.all([
         fetchHealth(),
-        fetchStatus(params),
+        fetchStatus(overviewPollParams()),
         fetchCapabilities(),
       ]);
       setHealth(healthRes);
-      setStatus(statusRes);
+      setOverviewStatus(statusRes);
       setCapabilities(capsRes);
       setPollError(null);
       prevOntologyPresent.current = statusRes.ontology_present;
@@ -181,7 +175,7 @@ export default function App() {
     } finally {
       statusInFlight.current = false;
     }
-  }, [statusQueryParams]);
+  }, [overviewPollParams]);
 
   useEffect(() => {
     let cancelled = false;
@@ -198,7 +192,7 @@ export default function App() {
           return;
         }
         setHealth(healthRes);
-        setStatus(statusRes);
+        setOverviewStatus(statusRes);
         setCapabilities(capsRes);
         prevOntologyPresent.current = statusRes.ontology_present;
       } catch (err) {
@@ -248,7 +242,7 @@ export default function App() {
     });
   }, [bindFields.join("|")]);
 
-  const fetchStatusNow = useCallback(
+  const fetchInspectStatusNow = useCallback(
     async (params: StatusFetchParams) => {
       if (statusInFlight.current) {
         return;
@@ -256,22 +250,15 @@ export default function App() {
       statusInFlight.current = true;
       try {
         const statusRes = await fetchStatus(params);
-        setStatus(statusRes);
+        setInspectStatus(statusRes);
         setPollError(null);
-        if (
-          prevOntologyPresent.current === false &&
-          statusRes.ontology_present
-        ) {
-          void fetchCapabilitiesSilent();
-        }
-        prevOntologyPresent.current = statusRes.ontology_present;
       } catch (err) {
         setPollError(err instanceof Error ? err.message : String(err));
       } finally {
         statusInFlight.current = false;
       }
     },
-    [fetchCapabilitiesSilent],
+    [],
   );
 
   const onResolveModeChange = (mode: "id" | "lookup") => {
@@ -296,7 +283,7 @@ export default function App() {
     };
     setStatusParams(next);
     if (lastInspectKey || queryDrilldownActive) {
-      void fetchStatusNow(next);
+      void fetchInspectStatusNow(next);
     }
   };
 
@@ -320,9 +307,9 @@ export default function App() {
       setStatusParams(params);
       setLastInspectKey(label);
       setQueryDrilldownActive(false);
-      void fetchStatusNow(params);
+      void fetchInspectStatusNow(params);
     },
-    [bindFields, entityCategoryLimit, fetchStatusNow],
+    [bindFields, entityCategoryLimit, fetchInspectStatusNow],
   );
 
   const onInspect = () => {
@@ -347,22 +334,16 @@ export default function App() {
       }
       setStatusParams(params);
       setQueryDrilldownActive(true);
-      void fetchStatusNow(params);
+      void fetchInspectStatusNow(params);
     },
-    [bindFields, entityCategoryLimit, fetchStatusNow],
+    [bindFields, entityCategoryLimit, fetchInspectStatusNow],
   );
-
-  const refreshQueryDrilldown = useCallback(() => {
-    refreshQueryDrilldownWith(resolveMode, queryRegistryId, lookupValues);
-  }, [
-    lookupValues,
-    queryRegistryId,
-    refreshQueryDrilldownWith,
-    resolveMode,
-  ]);
 
   const runQueryStep1 = useCallback(async () => {
     const attrs = parseAttributes(queryAttributes);
+    const modeForDrill = resolveMode;
+    const idForDrill = queryRegistryId;
+    const lookupValuesForDrill = { ...lookupValues };
     let body: Parameters<typeof runQuery>[0];
 
     if (resolveMode === "id") {
@@ -406,11 +387,16 @@ export default function App() {
         setQueryQuoteId(String(result.quote.quote_id));
       }
 
-      refreshQueryDrilldown();
+      refreshQueryDrilldownWith(
+        modeForDrill,
+        idForDrill,
+        lookupValuesForDrill,
+      );
     } catch (err) {
       setQueryError(err instanceof Error ? err.message : String(err));
       setQueryResult(null);
       setQueryDrilldownActive(false);
+      setInspectStatus(null);
     } finally {
       setQueryLoading(false);
     }
@@ -420,7 +406,7 @@ export default function App() {
     queryAttributes,
     queryConfirmNewEntity,
     queryRegistryId,
-    refreshQueryDrilldown,
+    refreshQueryDrilldownWith,
     resolveMode,
   ]);
 
@@ -496,7 +482,7 @@ export default function App() {
   };
 
   const storedSpecialists =
-    status?.specialists.filter((spec) => spec.record_count > 0) ?? [];
+    overviewStatus?.specialists.filter((spec) => spec.record_count > 0) ?? [];
 
   const ontologyCategories = capabilities?.ontology.categories ?? [];
 
@@ -537,15 +523,15 @@ export default function App() {
         <p className="poll-error">Background refresh failed: {pollError}</p>
       )}
 
-      {status && (
+      {overviewStatus && (
         <section className="card">
           <h2>Overview</h2>
           <p className="status-line">
-            {status.registry_entity_count > 0 ? "✅" : "❌"} Entities (
-            {status.registry_entity_count})
+            {overviewStatus.registry_entity_count > 0 ? "✅" : "❌"} Entities (
+            {overviewStatus.registry_entity_count})
           </p>
           <p className="status-line">
-            {status.ontology_present ? "✅" : "❌"} Categories
+            {overviewStatus.ontology_present ? "✅" : "❌"} Categories
           </p>
           {meteringEnabled && (
             <p className="status-line muted">
@@ -595,7 +581,7 @@ export default function App() {
         </section>
       )}
 
-      {status && (
+      {overviewStatus && (
         <details
           className="card collapsible-card"
           open={entityLookupPanelOpen}
@@ -619,9 +605,9 @@ export default function App() {
               Inspect
             </button>
           </div>
-          {lastInspectKey && (
+          {lastInspectKey && inspectStatus && (
             <EntityDrilldown
-              status={status}
+              status={inspectStatus}
               label="Lookup"
               categoryLimit={entityCategoryLimit}
               ontologyCategories={ontologyCategories}
@@ -632,7 +618,7 @@ export default function App() {
         </details>
       )}
 
-      {status && (
+      {overviewStatus && (
         <details
           className="card collapsible-card"
           open={queryPanelOpen}
@@ -792,9 +778,9 @@ export default function App() {
                 )}
               </div>
             )}
-            {queryDrilldownActive && queryResult && (
+            {queryDrilldownActive && queryResult && inspectStatus && (
               <EntityDrilldown
-                status={status}
+                status={inspectStatus}
                 label="Drill-down"
                 queryResult={queryResult}
                 showCategoryFilter={false}
