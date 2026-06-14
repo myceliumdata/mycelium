@@ -412,12 +412,13 @@ def validate_entity_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str
         ]
 
     if (
-        len(matched) == 1
-        and not any_failed
+        not any_failed
         and graph_requested_attributes(current)
         and current.classifications
         and research_gate_allows(
-            current_id=updated_matches[0].get("id"),
+            current_id=updated_matches[0].get("id")
+            if len(updated_matches) == 1
+            else None,
             matched=updated_matches,
         )
     ):
@@ -432,13 +433,17 @@ def validate_entity_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str
             result["audit_log"].append(
                 "validate_entity: validation passed — scheduling attribute specialists.",
             )
+        ids = [str(m.get("id")) for m in updated_matches if m.get("id")]
         ctx = planner_context(
-            matched=updated_matches,
-            ids=[str(updated_matches[0].get("id"))],
+            matched=updated_matches[0]
+            if len(updated_matches) == 1
+            else updated_matches,
+            ids=ids,
             specialists_to_invoke=specialists_to_invoke,
             contributions=list(_meta(current).get("contributions") or []),
         )
-        result["current_id"] = updated_matches[0].get("id")
+        if len(updated_matches) == 1:
+            result["current_id"] = updated_matches[0].get("id")
         result["context"] = ctx
 
     return result

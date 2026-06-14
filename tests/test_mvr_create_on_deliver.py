@@ -188,7 +188,7 @@ def test_multi_match_step2_promotes_provisional_bind(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _ = crm_create_on_deliver_env
-    _mock_email_research(monkeypatch)
+    calls = _mock_email_research(monkeypatch)
     registry = get_entity_registry()
     wrong_corp, _ = registry.bind_provisional("Andrea Kalmans", "Wrong Corp")
 
@@ -204,6 +204,9 @@ def test_multi_match_step2_promotes_provisional_bind(
 
     step2 = run_query(EntityQuery(delivery_id=step1.delivery.delivery_id))
     assert step2.outcome == "assembled"
+    assert len(step2.results) >= 2
+    assert all(row.get("email") == "new.person@example.com" for row in step2.results)
+    assert len(calls) >= 2
 
     payload = json.loads(
         Path(__import__("os").environ["MYCELIUM_ENTITIES_PATH"]).read_text(

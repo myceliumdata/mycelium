@@ -1,12 +1,12 @@
 # Cursor queue
 
-**Active:** [`next/2026-06-14-1420-multi-match-post-validate-specialist-schedule.md`](next/2026-06-14-1420-multi-match-post-validate-specialist-schedule.md) — multi-match same-turn email after batch promote (1400 nit N1)
+**Active:** *(empty)*
 
-**Last approved:** [`1410`](done/2026-06-14-1410-multi-match-step2-deliver-truncation/) — **Approved + polish nits** (Paul manual test passed)
+**Last approved:** [`done/2026-06-14-1420-multi-match-post-validate-specialist-schedule/`](done/2026-06-14-1420-multi-match-post-validate-specialist-schedule/) — **Approved** (pending Paul manual test)
 
-**Prior:** [`1400`](done/2026-06-14-1400-provisional-validation-step2-deliver/) — manual validation test **passed** (Paul).
+**Prior:** [`1410`](done/2026-06-14-1410-multi-match-step2-deliver-truncation/) — manual test passed; [`1400`](done/2026-06-14-1400-provisional-validation-step2-deliver/) — manual test passed.
 
-**Process:** Cursor `1420` → Grok review → Paul manual (Wrong Corp provisional → one step-2 with emails). Then Program 2 gate when ready.
+**Process:** Paul manual test `1420` (Wrong Corp provisional → one step-2 with emails). Then Program 2 gate when ready.
 
 **Git:** Ahead of `origin/main`. No push until Paul asks. See `WORKFLOW.md` §4.
 
