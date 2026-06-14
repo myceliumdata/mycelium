@@ -1,10 +1,10 @@
 # Cursor queue
 
-**Active:** *(none — awaiting next slice)*
+**Active:** [`next/2026-06-14-1300-admin-restore-inspect-split-query-layout.md`](next/2026-06-14-1300-admin-restore-inspect-split-query-layout.md) — restore entity inspect, split query buttons, layout fix
 
-**Last approved:** [`done/2026-06-14-1220-admin-query-ui-polish-nits/`](done/2026-06-14-1220-admin-query-ui-polish-nits/) — **Approved** (Grok, 2026-06-14)
+**Last approved:** [`done/2026-06-14-1220-admin-query-ui-polish-nits/`](done/2026-06-14-1220-admin-query-ui-polish-nits/) — **Approved**
 
-**Manual gate:** [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](../../docs/manual-checks/2026-06-13-program2-post-program-gate.md)
+**Manual gate:** [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](../../docs/manual-checks/2026-06-13-program2-post-program-gate.md) — update after 1300 (inspect vs query)
 
 **Git:** Ahead of `origin/main`. No push until Paul asks. See `WORKFLOW.md` §4.
 
