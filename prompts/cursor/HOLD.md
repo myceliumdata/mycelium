@@ -1,10 +1,12 @@
 # Cursor queue
 
-**Active:** [`next/2026-06-14-1215-admin-query-confirm-new-entity-wire.md`](next/2026-06-14-1215-admin-query-confirm-new-entity-wire.md) — admin confirm_new_entity wire (blocking fix from 1200 review)
+**Active:** [`next/2026-06-14-1220-admin-query-ui-polish-nits.md`](next/2026-06-14-1220-admin-query-ui-polish-nits.md) — admin UI polish nits from 1200 review
 
-**Last approved:** [`done/2026-06-14-1200-admin-query-unified-mvr-lookup/`](done/2026-06-14-1200-admin-query-unified-mvr-lookup/) — **Approved + fix slice** (Grok, 2026-06-14)
+**In flight:** `1215-admin-query-confirm-new-entity-wire` — Cursor working; review pending when ready
 
-**Manual gate:** [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](../../docs/manual-checks/2026-06-13-program2-post-program-gate.md) — Check 0c-vi uses unified panel; confirm checkbox needs 1215 fix.
+**Last approved:** [`done/2026-06-14-1200-admin-query-unified-mvr-lookup/`](done/2026-06-14-1200-admin-query-unified-mvr-lookup/) — **Approved + fix slice**
+
+**Manual gate:** [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](../../docs/manual-checks/2026-06-13-program2-post-program-gate.md)
 
 **Git:** Ahead of `origin/main`. No push until Paul asks. See `WORKFLOW.md` §4.
 
