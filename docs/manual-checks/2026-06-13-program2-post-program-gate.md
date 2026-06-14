@@ -2,7 +2,7 @@
 
 **Status:** ⏳ **PENDING** — run this checklist from scratch; mark **CLEAR** when all required checks pass.
 
-**Context:** Program 2 (Slices 1–3 + polish P1–P7 + remedial fixes + capstone tests + **step-1 lookup clarity**) is **committed locally** on `main` — **23 commits ahead of `origin/main`** (local-only until push). This gate validates hands-on behavior before **pushing** to `origin/main`.
+**Context:** Program 2 (Slices 1–3 + polish P1–P7 + remedial fixes + capstone tests + **step-1 lookup clarity** + **fuzzy bind-field suggestions 1430–1450**) is **on `origin/main`** (`f5cf089` and later). This gate validates hands-on behavior on a synced checkout — **restart MCP** after pulling so suggestion shape matches code.
 
 **What Program 2 proves:**
 
@@ -11,6 +11,7 @@
 - Read surfaces: `provenance=true`, CLI/admin `entity_fields[].versions[]` for bind fields
 - Research operator deference (prompt) + polish fixes (ordering, no-op skip, rollback, empty employer row)
 - **Step-1 lookup clarity:** `lookup_incomplete`, `lookup_suggested`, and `confirm_new_entity` — no overloaded `not_found`, no silent create on same-name collision
+- **Fuzzy bind-field suggestions:** partial/full 0-hit typos → `lookup_suggested` with `suggestions[].suggested_lookup` (employer suggests canonical employer string; does **not** auto-batch-resolve employees)
 
 **Prereqs:** Framework repo root; `uv sync` done. Live roots under `~/mycelium-networks/` (never test in-place under `examples/networks/…`). Optional checks 8–10 need API keys in `.env`.
 
@@ -26,13 +27,14 @@ Target protocol step 1 now returns **distinct outcomes** — agents should branc
 |------|----------------|---------|------------|---------------------|
 | Partial lookup, 0 hits | `{"name":"Paul Murphy"}` | `lookup_incomplete` | none | `required_fields: ["employer"]` |
 | Partial lookup, ≥1 hit | `{"name":"Andrea Kalmans"}` | `lookup_resolved` | yes | `total_matches: N` |
-| Full MVR, same name elsewhere | Andrea @ Wrong Corp (Lontra in seed) | `lookup_suggested` | none | `suggestions[]` (`same_name_different_employer`) |
-| Full MVR, fuzzy name | `{"name":"Andrea Kalman","employer":"Acme Corp"}` | `lookup_suggested` | none | `suggestions[]` (`sequence_ratio`) |
+| Partial lookup, fuzzy employer | `{"employer":"645 Venture"}` | `lookup_suggested` | none | `suggestions[].suggested_lookup: {"employer":"645 Ventures"}` (`employer_sequence_ratio`) |
+| Full MVR, same name elsewhere | Andrea @ Wrong Corp (Lontra in seed) | `lookup_suggested` | none | `suggestions[]` (`same_name_different_employer`; may include `suggested_lookup`) |
+| Full MVR, fuzzy name | `{"name":"Andrea Kalman","employer":"Acme Corp"}` | `lookup_suggested` | none | `suggestions[].suggested_lookup: {"name":"Andrea Kalmans"}` (`sequence_ratio`) |
 | Full MVR, safe create | Road Runner @ Acme (no collision) | `lookup_resolved` | yes | `create_on_deliver: true` |
 | Full MVR, intentional new bind | Andrea @ Wrong + `confirm_new_entity` | `lookup_resolved` | yes | `create_on_deliver: true` |
 | True dead end | unknown `id`, expired `delivery_id` | `not_found` | none | unchanged |
 
-**MVR bind field names** come from `describe_network` → `policy.mvr.bind_fields` — not from every query response. Responses surface **what is missing** (`required_fields`) or **what is similar** (`suggestions`).
+**MVR bind field names** come from `describe_network` → `policy.mvr.bind_fields` — not from every query response. Responses surface **what is missing** (`required_fields`) or **what is similar** (`suggestions` with **`suggested_lookup`** retry maps — not retired `entity_key`).
 
 **`confirm_new_entity`:** Step-1 only. Re-query the same full MVR lookup with `confirm_new_entity: true` (CLI: `--confirm-new-entity`) after reviewing `lookup_suggested` to intentionally create a new registry row.
 
@@ -59,12 +61,13 @@ These bugs slipped past smoke CI until June 2026 remedial work. The checklist be
 
 ```bash
 cd /path/to/mycelium
-git log --oneline origin/main..HEAD | wc -l   # local-only commits until push
-git status
+git fetch origin && git status
+git log --oneline -1 origin/main
 ```
 
 **Pass:**
 
+- `main` matches `origin/main` (or only doc-only commits ahead — code for this gate is already pushed)
 - No `examples/networks/**/entities.json`, `deliveries.json`, `agents/`, `categories.json`, or DB files tracked or sitting untracked under `examples/networks/`
 - If `entities.json` reappeared under `examples/networks/crm/`, delete it — something wrote runtime data into the example tree
 
@@ -74,7 +77,7 @@ git status
 ./bin/ci-local
 ```
 
-**Pass:** all steps green (~403 smoke tests). This already covers capstones, path matrix A–D, and step-1 lookup clarity; manual checks prove **your** deployed roots and UI/MCP surfaces.
+**Pass:** all steps green (~419 smoke tests). This already covers capstones, path matrix A–D, step-1 lookup clarity, and fuzzy bind-field suggestions; manual checks prove **your** deployed roots and UI/MCP surfaces.
 
 | Gate area | Smoke tests (in `./bin/ci-local`) |
 |-----------|-------------------------------------|
@@ -85,7 +88,7 @@ git status
 | Road Runner create-on-deliver | `test_matrix_c_crm_road_runner_create_on_deliver` |
 | No duplicate bind version | `test_matrix_d_crm_road_runner_no_duplicate_bind_version` |
 | Seed refresh idempotency | `test_refresh_crm_imports_seed_into_entities` + capstone |
-| **Step-1 lookup clarity** | `tests/test_target_step1_lookup_clarity.py` (8 tests) |
+| **Step-1 lookup clarity + fuzzy** | `tests/test_target_step1_lookup_clarity.py` (18 tests) |
 
 Full integration (18 tests) was run at Grok review — not part of `ci-local`.
 
@@ -96,7 +99,8 @@ Full integration (18 tests) was run at Grok review — not part of `ci-local`.
 | Network roots | `~/mycelium-networks/crm` and `~/mycelium-networks/empty-crm` (or your paths) |
 | Registry | `uv run mycelium network list` — both networks registered after first refresh |
 | Admin | `./bin/restart-admin crm` when a check needs UI |
-| After **CLEAR** | Tell Grok **"Program 2 gate clear"** → push `origin/main` on request |
+| After **CLEAR** | Tell Grok **"Program 2 gate clear"** — code already on `origin/main`; gate sign-off only |
+| MCP | Restart MCP after `git pull` so `lookup_suggested` uses `suggested_lookup` (not retired `entity_key`) |
 
 **Admin UI URLs:**
 
@@ -234,9 +238,9 @@ uv run mycelium query --network crm \
 **Pass:**
 
 - `outcome` = `lookup_suggested`
-- `suggestions[]` non-empty; at least one entry has `reason: same_name_different_employer` and `employer: Lontra Ventures`
+- `suggestions[]` non-empty; at least one entry has `reason: same_name_different_employer`, `employer: Lontra Ventures`, and `id` for the seed row
 - **No** `delivery` / `delivery_id`
-- Message mentions retry with `id` or `confirm_new_entity`
+- Message mentions retry with `id`, merged `suggested_lookup`, or `confirm_new_entity`
 
 **Automated:** `test_full_mvr_wrong_employer_lookup_suggested`
 
@@ -259,18 +263,47 @@ Optional: run step 2 with that `delivery_id` — should create Andrea @ Wrong Co
 
 **Automated:** `test_full_mvr_wrong_employer_confirm_creates`
 
-### 0c-v — Fuzzy name suggestion (optional manual)
+### 0c-v — Fuzzy name suggestion
 
 ```bash
 uv run mycelium query --network crm \
   --lookup-json '{"name":"Andrea Kalman","employer":"Acme Corp"}'
 ```
 
-**Pass:** `lookup_suggested`, `suggestions[0].reason` = `sequence_ratio`, suggests `Andrea Kalmans`.
+**Pass:**
 
-**Automated:** `test_fuzzy_name_lookup_suggested`
+- `outcome` = `lookup_suggested`
+- `suggestions[0].reason` = `sequence_ratio`
+- `suggestions[0].suggested_lookup` = `{"name": "Andrea Kalmans"}` (or equivalent normalized map)
 
-### 0c-vi — Admin UI (recommended)
+**Automated:** `test_fuzzy_name_lookup_suggested`, `test_name_fuzzy_suggested_lookup_shape`
+
+### 0c-vii — Fuzzy employer suggestion (partial lookup)
+
+```bash
+uv run mycelium query --network crm \
+  --lookup-json '{"employer":"645 Venture"}'
+```
+
+**Pass:**
+
+- `outcome` = `lookup_suggested` (not `lookup_resolved` with a single employee)
+- `suggestions[0].reason` = `employer_sequence_ratio`
+- `suggestions[0].suggested_lookup` = `{"employer": "645 Ventures"}`
+- **No** `delivery` / `delivery_id`
+
+Retry with corrected employer — should resolve multiple employees:
+
+```bash
+uv run mycelium query --network crm \
+  --lookup-json '{"employer":"645 Ventures"}'
+```
+
+**Pass:** `lookup_resolved`, `total_matches` ≥ 1 (e.g. Aaron Holiday and others at 645 Ventures).
+
+**Automated:** `test_partial_fuzzy_employer_lookup_suggested`, `test_partial_fuzzy_employer_plural_typo_suggests_employer`, `test_employer_fuzzy_suggested_lookup_shape`, `test_partial_fuzzy_employer_retry_then_resolved`
+
+### 0c-viii — Admin UI (recommended)
 
 ```bash
 ./bin/restart-admin crm
@@ -283,9 +316,10 @@ uv run mycelium query --network crm \
 
 **Run query** — separate step buttons:
 
-1. Step 1 **Run**: Andrea @ Wrong Corp → `lookup_suggested`, suggestions visible.
-2. Click suggestion → fields populate; **Confirm new entity** → Step 1 **Run** → `lookup_resolved` + `create_on_deliver`.
-3. Step 2 **Deliver** with `delivery_id` (not the only Run on the page).
+1. Step 1 **Run**: Andrea @ Wrong Corp → `lookup_suggested`, suggestions visible (`suggested_lookup` or `id`).
+2. Click suggestion → fields populate from `suggested_lookup`; **Confirm new entity** → Step 1 **Run** → `lookup_resolved` + `create_on_deliver`.
+3. Partial employer typo `645 Venture` → `lookup_suggested` with employer correction; retry → multiple matches.
+4. Step 2 **Deliver** with `delivery_id` (not the only Run on the page).
 
 **Automated:** `test_admin_query_lookup_suggested_shape`, `test_status_lookup_map_single_match`
 
@@ -521,27 +555,24 @@ Skip unless deep validation desired. Automated: `tests/test_research.py` operato
 | Step 2 **"No valid delivery"** on empty-crm | MVR bootstrap regression (pre-fix) or stale code | Confirm remedial slices on branch; re-run **4b** |
 | Partial lookup `{"name":"…"}` → `not_found` | Pre–lookup-clarity code | Expect `lookup_incomplete` + `required_fields`; re-run **0c-i** |
 | Andrea @ Wrong Corp → silent `create_on_deliver` | Pre–lookup-clarity code | Expect `lookup_suggested`; re-run **0c-iii** |
+| `645 Venture` → one employee auto-resolved | Pre–fuzzy-employer code | Expect `lookup_suggested` + `suggested_lookup`; re-run **0c-vii** |
+| Suggestions expose `entity_key` not `suggested_lookup` | Stale MCP or pre–1450 code | Restart MCP; `git pull`; re-run **0c-v** / **0c-vii** |
 | Step 1 `not_found`, `employer: ""` in lookup | Empty employer — not full MVR | Expected; use `lookup_incomplete` path or supply employer |
 | Bind rows without `versions` | Specialist storage empty | Re-refresh crm; verify Check 0 spot-check |
 | `provenance` missing bind attrs | Slice 2 / step 1 binding | Re-run Check 2 with fresh delivery |
 | Extra Road Runner version (Check 6) | Polish P3 regression | Report check number + `jq` output |
 | Admin blank on :5173 | Vite/JS error | Use **:8741** or `--demo` |
 
-Report failures to Grok with **check number + command output**. Do **not** push until resolved or waived.
+Report failures to Grok with **check number + command output**.
 
 ---
 
 ## When done
 
 1. Change **Status** at top to **✅ CLEAR (YYYY-MM-DD)** — or tell Grok **"Program 2 gate clear."**
-2. Tell Grok to **push** `origin/main` when ready ("we're ready to deliver").
-3. Grok + Paul: update `TODO.md` — Program 2 complete on `origin/main`.
-4. Optional: website/onboarding sync per [`next-chunk-prep.md`](../plans/next-chunk-prep.md).
-
-```bash
-git push origin main
-```
+2. Grok + Paul: update `TODO.md` — Program 2 gate **CLEAR** (code already on `origin/main`).
+3. Optional: website sync per [`next-chunk-prep.md`](../plans/next-chunk-prep.md).
 
 ---
 
-*Created: 2026-06-13 · Rewritten: 2026-06-14 (seed-refresh, empty-crm MVR, capstone tests) · Updated: 2026-06-14 (step-1 lookup clarity, Check 0c)*
+*Created: 2026-06-13 · Rewritten: 2026-06-14 (seed-refresh, empty-crm MVR, capstone tests) · Updated: 2026-06-14 (step-1 lookup clarity, fuzzy suggestions 1430–1450, `suggested_lookup`)*

@@ -1,6 +1,6 @@
 # Program 2 — MVR / entity storage (versioned bind fields)
 
-**Status:** Complete (June 2026) — Slices 1–3 + polish shipped locally
+**Status:** Complete (June 2026) — Slices 1–3 + polish + fuzzy suggestions (1430–1450) on `origin/main`; manual gate pending
 **Architecture:** [`attribute-provenance-and-storage.md`](attribute-provenance-and-storage.md)  
 **Prerequisite:** Program 1 complete; MVR redesign M1–M10 shipped  
 **Blocks:** Program 3 (operator edit + force re-research UI)

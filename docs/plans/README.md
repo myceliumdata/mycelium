@@ -92,7 +92,17 @@ Implementation handoffs live in `prompts/cursor/done/<slug>/` with `prompt.md`, 
 | [`mvr-redesign-program.md`](mvr-redesign-program.md) | **Complete** — target protocol shipped |
 | [`mvr-best-practices.md`](mvr-best-practices.md) | Operator guide (lookup vs MVR, two-step, metering) |
 | [`mvr-redesign-entity-query-examples.md`](mvr-redesign-entity-query-examples.md) | Canonical step-1 / step-2 JSON (`create_on_deliver`, messages) |
+| [`fuzzy-lookup-policy.md`](fuzzy-lookup-policy.md) | Bind-field fuzzy suggestions (`lookup_suggested`, `suggested_lookup`) — **shipped** (1430–1450) |
 | [`../manual-checks/2026-06-13-mvr-redesign-post-program-gate.md`](../manual-checks/2026-06-13-mvr-redesign-post-program-gate.md) | Post-program manual gate |
+
+### Attribute provenance — Program 2 (MVR / entity storage, June 2026)
+
+| Doc | Status |
+|-----|--------|
+| [`attribute-provenance-program2.md`](attribute-provenance-program2.md) | **Complete** — on `origin/main`; manual gate pending |
+| [`attribute-provenance-program2-polish.md`](attribute-provenance-program2-polish.md) | Polish P1–P7 — done |
+| [`attribute-provenance-program2-slice1.md`](attribute-provenance-program2-slice1.md) … [`slice3.md`](attribute-provenance-program2-slice3.md) | Done |
+| [`../manual-checks/2026-06-13-program2-post-program-gate.md`](../manual-checks/2026-06-13-program2-post-program-gate.md) | Post-program manual gate — **PENDING** |
 
 ### Cleared / superseded backlogs
 
@@ -106,17 +116,12 @@ Implementation handoffs live in `prompts/cursor/done/<slug>/` with `prompt.md`, 
 
 | Doc | Topic |
 |-----|-------|
-| [`attribute-provenance-program1.md`](attribute-provenance-program1.md) | **Complete** (June 2026) — extended attr `versions[]`; hard cutover; pushed |
-| [`attribute-provenance-program1-polish.md`](attribute-provenance-program1-polish.md) | Program 1 polish — done |
-| [`attribute-provenance-program2.md`](attribute-provenance-program2.md) | **In progress** — Slice 1 queued |
-| [`attribute-provenance-program2-slice1.md`](attribute-provenance-program2-slice1.md) | Unified write + taxonomy bootstrap |
 | [`attribute-provenance-and-storage.md`](attribute-provenance-and-storage.md) | Architecture — entity/index/protocol split |
-| [`attribute-provenance-program2.md`](attribute-provenance-program2.md) | **Active** — MVR in specialist storage; unified write (Slice 1 queued) |
-| [`next-chunk-prep.md`](next-chunk-prep.md) | Handoff notes; Program 2 locked |
-| [`../manual-checks/2026-06-12-program1-post-push-gate.md`](../manual-checks/2026-06-12-program1-post-push-gate.md) | **CLEAR** (2026-06-13) — Program 1 integration verified |
+| [`entity-protocol-legacy-cleanup-program.md`](entity-protocol-legacy-cleanup-program.md) | **Next** — Program 3 legacy protocol cleanup |
+| [`next-chunk-prep.md`](next-chunk-prep.md) | Handoff notes; Program 2 shipped; Program 3 next |
+| [`../manual-checks/2026-06-13-program2-post-program-gate.md`](../manual-checks/2026-06-13-program2-post-program-gate.md) | **PENDING** — run on `origin/main` before Program 3 |
 | [`research-robustness-backlog.md`](research-robustness-backlog.md) | Post-2010 research hardening |
 | [`historical-assumptions-audit.md`](historical-assumptions-audit.md) | Phase 1 audit; Phase 2 cleanup recommendations |
-| [`legacy-ingest-storage-removal.md`](legacy-ingest-storage-removal.md) | **Done** — legacy ingest + SQLite `people` removed; see archival doc |
 
 Deferred product tracks are listed in **`TODO.md`** (settlement protocol, operator edit/re-research, `network create` v2, seed export, etc.).
 
@@ -137,4 +142,4 @@ Archived Paul + Grok threads: [`conversations/README.md`](conversations/README.m
 
 ---
 
-*Last updated: June 2026 (MVR redesign M1–M10 complete; Program 2 next).*
+*Last updated: June 2026 (Program 2 + fuzzy lookup on `origin/main`; Program 2 manual gate pending).*

@@ -34,7 +34,8 @@ From `docs/architecture.md` and `prompts/system/CORE_PROMPT.md`:
 
 - **`IdentityRecord`**: `id`, `name`, `employer` only.
 - **`EntityQuery`** (target protocol): step 1 — `id` or `lookup`, optional `requested_attributes`, `provenance`; step 2 — `delivery_id`, optional `quote_id`. Legacy `entity_key` internal-only when `MYCELIUM_ALLOW_LEGACY_ENTITY_KEY=1`.
-- **`QueryResponse`**: `outcome`, `total_matches`, `delivery`, `quote`, `results`, `message`, `provenance`, `debug`, `trace_id`, `thread_id`. Public JSON via `public_dict()` / `public_json()`.
+- **`LookupSuggestion`**: `reason`, optional `id` / display fields, and **`suggested_lookup`** (partial MVR map for step-1 retry). Built via `lookup_suggestion()` helper.
+- **`QueryResponse`**: `outcome`, `total_matches`, `delivery`, `quote`, `suggestions`, `required_fields`, `results`, `message`, `provenance`, `debug`, `trace_id`, `thread_id`. Step-1 outcomes include `lookup_incomplete`, `lookup_suggested`, and `lookup_resolved`. Public JSON via `public_dict()` / `public_json()` (omits inapplicable keys).
 - **`MyceliumGraphState`**: `query` required at input; internal fields (`route`, `identity_record`, `response`, `audit_log`, classifications, etc.).
 
 ---

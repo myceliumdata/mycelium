@@ -1,5 +1,7 @@
 # Entity protocol v1 — test plan
 
+> **Superseded for public clients (June 2026):** Target two-step protocol + `lookup_suggested` / `suggested_lookup` replaced legacy `entity_key` / `binding` negotiation on CLI, MCP, and admin. Keep this plan for historical Slice 1–8 regression context only.
+
 **Scope:** Slices 1–8 + polish (`1800`) — negotiation, registry, validation, research gate, growth.  
 **Metering (Slices 9–10):** out of scope for this plan.  
 **Branch for testing:** `entity-protocol-v1-rc` (pushed to `origin`; delete after main is promoted).  

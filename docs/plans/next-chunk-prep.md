@@ -10,14 +10,14 @@
 |-------|--------|
 | **Program 1 — Provenance** | **Complete** — pushed June 2026 |
 | **MVR redesign** | **Complete** (M1–M10) — on `origin/main` |
-| **Program 2 — MVR / entity storage** | **Complete locally** (Slices 1–3 + polish) — manual gate pending → push |
+| **Program 2 — MVR / entity storage** | **Complete on `origin/main`** (Slices 1–3 + polish + fuzzy 1430–1450) — manual gate pending |
 | **Program 3 — Entity protocol legacy cleanup** | **Next** (Paul) — remove name/`entity_key`/status `--entity` special cases — [`entity-protocol-legacy-cleanup-program.md`](entity-protocol-legacy-cleanup-program.md) |
 | **Program 4 — Operator write** | Deferred — admin edit + force re-research (after Program 3) |
 | **Toolbox** | TBD (Paul to define) |
 | **Research robustness** | Backlog — [`research-robustness-backlog.md`](research-robustness-backlog.md) |
 | **Website sync** | Review [myceliumdata.org](https://myceliumdata.org) after major pushes |
 
-**Manual gate:** [`2026-06-13-program2-post-program-gate.md`](../manual-checks/2026-06-13-program2-post-program-gate.md) — run before push.
+**Manual gate:** [`2026-06-13-program2-post-program-gate.md`](../manual-checks/2026-06-13-program2-post-program-gate.md) — run on synced `origin/main` (restart MCP first).
 
 **Active Cursor prompt:** None — finish Program 2 manual gate; then lock Program 3.
 
@@ -60,10 +60,10 @@
 
 ## What waits on Paul
 
-1. Run Program 2 manual gate (morning) — [`2026-06-13-program2-post-program-gate.md`](../manual-checks/2026-06-13-program2-post-program-gate.md).
-2. On **CLEAR**, push `origin/main` and bump `TODO.md`.
-3. **`TODO.md`** — Grok + Paul bump when Program 2 ships (Cursor does not edit).
+1. Run Program 2 manual gate — [`2026-06-13-program2-post-program-gate.md`](../manual-checks/2026-06-13-program2-post-program-gate.md) (includes fuzzy employer/name checks).
+2. On **CLEAR**, bump `TODO.md` — code already on `origin/main`.
+3. **`TODO.md`** — Grok + Paul bump when gate clears (Cursor does not edit).
 
 ---
 
-*Updated: June 2026 (Program 2 gate pending; Program 3 = legacy cleanup per Paul)*
+*Updated: June 2026 (Program 2 shipped; gate pending; Program 3 = legacy cleanup per Paul)*

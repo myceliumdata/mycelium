@@ -122,8 +122,9 @@ def _neutral_json_schema(model: type[EntityQuery] | type[QueryResponse] | type[I
             "Query outcome: outcome (machine-readable — lookup_resolved, "
             "lookup_incomplete, lookup_suggested, quote_required, found, assembled, …), "
             "total_matches and delivery (step-1 only, when applicable), suggestions "
-            "(same-name or fuzzy near-miss retries), required_fields (missing MVR bind "
-            "fields on lookup_incomplete), results (attribute values), message (status "
+            "(same-name or fuzzy near-miss retries; merge suggestions[].suggested_lookup "
+            "into step-1 lookup), required_fields (missing MVR bind fields on "
+            "lookup_incomplete), results (attribute values), message (status "
             "narrative), provenance (version history when request provenance=true and "
             "present), quote (when quote_required/payment_required), debug, trace_id, "
             "thread_id. Optional fields are omitted when not applicable — not emitted "
@@ -218,9 +219,12 @@ def query_entity(query_json: str) -> str:
       "quote_id": "q_… (when metering accepted)"
     }
 
-    Response JSON includes outcome (lookup_resolved, quote_required, found, assembled, …),
-    delivery, quote, total_matches, results, message, provenance, debug, trace_id, thread_id.
-    When metering.payment.enabled: quote_required → pay_quote → step 2 with quote_id.
+    Response JSON includes outcome (lookup_resolved, lookup_incomplete, lookup_suggested,
+    quote_required, found, assembled, …), delivery, quote, total_matches, suggestions
+    (with suggested_lookup retry maps), required_fields, results, message, provenance,
+    debug, trace_id, thread_id. On lookup_suggested, merge suggestions[].suggested_lookup
+    into step-1 lookup (or use suggestions[].id). When metering.payment.enabled:
+    quote_required → pay_quote → step 2 with quote_id.
     """
     return _run_mcp_query(query_json)
 

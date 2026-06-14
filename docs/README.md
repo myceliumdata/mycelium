@@ -26,7 +26,8 @@ Topic-specific plans and backlogs. Start with [architecture.md](architecture.md)
 
 | Topic | Document |
 |-------|----------|
-| **MVR redesign (shipped)** | [plans/mvr-redesign-program.md](plans/mvr-redesign-program.md), [plans/mvr-best-practices.md](plans/mvr-best-practices.md), [plans/mvr-redesign-entity-query-examples.md](plans/mvr-redesign-entity-query-examples.md) |
+| **MVR redesign (shipped)** | [plans/mvr-redesign-program.md](plans/mvr-redesign-program.md), [plans/mvr-best-practices.md](plans/mvr-best-practices.md), [plans/mvr-redesign-entity-query-examples.md](plans/mvr-redesign-entity-query-examples.md), [plans/fuzzy-lookup-policy.md](plans/fuzzy-lookup-policy.md) |
+| **Program 2 — MVR / entity storage (shipped)** | [plans/attribute-provenance-program2.md](plans/attribute-provenance-program2.md), [manual-checks/2026-06-13-program2-post-program-gate.md](manual-checks/2026-06-13-program2-post-program-gate.md) |
 | Specialist research (Phase 1) | [plans/specialist-research-phase1.md](plans/specialist-research-phase1.md) |
 | **Research prompt context** (MVR bind disambiguation + peer specialists, June 2026) | Slices `2010` / `2110` in `prompts/cursor/done/`; implementation in `src/tools/research.py`, templates under `src/agents/factory/templates/research/` |
 | Research robustness backlog (post-2010) | [plans/research-robustness-backlog.md](plans/research-robustness-backlog.md) |
