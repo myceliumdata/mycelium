@@ -57,19 +57,20 @@ jq '{bind_index_entries: (.bind_index | length), sample: (.bind_index | to_entri
 ## Check 2 — Status inspect flags
 
 ```bash
-# By lookup (exact AND)
+# By lookup (exact AND) — resolve echoes lookup, not id (D2-b)
 uv run mycelium network status --network crm \
   --lookup-json '{"name":"Andrea Kalmans","employer":"Lontra Ventures"}' --json | \
   jq '{resolve, resolve_matches, resolve_kind}'
 
-# By id (paste uuid from check 1 or query results)
-uv run mycelium network status --network crm --id <uuid> --json | jq '.resolve'
+# By id — uuid from Check 1 (.entities…id), bind_index, or step-1 query results[].id
+ANDREA_ID=$(jq -r '.bind_index["andrea kalmans|lontra ventures"]' ~/mycelium-networks/crm/entities.json)
+uv run mycelium network status --network crm --id "$ANDREA_ID" --json | jq '.resolve'
 ```
 
 **Pass:**
 
-- `resolve.lookup` mirrors the `--lookup-json` input (or `resolve.id` when using `--id`)
-- `resolve_matches >= 1`, `resolve_kind` is `exact` for known rows
+- Lookup path: `resolve.lookup` mirrors `--lookup-json` input (**no** `resolve.id` — that is correct)
+- Id path: `resolve.id` equals the uuid you passed; `resolve_matches >= 1`, `resolve_kind` is `exact`
 - `--entity` flag is rejected or absent from help (`mycelium network status --help`)
 
 ---
