@@ -239,8 +239,10 @@ def test_status_reflects_entities_change_without_restart(
                 "entities": {
                     "solo-id": {
                         "id": "solo-id",
-                        "name": "Solo Person",
-                        "employer": "Test Co",
+                        "bind_values": {
+                            "name": "Solo Person",
+                            "employer": "Test Co",
+                        },
                         "validation_state": "validated",
                         "field_states": {
                             "name": "validated",

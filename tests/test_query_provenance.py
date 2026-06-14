@@ -185,8 +185,10 @@ def test_build_query_provenance_omits_bind_without_versioned_storage(
                 "entities": {
                     "solo-id": {
                         "id": "solo-id",
-                        "name": "Solo Person",
-                        "employer": "Test Co",
+                        "bind_values": {
+                            "name": "Solo Person",
+                            "employer": "Test Co",
+                        },
                         "validation_state": "validated",
                     },
                 },

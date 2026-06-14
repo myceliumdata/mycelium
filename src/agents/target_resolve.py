@@ -5,7 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from agents.entity_registry import _normalize_name_for_bind, get_entity_registry
+from agents.entity_registry import get_entity_registry
+from agents.field_index import normalize_field_index_value
 from agents.entity_resolution import _rank_employer_suggestions, _rank_suggestions
 from models.state import DeliveryPayload, EntityQuery, LookupSuggestion, lookup_suggestion
 from network.delivery import get_delivery_store, issue_delivery
@@ -37,10 +38,10 @@ def _same_name_different_employer_suggestions(
     if not name or not employer:
         return []
 
-    lookup_employer = _normalize_name_for_bind(employer)
+    lookup_employer = normalize_field_index_value(employer)
     suggestions: list[LookupSuggestion] = []
     for entity in get_entity_registry().lookup_by_name(name):
-        entity_employer = _normalize_name_for_bind(entity.employer or "")
+        entity_employer = normalize_field_index_value(entity.employer or "")
         if entity_employer == lookup_employer:
             continue
         suggested_lookup: dict[str, str] = {"name": entity.name}

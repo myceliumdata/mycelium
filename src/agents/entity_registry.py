@@ -11,14 +11,9 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from agents.field_index import normalize_field_index_value
+
 _registry: "EntityRegistry | None" = None
-
-
-def _normalize_name_for_bind(name: str) -> str:
-    text = name.strip().lower()
-    for ch in ("'", "-", "\u2019"):
-        text = text.replace(ch, "")
-    return " ".join(text.split())
 
 
 def _default_entities_path() -> Path:
@@ -27,18 +22,22 @@ def _default_entities_path() -> Path:
     return runtime_path("MYCELIUM_ENTITIES_PATH")
 
 
-def make_bind_key(name: str, employer: str) -> str:
-    """Normalized bind index key: ``lower(name)|lower(employer)``."""
-    return (
-        f"{_normalize_name_for_bind(name)}|"
-        f"{_normalize_name_for_bind(employer)}"
-    )
+def make_bind_key(
+    bind_values: dict[str, str],
+    bind_fields: list[str],
+) -> str:
+    """Normalized compound bind index key from MVR bind field values."""
+    parts: list[str] = []
+    for field in bind_fields:
+        key = field.strip().lower()
+        raw = bind_values.get(key, "")
+        parts.append(normalize_field_index_value(str(raw)))
+    return "|".join(parts)
 
 
 class RegistryEntity(BaseModel):
     id: str
-    name: str
-    employer: str | None = None
+    bind_values: dict[str, str] = Field(default_factory=dict)
     validation_state: str = "provisional"
     field_states: dict[str, str] = Field(default_factory=dict)
     attr_sources: dict[str, str] = Field(
@@ -51,6 +50,20 @@ class RegistryEntity(BaseModel):
     )
     source: str = "query_bind"
     created_at: str = ""
+
+    def bind_value(self, field: str) -> str | None:
+        raw = self.bind_values.get(field.strip().lower())
+        if raw is None or not str(raw).strip():
+            return None
+        return str(raw).strip()
+
+    @property
+    def name(self) -> str:
+        return self.bind_value("name") or ""
+
+    @property
+    def employer(self) -> str | None:
+        return self.bind_value("employer")
 
 
 class EntitiesDocument(BaseModel):
@@ -149,31 +162,41 @@ class EntityRegistry:
     def list_entities(self) -> list[RegistryEntity]:
         return list(self._data.entities.values())
 
-    def lookup_by_bind_key(self, name: str, employer: str) -> RegistryEntity | None:
-        key = make_bind_key(name, employer)
+    def _bind_fields(self) -> list[str]:
+        from network.mvr import load_mvr
+
+        return list(load_mvr().bind_fields)
+
+    def lookup_by_bind_values(self, bind_values: dict[str, str]) -> RegistryEntity | None:
+        bind_fields = self._bind_fields()
+        key = make_bind_key(bind_values, bind_fields)
         entity_id = self._data.bind_index.get(key)
         if not entity_id:
             return None
         return self._data.entities.get(entity_id)
 
+    def lookup_by_bind_key(self, name: str, employer: str) -> RegistryEntity | None:
+        """CRM-shaped bind lookup — delegates to ``lookup_by_bind_values``."""
+        return self.lookup_by_bind_values({"name": name, "employer": employer})
+
     def lookup_by_id(self, entity_id: str) -> RegistryEntity | None:
         return self._data.entities.get(entity_id)
 
     def lookup_by_name(self, name: str) -> list[RegistryEntity]:
-        target = _normalize_name_for_bind(name)
+        target = normalize_field_index_value(name)
         if not target:
             return []
         return [
             entity
             for entity in self._data.entities.values()
-            if _normalize_name_for_bind(entity.name) == target
+            if normalize_field_index_value(entity.name) == target
         ]
 
-    def assign_bind_index(self, entity_id: str, name: str, employer: str) -> None:
-        self._data.bind_index[make_bind_key(name, employer)] = entity_id
+    def assign_bind_index(self, entity_id: str, bind_values: dict[str, str]) -> None:
+        self._data.bind_index[make_bind_key(bind_values, self._bind_fields())] = entity_id
 
-    def pop_bind_index(self, name: str, employer: str) -> None:
-        self._data.bind_index.pop(make_bind_key(name, employer), None)
+    def pop_bind_index(self, bind_values: dict[str, str]) -> None:
+        self._data.bind_index.pop(make_bind_key(bind_values, self._bind_fields()), None)
 
     def register_entity(self, entity: RegistryEntity) -> None:
         self._data.entities[entity.id] = entity
@@ -215,13 +238,16 @@ class EntityRegistry:
 
     def promote_validated(self, entity_id: str) -> RegistryEntity:
         """Promote provisional entity and MVR field states to validated."""
+        from network.mvr import load_mvr
+
         entity = self._data.entities.get(entity_id)
         if entity is None:
             raise KeyError(f"Unknown registry entity: {entity_id}")
         entity.validation_state = "validated"
         entity.field_states = {
-            "name": "validated",
-            "employer": "validated",
+            field.strip().lower(): "validated"
+            for field in load_mvr().bind_fields
+            if field.strip()
         }
         self._save()
         return entity

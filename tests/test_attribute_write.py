@@ -125,7 +125,11 @@ def test_replace_employer_updates_indexes(attribute_write_env: CoreStorage) -> N
         source="query_bind",
         validation_state="validated",
     )
-    old_key = make_bind_key("Pat Example", "Old Co")
+    mvr = load_mvr()
+    old_key = make_bind_key(
+        {"name": "Pat Example", "employer": "Old Co"},
+        list(mvr.bind_fields),
+    )
     assert registry._data.bind_index.get(old_key) == entity.id
 
     write_bind_fields(
@@ -133,7 +137,10 @@ def test_replace_employer_updates_indexes(attribute_write_env: CoreStorage) -> N
         {"name": "Pat Example", "employer": "New Co"},
         actor_kind="bind",
     )
-    new_key = make_bind_key("Pat Example", "New Co")
+    new_key = make_bind_key(
+        {"name": "Pat Example", "employer": "New Co"},
+        list(mvr.bind_fields),
+    )
     assert old_key not in registry._data.bind_index
     assert registry._data.bind_index.get(new_key) == entity.id
     assert registry.lookup_by_bind_key("Pat Example", "New Co") is not None

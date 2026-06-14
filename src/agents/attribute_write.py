@@ -101,24 +101,17 @@ def _apply_specialist_bind_writes(
 
 
 def _apply_cache_field(entity: RegistryEntity, field: str, value: str) -> None:
-    """Denormalize MVR bind values on the registry row for hot reads.
-
-    CRM v1 caches ``name`` and ``employer`` columns only; additional
-    ``mvr.bind_fields`` are stored in specialist storage + ``attr_sources``.
-    """
-    key = field.strip().lower()
-    text = value.strip()
-    if key == "name":
-        entity.name = text
-    elif key == "employer":
-        entity.employer = text or None
+    """Update ``bind_values`` cache for an MVR bind field."""
+    entity.bind_values[field.strip().lower()] = value.strip()
 
 
-def _cache_values(entity: RegistryEntity) -> dict[str, str]:
-    """Snapshot cached bind columns used for ``bind_index`` (CRM v1: name + employer)."""
+def _cache_values(entity: RegistryEntity, mvr: Any | None = None) -> dict[str, str]:
+    """Snapshot bind_values used for ``bind_index`` (all ``mvr.bind_fields``)."""
+    policy = mvr if mvr is not None else load_mvr()
     return {
-        "name": entity.name,
-        "employer": entity.employer or "",
+        field.strip().lower(): entity.bind_values.get(field.strip().lower(), "")
+        for field in policy.bind_fields
+        if field.strip()
     }
 
 
@@ -151,8 +144,8 @@ def write_bind_fields(
     if unknown:
         raise ValueError(f"fields not in mvr.bind_fields: {sorted(unknown)}")
 
-    old_values = _cache_values(entity)
-    old_key = make_bind_key(old_values["name"], old_values["employer"])
+    old_values = _cache_values(entity, mvr)
+    old_key = make_bind_key(old_values, list(mvr.bind_fields))
     now = datetime.now(timezone.utc).isoformat()
 
     _apply_specialist_bind_writes(
@@ -176,11 +169,12 @@ def write_bind_fields(
     if source is not None:
         entity.source = source
 
-    new_key = make_bind_key(entity.name, entity.employer or "")
+    new_values = _cache_values(entity, mvr)
+    new_key = make_bind_key(new_values, list(mvr.bind_fields))
     if new_key != old_key:
-        reg.pop_bind_index(old_values["name"], old_values["employer"])
+        reg.pop_bind_index(old_values)
 
-    reg.assign_bind_index(entity_id, entity.name, entity.employer or "")
+    reg.assign_bind_index(entity_id, new_values)
     reg.save_entity(entity)
     return entity
 
@@ -205,13 +199,11 @@ def ensure_entity_bind_fields(
     if "name" not in bind_values:
         raise ValueError("bind fields require lookup.name")
 
-    name = bind_values["name"]
-    employer = bind_values.get("employer", "")
     resolved_actor = actor_kind or (
         "seed_bootstrap" if source == "seed_bootstrap" else "bind"
     )
 
-    existing = reg.lookup_by_bind_key(name, employer)
+    existing = reg.lookup_by_bind_values(bind_values)
     if existing is not None:
         # Seed refresh may copy legacy registry-only rows; backfill specialist versions.
         if source == "seed_bootstrap":
@@ -231,8 +223,7 @@ def ensure_entity_bind_fields(
     entity_id = str(uuid.uuid4())
     entity = RegistryEntity(
         id=entity_id,
-        name=name,
-        employer=employer or None,
+        bind_values={},
         validation_state=validation_state,
         field_states={},
         source=source,

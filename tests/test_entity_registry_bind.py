@@ -11,7 +11,7 @@ import pytest
 
 from agents.classification import reset_category_tree
 from agents.context import reset_context_builder
-from agents.entity_registry import get_entity_registry, reset_entity_registry
+from agents.entity_registry import get_entity_registry, make_bind_key, reset_entity_registry
 from agents.entity_resolution import lookup_entities_by_key, resolve_entity
 from graphs.core import reset_core_graph, run_query
 from network_helpers import import_seed_for_test
@@ -230,7 +230,7 @@ def test_aaron_holiday_seed_creates_registry_mirror(crm_registry_env: CoreStorag
     aaron = next(
         entity
         for entity in payload["entities"].values()
-        if entity["name"] == "Aaron Holiday"
+        if entity["bind_values"]["name"] == "Aaron Holiday"
     )
     assert aaron["source"] == "seed_bootstrap"
     assert aaron["validation_state"] == "validated"
@@ -373,3 +373,35 @@ def test_lookup_entities_by_key_stable_after_reimport(
 
     assert first_id == second_id
     assert entities.is_file()
+
+
+@pytest.mark.smoke
+def test_registry_entity_json_omits_top_level_name_employer(
+    crm_registry_env: CoreStorage,
+) -> None:
+    _ = crm_registry_env
+    run_query(
+        EntityQuery(
+            entity_key="Paul Murphy",
+            binding={"employer": "Acme Corp"},
+        ),
+    )
+    payload = json.loads(
+        Path(__import__("os").environ["MYCELIUM_ENTITIES_PATH"]).read_text(
+            encoding="utf-8",
+        ),
+    )
+    murphy_id = payload["bind_index"]["paul murphy|acme corp"]
+    murphy = payload["entities"][murphy_id]
+    assert "bind_values" in murphy
+    assert murphy["bind_values"]["name"] == "Paul Murphy"
+    assert murphy["bind_values"]["employer"] == "Acme Corp"
+    assert "name" not in murphy
+    assert "employer" not in murphy
+
+
+@pytest.mark.smoke
+def test_make_bind_key_respects_bind_fields_order() -> None:
+    values = {"name": "Ada", "employer": "Lab"}
+    assert make_bind_key(values, ["name", "employer"]) == "ada|lab"
+    assert make_bind_key(values, ["employer", "name"]) == "lab|ada"

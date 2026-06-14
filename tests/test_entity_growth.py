@@ -233,6 +233,9 @@ def test_seed_person_unchanged_after_registry_growth(
 
     entities_path = _entities_path()
     payload = json.loads(entities_path.read_text(encoding="utf-8"))
-    by_name = {entity["name"]: entity for entity in payload["entities"].values()}
+    by_name = {
+        entity["bind_values"]["name"]: entity
+        for entity in payload["entities"].values()
+    }
     assert by_name["Paul Murphy"]["source"] == "query_bind"
     assert by_name["Andrea Kalmans"]["source"] == "seed_bootstrap"
