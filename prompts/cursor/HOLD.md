@@ -1,12 +1,10 @@
 # Cursor queue
 
-**Active:** *(empty)*
+**Active:** [`next/2026-06-14-1430-partial-lookup-fuzzy-name-suggestions.md`](next/2026-06-14-1430-partial-lookup-fuzzy-name-suggestions.md) — partial name typo → `lookup_suggested` (Claude `Andrea Kalman` repro)
 
-**Last approved:** [`done/2026-06-14-1420-multi-match-post-validate-specialist-schedule/`](done/2026-06-14-1420-multi-match-post-validate-specialist-schedule/) — **Approved** — Paul manual test **passed** (Wrong Corp provisional → one step-2 → validated + emails)
+**Last approved:** [`1420`](done/2026-06-14-1420-multi-match-post-validate-specialist-schedule/) — manual test passed
 
-**Prior:** [`1410`](done/2026-06-14-1410-multi-match-step2-deliver-truncation/) — manual test passed; [`1400`](done/2026-06-14-1400-provisional-validation-step2-deliver/) — manual test passed.
-
-**Process:** Program 2 manual gate next — [`docs/manual-checks/2026-06-13-program2-post-program-gate.md`](../../docs/manual-checks/2026-06-13-program2-post-program-gate.md)
+**Process:** Cursor `1430` → Grok review → Paul manual (`Andrea Kalman` → suggestions). Program 2 gate after.
 
 **Git:** Ahead of `origin/main`. No push until Paul asks. See `WORKFLOW.md` §4.
 
