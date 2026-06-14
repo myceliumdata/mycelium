@@ -40,14 +40,17 @@ Refresh CRM to pick up `bind_values` shape:
 ## Check 1 — Registry `bind_values`
 
 ```bash
-jq '.entities[0] | {id, bind_values, bind_index}' ~/mycelium-networks/crm/entities.json
+# entities is a dict keyed by uuid — not an array
+jq '.entities | to_entries[0].value | {id, bind_values}' ~/mycelium-networks/crm/entities.json
+jq '{bind_index_entries: (.bind_index | length), sample: (.bind_index | to_entries[0])}' \
+  ~/mycelium-networks/crm/entities.json
 ```
 
 **Pass:**
 
 - Row has `bind_values` object with `name` and `employer` (CRM)
-- No top-level `name` / `employer` keys on the entity object
-- `bind_index` present (compound key)
+- No top-level `name` / `employer` keys on the entity object (only inside `bind_values`)
+- Top-level `bind_index` map present with compound keys (e.g. `name|employer` → uuid)
 
 ---
 
