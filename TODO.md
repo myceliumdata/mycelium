@@ -10,7 +10,7 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 ## Next up (Paul)
 
-- [ ] **Non-CRM example network** — Second committed example beside `crm` / `empty-crm` / `crm-metering`: distinct MVR `bind_fields`, ontology, and seed (not people-at-funds). `examples/networks/<name>/` + `refresh-example-network` + onboarding/docs second path; CRM stays default. Domain TBD (e.g. companies, vehicles — see [`docs/plans/networks-terminology.md`](docs/plans/networks-terminology.md) vision).
+- [ ] **`baseball` example network** — Lahman second example; design [`docs/plans/mycelium_lahman_design_prompt.md`](docs/plans/mycelium_lahman_design_prompt.md). Two registry grains (player + team-season), agent-managed warehouse + derivations. **Locked:** uuid4 on load; Lahman `playerID` = source metadata only. **Player MVR (draft):** name + team — bind tricky when careers span teams. **Seed data:** Paul has `~/mycelium-networks/baseball/seed/lahman_1871-2025_csv.zip` (~40MB); hosting TBD — avoid git blob if possible; SABR Box not bot-fetchable; may self-host URL + ingest script.
 
 ### Shipped (2026-06-14)
 
@@ -48,6 +48,7 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ## Brand
 
+- [ ] **Product motivation / narrative** — Decide what to do with origin stories (not the only “why”): (1) MCP-on-raw-data factory insight — [`docs/plans/conversations/2026-06-14-data-factory-origin.md`](docs/plans/conversations/2026-06-14-data-factory-origin.md); (2) blockchain full-index data volumes (new data every block). Targets TBD: `architecture.md` intro, onboarding, website.
 - [ ] **Explainer video** — *de-prioritized*; short networks intro when time allows.
 
 ---
@@ -89,4 +90,4 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ---
 
-Last updated: 2026-06-14 (Program 3 **complete** incl. 1560 polish; operator work in **Admin UI** below; non-CRM example queued)
+Last updated: 2026-06-15 (`baseball` example design; product narrative + seed hosting TBD)

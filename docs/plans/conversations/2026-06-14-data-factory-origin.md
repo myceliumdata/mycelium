@@ -29,6 +29,12 @@ The only workable model: **agents in control of the factory** — organizing and
 
 ---
 
+## Other product motivations (not exhaustive)
+
+- **Blockchain-scale data** — fully indexing blockchains produces enormous volumes; same factory problem at a different scale and refresh cadence (new data every block vs Lahman’s ~annual update). Explore alongside baseball; not yet archived in detail.
+
+---
+
 ## Implications for Mycelium (high level)
 
 | Raw MCP + tables | Mycelium-style factory |
@@ -58,7 +64,8 @@ Humans are bad at cache/retention tradeoffs; agents can weigh **cost to store** 
 ## Open design threads (June 2026)
 
 - **Two registry entry points** in one `baseball` network: player MVR and team-season MVR (fields TBD).
-- **`id` vs source keys:** protocol `id` replaces client use of Lahman `playerID`; whether `playerID` can *be* the registry `id` is a separate implementation choice (see design discussion 2026-06-14).
+- **`id` vs source keys:** protocol `id` is **uuid4** assigned on load (Paul, June 2026); Lahman `playerID` is provenance/source metadata, not a parallel public handle.
+- **Player MVR (draft):** human-meaningful **name + team** (not birth year); bind is tricky when players played for multiple teams — design TBD.
 - **Complete Lahman ER map:** pending Paul sharing the actual 2025 CSV bundle locally (Box link not machine-readable).
 
 ---
