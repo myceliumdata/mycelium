@@ -10,7 +10,7 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 ## Next up (Paul)
 
-- [ ] **`baseball` example network** — Lahman second example; design [`docs/plans/mycelium_lahman_design_prompt.md`](docs/plans/mycelium_lahman_design_prompt.md). Two registry grains (player + team-season), agent-managed warehouse + derivations. **Locked:** uuid4 on load; Lahman `playerID` = source metadata only. **Player MVR (draft):** name + team — bind tricky when careers span teams. **Seed data:** Paul has `~/mycelium-networks/baseball/seed/lahman_1871-2025_csv.zip` (~40MB); hosting TBD — avoid git blob if possible; SABR Box not bot-fetchable; may self-host URL + ingest script.
+- [ ] **`baseball` example network** — Lahman second example; design [`docs/plans/mycelium_lahman_design_prompt.md`](docs/plans/mycelium_lahman_design_prompt.md). Two registry grains (player + team-season), agent-managed warehouse + derivations. **Locked:** uuid4 on load; Lahman `playerID` = source metadata only. **Player MVR (draft):** name + team — team disambiguates homonyms; any team the player played for → same uuid (index TBD). **Seed data:** Paul has `~/mycelium-networks/baseball/seed/lahman_1871-2025_csv.zip` (~40MB); hosting TBD — avoid git blob if possible; SABR Box not bot-fetchable; may self-host URL + ingest script.
 
 ### Shipped (2026-06-14)
 
@@ -33,6 +33,7 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ## Process (Grok + Paul)
 
+- **Archive design sessions** — End substantive Paul + Grok design threads in [`docs/plans/conversations/`](docs/plans/conversations/README.md) (survives chat compacting). Distill locks into program docs when ready.
 - **Website review after major pushes** — Review [myceliumdata.org](https://myceliumdata.org) vs `docs/architecture.md` + `docs/onboarding.md`. Queue in **`../mycelium-website/prompts/cursor/next/`**. Paul pushes and deploys.
 
 ---

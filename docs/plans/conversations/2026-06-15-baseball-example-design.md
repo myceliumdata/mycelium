@@ -34,12 +34,13 @@ Stat tables (`Batting`, `Pitching`, `Fielding`, `Appearances`, …) are **parall
 
 ---
 
-## Player MVR (draft — bind is hard)
+## Player MVR (draft)
 
 - **Not** birth year — fans know **names and teams**, not birthdays.
 - **Draft MVR:** player name + team (fields and normalization TBD).
-- **Twist:** players play for **multiple teams** (and `stint` mid-season). Bind must disambiguate *which* player identity is meant without treating Lahman `playerID` as MVR.
-- Open: is team in MVR “current team”, “team at query context”, “any team they played for”, or part of **team-season** resolve first?
+- **Team is a disambiguator, not a scope.** MVR identifies *which person*. If Aaron played for the Braves and the Red Sox, **`Aaron + Braves`** and **`Aaron + Red Sox`** must resolve to the **same** player row — any team he played for is valid for bind lookup when distinguishing homonyms.
+- **Twist:** bind index cannot be a single `name|team` compound key if multiple teams per player are all valid aliases for the same uuid. Index design TBD (e.g. index each (name, team) pair seen in Lahman → same entity id).
+- **Team-season / stint** scope is a separate question (query step 2 / derivation), not part of player identity.
 
 ---
 
