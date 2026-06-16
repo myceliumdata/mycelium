@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from agents.factory.agent_factory import AgentFactory, get_agent_factory, reset_agent_factory
-from agents.specialist_fields import current_status
+from agents.specialists.fields import current_status
 from agents.registry import get_agent_registry, reset_agent_registry
 from models.state import MyceliumGraphState, EntityQuery
 

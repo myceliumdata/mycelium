@@ -18,7 +18,8 @@ from typing import Any
 import jinja2
 
 from agents.registry import RegisteredAgent, get_agent_registry
-from agents.specialists.base import SpecialistStorage, registry_storage_paths
+from agents.specialists.base import registry_storage_paths
+from agents.specialists.protocol import dispatch_ensure_category_storage
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,7 @@ class AgentFactory:
         )
         now = datetime.now(timezone.utc).isoformat()
 
-        SpecialistStorage(category=category)
+        dispatch_ensure_category_storage(category)
         storage_path, strategy_path = registry_storage_paths(category)
 
         entry = RegisteredAgent(

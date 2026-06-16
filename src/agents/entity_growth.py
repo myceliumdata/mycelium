@@ -8,8 +8,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 from agents.entity_registry import get_entity_registry
-from agents.specialist_fields import current_version, is_versioned_field, validate_versioned_field
-from agents.specialists.base import SpecialistStorage
+from agents.registry import get_agent_registry
+from agents.specialists.protocol import dispatch_read_fields
 
 _UPDATED_FIELDS_RE = re.compile(r"updated=(\[[^\]]*\])")
 
@@ -27,6 +27,21 @@ def parse_research_fields_updated(audit_log: list[str]) -> list[str]:
         if isinstance(parsed, list):
             return [str(item) for item in parsed]
     return []
+
+
+def _agent_for_category(category: str) -> str | None:
+    from agents.classification import get_category_tree
+
+    categories = get_category_tree().get_categories()
+    cat = categories.get(category)
+    if cat is not None and cat.assigned_agent:
+        return cat.assigned_agent
+    registry = get_agent_registry()
+    for agent in registry.list_agents():
+        if agent.get("category") == category:
+            name = agent.get("name")
+            return str(name) if name else None
+    return None
 
 
 def apply_registry_research_attribution(
@@ -65,19 +80,23 @@ def apply_registry_research_attribution(
             )
         if not researched_fields:
             continue
-        try:
-            storage = SpecialistStorage(category=str(category))
-            record = storage.load().get("records", {}).get(entity_id, {})
-        except OSError:
-            record = {}
+        agent_name = _agent_for_category(str(category))
+        record: dict[str, Any] = {}
+        if agent_name:
+            read = dispatch_read_fields(
+                agent_name,
+                entity_id,
+                researched_fields,
+                include_versions=True,
+            )
+            record = read
         for field in researched_fields:
             entry = record.get(field) if isinstance(record, dict) else None
             timestamp = fallback_ts
-            if isinstance(entry, dict) and is_versioned_field(entry):
-                validate_versioned_field(entry, field_name=field, category=str(category))
-                version = current_version(entry)
-                if version and version.get("at"):
-                    timestamp = str(version["at"])
+            if isinstance(entry, dict):
+                updated_at = entry.get("updated_at")
+                if updated_at:
+                    timestamp = str(updated_at)
             updates[field] = (str(category), timestamp)
 
     if not updates:

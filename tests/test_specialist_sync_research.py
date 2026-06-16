@@ -13,7 +13,8 @@ import pytest
 from agents.factory.agent_factory import get_agent_factory, reset_agent_factory
 from agents.registry import get_agent_registry, reset_agent_registry
 from models.state import MyceliumGraphState, EntityQuery
-from agents.specialist_fields import current_status, current_value, current_version
+from agents.specialists.fields import current_status, current_value, current_version
+from agents.specialists.snapshots import field_context_snapshot
 from tools.research import ResearchRunResult
 from versioned_storage_fixtures import versioned_found, versioned_na, versioned_pending
 
@@ -60,12 +61,14 @@ def test_contact_email_sync_research_persists_found_not_pending(
         person_id: str,
         target_fields: list[str],
         context: dict[str, Any],
-        storage: Any,
         llm: Any | None = None,
     ) -> ResearchRunResult:
         _ = category, specialist_name, context, llm
         assert person_id == test_id
         assert "email" in target_fields
+        from agents.specialists.base import SpecialistStorage
+
+        storage = SpecialistStorage(category=category)
         data = storage.load()
         rec = data.setdefault("records", {}).setdefault(person_id, {})
         now = datetime.now(timezone.utc).isoformat()
@@ -121,11 +124,13 @@ def test_contact_pre_marks_pending_before_research_runs(
         person_id: str,
         target_fields: list[str],
         context: dict[str, Any],
-        storage: Any,
         llm: Any | None = None,
     ) -> ResearchRunResult:
         nonlocal seen_pending_before_complete
         _ = category, specialist_name, context, llm
+        from agents.specialists.base import SpecialistStorage
+
+        storage = SpecialistStorage(category=category)
         data = storage.load()
         entry = data["records"][person_id]["email"]
         version = current_version(entry)
@@ -175,7 +180,6 @@ def test_contact_retries_pending_with_last_error(
         person_id: str,
         target_fields: list[str],
         context: dict[str, Any],
-        storage: Any,
         llm: Any | None = None,
     ) -> ResearchRunResult:
         nonlocal call_count
@@ -183,6 +187,9 @@ def test_contact_retries_pending_with_last_error(
         call_count += 1
         assert target_fields == ["email"]
         now = datetime.now(timezone.utc).isoformat()
+        from agents.specialists.base import SpecialistStorage
+
+        storage = SpecialistStorage(category=category)
         data = storage.load()
         data["records"][test_id]["email"] = versioned_found(
             at=now,
@@ -244,13 +251,15 @@ def test_contact_retries_pending_without_last_error_when_no_age_gate(
         person_id: str,
         target_fields: list[str],
         context: dict[str, Any],
-        storage: Any,
         llm: Any | None = None,
     ) -> ResearchRunResult:
         nonlocal call_count
         _ = category, specialist_name, context, llm, person_id
         call_count += 1
         now = datetime.now(timezone.utc).isoformat()
+        from agents.specialists.base import SpecialistStorage
+
+        storage = SpecialistStorage(category=category)
         data = storage.load()
         data["records"][test_id]["email"] = versioned_found(
             at=now,
@@ -375,19 +384,27 @@ def test_research_context_includes_peers_excludes_own_category(
         "specialists": {
             "contact": {
                 entity_id: {
-                    "email": versioned_found(
-                        at="2026-06-09T00:00:00+00:00",
-                        value="jane@example.com",
+                    "email": field_context_snapshot(
+                        versioned_found(
+                            at="2026-06-09T00:00:00+00:00",
+                            value="jane@example.com",
+                        ),
+                        field_name="email",
+                        category="contact",
                     ),
                 },
             },
             "professional": {
                 entity_id: {
-                    "title": versioned_found(
-                        at="2026-06-09T00:00:00+00:00",
-                        value="CEO",
+                    "title": field_context_snapshot(
+                        versioned_found(
+                            at="2026-06-09T00:00:00+00:00",
+                            value="CEO",
+                            category="professional",
+                            specialist_name="professional_specialist",
+                        ),
+                        field_name="title",
                         category="professional",
-                        specialist_name="professional_specialist",
                     ),
                 },
             },
@@ -397,7 +414,7 @@ def test_research_context_includes_peers_excludes_own_category(
     peers = out.get("specialists", {})
     assert "professional" in peers
     assert "contact" not in peers
-    assert current_value(peers["professional"]["title"]) == "CEO"
+    assert peers["professional"]["title"]["value"] == "CEO"
 
 
 @pytest.mark.smoke

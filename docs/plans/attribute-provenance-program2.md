@@ -1,6 +1,9 @@
 # Program 2 — MVR / entity storage (versioned bind fields)
 
 **Status:** Complete (June 2026) — Slices 1–3 + polish + fuzzy suggestions (1430–1450) on `origin/main`; manual gate **CLEAR** (2026-06-14)
+
+**Storage I/O (June 2026):** Framework no longer reads/writes `agents/*/storage.json` directly. Bind, seed, research, provenance, and context paths dispatch through `agents.specialists.protocol`; registry cache/indexes sync from specialist-returned values. See slice `2026-06-16-1200-specialist-storage-boundaries` and `docs/architecture.md` addendum.
+
 **Architecture:** [`attribute-provenance-and-storage.md`](attribute-provenance-and-storage.md)  
 **Prerequisite:** Program 1 complete; MVR redesign M1–M10 shipped  
 **Blocks:** Program 3 (operator edit + force re-research UI)

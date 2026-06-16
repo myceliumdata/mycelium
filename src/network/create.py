@@ -16,7 +16,7 @@ from pydantic import BaseModel
 
 from agents.factory.agent_factory import AgentFactory
 from agents.registry import AgentRegistryData
-from agents.specialists.base import SpecialistStorage
+from agents.specialists.protocol import dispatch_ensure_category_storage
 from network.category_mvr_bootstrap import ensure_mvr_fields_in_category_tree
 from network.ontology import SkeletonOntologyResult, generate_skeleton_ontology
 from network.paths import NetworkPaths, apply_network_paths, framework_root
@@ -187,7 +187,7 @@ def _render_specialists(
     factory = AgentFactory(specialists_dir=paths.specialists_dir)
     written: list[Path] = []
     for agent in ontology.agents:
-        SpecialistStorage(category=agent.category)
+        dispatch_ensure_category_storage(agent.category)
         category = ontology.categories.categories[agent.category]
         written.append(
             factory.render_specialist_py(

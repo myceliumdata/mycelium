@@ -3,18 +3,13 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from dataclasses import replace
 from typing import Any
 
 from agents.classification import get_category_tree
 from agents.entity_registry import get_entity_registry
-from agents.specialist_fields import (
-    is_versioned_field,
-    storage_record,
-    validate_versioned_field,
-)
+from agents.registry import get_agent_registry
+from agents.specialists.protocol import dispatch_read_fields
 from models.state import EntityQuery, QueryResponse, normalized_requested_attributes
-from network.paths import NetworkPaths, resolve_network_root, runtime_path
 
 
 def _category_for_attribute(attr: str, *, entity_id: str) -> str | None:
@@ -27,40 +22,31 @@ def _category_for_attribute(attr: str, *, entity_id: str) -> str | None:
     return get_category_tree().mapped_category(attr)
 
 
-def _runtime_paths(paths: NetworkPaths | None) -> NetworkPaths:
-    if paths is not None:
-        return paths
-    base = NetworkPaths.from_root(resolve_network_root())
-    return replace(base, agents_dir=runtime_path("MYCELIUM_AGENT_DATA_DIR"))
-
-
-def _provenance_field_entry(entry: Any, *, field_name: str, category: str) -> dict[str, Any] | None:
-    if not isinstance(entry, dict):
-        return None
-    validate_versioned_field(entry, field_name=field_name, category=category)
-    if not is_versioned_field(entry):
-        return None
-    versions = entry.get("versions") or []
-    if not versions:
-        return None
-    return {
-        "current_version_id": entry.get("current_version_id"),
-        "versions": deepcopy(versions),
-    }
+def _agent_for_category(category: str) -> str | None:
+    categories = get_category_tree().get_categories()
+    cat = categories.get(category)
+    if cat is not None and cat.assigned_agent:
+        return cat.assigned_agent
+    registry = get_agent_registry()
+    for agent in registry.list_agents():
+        if agent.get("category") == category:
+            name = agent.get("name")
+            return str(name) if name else None
+    return None
 
 
 def build_query_provenance(
     *,
     entity_ids: list[str],
     requested_attributes: list[str],
-    paths: NetworkPaths | None = None,
+    paths: Any | None = None,
 ) -> dict[str, Any] | None:
     """Return provenance payload or None when nothing to attach."""
+    _ = paths
     requested = normalized_requested_attributes(requested_attributes)
     if not requested or not entity_ids:
         return None
 
-    resolved_paths = _runtime_paths(paths)
     entities: list[dict[str, Any]] = []
 
     for entity_id in entity_ids:
@@ -71,15 +57,20 @@ def build_query_provenance(
             category = _category_for_attribute(attr, entity_id=entity_id)
             if not category:
                 continue
-            record = storage_record(resolved_paths.agents_dir, category, entity_id)
-            entry = record.get(attr)
-            field_provenance = _provenance_field_entry(
-                entry,
-                field_name=attr,
-                category=category,
+            agent_name = _agent_for_category(category)
+            if not agent_name:
+                continue
+            read = dispatch_read_fields(
+                agent_name,
+                entity_id,
+                [attr],
+                include_versions=True,
             )
-            if field_provenance is not None:
-                attributes[attr] = field_provenance
+            entry = read.get(attr.strip().lower())
+            if isinstance(entry, dict):
+                provenance = entry.get("provenance")
+                if isinstance(provenance, dict) and provenance.get("versions"):
+                    attributes[attr] = deepcopy(provenance)
         if attributes:
             entities.append({"id": entity_id, "attributes": attributes})
 

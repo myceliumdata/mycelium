@@ -3,13 +3,12 @@
 Canonical values and versions[] live in taxonomy-owned specialist storage;
 ``entities.json`` holds cache, protocol fields, and derived indexes.
 
-Multi-category writes snapshot specialist payloads before save and best-effort
-rollback prior categories if a later save fails (Program 2 polish P4).
+Framework dispatches specialist writes via ``agents.specialists.protocol``;
+registry cache/indexes sync from returned values only.
 """
 
 from __future__ import annotations
 
-import copy
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -21,84 +20,16 @@ from agents.entity_registry import (
     make_bind_key,
     require_full_bind_values,
 )
-from agents.specialist_fields import append_version, current_value_matches
-from agents.specialists.base import SpecialistStorage
+from agents.specialists.protocol import (
+    dispatch_write_bind_fields_multi,
+    resolve_owner as _resolve_owner,
+)
 from network.mvr import load_mvr, normalized_lookup_values
 
 
 def resolve_attribute_owner(attribute: str) -> tuple[str, str]:
     """Return ``(category, assigned_agent)`` from ``categories.json`` ``attribute_map``."""
-    from agents.classification import get_category_tree
-
-    normalized = attribute.strip().lower()
-    if not normalized:
-        raise ValueError("attribute name is required")
-
-    tree = get_category_tree()
-    category = tree.mapped_category(normalized)
-    if not category:
-        raise ValueError(
-            f"MVR bind field {attribute!r} is not mapped in categories.json attribute_map",
-        )
-
-    categories = tree.get_categories()
-    cat = categories.get(category)
-    if cat is None or not cat.assigned_agent:
-        raise ValueError(
-            f"category {category!r} has no assigned_agent for attribute {attribute!r}",
-        )
-    return category, cat.assigned_agent
-
-
-def _actor_body(*, kind: str, category: str, specialist: str) -> dict[str, str]:
-    return {"kind": kind, "category": category, "specialist": specialist}
-
-
-def _apply_specialist_bind_writes(
-    entity_id: str,
-    normalized_fields: dict[str, str],
-    *,
-    actor_kind: str,
-    at: str,
-) -> None:
-    """Mutate specialist storage for bind fields; rollback on partial save failure."""
-    snapshots: dict[str, dict[str, Any]] = {}
-    pending: dict[str, dict[str, Any]] = {}
-
-    for field, value in normalized_fields.items():
-        category, specialist = resolve_attribute_owner(field)
-        if category not in pending:
-            storage = SpecialistStorage(category)
-            loaded = storage.load()
-            snapshots[category] = copy.deepcopy(loaded)
-            pending[category] = loaded
-
-        data = pending[category]
-        records = data.setdefault("records", {})
-        record = records.setdefault(entity_id, {})
-        if current_value_matches(record.get(field), value):
-            continue
-        version_body: dict[str, Any] = {
-            "at": at,
-            "status": "found",
-            "value": value,
-            "actor": _actor_body(
-                kind=actor_kind,
-                category=category,
-                specialist=specialist,
-            ),
-        }
-        record[field] = append_version(record.get(field), version_body)
-
-    saved: list[str] = []
-    try:
-        for category, data in pending.items():
-            SpecialistStorage(category).save(data)
-            saved.append(category)
-    except Exception:
-        for category in saved:
-            SpecialistStorage(category).save(snapshots[category])
-        raise
+    return _resolve_owner(attribute)
 
 
 def _apply_cache_field(entity: RegistryEntity, field: str, value: str) -> None:
@@ -121,7 +52,7 @@ def write_bind_fields(
     validation_state: str | None = None,
     registry: EntityRegistry | None = None,
 ) -> RegistryEntity:
-    """Write MVR bind fields to specialist storage and sync registry cache + indexes."""
+    """Write MVR bind fields via specialist dispatch; sync registry cache + indexes."""
     reg = registry if registry is not None else get_entity_registry()
     entity = reg.lookup_by_id(entity_id)
     if entity is None:
@@ -150,7 +81,7 @@ def write_bind_fields(
         pass
     now = datetime.now(timezone.utc).isoformat()
 
-    _apply_specialist_bind_writes(
+    returned = dispatch_write_bind_fields_multi(
         entity_id,
         normalized_fields,
         actor_kind=actor_kind,
@@ -159,7 +90,8 @@ def write_bind_fields(
     for field in normalized_fields:
         category = resolve_attribute_owner(field)[0]
         entity.attr_sources[field] = category
-        _apply_cache_field(entity, field, normalized_fields[field])
+        cached = returned.get(field, normalized_fields[field])
+        _apply_cache_field(entity, field, cached)
 
     if validation_state is not None:
         entity.validation_state = validation_state
@@ -201,7 +133,6 @@ def ensure_entity_bind_fields(
 
     existing = reg.lookup_by_bind_values(bind_values)
     if existing is not None:
-        # Seed refresh may copy legacy registry-only rows; backfill specialist versions.
         if source == "seed_bootstrap":
             write_bind_fields(
                 existing.id,

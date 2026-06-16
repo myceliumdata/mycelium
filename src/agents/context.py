@@ -1,8 +1,4 @@
-"""Build specialist context: read-only bind fields + extended-attrs-only storage.
-
-TODO: Eventually specialists should retrieve context from peer agents instead of the
-supervisor assembling and passing storage snapshots on every invocation.
-"""
+"""Build specialist context: read-only bind fields + extended-attrs-only storage."""
 
 from __future__ import annotations
 
@@ -10,7 +6,7 @@ from typing import Any
 
 from agents.entity_registry import get_entity_registry, registry_entity_to_match
 from agents.registry import get_agent_registry
-from agents.specialists.base import SpecialistStorage
+from agents.specialists.protocol import dispatch_read_category_slice
 
 BIND_FIELDS = frozenset({"name", "employer"})
 
@@ -65,7 +61,7 @@ def planner_context(
 
 
 class ContextBuilder:
-    """Synchronous context assembly from registry rows + specialist JSON stores."""
+    """Synchronous context assembly from registry rows + specialist dispatch reads."""
 
     def build_full_context(
         self,
@@ -87,19 +83,19 @@ class ContextBuilder:
             if not agent.get("is_generated"):
                 continue
             category = agent.get("category")
-            if not category:
+            agent_name = agent.get("name")
+            if not category or not agent_name:
                 continue
             try:
-                store = SpecialistStorage(category=category)
-                payload = store.load()
-                records = payload.get("records", {})
-                cat_slice: dict[str, Any] = {}
-                for pid in ids:
-                    if pid in records:
-                        cat_slice[pid] = strip_bind_fields(records[pid])
+                cat_slice = dispatch_read_category_slice(
+                    str(agent_name),
+                    str(category),
+                    ids,
+                    bind_fields=BIND_FIELDS,
+                )
                 if cat_slice:
-                    specialist_part[category] = cat_slice
-            except OSError:
+                    specialist_part[str(category)] = cat_slice
+            except (OSError, ValueError):
                 continue
 
         return {

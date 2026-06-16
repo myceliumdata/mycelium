@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agents.specialist_fields import (
+from agents.specialists.fields import (
     append_version,
     current_status,
     current_value,
@@ -14,7 +14,7 @@ from agents.specialist_fields import (
     research_actor,
     validate_versioned_field,
 )
-from tools.research import _write_pending
+from agents.specialists.research_handlers import _write_pending
 from versioned_storage_fixtures import versioned_found, versioned_na, versioned_pending
 
 

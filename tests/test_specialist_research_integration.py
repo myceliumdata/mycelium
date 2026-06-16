@@ -121,13 +121,15 @@ def test_run_query_email_returns_found_in_same_response_when_research_mocked(
         person_id: str,
         target_fields: list[str],
         context: dict[str, Any],
-        storage: Any,
         llm: Any | None = None,
     ) -> ResearchRunResult:
         _ = category, specialist_name, context, llm
         captured["person_id"] = person_id
         captured["target_fields"] = list(target_fields)
         assert "email" in target_fields
+        from agents.specialists.base import SpecialistStorage
+
+        storage = SpecialistStorage(category=category)
         data = storage.load()
         rec = data.setdefault("records", {}).setdefault(person_id, {})
         now = datetime.now(timezone.utc).isoformat()
@@ -177,11 +179,13 @@ def test_run_query_email_na_in_same_response_when_research_mocked(
         person_id: str,
         target_fields: list[str],
         context: dict[str, Any],
-        storage: Any,
         llm: Any | None = None,
     ) -> ResearchRunResult:
         _ = category, specialist_name, context, llm, target_fields
         now = datetime.now(timezone.utc).isoformat()
+        from agents.specialists.base import SpecialistStorage
+
+        storage = SpecialistStorage(category=category)
         data = storage.load()
         rec = data.setdefault("records", {}).setdefault(person_id, {})
         rec["email"] = versioned_na(

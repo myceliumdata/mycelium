@@ -10,14 +10,6 @@ from typing import Any
 
 from agents.classification import get_category_tree
 from agents.entity_registry import RegistryEntity, get_entity_registry
-from agents.specialist_fields import (
-    current_status,
-    current_value,
-    field_versions_from_storage,
-    is_versioned_field,
-    validate_versioned_field,
-)
-from agents.specialists.base import category_slug
 from network.metering_policy import load_metering_policy
 from network.mvr import load_mvr
 from network.paths import NetworkPaths, network_metadata, resolve_network_root
@@ -127,77 +119,11 @@ def _specialists_dir() -> Path:
     return Path(os.getenv("MYCELIUM_SPECIALISTS_DIR", "src/agents/specialists"))
 
 
-def _field_versions(entry: Any) -> tuple[dict[str, Any], ...]:
-    if isinstance(entry, dict) and is_versioned_field(entry):
-        raw = entry.get("versions") or []
-        return tuple(item for item in raw if isinstance(item, dict))
-    return ()
+def _analyze_storage(paths: NetworkPaths, category: str) -> dict[str, Any]:
+    _ = paths
+    from agents.specialists.protocol import dispatch_analyze_category_storage
 
-
-def _storage_file(paths: NetworkPaths, category: str) -> Path:
-    return paths.agents_dir / category_slug(category) / "storage.json"
-
-
-def _strategy_file(paths: NetworkPaths, category: str) -> Path:
-    return paths.agents_dir / category_slug(category) / "storage_strategy.json"
-
-
-def _analyze_storage(paths: NetworkPaths, category: str) -> SpecialistSummary:
-    storage_path = _storage_file(paths, category)
-    strategy_path = _strategy_file(paths, category)
-    strategy_name: str | None = None
-    if strategy_path.is_file():
-        try:
-            strategy_payload = json.loads(strategy_path.read_text(encoding="utf-8"))
-            if isinstance(strategy_payload, dict):
-                raw = strategy_payload.get("strategy")
-                strategy_name = raw if isinstance(raw, str) else None
-        except (OSError, json.JSONDecodeError):
-            strategy_name = None
-
-    record_count = 0
-    fields_tracked: set[str] = set()
-    pending = na = found = 0
-
-    if storage_path.is_file():
-        try:
-            payload = json.loads(storage_path.read_text(encoding="utf-8"))
-            records = payload.get("records", {}) if isinstance(payload, dict) else {}
-            if isinstance(records, dict):
-                record_count = len(records)
-                for record in records.values():
-                    if not isinstance(record, dict):
-                        continue
-                    for field_name, value in record.items():
-                        fields_tracked.add(field_name)
-                        if isinstance(value, dict):
-                            validate_versioned_field(
-                                value,
-                                field_name=field_name,
-                                category=category,
-                            )
-                            if is_versioned_field(value):
-                                status = current_status(value)
-                                if status == "pending":
-                                    pending += 1
-                                elif status == "na":
-                                    na += 1
-                                elif status == "found":
-                                    found += 1
-        except (OSError, json.JSONDecodeError):
-            pass
-
-    return SpecialistSummary(
-        name="",
-        category=category,
-        module_on_disk=False,
-        storage_strategy=strategy_name,
-        record_count=record_count,
-        fields_tracked=sorted(fields_tracked),
-        pending_count=pending,
-        na_count=na,
-        found_count=found,
-    )
+    return dispatch_analyze_category_storage(category)
 
 
 def _agent_category_map(
@@ -274,12 +200,12 @@ def _specialist_summaries(
                 name=agent_name,
                 category=category,
                 module_on_disk=(specialists_dir / f"{agent_name}.py").is_file(),
-                storage_strategy=storage.storage_strategy,
-                record_count=storage.record_count,
-                fields_tracked=storage.fields_tracked,
-                pending_count=storage.pending_count,
-                na_count=storage.na_count,
-                found_count=storage.found_count,
+                storage_strategy=storage.get("storage_strategy"),
+                record_count=int(storage.get("record_count", 0)),
+                fields_tracked=list(storage.get("fields_tracked", [])),
+                pending_count=int(storage.get("pending_count", 0)),
+                na_count=int(storage.get("na_count", 0)),
+                found_count=int(storage.get("found_count", 0)),
             ),
         )
     return summaries
@@ -292,6 +218,9 @@ def _entity_field_statuses(
     *,
     category_filter: str | None,
 ) -> list[EntityFieldStatus]:
+    _ = paths
+    from agents.specialists.protocol import dispatch_entity_field_statuses
+
     statuses: list[EntityFieldStatus] = []
     seen_categories: set[str] = set()
     for agent_name, category in sorted(agent_map.items(), key=lambda item: item[1]):
@@ -300,45 +229,15 @@ def _entity_field_statuses(
         if category in seen_categories:
             continue
         seen_categories.add(category)
-        storage_path = _storage_file(paths, category)
-        if not storage_path.is_file():
-            continue
-        try:
-            payload = json.loads(storage_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            continue
-        records = payload.get("records", {}) if isinstance(payload, dict) else {}
-        if not isinstance(records, dict):
-            continue
-        record = records.get(record_id)
-        if not isinstance(record, dict):
-            continue
-        for field_name, value in sorted(record.items()):
-            status = "empty"
-            display_value: str | None = None
-            versions: tuple[dict[str, Any], ...] = ()
-            if isinstance(value, dict):
-                validate_versioned_field(
-                    value,
-                    field_name=field_name,
-                    category=category,
-                )
-                if is_versioned_field(value):
-                    status = current_status(value)
-                    raw_value = current_value(value)
-                    display_value = str(raw_value) if raw_value is not None else None
-                    versions = _field_versions(value)
-            elif value not in (None, ""):
-                status = "found"
-                display_value = str(value)
+        for row in dispatch_entity_field_statuses(agent_name, category, record_id):
             statuses.append(
                 EntityFieldStatus(
-                    field=field_name,
-                    category=category,
-                    agent=agent_name,
-                    status=status,
-                    value=display_value,
-                    versions=versions,
+                    field=row["field"],
+                    category=row["category"],
+                    agent=row["agent"],
+                    status=row["status"],
+                    value=row.get("value"),
+                    versions=tuple(row.get("versions") or ()),
                 ),
             )
     return statuses
@@ -386,15 +285,37 @@ def _bind_field_versions(
     record_id: str,
     field_name: str,
 ) -> tuple[dict[str, Any], ...]:
+    _ = paths
     category = get_category_tree().mapped_category(field_name.strip().lower())
     if not category:
         return ()
-    return field_versions_from_storage(
-        paths.agents_dir,
-        category,
+    from agents.specialists.protocol import dispatch_read_fields
+
+    categories = get_category_tree().get_categories()
+    cat = categories.get(category)
+    agent_name = cat.assigned_agent if cat is not None else None
+    if not agent_name:
+        from agents.registry import get_agent_registry
+
+        for agent in get_agent_registry().list_agents():
+            if agent.get("category") == category:
+                raw = agent.get("name")
+                agent_name = str(raw) if raw else None
+                break
+    if not agent_name:
+        return ()
+    read = dispatch_read_fields(
+        agent_name,
         record_id,
-        field_name,
+        [field_name],
+        include_versions=True,
     )
+    entry = read.get(field_name.strip().lower())
+    if isinstance(entry, dict):
+        provenance = entry.get("provenance")
+        if isinstance(provenance, dict):
+            return tuple(provenance.get("versions") or [])
+    return ()
 
 
 def _bind_field_statuses(

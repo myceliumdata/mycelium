@@ -39,11 +39,13 @@ def _mock_email_research(monkeypatch: pytest.MonkeyPatch) -> list[str]:
         person_id: str,
         target_fields: list[str],
         context: dict[str, Any],
-        storage: Any,
         llm: Any | None = None,
     ) -> ResearchRunResult:
         _ = category, specialist_name, context, llm
         calls.append(person_id)
+        from agents.specialists.base import SpecialistStorage
+
+        storage = SpecialistStorage(category=category)
         data = storage.load()
         rec = data.setdefault("records", {}).setdefault(person_id, {})
         now = datetime.now(timezone.utc).isoformat()

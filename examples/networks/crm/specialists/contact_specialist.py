@@ -98,16 +98,29 @@ def _identity_from_context(ctx: dict[str, Any], entity_id: str | None) -> list[d
 
 
 def _research_context(ctx: dict[str, Any], entity_id: str, storage: SpecialistStorage) -> dict[str, Any]:
-    """Narrow context for research prompts: bind fields + extended storage only."""
+    """Narrow context for research prompts: bind, own storage, and peer specialist slices."""
+    from agents.specialists.snapshots import normalize_context_fields
+
     data = storage.load()
     raw = data.get("records", {}).get(entity_id, {})
-    from agents.context import strip_bind_fields
-
-    return {
+    out: dict[str, Any] = {
         "entity_id": entity_id,
         "bind": ctx.get("bind") if isinstance(ctx.get("bind"), dict) else {},
-        "storage": strip_bind_fields(raw) if isinstance(raw, dict) else {},
+        "storage": normalize_context_fields(raw, category="contact") if isinstance(raw, dict) else {},
     }
+    specialists_all = ctx.get("specialists")
+    if isinstance(specialists_all, dict):
+        peers: dict[str, Any] = {}
+        own_category = "contact"
+        for cat, records in specialists_all.items():
+            if not isinstance(records, dict) or cat == own_category:
+                continue
+            row = records.get(entity_id)
+            if isinstance(row, dict) and row:
+                peers[cat] = row
+        if peers:
+            out["specialists"] = peers
+    return out
 
 
 def _field_has_value(entry: Any) -> bool:

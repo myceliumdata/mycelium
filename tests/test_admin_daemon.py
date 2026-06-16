@@ -672,21 +672,24 @@ def test_admin_query_passes_quote_id(
         person_id: str,
         target_fields: list[str],
         context: dict[str, Any],
-        storage: Any,
         llm: Any | None = None,
     ) -> ResearchRunResult:
         _ = category, specialist_name, context, llm
+        from agents.specialists.base import SpecialistStorage
+
+        storage = SpecialistStorage(category=category)
         data = storage.load()
         rec = data.setdefault("records", {}).setdefault(person_id, {})
         now = datetime.now(timezone.utc).isoformat()
         for field in target_fields:
-            rec[field] = {
-                "status": "found",
-                "value": "paul.murphy@acme.example",
-                "confidence": 0.9,
-                "sources": ["https://example.com/paul"],
-                "researched_at": now,
-            }
+            rec[field] = versioned_found(
+                at=now,
+                value="paul.murphy@acme.example",
+                confidence=0.9,
+                sources=["https://example.com/paul"],
+                category=category,
+                specialist_name=specialist_name,
+            )
         storage.save(data)
         return ResearchRunResult(fields_updated=list(target_fields), tool_calls_count=1)
 

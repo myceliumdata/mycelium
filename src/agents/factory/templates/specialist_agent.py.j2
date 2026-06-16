@@ -32,7 +32,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from agents.responses import response_found, response_non_core, response_not_found
-from agents.specialist_fields import (
+from agents.specialists.fields import (
     append_version,
     current_version,
     field_display_value as _field_display_value,
@@ -110,14 +110,14 @@ def _identity_from_context(ctx: dict[str, Any], entity_id: str | None) -> list[d
 
 def _research_context(ctx: dict[str, Any], entity_id: str, storage: SpecialistStorage) -> dict[str, Any]:
     """Narrow context for research prompts: bind, own storage, and peer specialist slices."""
+    from agents.specialists.snapshots import normalize_context_fields
+
     data = storage.load()
     raw = data.get("records", {}).get(entity_id, {})
-    from agents.context import strip_bind_fields
-
     out: dict[str, Any] = {
         "entity_id": entity_id,
         "bind": ctx.get("bind") if isinstance(ctx.get("bind"), dict) else {},
-        "storage": strip_bind_fields(raw) if isinstance(raw, dict) else {},
+        "storage": normalize_context_fields(raw, category="{{ category }}") if isinstance(raw, dict) else {},
     }
     specialists_all = ctx.get("specialists")
     if isinstance(specialists_all, dict):
@@ -128,7 +128,7 @@ def _research_context(ctx: dict[str, Any], entity_id: str, storage: SpecialistSt
                 continue
             row = records.get(entity_id)
             if isinstance(row, dict) and row:
-                peers[cat] = strip_bind_fields(row)
+                peers[cat] = row
         if peers:
             out["specialists"] = peers
     return out
@@ -231,7 +231,6 @@ def _run_field_research(
         person_id=pid,
         target_fields=target_fields,
         context=_research_context(ctx, pid, storage),
-        storage=storage,
     )
 
 
@@ -424,3 +423,12 @@ def {{ agent_name }}(state: MyceliumGraphState | dict[str, Any]) -> dict[str, An
     if current.invocation_trace_id is not None:
         payload["invocation_trace_id"] = current.invocation_trace_id
     return payload
+
+
+from agents.specialists._protocol_exports import attach_protocol_handlers  # noqa: E402
+
+attach_protocol_handlers(
+    globals(),
+    category="{{ category }}",
+    agent_name="{{ agent_name }}",
+)

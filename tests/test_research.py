@@ -9,7 +9,9 @@ from unittest.mock import MagicMock
 import pytest
 
 from agents.classification import get_category_tree, reset_category_tree
-from agents.specialist_fields import current_status, current_value, pending_last_error
+from agents.specialists.fields import current_status, current_value, pending_last_error
+from agents.specialists.research_handlers import persist_proposal
+from agents.specialists.snapshots import field_context_snapshot, normalize_context_fields
 from versioned_storage_fixtures import (
     versioned_found,
     versioned_na,
@@ -22,7 +24,6 @@ from tools.research import (
     FieldProposal,
     ResearchProposal,
     ResearchRunResult,
-    _persist_proposal,
     _validate_and_build_record,
     bind_disambiguators,
     build_research_prompts,
@@ -32,6 +33,10 @@ from tools.research import (
     research_min_confidence,
     run_field_research,
 )
+
+
+def _ctx_field(entry: Any, *, field: str, category: str) -> dict[str, Any]:
+    return field_context_snapshot(entry, field_name=field, category=category)
 
 
 @pytest.fixture
@@ -142,33 +147,52 @@ def test_build_research_prompts_flattened_peer_context_renders_header() -> None:
         context={
             "entity_id": "uuid-angela",
             "bind": {"name": "Angela Murphy", "employer": "TalentCare"},
-            "storage": {
-                "spouse": versioned_pending(started_at="2026-06-09T00:00:00+00:00"),
-            },
+            "storage": normalize_context_fields(
+                {
+                    "spouse": versioned_pending(started_at="2026-06-09T00:00:00+00:00"),
+                },
+                category="relationships",
+            ),
             "specialists": {
                 "contact": {
-                    "email": versioned_found(
-                        at="2026-06-09T00:00:00+00:00",
-                        value="a@talentcare.us",
-                        sources=["https://rocketreach.co/angela"],
+                    "email": _ctx_field(
+                        versioned_found(
+                            at="2026-06-09T00:00:00+00:00",
+                            value="a@talentcare.us",
+                            sources=["https://rocketreach.co/angela"],
+                        ),
+                        field="email",
+                        category="contact",
                     ),
-                    "address": versioned_na(
-                        at="2026-06-09T00:00:00+00:00",
-                        reason="No public address",
+                    "address": _ctx_field(
+                        versioned_na(
+                            at="2026-06-09T00:00:00+00:00",
+                            reason="No public address",
+                        ),
+                        field="address",
+                        category="contact",
                     ),
                 },
                 "social": {
-                    "twitter": versioned_found(
-                        at="2026-06-09T00:00:00+00:00",
-                        value="https://x.com/AngelaYMurphy",
-                        sources=["https://x.com/AngelaYMurphy"],
+                    "twitter": _ctx_field(
+                        versioned_found(
+                            at="2026-06-09T00:00:00+00:00",
+                            value="https://x.com/AngelaYMurphy",
+                            sources=["https://x.com/AngelaYMurphy"],
+                        ),
+                        field="twitter",
+                        category="social",
                     ),
                 },
                 "demographic": {
-                    "city": versioned_found(
-                        at="2026-06-09T00:00:00+00:00",
-                        value="Austin, TX",
-                        sources=["https://example.com/profile"],
+                    "city": _ctx_field(
+                        versioned_found(
+                            at="2026-06-09T00:00:00+00:00",
+                            value="Austin, TX",
+                            sources=["https://example.com/profile"],
+                        ),
+                        field="city",
+                        category="demographic",
                     ),
                 },
             },
@@ -201,15 +225,23 @@ def test_build_research_prompts_nested_peer_shape_still_works() -> None:
             "specialists": {
                 "professional": {
                     "uuid-peer": {
-                        "title": versioned_found(
-                            at="2026-06-09T00:00:00+00:00",
-                            value="VP Sales",
+                        "title": _ctx_field(
+                            versioned_found(
+                                at="2026-06-09T00:00:00+00:00",
+                                value="VP Sales",
+                            ),
+                            field="title",
+                            category="professional",
                         ),
                     },
                 },
                 "relationships": {
                     "uuid-peer": {
-                        "spouse": versioned_pending(started_at="2026-06-09T00:00:00+00:00"),
+                        "spouse": _ctx_field(
+                        versioned_pending(started_at="2026-06-09T00:00:00+00:00"),
+                        field="spouse",
+                        category="relationships",
+                    ),
                     },
                 },
             },
@@ -235,14 +267,22 @@ def test_build_research_prompts_omits_na_peer_fields_from_header() -> None:
             "storage": {},
             "specialists": {
                 "contact": {
-                    "email": versioned_found(
-                        at="2026-06-09T00:00:00+00:00",
-                        value="jane@example.com",
-                        sources=["https://x.com"],
+                    "email": _ctx_field(
+                        versioned_found(
+                            at="2026-06-09T00:00:00+00:00",
+                            value="jane@example.com",
+                            sources=["https://x.com"],
+                        ),
+                        field="email",
+                        category="contact",
                     ),
-                    "phone": versioned_na(
-                        at="2026-06-09T00:00:00+00:00",
-                        reason="not listed",
+                    "phone": _ctx_field(
+                        versioned_na(
+                            at="2026-06-09T00:00:00+00:00",
+                            reason="not listed",
+                        ),
+                        field="phone",
+                        category="contact",
                     ),
                 },
             },
@@ -267,13 +307,17 @@ def test_build_research_prompts_block_order_disambig_operator_peer() -> None:
         context={
             "entity_id": "uuid-order",
             "bind": {"name": "Angela Murphy", "employer": "Talentcare"},
-            "storage": {"spouse": operator_spouse},
+            "storage": normalize_context_fields({"spouse": operator_spouse}, category="relationships"),
             "specialists": {
                 "contact": {
-                    "email": versioned_found(
-                        at="2026-06-09T00:00:00+00:00",
-                        value="angela@example.com",
-                        sources=["https://x.com"],
+                    "email": _ctx_field(
+                        versioned_found(
+                            at="2026-06-09T00:00:00+00:00",
+                            value="angela@example.com",
+                            sources=["https://x.com"],
+                        ),
+                        field="email",
+                        category="contact",
                     ),
                 },
             },
@@ -301,7 +345,7 @@ def test_build_research_prompts_injects_operator_deference() -> None:
         context={
             "entity_id": "uuid-operator",
             "bind": {"name": "Jane Example", "employer": "Corp"},
-            "storage": {"email": operator_email},
+            "storage": normalize_context_fields({"email": operator_email}, category="contact"),
         },
     )
     assert "OPERATOR OVERRIDE" in user
@@ -311,8 +355,12 @@ def test_build_research_prompts_injects_operator_deference() -> None:
 
 
 @pytest.mark.smoke
-def test_persist_proposal_appends_after_operator_version(tmp_path: Path) -> None:
-    storage = SpecialistStorage(category="contact", base_dir=tmp_path / "agents")
+def test_persist_proposal_appends_after_operator_version(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MYCELIUM_AGENT_DATA_DIR", str(tmp_path / "agents"))
+    storage = SpecialistStorage(category="contact")
     pid = "uuid-operator-persist"
     operator_email = versioned_operator(
         at="2026-06-12T10:00:00+00:00",
@@ -338,14 +386,14 @@ def test_persist_proposal_appends_after_operator_version(tmp_path: Path) -> None
             ),
         ],
     )
-    updated, errors = _persist_proposal(
-        storage,
+    updated, errors = persist_proposal(
+        "contact",
+        "contact_specialist",
         pid,
         proposal,
         allowed={"email"},
         min_confidence=0.6,
-        category="contact",
-        specialist_name="contact_specialist",
+        validate_and_build=_validate_and_build_record,
     )
     assert errors == []
     assert updated == ["email"]
@@ -451,7 +499,8 @@ def test_run_field_research_unavailable_marks_pending(
 ) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("TAVILY_API_KEY", raising=False)
-    storage = SpecialistStorage(category="contact", base_dir=tmp_path / "agents")
+    monkeypatch.setenv("MYCELIUM_AGENT_DATA_DIR", str(tmp_path / "agents"))
+    storage = SpecialistStorage(category="contact")
     pid = "uuid-contact-1"
     result = run_field_research(
         category="contact",
@@ -459,7 +508,6 @@ def test_run_field_research_unavailable_marks_pending(
         person_id=pid,
         target_fields=["email"],
         context={"entity_id": pid, "bind": {"name": "Ada", "employer": "Lab"}, "specialists": {}},
-        storage=storage,
     )
     assert result.errors
     assert "unavailable" in result.errors[0].lower()
@@ -476,6 +524,7 @@ def test_run_field_research_mock_llm_persists_found(
 ) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
     monkeypatch.setenv("TAVILY_API_KEY", "tvly-test")
+    monkeypatch.setenv("MYCELIUM_AGENT_DATA_DIR", str(tmp_path / "agents"))
 
     proposal = ResearchProposal(
         fields=[
@@ -516,7 +565,7 @@ def test_run_field_research_mock_llm_persists_found(
         lambda **kwargs: (proposal, 1, []),
     )
 
-    storage = SpecialistStorage(category="contact", base_dir=tmp_path / "agents")
+    storage = SpecialistStorage(category="contact")
     pid = "uuid-ada"
     result = run_field_research(
         category="contact",
@@ -528,7 +577,6 @@ def test_run_field_research_mock_llm_persists_found(
             "bind": {"name": "Ada", "employer": "Lab"},
             "specialists": {},
         },
-        storage=storage,
         llm=FakeLLM(),
     )
     assert "email" in result.fields_updated
@@ -545,8 +593,10 @@ def test_run_field_research_mock_llm_persists_found(
 @pytest.mark.smoke
 def test_persist_proposal_missing_field_marks_pending(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    storage = SpecialistStorage(category="contact", base_dir=tmp_path / "agents")
+    monkeypatch.setenv("MYCELIUM_AGENT_DATA_DIR", str(tmp_path / "agents"))
+    storage = SpecialistStorage(category="contact")
     pid = "uuid-partial"
     proposal = ResearchProposal(
         fields=[
@@ -559,14 +609,14 @@ def test_persist_proposal_missing_field_marks_pending(
             ),
         ],
     )
-    updated, errors = _persist_proposal(
-        storage,
+    updated, errors = persist_proposal(
+        "contact",
+        "contact_specialist",
         pid,
         proposal,
         allowed={"email", "phone"},
         min_confidence=0.6,
-        category="contact",
-        specialist_name="contact_specialist",
+        validate_and_build=_validate_and_build_record,
     )
     assert "email" in updated
     assert errors
@@ -585,6 +635,7 @@ def test_run_field_research_timeout_marks_pending(
 ) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
     monkeypatch.setenv("TAVILY_API_KEY", "tvly-test")
+    monkeypatch.setenv("MYCELIUM_AGENT_DATA_DIR", str(tmp_path / "agents"))
     monkeypatch.setenv("MYCELIUM_RESEARCH_TIMEOUT_SEC", "1")
 
     def _slow_execute(**kwargs: Any) -> ResearchRunResult:
@@ -596,7 +647,7 @@ def test_run_field_research_timeout_marks_pending(
 
     monkeypatch.setattr("tools.research._execute_research", _slow_execute)
 
-    storage = SpecialistStorage(category="contact", base_dir=tmp_path / "agents")
+    storage = SpecialistStorage(category="contact")
     pid = "uuid-timeout"
     result = run_field_research(
         category="contact",
@@ -604,7 +655,6 @@ def test_run_field_research_timeout_marks_pending(
         person_id=pid,
         target_fields=["email"],
         context={"entity_id": pid, "bind": {"name": "Ada"}, "specialists": {}},
-        storage=storage,
     )
     assert any("timed out" in e.lower() for e in result.errors)
     entry = storage.load()["records"][pid]["email"]
@@ -619,12 +669,13 @@ def test_run_field_research_null_proposal_marks_all_pending(
 ) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
     monkeypatch.setenv("TAVILY_API_KEY", "tvly-test")
+    monkeypatch.setenv("MYCELIUM_AGENT_DATA_DIR", str(tmp_path / "agents"))
     monkeypatch.setattr(
         "tools.research._run_llm_loop",
         lambda **kwargs: (None, 0, ["structured output failed"]),
     )
 
-    storage = SpecialistStorage(category="contact", base_dir=tmp_path / "agents")
+    storage = SpecialistStorage(category="contact")
     pid = "uuid-null-proposal"
     run_field_research(
         category="contact",
@@ -632,7 +683,6 @@ def test_run_field_research_null_proposal_marks_all_pending(
         person_id=pid,
         target_fields=["email", "phone"],
         context={"entity_id": pid, "bind": {"name": "Ada"}, "specialists": {}},
-        storage=storage,
         llm=MagicMock(),
     )
     data = storage.load()["records"][pid]

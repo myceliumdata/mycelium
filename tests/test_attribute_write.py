@@ -18,7 +18,7 @@ from agents.attribute_write import (
 )
 from agents.classification import get_category_tree, reset_category_tree
 from agents.entity_registry import get_entity_registry, make_bind_key, reset_entity_registry
-from agents.specialist_fields import current_value, is_versioned_field
+from agents.specialists.fields import current_value, is_versioned_field
 from agents.specialists.base import SpecialistStorage
 from agents.target_deliver import bind_provisional_from_scope
 from graphs.core import reset_core_graph

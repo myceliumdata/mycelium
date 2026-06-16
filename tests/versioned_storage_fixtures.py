@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from agents.specialist_fields import append_version, research_actor
+from agents.specialists.fields import append_version, research_actor
 
 
 def versioned_found(

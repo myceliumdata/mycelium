@@ -19,6 +19,7 @@ from network.quotes import reset_quote_store
 from network_helpers import import_seed_for_test
 from storage.core import CoreStorage, get_storage, reset_storage
 from tools.research import ResearchRunResult
+from versioned_storage_fixtures import versioned_found
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SAMPLE_CATEGORIES = REPO_ROOT / "docs" / "examples" / "sample-categories.json"
@@ -50,22 +51,25 @@ def _mock_email_research(monkeypatch: pytest.MonkeyPatch) -> list[str]:
         person_id: str,
         target_fields: list[str],
         context: dict[str, Any],
-        storage: Any,
         llm: Any | None = None,
     ) -> ResearchRunResult:
         _ = category, specialist_name, context, llm
         calls.append(person_id)
+        from agents.specialists.base import SpecialistStorage
+
+        storage = SpecialistStorage(category=category)
         data = storage.load()
         rec = data.setdefault("records", {}).setdefault(person_id, {})
         now = datetime.now(timezone.utc).isoformat()
         for field in target_fields:
-            rec[field] = {
-                "status": "found",
-                "value": "paul.murphy@acme.example",
-                "confidence": 0.9,
-                "sources": ["https://example.com/paul"],
-                "researched_at": now,
-            }
+            rec[field] = versioned_found(
+                at=now,
+                value="paul.murphy@acme.example",
+                confidence=0.9,
+                sources=["https://example.com/paul"],
+                category=category,
+                specialist_name=specialist_name,
+            )
         storage.save(data)
         return ResearchRunResult(fields_updated=list(target_fields), tool_calls_count=1)
 

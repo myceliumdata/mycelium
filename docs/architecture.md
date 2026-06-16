@@ -391,7 +391,11 @@ See `docs/plans/seed-data-context-architecture.md` and the reprocess reviews (`p
 
 **Research prompt context (implemented, June 2026):** `build_research_prompts()` applies **MVR-driven bind disambiguation** (`MvrPolicy.bind_fields` from `network.json`) and includes **peer specialist findings** from `_research_context()` (other categories for the same `entity_id`). Templates: `src/agents/factory/templates/research/`. Follow-on hardening: `docs/plans/research-robustness-backlog.md`.
 
-**Next phases:** async research dispatch (non-blocking queries), Tavily Extract/Crawl, research robustness items in backlog. Attribute-scoped `results` and specialist-first merge are already live (`2026-06-04-1400-filter-query-results-and-trace-url`).
+**Specialist storage boundaries (implemented, June 2026):** Framework code outside `src/agents/specialists/` must not import `SpecialistStorage` or read `agents/*/storage.json` directly. Bind, seed, research, provenance, and context paths dispatch through `agents.specialists.protocol` (`write_fields`, `read_fields`, `bootstrap_entity`, research handlers). `entities.json` cache and indexes sync from specialist-returned values only.
+
+**Normalized read contract (implemented, June 2026):** Specialist dispatch returns framework-ready snapshots (`FieldSnapshot`, `FieldContextSnapshot`) — `value`, `status`, `updated_at`, optional `provenance`, and research `operator`/`sources` blocks. Framework and `tools.research` consume snapshots only; they do not import `agents.specialists.fields` or parse `versions[]` layout.
+
+**Next phases:**
 
 See `TODO.md` for follow-ups.
 

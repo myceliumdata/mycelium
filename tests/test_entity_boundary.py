@@ -12,7 +12,7 @@ import pytest
 from agents.classification import reset_category_tree
 from agents.context import ContextBuilder, strip_bind_fields
 from agents.factory.agent_factory import get_agent_factory, reset_agent_factory
-from agents.specialist_fields import current_status
+from agents.specialists.fields import current_status
 from agents.registry import get_agent_registry, reset_agent_registry
 from agents.entity_registry import reset_entity_registry
 from graphs.core import reset_core_graph, run_query
