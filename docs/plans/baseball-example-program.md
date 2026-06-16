@@ -23,7 +23,7 @@ Not a full application — iterative starter: design, schemas, skeleton ingest/q
 - **Source:** Lahman Baseball Database (CSVs, 1871–2025)
 - **Local copy:** `~/mycelium-networks/baseball/seed/lahman_1871-2025_csv.zip` (~40MB)
 - **Hosting:** TBD — avoid git blob if possible; SABR Box not bot-fetchable; may self-host + ingest script
-- **Schema pass:** pending unzip + column/relationship review
+- **Schema pass:** ✅ done 2026-06-16 — unzipped `~/mycelium-networks/baseball/seed/lahman_1871-2025_csv/`; see § Lahman schema below
 
 ---
 
@@ -52,9 +52,10 @@ Not a full application — iterative starter: design, schemas, skeleton ingest/q
 
 ### Team
 
-- **What:** A **team** as an organization/franchise identity — **not** “team in a specific season” as a separate registry concept unless we later decide otherwise.
-- **Why “team-season” appeared in early notes:** Lahman `Teams.csv` is one row per **`teamID` + `yearID`** (1927 Yankees ≠ 1928 Yankees as rows). That is **year-scoped stats**, not necessarily a second identity grain. **Working assumption:** registry row = **team**; **year** is query/derivation scope (like “career stats” vs “1927 stats” for a player).
-- **Team MVR (open):** human fields TBD (franchise name, city, abbreviation, …).
+- **What:** A **franchise** — Lahman `TeamsFranchises.franchID` / `franchName` (203 rows). Not a single `Teams.csv` row (those are **year-scoped** team-season facts: W/L, park, attendance, aggregated batting/pitching totals for that year).
+- **`teamID` variants:** one franchise can have many `teamID` codes over time (e.g. `ATL` franchise: `BSN`, `ML1`, `ATL`; `NYY`: `NYA`, `BLA`). Source metadata — not MVR.
+- **`Teams.name`:** display name **per year** (e.g. “Milwaukee Braves” vs “Atlanta Braves”) — useful for player MVR team disambiguator and LLM aliases; maps to `franchID` via `Teams.csv`.
+- **Team MVR (open):** likely `franchName` or canonical fan-facing name; LLM for `Yanks` → Yankees franchise.
 
 ---
 
@@ -154,7 +155,7 @@ flowchart TD
 | 9 | **Derivation + provenance** | Recipe storage, lineage, agent retention (deferred) |
 | 10 | **LLM alias resolution** | Shorthand bind fields; local LLM assumption |
 | 11 | **Seed hosting** | ~40MB zip; no Box bot fetch |
-| 12 | **Lahman schema pass** | Unzip; complete ER / table roles in this doc |
+| 12 | **Lahman schema pass** | ✅ § Lahman schema (2026-06-16) |
 | 13 | **Re-import / annual refresh** | Lahman updates vs uuid stability |
 | 14 | **Cross-grain queries** | e.g. team roster + player career — multi-specialist merge |
 | 15 | **Bulk storage** | Warehouse yes; JSON `storage.json` volume — separate track |
@@ -173,13 +174,95 @@ flowchart TD
 
 ---
 
+## Lahman schema (2025 CSV — schema pass 2026-06-16)
+
+**Local path:** `~/mycelium-networks/baseball/seed/lahman_1871-2025_csv/` (27 tables, **~706k** fact rows — confirms warehouse not JSON bulk storage).  
+**Docs:** `readme2025.txt` in same folder. **Encoding:** UTF-8 with BOM; use `utf-8-sig`.
+
+### Hub tables (identity & anchors)
+
+| Table | Rows | Role |
+|-------|-----:|------|
+| **People** | 24,270 | Player biographical hub; `playerID` links all player facts. `ID` column is Lahman-internal numeric — **not used in joins** (per readme). |
+| **TeamsFranchises** | 203 | **Franchise** registry source — `franchID`, `franchName`, `active` |
+| **Teams** | 3,614 | **Year-scoped** franchise-season row: `yearID` + `teamID` + `franchID` + standings + team-level batting/pitching totals + `name` (display name) |
+| **Parks** | 345 | Ballparks |
+
+### Player-attached fact tables (parallel — none privileged)
+
+| Table | Rows | Grain |
+|-------|-----:|-------|
+| **Batting** | 128,598 | `playerID`, `yearID`, `stint`, `teamID`, `lgID` + counting stats |
+| **Pitching** | 57,630 | same grain + pitching stats |
+| **Fielding** | 174,332 | same + `POS` (position) |
+| **Appearances** | 128,512 | games by position per player-year-team |
+| **FieldingOF** / **FieldingOFsplit** | 12k / 45k | outfield splits (legacy/split views) |
+
+**`stint`:** multiple rows per player per year when traded mid-season (important for derivations — aggregate before rate stats).
+
+### Team / season context (not player identity)
+
+| Table | Rows | Role |
+|-------|-----:|------|
+| **Managers** | 4,410 | Manager per team-year |
+| **HomeGames** | 3,303 | Home games per team-year-park |
+| **TeamsHalf** / **ManagersHalf** | 142 / 93 | split-season |
+
+### Postseason, awards, enrichment
+
+| Table | Rows |
+|-------|-----:|
+| BattingPost, PitchingPost, FieldingPost | 19k / 7k / 18k |
+| SeriesPost | 440 |
+| AllstarFull | 6,425 |
+| AwardsPlayers, AwardsManagers, AwardsShare* | various |
+| HallOfFame | 6,426 |
+| CollegePlaying, Schools, Salaries | 18k / 1.3k / 26k |
+
+### ER (corrected)
+
+```mermaid
+flowchart TB
+  subgraph player_hub [Player grain]
+    People[People.playerID]
+  end
+
+  subgraph franchise_hub [Team grain]
+    TF[TeamsFranchises.franchID]
+  end
+
+  People --> Batting
+  People --> Pitching
+  People --> Fielding
+  People --> Appearances
+  People --> Awards
+
+  TF --> Teams
+  Teams -->|"yearID+teamID"| Batting
+  Teams --> Appearances
+  Teams --> Managers
+
+  Batting -->|"player on roster"| People
+```
+
+- **Roster:** no player list on `Teams` — membership via **Appearances** or any player fact table for that `yearID` + `teamID`.
+- **Player MVR bind index source:** derive `(nameFirst, nameLast, Teams.name)` from **Appearances** ⋈ **People** ⋈ **Teams** (all teams a player appeared for).
+
+### Scale notes (design)
+
+- **751** homonym `(nameFirst, nameLast)` pairs in People — team in MVR is required for disambiguation.
+- **Hank Aaron** (`aaronha01`): 3 distinct `Teams.name` values from batting — all must alias to one player uuid.
+- **Negro leagues:** `lgID` can be 3 chars; included in 2025 release (readme §2.1).
+
+---
+
 ## Slice map
 
 **None queued.** First slice candidates after schema pass:
 
 | Order | Scope |
 |-------|--------|
-| 0 | Unzip Lahman; ER/schema note in this doc |
+| 0 | ~~Unzip Lahman; ER/schema note~~ ✅ done |
 | 1 | `examples/networks/baseball/` skeleton + `network.json` + hosting story |
 | 2 | Ingest warehouse (People + core tables) |
 | 3 | Player registry load + multi-alias index |
@@ -188,4 +271,4 @@ flowchart TD
 
 ---
 
-*Updated: 2026-06-16 — team grain (not team-season); ur prompt preserved separately.*
+*Updated: 2026-06-16 — Lahman schema pass complete; team grain = franchise (`TeamsFranchises`).*
