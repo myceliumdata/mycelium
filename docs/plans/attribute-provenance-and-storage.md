@@ -137,15 +137,15 @@ MVR fields can be **specialist-owned** like any other attribute:
 
 ## Write path (required discipline)
 
-All attribute and bind writes go through **one API** that atomically:
+All attribute and bind writes go through **one framework API** (`attribute_write.py`) that:
 
-1. Appends a version (or updates current) in canonical storage.
-2. Updates denormalized cache on entity row (MVR fields).
-3. Updates `bind_index` when name or employer changes.
+1. Dispatches to the owning specialist (`agents.specialists.protocol`) to append versions in **specialist-owned** storage.
+2. Updates denormalized cache on entity row (MVR fields) from dispatch return values.
+3. Updates `bind_index` when bind fields change.
 4. Updates registry summary (`attr_sources`, `last_researched_at`) for extended attrs.
-5. Persists with atomic file write (existing `EntityRegistry._save` / `SpecialistStorage._atomic_write` pattern).
+5. Persists registry with `EntityRegistry._save`.
 
-Direct JSON edits bypassing this path are unsupported for operators once write UI ships.
+Framework code outside `src/agents/specialists/` must not call `SpecialistStorage` directly (tag `specialist_isolation`, June 2026). Direct JSON edits bypassing this path are unsupported for operators once write UI ships.
 
 ---
 
@@ -164,7 +164,7 @@ Direct JSON edits bypassing this path are unsupported for operators once write U
 
 See [`attribute-provenance-program1.md`](attribute-provenance-program1.md) for Program 1 slices 1–3.
 
-Program 2 Slice 1 (shipped): MVR canonical values in taxonomy-owned specialist `versions[]` via `agents/attribute_write.py`; entity row = cache + protocol + indexes (no `bind_versions[]`). Slice 2 (shipped): `provenance=true` and admin drill-down expose bind-field `versions[]` from specialist storage. Slice 3 (shipped): dynamic `mvr.bind_fields` on create-on-deliver; research operator deference in prompts. See [`attribute-provenance-program2.md`](attribute-provenance-program2.md).
+Program 2 Slice 1 (shipped): MVR canonical values in taxonomy-owned specialist `versions[]`; entity row = cache + protocol + indexes (no `bind_versions[]`). **June 2026 refactor:** writes/reads cross the specialist boundary via `protocol` + normalized snapshots (`docs/architecture.md` § Specialist I/O protocol). Slice 2 (shipped): `provenance=true` and admin drill-down expose bind-field history via dispatch. Slice 3 (shipped): dynamic `mvr.bind_fields` on create-on-deliver; research operator deference in prompts. See [`attribute-provenance-program2.md`](attribute-provenance-program2.md).
 Program 3 (TBD): Operator write surfaces.
 
 ---

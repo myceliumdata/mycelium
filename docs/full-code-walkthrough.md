@@ -70,8 +70,8 @@ Package: `mycelium_mcp` (renamed from `mcp` to avoid SDK collision).
 
 ## 6. Entity registry + bootstrap import
 
-- **`entities.json`** — canonical runtime store (`EntityRegistry`); rows use `bind_values` keyed by `mvr.bind_fields` and generic `bind_index`.
-- **`network/seed_import.py`** — imports optional `seed.json` rows at bootstrap (refresh/create) into `bind_values` via `ensure_bound_entity`.
+- **`entities.json`** — runtime store (`EntityRegistry`); rows use `bind_values` keyed by `mvr.bind_fields` and generic `bind_index`. Cache + protocol + indexes (framework-maintained for now).
+- **`network/seed_import.py`** — imports optional `seed.json` rows at bootstrap (refresh/create) via `ensure_bound_entity` → `attribute_write` → **specialist dispatch** (storage writes inside specialists package).
 - Query-time resolution: `target_resolve` step-1 uses per-field indexes and `lookup` AND matching.
 
 Committed examples: `examples/networks/crm/` (bootstrap seed), `examples/networks/empty-crm/` (no seed, growth from queries).
@@ -82,14 +82,19 @@ Committed examples: `examples/networks/crm/` (bootstrap seed), `examples/network
 
 - **`supervisor_agent`**: registry resolution, classification, specialist planning, routing audit.
 - **`dispatch`**: `build_context`, `invoke_specialists`, `assemble_response` nodes.
-- **`factory`**: Jinja template → generated `*_specialist.py` under `<network_root>/specialists/` (CRM reference copies also under `src/agents/specialists/`).
+- **`context`**: `ContextBuilder` loads peer specialist slices via `agents.specialists.protocol.dispatch_read_category_slice` — returns normalized `FieldContextSnapshot` maps, not raw storage JSON.
+- **`query_provenance`**: `dispatch_read_fields(..., include_versions=True)`; uses `provenance` on `FieldSnapshot` only.
+- **`factory`**: Jinja template → generated `*_specialist.py` under `<network_root>/specialists/` (CRM reference copies also under `src/agents/specialists/`). Template attaches protocol handlers (`write_fields`, `read_fields`, `bootstrap_entity`).
 - **`classification`**: attribute → category map (`categories.json` under network root).
 
 ---
 
-## 8. Storage (`src/storage/core.py`)
+## 8. Storage and specialist I/O
 
-`mycelium.db` may exist as an optional empty SQLite file for bootstrap compatibility; **no `people` table** (removed June 2026). Identity and queries use `entities.json` + specialist files under `network_root`.
+- **`src/storage/core.py`**: `mycelium.db` may exist as an optional empty SQLite file for bootstrap compatibility; **no `people` table** (removed June 2026).
+- **Identity and queries:** `entities.json` under `network_root`.
+- **Specialist data:** opaque to framework — per-category files under `agents/<category>/`, accessed only through `src/agents/specialists/protocol.py` (tag `specialist_isolation`).
+- **Snapshot contract:** `FieldSnapshot` / `FieldContextSnapshot` in `src/agents/specialists/snapshots.py`; see `docs/architecture.md` § Specialist I/O protocol.
 
 Paths resolve under active `network_root` via `src/network/paths.py` (`deliveries.json`, `quotes.json`, metering stores when enabled).
 
@@ -143,9 +148,10 @@ From `TODO.md` (June 2026):
 ```
 External (CLI/MCP) → network_root → EntityQuery → run_query → LangGraph
   → supervisor → specialists → assemble_response
-entities.json + Specialist storage (agents/<category>/) under network_root
+entities.json (framework cache/indexes)
+  ↔ protocol dispatch ↔ specialists package (opaque storage under agents/<category>/)
 ```
 
 ---
 
-*Last major refresh: June 2026 (MVR redesign M1–M10, networks Phases 1–5, target two-step protocol).*
+*Last major refresh: June 2026 (specialist isolation: dispatch + normalized snapshots; tag `specialist_isolation`).*

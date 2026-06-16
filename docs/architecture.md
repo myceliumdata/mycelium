@@ -146,11 +146,39 @@ Phase 1 adds a **Classification Engine** (cached lookup in `src/agents/classific
 
 ## Storage (current)
 
-- **Entities (queries):** `<network_root>/entities.json` via `EntityRegistry` — seed is bootstrap-only when present. Each row stores MVR bind fields in **`bind_values: dict[str, str]`** keyed by `mvr.bind_fields`; **`bind_index`** is a generic compound key from normalized bind values in policy order (CRM: `name|employer`).
-- **Specialists:** per-category JSON under `<network_root>/agents/<category>/` (`SpecialistStorage` in `src/agents/specialists/base.py`), keyed by `id` (UUID). Extended attributes and **MVR bind fields** (`name`, `employer`, …) use **`versioned_provenance_v1`**: each field stores `versions[]` + `current_version_id` (append-only provenance). Taxonomy `attribute_map` owns bind fields (Program 2 Slice 1 — `agents/attribute_write.py`); `entities.json` caches current values and derived indexes. Deprecated flat v1 field blobs are invalid — refresh the network or delete `agents/<category>/storage.json` to reset. Research writes may still **wrap** a legacy flat **pending** blob into versioned `v1` once (`ensure_versioned_for_write`) so in-flight retries can complete; all other flat shapes fail loud on read. Admin `/status` and `mycelium network status --json` expose full `versions[]` per extended and bind field on entity drill-down (Program 2 Slice 2). `QueryResponse.provenance` includes bind fields when versioned storage exists. Admin UI renders version history in a full-width sub-row below each field (status badges, short timestamps, `reason` / `last_error`, source links).
+- **Entities (queries):** `<network_root>/entities.json` via `EntityRegistry` — seed is bootstrap-only when present. Each row stores MVR bind fields in **`bind_values: dict[str, str]`** keyed by `mvr.bind_fields`; **`bind_index`** is a generic compound key from normalized bind values in policy order (CRM: `name|employer`). Registry rows are **cache + protocol + indexes** (validation state, `attr_sources`, per-field lookup indexes). **Future:** registry ownership may move to an identity specialist; framework maintains it for now.
+- **Specialists (opaque):** per-category data under `<network_root>/agents/<category>/`, owned and laid out by specialist code (`SpecialistStorage` in `src/agents/specialists/base.py` — **specialists package only**). Internally, CRM specialists use **`versioned_provenance_v1`** (`versions[]` + `current_version_id`). Framework code **must not** read or write those files directly; it dispatches through `agents.specialists.protocol` (tag `specialist_isolation`, June 2026).
+- **Framework write path:** `agents/attribute_write.py` resolves taxonomy owners, calls specialist dispatch (`write_fields` / multi-category bind), then syncs `entities.json` cache and indexes from returned current values. Seed import, create-on-deliver, and research persist use the same dispatch boundary.
+- **Framework read path:** context, provenance, admin status, and `tools/research` consume **normalized snapshots** from dispatch (`FieldSnapshot`, `FieldContextSnapshot` in `src/agents/specialists/snapshots.py`) — not raw `versions[]` layout. See § Specialist I/O protocol below.
 - **SQLite:** `<network_root>/checkpoints.sqlite` (LangGraph checkpointer). Optional `<network_root>/mycelium.db` — empty bootstrap file only; no identity tables.
 
 See `src/storage/core.py` (path bootstrap for MCP/admin startup).
+
+---
+
+## Specialist I/O protocol (June 2026)
+
+**Component isolation:** storage layout and versioned field mechanics stay inside `src/agents/specialists/`. Cross-boundary traffic uses dispatch + published snapshot shapes (protocol v1).
+
+| Dispatch entry | Role |
+|----------------|------|
+| `dispatch_write_fields` / `dispatch_write_bind_fields_multi` | Bind and attribute writes |
+| `dispatch_read_fields` | Single-entity reads; `include_versions=True` → `provenance` on snapshot |
+| `dispatch_read_category_slice` | Graph context slices (extended attrs) |
+| `dispatch_bootstrap_entity` | Seed/bootstrap materialization |
+| Research handlers | `dispatch_mark_pending`, `dispatch_persist_research`, `dispatch_append_research_audit` |
+
+**`FieldSnapshot`** (per field from `read_fields`):
+
+- `value`, `status` (`found` \| `na` \| `pending` \| `empty`), `updated_at`
+- `provenance` (optional): `{ current_version_id, versions[] }` for API/admin — framework passes through; does not parse internal storage
+
+**`FieldContextSnapshot`** (per field in graph/research context):
+
+- `value`, `status`, `sources[]`, `updated_at`
+- `operator`: `{ set, value, at, note }` for research deference
+
+Early CRM specialists share one handler implementation (`handlers.py`); the boundary is the snapshot contract, not the on-disk JSON shape. Heterogeneous specialists (e.g. baseball warehouse) may use different internal storage if read/write handlers emit the same snapshots.
 
 ---
 
@@ -391,14 +419,10 @@ See `docs/plans/seed-data-context-architecture.md` and the reprocess reviews (`p
 
 **Research prompt context (implemented, June 2026):** `build_research_prompts()` applies **MVR-driven bind disambiguation** (`MvrPolicy.bind_fields` from `network.json`) and includes **peer specialist findings** from `_research_context()` (other categories for the same `entity_id`). Templates: `src/agents/factory/templates/research/`. Follow-on hardening: `docs/plans/research-robustness-backlog.md`.
 
-**Specialist storage boundaries (implemented, June 2026):** Framework code outside `src/agents/specialists/` must not import `SpecialistStorage` or read `agents/*/storage.json` directly. Bind, seed, research, provenance, and context paths dispatch through `agents.specialists.protocol` (`write_fields`, `read_fields`, `bootstrap_entity`, research handlers). `entities.json` cache and indexes sync from specialist-returned values only.
-
-**Normalized read contract (implemented, June 2026):** Specialist dispatch returns framework-ready snapshots (`FieldSnapshot`, `FieldContextSnapshot`) — `value`, `status`, `updated_at`, optional `provenance`, and research `operator`/`sources` blocks. Framework and `tools.research` consume snapshots only; they do not import `agents.specialists.fields` or parse `versions[]` layout.
-
 **Next phases:**
 
 See `TODO.md` for follow-ups.
 
 ---
 
-**Last major update:** June 2026 (MVR redesign target protocol documented M1; Program 1 provenance complete; seed-data-context + sync specialist research)
+**Last major update:** June 2026 (specialist isolation: dispatch protocol + normalized read snapshots; tag `specialist_isolation`)

@@ -2,7 +2,7 @@
 
 **Status:** Complete (June 2026) — Slices 1–3 + polish + fuzzy suggestions (1430–1450) on `origin/main`; manual gate **CLEAR** (2026-06-14)
 
-**Storage I/O (June 2026):** Framework no longer reads/writes `agents/*/storage.json` directly. Bind, seed, research, provenance, and context paths dispatch through `agents.specialists.protocol`; registry cache/indexes sync from specialist-returned values. See slice `2026-06-16-1200-specialist-storage-boundaries` and `docs/architecture.md` addendum.
+**Storage I/O (June 2026, post-Program 2):** Framework no longer reads/writes `agents/*/storage.json` directly. Bind, seed, research, provenance, and context paths dispatch through `agents.specialists.protocol`; registry cache/indexes sync from specialist-returned values. Framework consumers use normalized `FieldSnapshot` / `FieldContextSnapshot` only (slice `2026-06-16-1400-specialist-normalized-read-responses`). See `docs/architecture.md` § Storage and § Specialist I/O protocol; git tag `specialist_isolation`.
 
 **Architecture:** [`attribute-provenance-and-storage.md`](attribute-provenance-and-storage.md)  
 **Prerequisite:** Program 1 complete; MVR redesign M1–M10 shipped  
@@ -65,15 +65,17 @@ At runtime, unified write resolves `(category, specialist)` via `ClassificationE
 
 ## Unified write API (Slice 1)
 
-New module (name TBD, e.g. `src/agents/attribute_write.py`):
+Module: `src/agents/attribute_write.py` (registry sync + taxonomy routing).
 
-| Responsibility | Detail |
-|----------------|--------|
-| Resolve owner | `attribute_map[mvr_field]` → category → storage path |
-| Append version | `specialist_fields.append_version` with `actor`: `bind`, `seed_bootstrap`, `research`, `operator` |
-| Update cache | Denormalized field values on `RegistryEntity` |
-| Update indexes | `bind_index` + rebuild field indexes (or incremental update) |
-| Persist | Atomic specialist save + `EntityRegistry._save` |
+| Responsibility | Detail (as shipped Program 2) | Detail (June 2026 isolation refactor) |
+|----------------|--------------------------------|--------------------------------------|
+| Resolve owner | `attribute_map[mvr_field]` → category → agent | Unchanged — `resolve_owner` / `resolve_attribute_owner` |
+| Append version | `specialist_fields.append_version` in framework | **Superseded:** `protocol.dispatch_write_*` → specialist `handlers.write_fields` |
+| Update cache | Denormalized field values on `RegistryEntity` | Unchanged — from dispatch return values |
+| Update indexes | `bind_index` + field indexes | Unchanged — `EntityRegistry._save` |
+| Persist | Framework `SpecialistStorage` save | **Superseded:** specialist package persists; framework never opens storage files |
+
+Helpers moved to `src/agents/specialists/fields.py` (was `specialist_fields.py`).
 
 **Entry points to route (Slice 1):**
 
@@ -90,8 +92,8 @@ New module (name TBD, e.g. `src/agents/attribute_write.py`):
 | Surface | Change |
 |---------|--------|
 | Default `results[]` | Unchanged — still flat strings; hot path reads entity cache (kept in sync by write API) |
-| `provenance=true` | Include **MVR/bind fields** from specialist `versions[]` (remove exclusion in `query_provenance.py`) |
-| Admin `GET /status?entity=` | Version timeline for bind fields from specialist storage (not registry-only) |
+| `provenance=true` | Include **MVR/bind fields** via `dispatch_read_fields` → `FieldSnapshot.provenance` |
+| Admin `GET /status?entity=` | Version timeline via dispatch (not direct storage reads) |
 
 ---
 
