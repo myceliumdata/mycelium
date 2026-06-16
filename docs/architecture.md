@@ -184,7 +184,7 @@ See `src/storage/core.py` (path bootstrap for MCP/admin startup).
 - `value`, `status`, `sources[]`, `updated_at`
 - `operator`: `{ set, value, at, note }` for research deference
 
-Early CRM specialists share one handler implementation (`handlers.py`); the boundary is the snapshot contract, not the on-disk JSON shape. Heterogeneous specialists (e.g. baseball warehouse) may use different internal storage if read/write handlers emit the same snapshots.
+Early CRM specialists subclass **`SpecialistAgent`** (`src/agents/specialists/agent.py`) and expose a module singleton `AGENT`; graph entrypoints delegate to `AGENT.run(state)` and protocol dispatch resolves `get_agent_instance(name)` → `AGENT.write_fields` / `read_fields` / etc. Users override storage or research by subclassing and replacing `AGENT`. Shared JSON mechanics live in the base class; `handlers.py` is an internal specialists-package helper only — framework code routes through `agents.specialists.protocol`, not `handlers` directly. Heterogeneous specialists (e.g. baseball warehouse) may use different internal storage if read/write handlers emit the same snapshots.
 
 ---
 

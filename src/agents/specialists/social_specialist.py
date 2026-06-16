@@ -43,6 +43,7 @@ from agents.specialists.fields import (
     pending_last_error,
     research_actor,
 )
+from agents.specialists.agent import SpecialistAgent
 from agents.specialists.base import SpecialistStorage
 from models.state import MyceliumGraphState, graph_requested_attributes
 
@@ -320,7 +321,7 @@ def _evaluate_owned_fields(
     return values, overall, pending_attrs, research_audit, researched_fields
 
 
-def social_specialist(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
+def _run_social_graph(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     """
     Specialist for "social": context + id + owned fields only.
 
@@ -425,10 +426,21 @@ def social_specialist(state: MyceliumGraphState | dict[str, Any]) -> dict[str, A
     return payload
 
 
-from agents.specialists._protocol_exports import attach_protocol_handlers  # noqa: E402
+class SocialSpecialist(SpecialistAgent):
+    category = "social"
+    agent_name = "social_specialist"
 
-attach_protocol_handlers(
-    globals(),
-    category="social",
-    agent_name="social_specialist",
-)
+    def run(self, state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
+        return _run_social_graph(state)
+
+
+AGENT = SocialSpecialist()
+
+
+def social_specialist(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
+    return AGENT.run(state)
+
+
+write_fields = AGENT.write_fields
+read_fields = AGENT.read_fields
+bootstrap_entity = AGENT.bootstrap_entity

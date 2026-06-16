@@ -132,6 +132,35 @@ class AgentRegistry:
         except Exception:
             return None
 
+    def _load_specialist_module(self, name: str) -> Any | None:
+        if self._data is None:
+            self._load()
+        entry = self._data.agents.get(name)
+        if entry is not None:
+            from network.paths import runtime_path
+
+            specialists_dir = runtime_path("MYCELIUM_SPECIALISTS_DIR")
+            py_file = specialists_dir / f"{entry.name}.py"
+            if py_file.exists():
+                spec = importlib.util.spec_from_file_location(
+                    f"dyn_specialist_{entry.name}",
+                    str(py_file),
+                )
+                if spec and spec.loader:
+                    mod = importlib.util.module_from_spec(spec)
+                    sys.modules[spec.name] = mod
+                    spec.loader.exec_module(mod)
+                    return mod
+            try:
+                return importlib.import_module(entry.module_path)
+            except Exception:
+                return None
+        fallback = f"agents.specialists.{name}"
+        try:
+            return importlib.import_module(fallback)
+        except ModuleNotFoundError:
+            return None
+
     def get_agent_fn(self, name: str) -> Callable[[Any], dict[str, Any]] | None:
         if self._data is None:
             self._load()
@@ -139,6 +168,24 @@ class AgentRegistry:
         if entry is None:
             return None
         return self._load_agent_fn(entry)
+
+    def get_agent_instance(self, name: str) -> Any:
+        """Return module ``AGENT`` singleton, ``get_agent()`` factory, or default wrapper."""
+        from agents.specialists.agent import SpecialistAgent
+
+        mod = self._load_specialist_module(name)
+        if mod is not None:
+            agent = getattr(mod, "AGENT", None)
+            if agent is not None:
+                return agent
+            get_agent = getattr(mod, "get_agent", None)
+            if callable(get_agent):
+                return get_agent()
+        if self._data is None:
+            self._load()
+        entry = self._data.agents.get(name)
+        category = entry.category if entry is not None else name.replace("_specialist", "")
+        return SpecialistAgent(category=category, agent_name=name)
 
     def register_agent(
         self,

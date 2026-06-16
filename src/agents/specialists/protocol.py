@@ -31,6 +31,15 @@ def resolve_owner(attribute: str) -> tuple[str, str]:
     return category, cat.assigned_agent
 
 
+def _assigned_agent_for_category(category: str) -> str:
+    from agents.classification import get_category_tree
+
+    tree = get_category_tree()
+    cat = tree.get_categories().get(category)
+    if cat is None or not cat.assigned_agent:
+        raise ValueError(f"category {category!r} has no assigned_agent")
+    return cat.assigned_agent
+
 
 def _load_specialist_module(agent_name: str) -> Any:
     import importlib.util
@@ -69,6 +78,13 @@ def _call_handler(
     *args: Any,
     **kwargs: Any,
 ) -> Any:
+    registry = get_agent_registry()
+    agent = registry.get_agent_instance(agent_name)
+    if agent is not None and hasattr(agent, handler):
+        method = getattr(agent, handler)
+        if callable(method):
+            return method(*args, **kwargs)
+
     mod = _load_specialist_module(agent_name)
     fn: Callable[..., Any] | None = getattr(mod, handler, None)
     if fn is None:
@@ -142,7 +158,7 @@ def dispatch_write_bind_fields_multi(
     actor_kind: str,
     at: str,
 ) -> dict[str, str]:
-    from agents.specialists.handlers import write_bind_fields_multi
+    from agents.specialists.agent import write_bind_fields_multi
 
     return write_bind_fields_multi(
         entity_id,
@@ -160,16 +176,19 @@ def dispatch_read_category_slice(
     *,
     bind_fields: frozenset[str] | set[str] | None = None,
 ) -> dict[str, dict[str, Any]]:
-    from agents.specialists.handlers import read_category_slice
-
-    _ = agent_name
-    return read_category_slice(category, entity_ids, bind_fields=bind_fields)
+    agent = get_agent_registry().get_agent_instance(agent_name)
+    return agent.read_category_slice(entity_ids, bind_fields=bind_fields)
 
 
 def dispatch_analyze_category_storage(category: str) -> dict[str, Any]:
-    from agents.specialists.handlers import analyze_category_storage
+    try:
+        agent_name = _assigned_agent_for_category(category)
+        agent = get_agent_registry().get_agent_instance(agent_name)
+    except ValueError:
+        from agents.specialists.agent import SpecialistAgent
 
-    return analyze_category_storage(category)
+        agent = SpecialistAgent(category=category)
+    return agent.analyze_storage()
 
 
 def dispatch_entity_field_statuses(
@@ -177,15 +196,15 @@ def dispatch_entity_field_statuses(
     category: str,
     entity_id: str,
 ) -> list[dict[str, Any]]:
-    from agents.specialists.handlers import entity_field_statuses_for_category
-
-    return entity_field_statuses_for_category(category, agent_name, entity_id)
+    _ = category
+    agent = get_agent_registry().get_agent_instance(agent_name)
+    return agent.entity_field_statuses(entity_id)
 
 
 def dispatch_ensure_category_storage(category: str) -> None:
-    from agents.specialists.handlers import ensure_category_storage
+    from agents.specialists.agent import SpecialistAgent
 
-    ensure_category_storage(category)
+    SpecialistAgent(category=category).ensure_storage()
 
 
 def dispatch_mark_pending(
