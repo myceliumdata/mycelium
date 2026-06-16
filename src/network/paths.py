@@ -127,19 +127,16 @@ def _provisional_paths(root: Path) -> NetworkPaths:
 
 
 def _default_entity_store_path(root: Path) -> Path:
-    """Default-grain entity store path from ``network.json`` (or CRM default)."""
+    """Default-grain entity store path from ``network.json``."""
     provisional = _provisional_paths(root)
-    try:
-        from network.mvr import default_mvr_grain
+    from network.mvr import default_mvr_grain
 
-        grain = default_mvr_grain(paths=provisional)
-        return entity_store_path(provisional, grain)
-    except Exception:
-        return root / "entities" / "person.json"
+    grain = default_mvr_grain(paths=provisional)
+    return entity_store_path(provisional, grain)
 
 
 def entity_store_path(paths: NetworkPaths, grain: str) -> Path:
-    """Canonical write path for a grain's entity store."""
+    """Canonical entity store path for a grain (read and write)."""
     from network.mvr import load_mvr_config
 
     config = load_mvr_config(paths=paths)
@@ -149,17 +146,6 @@ def entity_store_path(paths: NetworkPaths, grain: str) -> Path:
             f"Unknown MVR grain {grain!r}; declared grains: {known}",
         )
     return paths.root / config.grains[grain].entities_file
-
-
-def resolve_entity_store_path(paths: NetworkPaths, grain: str) -> Path:
-    """Grain entity path with legacy root ``entities.json`` read fallback."""
-    grain_path = entity_store_path(paths, grain)
-    if grain_path.is_file():
-        return grain_path
-    legacy = paths.root / "entities.json"
-    if legacy.is_file():
-        return legacy
-    return grain_path
 
 
 _RUNTIME_ENV_FIELDS: dict[str, str] = {

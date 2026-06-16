@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
+from typing import Any
 
 import pytest
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+CRM_NETWORK_MANIFEST = REPO_ROOT / "examples" / "networks" / "crm" / "network.json"
 
 NETWORK_PATH_ENV_KEYS = (
     "MYCELIUM_NETWORK_ROOT",
@@ -18,6 +23,35 @@ NETWORK_PATH_ENV_KEYS = (
     "MYCELIUM_CHECKPOINT_PATH",
     "MYCELIUM_DB_PATH",
 )
+
+
+def copy_crm_network_manifest(root: Path) -> Path:
+    """Copy committed CRM ``network.json`` (full ``mvr.grains`` + ``metering``)."""
+    root.mkdir(parents=True, exist_ok=True)
+    dest = root / "network.json"
+    shutil.copy(CRM_NETWORK_MANIFEST, dest)
+    return dest
+
+
+def write_metering_network_json(
+    path: Path,
+    *,
+    enabled: bool = True,
+    **overrides: Any,
+) -> None:
+    """Write CRM-shaped manifest with optional ``metering`` overrides."""
+    data = json.loads(CRM_NETWORK_MANIFEST.read_text(encoding="utf-8"))
+    metering = dict(data.get("metering") or {})
+    metering["enabled"] = enabled
+    metering.update(overrides)
+    data["metering"] = metering
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def crm_person_entities_path(root: Path) -> Path:
+    """Canonical default-grain entity store path for CRM manifests."""
+    return root / "entities" / "person.json"
 
 
 def clear_network_path_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -55,6 +89,8 @@ def import_seed_for_test(
             raise ValueError(msg)
         dest = tmp_path / "seed.json"
         shutil.copy(seed_src, dest)
+        if not (tmp_path / "network.json").is_file() and CRM_NETWORK_MANIFEST.is_file():
+            copy_crm_network_manifest(tmp_path)
         if monkeypatch is not None:
             monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
             monkeypatch.setenv("MYCELIUM_SEED_PATH", str(dest))

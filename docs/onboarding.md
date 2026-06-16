@@ -16,7 +16,7 @@
 
 | Term | Meaning |
 |------|---------|
-| **`entities/<grain>.json`** | Canonical identity store per MVR grain at runtime (UUID, `bind_values`, generic `bind_index`, validation state). CRM queries use the **`person`** grain by default. Legacy root **`entities.json`** is read when the grain file is missing; new writes go to the grain path. MVR bind values are cached here; canonical history is in specialist `versions[]` (Program 2). |
+| **`entities/<grain>.json`** | Canonical identity store per MVR grain at runtime (UUID, `bind_values`, generic `bind_index`, validation state). CRM queries use the **`person`** grain by default. Requires explicit `mvr.grains` and `mvr.default_grain` in `network.json`. MVR bind values are cached here; canonical history is in specialist `versions[]` (Program 2). |
 | **`seed.json`** | Optional **bootstrap fixture** — read by the declared bootstrap handler (CRM: `DefaultSeedHandler`) at `refresh-example-network` or `network create --seed` only. Not read on query. |
 | **`network.json` → `bootstrap`** | Required bootstrap handler declaration: **`module`** (Python module path) + **`handler`** (class name). Framework modules (`network.*`) ship with the repo; pack modules live under `<network_root>/bootstrap_handlers/`. See [architecture.md](architecture.md) § Seed bootstrap. |
 | **`IdentityRecord`** | Graph/MCP model for a matched registry row (renamed from `SeedRecord`, June 2026). |

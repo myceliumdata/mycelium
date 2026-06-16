@@ -11,6 +11,7 @@ import pytest
 from agents.entity_registry import reset_entity_registry
 from network.paths import NetworkPaths, apply_network_paths, legacy_network_root, network_metadata
 from network.seed_import import import_seed_file
+from network_helpers import copy_crm_network_manifest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
@@ -113,6 +114,7 @@ def test_missing_seed_import_returns_zero(
 ) -> None:
     empty_root = tmp_path / "empty_data"
     empty_root.mkdir()
+    copy_crm_network_manifest(empty_root)
     monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(tmp_path / "missing.json"))
     paths = NetworkPaths.from_root(empty_root)
     apply_network_paths(paths)
@@ -128,6 +130,7 @@ def test_empty_network_without_seed_initializes_storage(
     """Seed is optional at runtime; storage init must not require seed.json."""
     empty_root = tmp_path / "empty_data"
     empty_root.mkdir()
+    copy_crm_network_manifest(empty_root)
     monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(tmp_path / "missing.json"))
     paths = NetworkPaths.from_root(empty_root)
     apply_network_paths(paths)

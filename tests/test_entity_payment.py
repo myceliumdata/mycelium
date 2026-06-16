@@ -22,7 +22,7 @@ from network.metering_policy import load_metering_policy
 from network.payment import PaymentError, settle_quote
 from network.quotes import get_quote_store, reset_quote_store
 from storage.core import CoreStorage, get_storage, reset_storage
-from network_helpers import import_seed_for_test
+from network_helpers import copy_crm_network_manifest, import_seed_for_test
 from tools.research import ResearchRunResult
 from versioned_storage_fixtures import versioned_found
 
@@ -355,18 +355,11 @@ def test_auto_settle_bypass(
 
 @pytest.mark.smoke
 def test_load_metering_policy_parses_payment(tmp_path: Path) -> None:
-    network = tmp_path / "network.json"
-    network.write_text(
-        json.dumps(
-            {
-                "metering": {
-                    "enabled": True,
-                    "payment": {"enabled": True, "provider": "credit"},
-                },
-            },
-        ),
-        encoding="utf-8",
-    )
+    copy_crm_network_manifest(tmp_path)
+    data = json.loads((tmp_path / "network.json").read_text(encoding="utf-8"))
+    data["metering"]["enabled"] = True
+    data["metering"]["payment"] = {"enabled": True, "provider": "credit"}
+    (tmp_path / "network.json").write_text(json.dumps(data), encoding="utf-8")
     policy = load_metering_policy(
         paths=__import__("network.paths").NetworkPaths.from_root(tmp_path),
     )

@@ -56,7 +56,7 @@ class MeteringPolicy:
         }
 
 
-def _crm_default_payment() -> PaymentPolicy:
+def _default_payment_policy() -> PaymentPolicy:
     return PaymentPolicy(
         enabled=False,
         provider=_DEFAULT_PAYMENT_PROVIDER,
@@ -80,18 +80,6 @@ def _parse_payment_block(raw: Any) -> PaymentPolicy | None:
         enabled=enabled,
         provider=provider.strip(),
         require_paid_before_accept=require_paid_before_accept,
-    )
-
-
-def _crm_default_metering() -> MeteringPolicy:
-    return MeteringPolicy(
-        enabled=False,
-        default_funding_model=_DEFAULT_FUNDING_MODEL,
-        meter_first_delivery=True,
-        quote_provider=_DEFAULT_QUOTE_PROVIDER,
-        marginal_principal_optional=True,
-        principal_required_for=_DEFAULT_PRINCIPAL_REQUIRED_FOR,
-        payment=_crm_default_payment(),
     )
 
 
@@ -120,7 +108,7 @@ def _parse_metering_block(raw: Any) -> MeteringPolicy | None:
         if isinstance(models, list) and models:
             required_for = [str(item).strip() for item in models if str(item).strip()]
     payment_block = raw.get("payment")
-    payment = _parse_payment_block(payment_block) or _crm_default_payment()
+    payment = _parse_payment_block(payment_block) or _default_payment_policy()
     return MeteringPolicy(
         enabled=enabled,
         default_funding_model=funding.strip(),
@@ -133,22 +121,31 @@ def _parse_metering_block(raw: Any) -> MeteringPolicy | None:
 
 
 def load_metering_policy(*, paths: NetworkPaths | None = None) -> MeteringPolicy:
-    """Load metering policy from ``network.json``; disabled CRM default when absent."""
+    """Load metering policy from ``network.json``."""
     if paths is None:
         root = resolve_network_root()
         paths = NetworkPaths.from_root(root)
 
-    network_json = paths.root / "network.json"
-    if not network_json.is_file():
-        return _crm_default_metering()
-
+    manifest_path = paths.root / "network.json"
+    if not manifest_path.is_file():
+        raise ValueError(
+            f"{manifest_path}: network manifest required "
+            "(add network.json with a metering block)",
+        )
     try:
-        data = json.loads(network_json.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return _crm_default_metering()
-
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Invalid network.json at {manifest_path}: {exc}") from exc
     if not isinstance(data, dict):
-        return _crm_default_metering()
+        raise ValueError(f"{manifest_path}: network.json must be a JSON object")
 
-    parsed = _parse_metering_block(data.get("metering"))
-    return parsed if parsed is not None else _crm_default_metering()
+    metering_raw = data.get("metering")
+    if not isinstance(metering_raw, dict):
+        raise ValueError(
+            f"{manifest_path}: missing required metering object "
+            '(declare "metering": {"enabled": false, ...})',
+        )
+    parsed = _parse_metering_block(metering_raw)
+    if parsed is None:
+        raise ValueError(f"{manifest_path}: invalid metering block")
+    return parsed

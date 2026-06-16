@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from network.paths import NetworkPaths, resolve_network_root
 
-_DEFAULT_BIND_FIELDS = ["name", "employer"]
 _DEFAULT_DESCRIPTION = (
     "CRM people: display name plus current employer before bind and research."
 )
@@ -66,58 +66,70 @@ class NetworkMvrConfig:
         }
 
 
-def _crm_default_mvr() -> MvrPolicy:
-    return MvrPolicy(
-        bind_fields=list(_DEFAULT_BIND_FIELDS),
-        description=_DEFAULT_DESCRIPTION,
-    )
+def _manifest_path(paths: NetworkPaths) -> Path:
+    return paths.root / "network.json"
 
 
-def _crm_default_config() -> NetworkMvrConfig:
-    policy = _crm_default_mvr()
-    grain = GrainMvrPolicy(
-        bind_fields=policy.bind_fields,
-        description=policy.description,
-        entities_file="entities/person.json",
-    )
-    return NetworkMvrConfig(default_grain="person", grains={"person": grain})
+def _load_manifest_dict(paths: NetworkPaths) -> dict[str, Any]:
+    manifest_path = _manifest_path(paths)
+    if not manifest_path.is_file():
+        raise ValueError(
+            f"{manifest_path}: network manifest required "
+            "(add network.json with mvr.grains and mvr.default_grain)",
+        )
+    try:
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Invalid network.json at {manifest_path}: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ValueError(f"{manifest_path}: network.json must be a JSON object")
+    return data
 
 
-def _parse_mvr_block(raw: Any) -> MvrPolicy | None:
+def _parse_grain_policy(raw: Any, *, grain_name: str, manifest_path: Path) -> MvrPolicy:
     if not isinstance(raw, dict):
-        return None
+        raise ValueError(
+            f"{manifest_path}: mvr.grains.{grain_name} must be an object",
+        )
     bind_fields = raw.get("bind_fields")
     if not isinstance(bind_fields, list) or not bind_fields:
-        return None
+        raise ValueError(
+            f"{manifest_path}: mvr.grains.{grain_name} requires non-empty bind_fields",
+        )
     fields = [str(item).strip() for item in bind_fields if str(item).strip()]
     if not fields:
-        return None
+        raise ValueError(
+            f"{manifest_path}: mvr.grains.{grain_name} requires non-empty bind_fields",
+        )
     description = raw.get("description")
     if not isinstance(description, str) or not description.strip():
         description = _DEFAULT_DESCRIPTION
-    return MvrPolicy(
-        bind_fields=fields,
-        description=description.strip(),
-    )
+    return MvrPolicy(bind_fields=fields, description=description.strip())
 
 
-def _parse_grains_block(mvr_raw: dict[str, Any]) -> dict[str, GrainMvrPolicy] | None:
+def _parse_grains_block(
+    mvr_raw: dict[str, Any],
+    *,
+    manifest_path: Path,
+) -> dict[str, GrainMvrPolicy]:
+    if "bind_fields" in mvr_raw and "grains" not in mvr_raw:
+        raise ValueError(
+            f"{manifest_path}: flat mvr.bind_fields is not supported; "
+            "declare mvr.grains.<name>.bind_fields instead",
+        )
     grains_raw = mvr_raw.get("grains")
     if not isinstance(grains_raw, dict) or not grains_raw:
-        return None
+        raise ValueError(
+            f"{manifest_path}: missing required mvr.grains object "
+            '(e.g. "grains": {"person": {"bind_fields": ["name", "employer"], ...}})',
+        )
     grains: dict[str, GrainMvrPolicy] = {}
     for grain_name, grain_raw in grains_raw.items():
         name = str(grain_name).strip()
         if not name:
             continue
-        if not isinstance(grain_raw, dict):
-            raise ValueError(f"network.json mvr.grains.{name} must be an object")
-        policy = _parse_mvr_block(grain_raw)
-        if policy is None:
-            raise ValueError(
-                f"network.json mvr.grains.{name} requires non-empty bind_fields",
-            )
-        entities_file_raw = grain_raw.get("entities_file")
+        policy = _parse_grain_policy(grain_raw, grain_name=name, manifest_path=manifest_path)
+        entities_file_raw = grain_raw.get("entities_file") if isinstance(grain_raw, dict) else None
         if isinstance(entities_file_raw, str) and entities_file_raw.strip():
             entities_file = entities_file_raw.strip()
         else:
@@ -128,27 +140,10 @@ def _parse_grains_block(mvr_raw: dict[str, Any]) -> dict[str, GrainMvrPolicy] | 
             entities_file=entities_file,
         )
     if not grains:
-        return None
+        raise ValueError(
+            f"{manifest_path}: mvr.grains must declare at least one grain",
+        )
     return grains
-
-
-def _resolve_default_grain(
-    grains: dict[str, GrainMvrPolicy],
-    declared: str | None,
-) -> str:
-    if declared:
-        default = declared.strip()
-        if default not in grains:
-            raise ValueError(
-                f"network.json mvr.default_grain {default!r} is not declared in mvr.grains",
-            )
-        return default
-    grain_names = sorted(grains.keys())
-    if len(grains) == 1:
-        return grain_names[0]
-    raise ValueError(
-        "network.json mvr.default_grain is required when multiple grains are declared",
-    )
 
 
 def load_mvr_config(*, paths: NetworkPaths | None = None) -> NetworkMvrConfig:
@@ -157,41 +152,28 @@ def load_mvr_config(*, paths: NetworkPaths | None = None) -> NetworkMvrConfig:
         root = resolve_network_root()
         paths = NetworkPaths.from_root(root)
 
-    network_json = paths.root / "network.json"
-    if not network_json.is_file():
-        return _crm_default_config()
-
-    try:
-        data = json.loads(network_json.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return _crm_default_config()
-
-    if not isinstance(data, dict):
-        return _crm_default_config()
-
+    manifest_path = _manifest_path(paths)
+    data = _load_manifest_dict(paths)
     mvr_raw = data.get("mvr")
     if not isinstance(mvr_raw, dict):
-        return _crm_default_config()
-
-    grains = _parse_grains_block(mvr_raw)
-    if grains is not None:
-        default_raw = mvr_raw.get("default_grain")
-        declared = (
-            str(default_raw).strip() if isinstance(default_raw, str) else None
+        raise ValueError(
+            f"{manifest_path}: missing required mvr object "
+            '(declare "mvr": {"default_grain": "...", "grains": {...}})',
         )
-        default_grain = _resolve_default_grain(grains, declared)
-        return NetworkMvrConfig(default_grain=default_grain, grains=grains)
 
-    parsed = _parse_mvr_block(mvr_raw)
-    if parsed is not None:
-        grain = GrainMvrPolicy(
-            bind_fields=parsed.bind_fields,
-            description=parsed.description,
-            entities_file="entities/person.json",
+    grains = _parse_grains_block(mvr_raw, manifest_path=manifest_path)
+    default_raw = mvr_raw.get("default_grain")
+    if not isinstance(default_raw, str) or not default_raw.strip():
+        raise ValueError(
+            f"{manifest_path}: missing required mvr.default_grain",
         )
-        return NetworkMvrConfig(default_grain="person", grains={"person": grain})
-
-    return _crm_default_config()
+    default_grain = default_raw.strip()
+    if default_grain not in grains:
+        raise ValueError(
+            f"{manifest_path}: mvr.default_grain {default_grain!r} "
+            "is not declared in mvr.grains",
+        )
+    return NetworkMvrConfig(default_grain=default_grain, grains=grains)
 
 
 def default_mvr_grain(*, paths: NetworkPaths | None = None) -> str:

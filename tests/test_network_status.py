@@ -15,7 +15,7 @@ import pytest
 
 from agents.entity_registry import RegistryEntity, get_entity_registry, reset_entity_registry
 from registry_helpers import lookup_entities_by_name as lookup_entities_by_key
-from network_helpers import import_seed_for_test
+from network_helpers import copy_crm_network_manifest, import_seed_for_test
 from network.introspection import (
     build_network_status,
     format_category_examples,
@@ -33,6 +33,8 @@ SAMPLE_CATEGORIES = REPO_ROOT / "docs" / "examples" / "sample-categories.json"
 
 def _configure_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, root: Path) -> None:
     monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(tmp_path / "missing.json"))
+    if not (root / "network.json").is_file():
+        copy_crm_network_manifest(root)
     apply_network_paths(NetworkPaths.from_root(root))
     reset_entity_registry()
 
@@ -50,6 +52,7 @@ def _ontology_root(tmp_path: Path) -> Path:
     root.mkdir()
     shutil.copy(EXAMPLE_CRM / "seed.json", root / "seed.json")
     shutil.copy(SAMPLE_CATEGORIES, root / "categories.json")
+    copy_crm_network_manifest(root)
     return root
 
 

@@ -11,6 +11,7 @@ import pytest
 from network.example import copy_example_network
 from network.introspection import build_network_capabilities, format_mcp_instructions
 from network.paths import NetworkPaths, apply_network_paths
+from network_helpers import copy_crm_network_manifest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
@@ -18,6 +19,7 @@ SAMPLE_CATEGORIES = REPO_ROOT / "docs" / "examples" / "sample-categories.json"
 
 
 def _configure_root(monkeypatch: pytest.MonkeyPatch, root: Path) -> None:
+    copy_crm_network_manifest(root)
     monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(root.parent / "missing.json"))
     apply_network_paths(NetworkPaths.from_root(root))
 

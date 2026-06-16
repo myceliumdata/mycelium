@@ -10,17 +10,19 @@ import pytest
 
 from agents.entity_registry import RegistryEntity, get_entity_registry, reset_entity_registry
 from network.bootstrap import run_network_bootstrap
+from network.metering_policy import load_metering_policy
 from network.mvr import (
     default_mvr_grain,
     list_mvr_grains,
     load_mvr,
     load_mvr_config,
 )
-from network.paths import NetworkPaths, apply_network_paths, entity_store_path, resolve_entity_store_path
+from network.paths import NetworkPaths, _provisional_paths, apply_network_paths, entity_store_path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CRM_MANIFEST = REPO_ROOT / "examples" / "networks" / "crm" / "network.json"
 BASEBALL_MANIFEST = REPO_ROOT / "examples" / "networks" / "baseball" / "network.json"
+CRM_METERING = json.loads(CRM_MANIFEST.read_text(encoding="utf-8"))["metering"]
 
 
 def _write_manifest(root: Path, manifest: dict) -> None:
@@ -30,8 +32,26 @@ def _write_manifest(root: Path, manifest: dict) -> None:
     )
 
 
+def _minimal_person_manifest(**overrides: object) -> dict:
+    manifest = {
+        "name": "test-net",
+        "mvr": {
+            "default_grain": "person",
+            "grains": {
+                "person": {
+                    "bind_fields": ["name", "employer"],
+                    "description": "CRM people",
+                },
+            },
+        },
+        "metering": dict(CRM_METERING),
+    }
+    manifest.update(overrides)
+    return manifest
+
+
 @pytest.mark.smoke
-def test_legacy_flat_mvr_parses_implicit_person_grain(tmp_path: Path) -> None:
+def test_flat_bind_fields_rejected(tmp_path: Path) -> None:
     _write_manifest(
         tmp_path,
         {
@@ -40,13 +60,12 @@ def test_legacy_flat_mvr_parses_implicit_person_grain(tmp_path: Path) -> None:
                 "bind_fields": ["name", "employer"],
                 "description": "Legacy flat policy",
             },
+            "metering": dict(CRM_METERING),
         },
     )
-    paths = NetworkPaths.from_root(tmp_path)
-    config = load_mvr_config(paths=paths)
-    assert config.default_grain == "person"
-    assert list(config.grains.keys()) == ["person"]
-    assert load_mvr(paths=paths).bind_fields == ["name", "employer"]
+    paths = _provisional_paths(tmp_path.resolve())
+    with pytest.raises(ValueError, match="flat mvr.bind_fields is not supported"):
+        load_mvr_config(paths=paths)
 
 
 @pytest.mark.smoke
@@ -61,14 +80,61 @@ def test_explicit_crm_grains_parse(tmp_path: Path) -> None:
 
 
 @pytest.mark.smoke
+def test_missing_network_json_raises(tmp_path: Path) -> None:
+    paths = _provisional_paths(tmp_path.resolve())
+    with pytest.raises(ValueError, match="network manifest required"):
+        load_mvr_config(paths=paths)
+
+
+@pytest.mark.smoke
+def test_missing_mvr_raises(tmp_path: Path) -> None:
+    _write_manifest(tmp_path, {"name": "no-mvr", "metering": dict(CRM_METERING)})
+    paths = _provisional_paths(tmp_path.resolve())
+    with pytest.raises(ValueError, match="missing required mvr object"):
+        load_mvr_config(paths=paths)
+
+
+@pytest.mark.smoke
+def test_missing_metering_raises(tmp_path: Path) -> None:
+    manifest = _minimal_person_manifest()
+    manifest.pop("metering")
+    _write_manifest(tmp_path, manifest)
+    paths = NetworkPaths.from_root(tmp_path)
+    with pytest.raises(ValueError, match="missing required metering object"):
+        load_metering_policy(paths=paths)
+
+
+@pytest.mark.smoke
+def test_single_grain_requires_default_grain(tmp_path: Path) -> None:
+    _write_manifest(
+        tmp_path,
+        {
+            "name": "one-grain",
+            "mvr": {
+                "grains": {
+                    "person": {
+                        "bind_fields": ["name", "employer"],
+                        "description": "person only",
+                    },
+                },
+            },
+            "metering": dict(CRM_METERING),
+        },
+    )
+    paths = _provisional_paths(tmp_path.resolve())
+    with pytest.raises(ValueError, match="missing required mvr.default_grain"):
+        load_mvr_config(paths=paths)
+
+
+@pytest.mark.smoke
 def test_baseball_manifest_requires_default_grain_for_two_grains(
     tmp_path: Path,
 ) -> None:
     manifest = json.loads(BASEBALL_MANIFEST.read_text(encoding="utf-8"))
     manifest["mvr"].pop("default_grain")
     _write_manifest(tmp_path, manifest)
-    paths = NetworkPaths.from_root(tmp_path)
-    with pytest.raises(ValueError, match="default_grain is required"):
+    paths = _provisional_paths(tmp_path.resolve())
+    with pytest.raises(ValueError, match="missing required mvr.default_grain"):
         load_mvr_config(paths=paths)
 
 
@@ -91,38 +157,23 @@ def test_unknown_grain_raises(tmp_path: Path) -> None:
 
 
 @pytest.mark.smoke
-def test_legacy_entities_json_read_fallback(
+def test_entity_store_uses_grain_path_only(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     shutil.copy(CRM_MANIFEST, tmp_path / "network.json")
-    legacy = tmp_path / "entities.json"
-    legacy.write_text(
-        json.dumps(
-            {
-                "version": "1.0",
-                "entities": {
-                    "abc": {
-                        "id": "abc",
-                        "bind_values": {"name": "Ada", "employer": "Acme"},
-                        "validation_state": "validated",
-                    }
-                },
-                "bind_index": {"ada|acme": "abc"},
-            },
-        ),
-        encoding="utf-8",
-    )
+    legacy_payload = json.dumps({"version": "1.0", "entities": {}, "bind_index": {}})
+    (tmp_path / "entities.json").write_text(legacy_payload, encoding="utf-8")
     paths = NetworkPaths.from_root(tmp_path)
-    assert resolve_entity_store_path(paths, "person") == legacy
+    grain_path = entity_store_path(paths, "person")
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
     monkeypatch.delenv("MYCELIUM_ENTITIES_PATH", raising=False)
     reset_entity_registry()
     registry = get_entity_registry()
-    assert registry.entity_count() == 1
+    assert registry.entity_count() == 0
     registry.bind_provisional("Grace Hopper", "Navy")
-    assert (tmp_path / "entities" / "person.json").is_file()
-    assert registry.entity_count() == 2
+    assert grain_path.is_file()
+    assert json.loads((tmp_path / "entities.json").read_text(encoding="utf-8"))["entities"] == {}
 
 
 @pytest.mark.smoke
@@ -144,6 +195,7 @@ def test_per_grain_registry_isolation(tmp_path: Path) -> None:
                     },
                 },
             },
+            "metering": dict(CRM_METERING),
         },
     )
     paths = NetworkPaths.from_root(tmp_path)

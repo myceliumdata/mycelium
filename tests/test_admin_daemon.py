@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from agents.entity_registry import reset_entity_registry
 from registry_helpers import lookup_entities_by_name as lookup_entities_by_key
 from mycelium_admin.server import bootstrap_admin, create_app
-from network_helpers import import_seed_for_test
+from network_helpers import copy_crm_network_manifest, import_seed_for_test
 from network.introspection import build_network_status, status_to_dict
 from versioned_storage_fixtures import versioned_found
 from network.paths import NO_NETWORK_CONFIGURED_MSG, NetworkPaths, apply_network_paths
@@ -41,6 +41,7 @@ def _ontology_root(tmp_path: Path) -> Path:
     root.mkdir()
     shutil.copy(EXAMPLE_CRM / "seed.json", root / "seed.json")
     shutil.copy(SAMPLE_CATEGORIES, root / "categories.json")
+    copy_crm_network_manifest(root)
     return root
 
 

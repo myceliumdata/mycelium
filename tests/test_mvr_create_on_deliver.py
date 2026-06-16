@@ -263,16 +263,12 @@ def test_name_source_in_network_json_is_ignored(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    network = {
-        "name": "legacy-mvr",
-        "mvr": {
-            "bind_fields": ["name", "employer"],
-            "name_source": "entity_key",
-            "description": "legacy field ignored",
-        },
-    }
+    manifest = json.loads((EXAMPLE_CRM / "network.json").read_text(encoding="utf-8"))
+    manifest["name"] = "legacy-mvr"
+    manifest["mvr"]["grains"]["person"]["name_source"] = "entity_key"
+    manifest["mvr"]["grains"]["person"]["description"] = "legacy field ignored"
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
-    (tmp_path / "network.json").write_text(json.dumps(network), encoding="utf-8")
+    (tmp_path / "network.json").write_text(json.dumps(manifest), encoding="utf-8")
     policy = load_mvr()
     assert policy.bind_fields == ["name", "employer"]
     summary = policy.summary()

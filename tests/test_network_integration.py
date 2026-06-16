@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from network_helpers import NETWORK_PATH_ENV_KEYS, clear_network_path_env, import_seed_at_root
+from network_helpers import NETWORK_PATH_ENV_KEYS, clear_network_path_env, copy_crm_network_manifest, import_seed_at_root
 from graphs.core import reset_core_graph
 from network.paths import NetworkPaths, apply_network_paths, resolve_network_root
 from network.registry import register_network
@@ -64,19 +64,10 @@ def _write_network_seed(root: Path, people: list[dict[str, str | None]]) -> None
         json.dumps({"people": people}, indent=2) + "\n",
         encoding="utf-8",
     )
-    (root / "network.json").write_text(
-        json.dumps(
-            {
-                "name": root.name,
-                "mvr": {
-                    "bind_fields": ["name", "employer"],
-                },
-            },
-            indent=2,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
+    copy_crm_network_manifest(root)
+    data = json.loads((root / "network.json").read_text(encoding="utf-8"))
+    data["name"] = root.name
+    (root / "network.json").write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
 def _activate_network(root: Path) -> None:

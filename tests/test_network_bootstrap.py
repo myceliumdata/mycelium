@@ -13,6 +13,7 @@ from network.bootstrap import run_network_bootstrap
 from network.bootstrap.handlers.default_seed import import_seed_rows, load_seed_people
 from network.category_mvr_bootstrap import ensure_categories_for_mvr_bind
 from network.example import copy_example_network
+from network_helpers import copy_crm_network_manifest
 from network.paths import NetworkPaths, apply_network_paths
 from network.seed_import import bootstrap_seed_at_paths, count_seed_rows
 
@@ -124,6 +125,7 @@ def test_import_seed_rows_missing_employer(tmp_path: Path) -> None:
         json.dumps({"people": [{"name": "Ada Lovelace"}]}),
         encoding="utf-8",
     )
+    copy_crm_network_manifest(tmp_path)
     apply_network_paths(NetworkPaths.from_root(tmp_path))
     ensure_categories_for_mvr_bind(NetworkPaths.from_root(tmp_path))
     reset_entity_registry()

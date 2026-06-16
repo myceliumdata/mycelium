@@ -18,7 +18,7 @@ from graphs.core import reset_core_graph, run_query
 from models.state import EntityQuery, MyceliumGraphState, QueryResponse
 from mycelium_mcp.server import _neutral_json_schema
 from network.paths import NetworkPaths
-from network_helpers import import_seed_for_test
+from network_helpers import import_seed_for_test, copy_crm_network_manifest
 from registry_helpers import lookup_entities_by_name
 from storage.core import reset_storage
 from versioned_storage_fixtures import versioned_found
@@ -34,17 +34,7 @@ def _write_network_root(tmp_path: Path) -> None:
         json.dumps(shutil_categories),
         encoding="utf-8",
     )
-    (tmp_path / "network.json").write_text(
-        json.dumps(
-            {
-                "name": "crm",
-                "mvr": {
-                    "bind_fields": ["name", "employer"],
-                },
-            },
-        ),
-        encoding="utf-8",
-    )
+    copy_crm_network_manifest(tmp_path)
     seed = tmp_path / "seed.json"
     seed.write_text(
         json.dumps({"people": [{"name": "Paul Murphy", "employer": "Acme Corp"}]}),

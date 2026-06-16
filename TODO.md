@@ -11,6 +11,8 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 ## Next up (Paul)
 
 - [ ] **`baseball` example network** — Lahman second example; [`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md) (ur: [`mycelium_lahman_design_prompt.md`](docs/plans/mycelium_lahman_design_prompt.md)). Two registry grains (**player** + fan-facing **team** city+name; franchise via specialist), agent-managed warehouse + derivations. **Locked:** uuid4 on load; Lahman `playerID` = source metadata only. **Player MVR (draft):** name + team — team disambiguates homonyms; any team the player played for → same uuid (index TBD). **Seed data:** Paul has `~/mycelium-networks/baseball/seed/lahman_1871-2025_csv.zip` (~40MB); hosting TBD — avoid git blob if possible; SABR Box not bot-fetchable; may self-host URL + ingest script.
+  - **Cursor queue:** `2026-06-17-1500-manifest-required-fail-fast` (fail-fast manifest; no legacy shims) → **LahmanSeedHandler** → query orchestrator grain selection.
+  - **Deferred nit (slice 1400 review):** `write_bind_fields` in `attribute_write.py` still calls `load_mvr()` (default grain) when `registry=` is passed; should use `reg._mvr` like `ensure_entity_bind_fields`. Do in **grain query orchestrator** slice (or polish immediately before multi-grain queries ship).
 
 ### Shipped (2026-06-14)
 

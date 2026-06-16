@@ -33,7 +33,7 @@ from network.quotes import (
     reset_quote_store,
 )
 from storage.core import CoreStorage, get_storage, reset_storage
-from network_helpers import import_seed_for_test
+from network_helpers import copy_crm_network_manifest, import_seed_for_test, write_metering_network_json
 from tools.research import ResearchRunResult
 from versioned_storage_fixtures import versioned_found
 
@@ -44,7 +44,8 @@ EXAMPLE_CRM_SEED = EXAMPLE_CRM / "seed.json"
 
 
 def _load_default_metering_policy(tmp_path: Path) -> MeteringPolicy:
-    """Load CRM default metering policy without a host network registry."""
+    """Load CRM metering policy from a tmp network root."""
+    copy_crm_network_manifest(tmp_path)
     return load_metering_policy(paths=NetworkPaths.from_root(tmp_path))
 
 
@@ -54,12 +55,7 @@ def _write_metering_network_json(
     enabled: bool = True,
     **overrides: Any,
 ) -> None:
-    data = json.loads((EXAMPLE_CRM / "network.json").read_text(encoding="utf-8"))
-    metering = dict(data.get("metering") or {})
-    metering["enabled"] = enabled
-    metering.update(overrides)
-    data["metering"] = metering
-    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    write_metering_network_json(path, enabled=enabled, **overrides)
 
 
 def _mock_email_research(monkeypatch: pytest.MonkeyPatch) -> list[str]:
@@ -176,9 +172,8 @@ def crm_metering_env(
 
 
 @pytest.mark.smoke
-def test_load_metering_policy_defaults_disabled(tmp_path: Path) -> None:
-    network = tmp_path / "network.json"
-    network.write_text('{"name": "x"}', encoding="utf-8")
+def test_load_metering_policy_disabled_when_explicit(tmp_path: Path) -> None:
+    write_metering_network_json(tmp_path / "network.json", enabled=False)
     policy = load_metering_policy(paths=NetworkPaths.from_root(tmp_path))
     assert policy.enabled is False
     assert policy.meter_first_delivery is True

@@ -20,7 +20,7 @@ from agents.entity_registry import (
 )
 from graphs.core import reset_core_graph
 from models.state import EntityQuery
-from network_helpers import import_seed_for_test
+from network_helpers import copy_crm_network_manifest, import_seed_for_test
 from network.paths import NetworkPaths
 from registry_helpers import lookup_entities_by_name, resolve_and_deliver, step1_resolve, step2_deliver
 from storage.core import CoreStorage, get_storage, reset_storage
@@ -349,6 +349,7 @@ def test_ensure_bound_entity_allocates_uuid4(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
+    copy_crm_network_manifest(tmp_path)
     monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(tmp_path / "entities.json"))
     categories_path = tmp_path / "categories.json"
     shutil.copy(SAMPLE_CATEGORIES, categories_path)
@@ -373,6 +374,7 @@ def test_ensure_bound_entity_duplicate_preserves_source(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
+    copy_crm_network_manifest(tmp_path)
     monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(tmp_path / "entities.json"))
     categories_path = tmp_path / "categories.json"
     shutil.copy(SAMPLE_CATEGORIES, categories_path)
@@ -408,6 +410,7 @@ def test_lookup_entities_by_key_stable_after_reimport(
         ),
         encoding="utf-8",
     )
+    copy_crm_network_manifest(tmp_path)
     entities_path = NetworkPaths.from_root(tmp_path).entities_path
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
     monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
@@ -473,6 +476,8 @@ def test_legacy_entities_json_load_fails_loud(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     entities_path = tmp_path / "entities.json"
+    copy_crm_network_manifest(tmp_path)
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
     entities_path.write_text(
         json.dumps(
             {

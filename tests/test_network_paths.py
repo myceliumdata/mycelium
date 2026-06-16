@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from network_helpers import clear_network_path_env
+from network_helpers import clear_network_path_env, copy_crm_network_manifest
 from network.paths import (
     NetworkPaths,
     apply_network_paths,
@@ -24,6 +24,7 @@ from network.paths import (
 def test_network_paths_from_root(tmp_path: Path) -> None:
     root = tmp_path / "my_network"
     root.mkdir()
+    copy_crm_network_manifest(root)
     (root / "seed.json").write_text(json.dumps({"people": []}), encoding="utf-8")
 
     paths = NetworkPaths.from_root(root)
@@ -36,6 +37,7 @@ def test_network_paths_from_root(tmp_path: Path) -> None:
     assert paths.specialists_dir == root / "specialists"
     assert paths.checkpoint_path == root / "checkpoints.sqlite"
     assert paths.db_path == root / "mycelium.db"
+    assert paths.entities_path == root / "entities" / "person.json"
 
 
 @pytest.mark.smoke
@@ -87,7 +89,10 @@ def test_apply_network_paths_sets_env(tmp_path: Path, monkeypatch: pytest.Monkey
     ):
         monkeypatch.delenv(key, raising=False)
 
-    paths = NetworkPaths.from_root(tmp_path / "net")
+    net = tmp_path / "net"
+    net.mkdir(parents=True, exist_ok=True)
+    copy_crm_network_manifest(net)
+    paths = NetworkPaths.from_root(net)
     apply_network_paths(paths)
 
     assert Path(os.environ["MYCELIUM_NETWORK_ROOT"]) == paths.root
@@ -104,10 +109,10 @@ def test_apply_network_paths_sets_env(tmp_path: Path, monkeypatch: pytest.Monkey
 def test_network_display_name_from_json(tmp_path: Path) -> None:
     root = tmp_path / "named_net"
     root.mkdir()
-    (root / "network.json").write_text(
-        json.dumps({"display_name": "PRM CRM"}),
-        encoding="utf-8",
-    )
+    copy_crm_network_manifest(root)
+    data = json.loads((root / "network.json").read_text(encoding="utf-8"))
+    data["display_name"] = "PRM CRM"
+    (root / "network.json").write_text(json.dumps(data), encoding="utf-8")
     paths = NetworkPaths.from_root(root)
     assert network_display_name(paths) == "PRM CRM"
 
@@ -134,6 +139,7 @@ def test_runtime_path_derives_from_network_root(
     clear_network_path_env(monkeypatch)
     root = tmp_path / "net"
     root.mkdir()
+    copy_crm_network_manifest(root)
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(root))
 
     assert runtime_path("MYCELIUM_CHECKPOINT_PATH") == root / "checkpoints.sqlite"
@@ -150,6 +156,7 @@ def test_runtime_path_respects_explicit_env_override(
 ) -> None:
     root = tmp_path / "net"
     root.mkdir()
+    copy_crm_network_manifest(root)
     custom = tmp_path / "custom_categories.json"
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(root))
     monkeypatch.setenv("MYCELIUM_CATEGORIES_PATH", str(custom))
@@ -164,6 +171,7 @@ def test_shell_export_network_paths(
 ) -> None:
     root = tmp_path / "exported_net"
     root.mkdir()
+    copy_crm_network_manifest(root)
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(root))
 
     exports = shell_export_network_paths()
@@ -194,6 +202,8 @@ def test_specialists_dir_isolated_per_network_root(
     net_b = tmp_path / "net_b"
     net_a.mkdir()
     net_b.mkdir()
+    copy_crm_network_manifest(net_a)
+    copy_crm_network_manifest(net_b)
 
     descriptions: dict[str, str] = {}
 

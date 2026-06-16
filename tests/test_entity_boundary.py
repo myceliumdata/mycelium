@@ -16,7 +16,7 @@ from agents.specialists.fields import current_status
 from agents.registry import get_agent_registry, reset_agent_registry
 from agents.entity_registry import reset_entity_registry
 from graphs.core import reset_core_graph, run_query
-from network_helpers import import_seed_for_test
+from network_helpers import copy_crm_network_manifest, import_seed_for_test
 from models.state import EntityQuery, MyceliumGraphState
 from registry_helpers import lookup_entities_by_name
 from storage.core import CoreStorage, get_storage, reset_storage
@@ -158,6 +158,7 @@ def test_build_context_resolves_bind_from_registry_by_id(
 
     entities = tmp_path / "entities.json"
     categories_path = tmp_path / "categories.json"
+    copy_crm_network_manifest(tmp_path)
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
     monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(entities))
     shutil.copy(SAMPLE_CATEGORIES, categories_path)

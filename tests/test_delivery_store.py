@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -19,6 +18,7 @@ from network.delivery import (
 from network.metering_policy import load_metering_policy
 from network.paths import NetworkPaths
 from network.quotes import BuiltinQuoteProvider, WorkloadSpec, quote_ttl_seconds
+from network_helpers import write_metering_network_json
 
 
 @pytest.fixture(autouse=True)
@@ -92,10 +92,7 @@ def test_quote_ttl_defaults_to_five_minutes(
 ) -> None:
     monkeypatch.delenv("MYCELIUM_QUOTE_TTL_SEC", raising=False)
     assert quote_ttl_seconds() == 300
-    (tmp_path / "network.json").write_text(
-        json.dumps({"name": "test", "metering": {"enabled": True}}),
-        encoding="utf-8",
-    )
+    write_metering_network_json(tmp_path / "network.json", enabled=True)
     policy = load_metering_policy(paths=NetworkPaths.from_root(tmp_path))
     quote = BuiltinQuoteProvider().quote(
         workload=WorkloadSpec(entity_id="e1", requested_attributes=["email"], scope_hash="sha256:x"),

@@ -14,7 +14,7 @@ import pytest
 from agents.entity_registry import reset_entity_registry
 from registry_helpers import lookup_entities_by_name as lookup_entities_by_key
 from network.example import refresh_example_network
-from network_helpers import import_seed_at_root
+from network_helpers import copy_crm_network_manifest, import_seed_at_root
 from network.paths import NetworkPaths, apply_network_paths, resolve_network_root
 from network.registry import list_networks
 from network.seed_import import import_seed_file
@@ -214,7 +214,8 @@ def test_import_seed_file_idempotent(
 ) -> None:
     seed = tmp_path / "seed.json"
     shutil.copy(EXAMPLE_CRM / "seed.json", seed)
-    entities = tmp_path / "entities.json"
+    copy_crm_network_manifest(tmp_path)
+    entities = NetworkPaths.from_root(tmp_path).entities_path
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
     monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(entities))
     reset_entity_registry()
@@ -368,7 +369,7 @@ def test_refresh_crm_no_default_on_empty_registry(
 
 
 @pytest.mark.smoke
-def test_refresh_non_crm_example_auto_defaults(
+def test_refresh_non_crm_example_with_explicit_manifest(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -376,17 +377,16 @@ def test_refresh_non_crm_example_auto_defaults(
     example = framework / "examples" / "networks" / "fleet"
     example.mkdir(parents=True)
     shutil.copy(EXAMPLE_CRM / "seed.json", example / "seed.json")
+    shutil.copy(EXAMPLE_CRM / "network.json", example / "network.json")
+    fleet_manifest = json.loads((example / "network.json").read_text(encoding="utf-8"))
+    fleet_manifest["name"] = "fleet"
+    fleet_manifest["display_name"] = "Fleet example"
+    fleet_manifest["bootstrap"] = {
+        "module": "network.bootstrap.handlers.default_seed",
+        "handler": "DefaultSeedHandler",
+    }
     (example / "network.json").write_text(
-        json.dumps(
-            {
-                "name": "fleet",
-                "display_name": "Fleet example",
-                "bootstrap": {
-                    "module": "network.bootstrap.handlers.default_seed",
-                    "handler": "DefaultSeedHandler",
-                },
-            },
-        ),
+        json.dumps(fleet_manifest, indent=2) + "\n",
         encoding="utf-8",
     )
     monkeypatch.setenv("MYCELIUM_FRAMEWORK_ROOT", str(framework))

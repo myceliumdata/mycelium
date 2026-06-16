@@ -12,7 +12,7 @@ from agents.context import reset_context_builder
 from agents.entity_registry import reset_entity_registry
 from graphs.core import reset_core_graph, run_query
 from models.state import EntityQuery
-from network_helpers import import_seed_for_test
+from network_helpers import import_seed_for_test, copy_crm_network_manifest
 from registry_helpers import resolve_and_deliver, step1_resolve
 from storage.core import CoreStorage, reset_storage
 
@@ -39,17 +39,7 @@ def temp_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> CoreStorage
         ),
         encoding="utf-8",
     )
-    (tmp_path / "network.json").write_text(
-        json.dumps(
-            {
-                "name": "crm",
-                "mvr": {
-                    "bind_fields": ["name", "employer"],
-                },
-            },
-        ),
-        encoding="utf-8",
-    )
+    copy_crm_network_manifest(tmp_path)
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
     monkeypatch.setenv("MYCELIUM_DB_PATH", str(db))
     monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))

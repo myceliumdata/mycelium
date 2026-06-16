@@ -1,4 +1,4 @@
-"""Runtime entity registry (``entities.json``) for provisional binds."""
+"""Runtime entity registry (per-grain entity stores) for provisional binds."""
 
 from __future__ import annotations
 
@@ -25,22 +25,18 @@ def _paths_for_runtime():
     return _load_paths()
 
 
-def _resolve_registry_paths(grain: str) -> tuple[Path, Path, str]:
-    """Return write path, read path, and resolved grain name."""
+def _resolve_registry_paths(grain: str) -> tuple[Path, str]:
+    """Return entity store path and resolved grain name."""
     from network.mvr import default_mvr_grain
-    from network.paths import entity_store_path, resolve_entity_store_path
+    from network.paths import entity_store_path
 
     resolved_grain = grain or default_mvr_grain()
     explicit = os.getenv("MYCELIUM_ENTITIES_PATH", "").strip()
     if explicit and resolved_grain == default_mvr_grain():
         path = Path(explicit).expanduser().resolve()
-        return path, path, resolved_grain
+        return path, resolved_grain
     paths = _paths_for_runtime()
-    return (
-        entity_store_path(paths, resolved_grain),
-        resolve_entity_store_path(paths, resolved_grain),
-        resolved_grain,
-    )
+    return entity_store_path(paths, resolved_grain), resolved_grain
 
 
 def require_full_bind_values(
@@ -161,14 +157,12 @@ class EntityRegistry:
             self.grain = grain or "person"
             self._mvr = mvr or load_mvr(grain=self.grain)
             self.path = path
-            self._read_path = read_path or path
         else:
-            write_path, resolved_read_path, self.grain = _resolve_registry_paths(
-                grain or "",
-            )
+            store_path, self.grain = _resolve_registry_paths(grain or "")
             self._mvr = mvr or load_mvr(grain=self.grain)
-            self.path = write_path
-            self._read_path = read_path or resolved_read_path
+            self.path = store_path
+        if read_path is not None:
+            self.path = read_path
         self._data = EntitiesDocument()
         self._field_indexes: dict[str, dict[str, list[str]]] = {}
         self._load()
@@ -182,13 +176,13 @@ class EntityRegistry:
         )
 
     def _load(self) -> None:
-        if not self._read_path.is_file():
+        if not self.path.is_file():
             self._data = EntitiesDocument()
             self._rebuild_field_indexes()
             return
         try:
-            raw = json.loads(self._read_path.read_text(encoding="utf-8"))
-            _reject_legacy_entity_rows(raw, self._read_path)
+            raw = json.loads(self.path.read_text(encoding="utf-8"))
+            _reject_legacy_entity_rows(raw, self.path)
             self._data = EntitiesDocument.model_validate(raw)
         except LegacyEntitiesSchemaError:
             raise

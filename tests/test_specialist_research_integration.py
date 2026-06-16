@@ -14,7 +14,7 @@ from agents.context import reset_context_builder
 from agents.entity_registry import reset_entity_registry
 from graphs.core import reset_core_graph
 from models.state import QueryResponse
-from network_helpers import import_seed_for_test
+from network_helpers import copy_crm_network_manifest, import_seed_for_test
 from registry_helpers import resolve_and_deliver
 from storage.core import CoreStorage, get_storage, reset_storage
 from tools.research import ResearchRunResult
@@ -66,6 +66,8 @@ def research_integration_env(
         encoding="utf-8",
     )
     categories_dst = tmp_path / "categories.json"
+    copy_crm_network_manifest(tmp_path)
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
     monkeypatch.setenv("MYCELIUM_DB_PATH", str(db))
     monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
     monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(tmp_path / "entities.json"))

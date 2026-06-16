@@ -14,7 +14,7 @@ from agents.entity_registry import reset_entity_registry
 from graphs.core import reset_core_graph, run_query
 from models.state import EntityQuery
 from registry_helpers import resolve_and_deliver, step1_resolve, step2_deliver
-from network_helpers import import_seed_for_test
+from network_helpers import import_seed_for_test, copy_crm_network_manifest
 from storage.core import CoreStorage, get_storage, reset_storage
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -53,17 +53,7 @@ def query_message_env(
     categories["attribute_map"]["xyzzy_garbage"] = "unknown"
     categories_path = tmp_path / "categories.json"
     categories_path.write_text(json.dumps(categories), encoding="utf-8")
-    (tmp_path / "network.json").write_text(
-        json.dumps(
-            {
-                "name": "crm",
-                "mvr": {
-                    "bind_fields": ["name", "employer"],
-                },
-            },
-        ),
-        encoding="utf-8",
-    )
+    copy_crm_network_manifest(tmp_path)
 
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
     monkeypatch.setenv("MYCELIUM_DB_PATH", str(db))
@@ -121,6 +111,8 @@ def kevin_multi_match_env(
     shutil.copy(EXAMPLE_CRM_SEED, seed)
     categories_path = tmp_path / "categories.json"
     shutil.copy(SAMPLE_CATEGORIES, categories_path)
+    copy_crm_network_manifest(tmp_path)
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
 
     monkeypatch.setenv("MYCELIUM_DB_PATH", str(db))
     monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))

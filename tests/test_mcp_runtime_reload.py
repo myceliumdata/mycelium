@@ -11,7 +11,7 @@ import pytest
 from registry_helpers import lookup_entities_by_name as lookup_entities_by_key
 from agents.registry import get_agent_registry, reset_agent_registry
 from agents.runtime import evict_cached_specialist_modules, refresh_runtime_from_disk
-from network_helpers import import_seed_for_test
+from network_helpers import copy_crm_network_manifest, import_seed_for_test
 from network.paths import NetworkPaths
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -40,6 +40,7 @@ def test_refresh_runtime_preserves_entity_ids_from_entities_json(
         ),
         encoding="utf-8",
     )
+    copy_crm_network_manifest(tmp_path)
     entities_path = NetworkPaths.from_root(tmp_path).entities_path
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
     monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))

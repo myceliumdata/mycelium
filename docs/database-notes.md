@@ -2,7 +2,7 @@
 
 ## Identity (canonical)
 
-Queries resolve people from `<network_root>/entities.json` via the entity registry. Optional `seed.json` is imported at bootstrap only (`refresh-example-network`, `network create` with `--seed`) by the handler declared in `network.json` → `bootstrap` (CRM: `DefaultSeedHandler`). The legacy `mycelium seed` CLI subcommand was removed in the seed-elimination phase.
+Queries resolve people from `<network_root>/entities/<default_grain>.json` via the entity registry. Optional `seed.json` is imported at bootstrap only (`refresh-example-network`, `network create` with `--seed`) by the handler declared in `network.json` → `bootstrap` (CRM: `DefaultSeedHandler`). The legacy `mycelium seed` CLI subcommand was removed in the seed-elimination phase.
 
 ## LangGraph checkpoints
 
@@ -22,7 +22,7 @@ If you have an old `mycelium.db` from before the schema simplification, it may s
 rm -f data/mycelium.db
 ```
 
-Re-run `./bin/refresh-example-network crm` if you need bootstrap entities imported into `entities.json`.
+Re-run `./bin/refresh-example-network crm` if you need bootstrap entities imported into `entities/person.json`.
 
 **Checkpoints** — `checkpoints.sqlite` is independent. Delete it if graph state from an older run causes issues; it does not affect registry or bootstrap seed data.
 

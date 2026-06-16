@@ -19,7 +19,7 @@ from agents.registry import AgentRegistryData
 from agents.specialists.protocol import dispatch_ensure_category_storage
 from network.category_mvr_bootstrap import ensure_mvr_fields_in_category_tree
 from network.ontology import SkeletonOntologyResult, generate_skeleton_ontology
-from network.paths import NetworkPaths, apply_network_paths, framework_root
+from network.paths import NetworkPaths, apply_network_paths, framework_root, _provisional_paths
 from network.registry import register_network
 from network.seed_import import bootstrap_seed_at_paths, count_seed_rows
 
@@ -156,17 +156,39 @@ def _write_guide(paths: NetworkPaths, *, title: str, creation_prompt: str) -> No
 
 
 def _unlink_entity_stores(paths: NetworkPaths) -> None:
-    """Remove default-grain and declared per-grain entity store files."""
-    paths.entities_path.unlink(missing_ok=True)
-    (paths.root / "entities.json").unlink(missing_ok=True)
-    try:
-        from network.mvr import load_mvr_config
+    """Remove declared per-grain entity store files."""
+    from network.mvr import load_mvr_config
 
-        config = load_mvr_config(paths=paths)
-        for grain in config.grains.values():
-            (paths.root / grain.entities_file).unlink(missing_ok=True)
-    except Exception:
-        pass
+    paths.entities_path.unlink(missing_ok=True)
+    config = load_mvr_config(paths=paths)
+    for grain in config.grains.values():
+        (paths.root / grain.entities_file).unlink(missing_ok=True)
+
+
+def _crm_metering_block() -> dict[str, Any]:
+    return {
+        "enabled": False,
+        "description": (
+            "When enabled: EntityQuery.provenance requests query_provenance meter; "
+            "default_funding_model marginal; full_duplicate charges production on cache hits."
+        ),
+        "default_funding_model": "marginal",
+        "meter_first_delivery": True,
+        "quote_provider": "builtin",
+        "principal": {
+            "marginal_optional": True,
+            "required_for_funding_models": ["sponsor_public", "pool"],
+        },
+        "payment": {
+            "enabled": False,
+            "provider": "mock",
+            "require_paid_before_accept": True,
+            "description": (
+                "When enabled with metering: quote_required → pay_quote MCP → "
+                "query_entity+quote_id. Settlement is separate from MCP quote negotiation."
+            ),
+        },
+    }
 
 
 def _write_network_manifest(
@@ -189,6 +211,19 @@ def _write_network_manifest(
             "module": "network.bootstrap.handlers.default_seed",
             "handler": "DefaultSeedHandler",
         },
+        "mvr": {
+            "default_grain": "person",
+            "grains": {
+                "person": {
+                    "bind_fields": ["name", "employer"],
+                    "description": (
+                        "CRM people: display name plus current employer "
+                        "before bind and research."
+                    ),
+                },
+            },
+        },
+        "metering": _crm_metering_block(),
     }
     paths.root.mkdir(parents=True, exist_ok=True)
     (paths.root / "network.json").write_text(
@@ -240,9 +275,7 @@ def create_network(
         raise ValueError("creation_prompt must not be empty")
 
     resolved_root = Path(root).expanduser().resolve()
-    paths = NetworkPaths.from_root(resolved_root)
-
-    manifest_path = paths.root / "network.json"
+    manifest_path = resolved_root / "network.json"
     if manifest_path.exists() and not force and not dry_run:
         raise ValueError(
             f"Network already exists at {resolved_root} "
@@ -278,6 +311,15 @@ def create_network(
         )
 
     resolved_root.mkdir(parents=True, exist_ok=True)
+    provisional = _provisional_paths(resolved_root)
+    _write_network_manifest(
+        provisional,
+        name=clean_name,
+        display_name=display_name,
+        creation_prompt=prompt,
+        ontology_model=ontology.model_used,
+    )
+    paths = NetworkPaths.from_root(resolved_root)
     if force:
         _prune_orphan_specialists(
             paths,
@@ -293,13 +335,6 @@ def create_network(
     _write_categories(paths, ontology.categories)
     _write_agent_registry(paths, ontology.agents)
     _render_specialists(ontology, paths)
-    _write_network_manifest(
-        paths,
-        name=clean_name,
-        display_name=display_name,
-        creation_prompt=prompt,
-        ontology_model=ontology.model_used,
-    )
     if seed_file is not None:
         entities_bootstrapped = bootstrap_seed_at_paths(paths)
     _write_guide(
