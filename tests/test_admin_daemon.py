@@ -236,7 +236,7 @@ def test_status_reflects_entities_change_without_restart(
     assert first.status_code == 200
     assert first.json()["registry_entity_count"] == 15
 
-    (root / "entities.json").write_text(
+    (NetworkPaths.from_root(root).entities_path).write_text(
         json.dumps(
             {
                 "version": "1.0",

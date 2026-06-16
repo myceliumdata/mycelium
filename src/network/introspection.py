@@ -11,7 +11,7 @@ from typing import Any
 from agents.classification import get_category_tree
 from agents.entity_registry import RegistryEntity, get_entity_registry
 from network.metering_policy import load_metering_policy
-from network.mvr import load_mvr
+from network.mvr import load_mvr, load_mvr_config
 from network.paths import NetworkPaths, network_metadata, resolve_network_root
 
 
@@ -707,7 +707,7 @@ def build_network_capabilities() -> dict[str, Any]:
             "outcome": _POLICY_OUTCOME,
             "registry": _POLICY_REGISTRY,
             "status_inspect": _POLICY_STATUS_INSPECT,
-            "mvr": load_mvr(paths=paths).summary(),
+            "mvr": load_mvr_config(paths=paths).summary(),
             "research_gate": _POLICY_RESEARCH_GATE,
             "metering": _POLICY_METERING,
             "metering_policy": load_metering_policy(paths=paths).summary(),

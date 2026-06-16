@@ -12,6 +12,7 @@ from registry_helpers import lookup_entities_by_name as lookup_entities_by_key
 from agents.registry import get_agent_registry, reset_agent_registry
 from agents.runtime import evict_cached_specialist_modules, refresh_runtime_from_disk
 from network_helpers import import_seed_for_test
+from network.paths import NetworkPaths
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -31,7 +32,7 @@ def test_refresh_runtime_preserves_entity_ids_from_entities_json(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Entity ids stay stable across refresh_runtime_from_disk via persisted entities.json."""
+    """Entity ids stay stable across refresh_runtime_from_disk via persisted entity store."""
     seed = tmp_path / "seed.json"
     seed.write_text(
         json.dumps(
@@ -39,10 +40,9 @@ def test_refresh_runtime_preserves_entity_ids_from_entities_json(
         ),
         encoding="utf-8",
     )
-    entities = tmp_path / "entities.json"
+    entities_path = NetworkPaths.from_root(tmp_path).entities_path
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
     monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
-    monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(entities))
     monkeypatch.setenv("MYCELIUM_AGENT_REGISTRY_PATH", str(tmp_path / "agent_registry.json"))
 
     import_seed_for_test(seed)
@@ -53,7 +53,7 @@ def test_refresh_runtime_preserves_entity_ids_from_entities_json(
     second_id = lookup_entities_by_key("Andrea Kalmans")[0]["id"]
 
     assert first_id == second_id
-    assert entities.is_file()
+    assert entities_path.is_file()
 
 
 @pytest.mark.smoke

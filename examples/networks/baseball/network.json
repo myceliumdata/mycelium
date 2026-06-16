@@ -11,8 +11,17 @@
     "registries": ["team", "player"]
   },
   "mvr": {
-    "bind_fields": ["name", "employer"],
-    "description": "Placeholder CRM-shaped MVR until multi-MVR framework ships; bootstrap experiment uses separate registry files."
+    "default_grain": "player",
+    "grains": {
+      "player": {
+        "bind_fields": ["name", "team"],
+        "description": "Player identity: display name plus team disambiguator (draft)."
+      },
+      "team": {
+        "bind_fields": ["name"],
+        "description": "Fan-facing team: full canonical city+name (draft)."
+      }
+    }
   },
   "metering": {
     "enabled": false

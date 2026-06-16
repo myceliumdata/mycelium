@@ -21,6 +21,7 @@ from agents.entity_registry import (
 from graphs.core import reset_core_graph
 from models.state import EntityQuery
 from network_helpers import import_seed_for_test
+from network.paths import NetworkPaths
 from registry_helpers import lookup_entities_by_name, resolve_and_deliver, step1_resolve, step2_deliver
 from storage.core import CoreStorage, get_storage, reset_storage
 
@@ -407,10 +408,9 @@ def test_lookup_entities_by_key_stable_after_reimport(
         ),
         encoding="utf-8",
     )
-    entities = tmp_path / "entities.json"
+    entities_path = NetworkPaths.from_root(tmp_path).entities_path
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
     monkeypatch.setenv("MYCELIUM_SEED_PATH", str(seed))
-    monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(entities))
 
     import_seed_for_test(seed)
     first_id = lookup_entities_by_name("Andrea Kalmans")[0]["id"]
@@ -419,7 +419,7 @@ def test_lookup_entities_by_key_stable_after_reimport(
     second_id = lookup_entities_by_name("Andrea Kalmans")[0]["id"]
 
     assert first_id == second_id
-    assert entities.is_file()
+    assert entities_path.is_file()
 
 
 @pytest.mark.smoke

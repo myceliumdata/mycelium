@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import uuid
 from dataclasses import dataclass
 from typing import Any
 
@@ -29,11 +28,59 @@ class MvrPolicy:
         }
 
 
+@dataclass(frozen=True)
+class GrainMvrPolicy:
+    """Per-grain MVR policy plus entity store path relative to network root."""
+
+    bind_fields: list[str]
+    description: str
+    entities_file: str
+
+    def to_mvr_policy(self) -> MvrPolicy:
+        return MvrPolicy(
+            bind_fields=list(self.bind_fields),
+            description=self.description,
+        )
+
+    def summary(self) -> dict[str, Any]:
+        return {
+            "bind_fields": list(self.bind_fields),
+            "description": self.description,
+            "entities_file": self.entities_file,
+        }
+
+
+@dataclass(frozen=True)
+class NetworkMvrConfig:
+    """Multi-grain MVR configuration from ``network.json``."""
+
+    default_grain: str
+    grains: dict[str, GrainMvrPolicy]
+
+    def summary(self) -> dict[str, Any]:
+        return {
+            "default_grain": self.default_grain,
+            "grains": {
+                name: grain.summary() for name, grain in self.grains.items()
+            },
+        }
+
+
 def _crm_default_mvr() -> MvrPolicy:
     return MvrPolicy(
         bind_fields=list(_DEFAULT_BIND_FIELDS),
         description=_DEFAULT_DESCRIPTION,
     )
+
+
+def _crm_default_config() -> NetworkMvrConfig:
+    policy = _crm_default_mvr()
+    grain = GrainMvrPolicy(
+        bind_fields=policy.bind_fields,
+        description=policy.description,
+        entities_file="entities/person.json",
+    )
+    return NetworkMvrConfig(default_grain="person", grains={"person": grain})
 
 
 def _parse_mvr_block(raw: Any) -> MvrPolicy | None:
@@ -54,12 +101,119 @@ def _parse_mvr_block(raw: Any) -> MvrPolicy | None:
     )
 
 
-def _is_uuid_shaped(value: str) -> bool:
+def _parse_grains_block(mvr_raw: dict[str, Any]) -> dict[str, GrainMvrPolicy] | None:
+    grains_raw = mvr_raw.get("grains")
+    if not isinstance(grains_raw, dict) or not grains_raw:
+        return None
+    grains: dict[str, GrainMvrPolicy] = {}
+    for grain_name, grain_raw in grains_raw.items():
+        name = str(grain_name).strip()
+        if not name:
+            continue
+        if not isinstance(grain_raw, dict):
+            raise ValueError(f"network.json mvr.grains.{name} must be an object")
+        policy = _parse_mvr_block(grain_raw)
+        if policy is None:
+            raise ValueError(
+                f"network.json mvr.grains.{name} requires non-empty bind_fields",
+            )
+        entities_file_raw = grain_raw.get("entities_file")
+        if isinstance(entities_file_raw, str) and entities_file_raw.strip():
+            entities_file = entities_file_raw.strip()
+        else:
+            entities_file = f"entities/{name}.json"
+        grains[name] = GrainMvrPolicy(
+            bind_fields=policy.bind_fields,
+            description=policy.description,
+            entities_file=entities_file,
+        )
+    if not grains:
+        return None
+    return grains
+
+
+def _resolve_default_grain(
+    grains: dict[str, GrainMvrPolicy],
+    declared: str | None,
+) -> str:
+    if declared:
+        default = declared.strip()
+        if default not in grains:
+            raise ValueError(
+                f"network.json mvr.default_grain {default!r} is not declared in mvr.grains",
+            )
+        return default
+    grain_names = sorted(grains.keys())
+    if len(grains) == 1:
+        return grain_names[0]
+    raise ValueError(
+        "network.json mvr.default_grain is required when multiple grains are declared",
+    )
+
+
+def load_mvr_config(*, paths: NetworkPaths | None = None) -> NetworkMvrConfig:
+    """Load multi-grain MVR configuration from ``network.json``."""
+    if paths is None:
+        root = resolve_network_root()
+        paths = NetworkPaths.from_root(root)
+
+    network_json = paths.root / "network.json"
+    if not network_json.is_file():
+        return _crm_default_config()
+
     try:
-        uuid.UUID(value)
-    except ValueError:
-        return False
-    return True
+        data = json.loads(network_json.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return _crm_default_config()
+
+    if not isinstance(data, dict):
+        return _crm_default_config()
+
+    mvr_raw = data.get("mvr")
+    if not isinstance(mvr_raw, dict):
+        return _crm_default_config()
+
+    grains = _parse_grains_block(mvr_raw)
+    if grains is not None:
+        default_raw = mvr_raw.get("default_grain")
+        declared = (
+            str(default_raw).strip() if isinstance(default_raw, str) else None
+        )
+        default_grain = _resolve_default_grain(grains, declared)
+        return NetworkMvrConfig(default_grain=default_grain, grains=grains)
+
+    parsed = _parse_mvr_block(mvr_raw)
+    if parsed is not None:
+        grain = GrainMvrPolicy(
+            bind_fields=parsed.bind_fields,
+            description=parsed.description,
+            entities_file="entities/person.json",
+        )
+        return NetworkMvrConfig(default_grain="person", grains={"person": grain})
+
+    return _crm_default_config()
+
+
+def default_mvr_grain(*, paths: NetworkPaths | None = None) -> str:
+    """Return the default query grain for the active network."""
+    return load_mvr_config(paths=paths).default_grain
+
+
+def list_mvr_grains(*, paths: NetworkPaths | None = None) -> list[str]:
+    """Return declared MVR grain names (sorted)."""
+    return sorted(load_mvr_config(paths=paths).grains.keys())
+
+
+def load_mvr(*, paths: NetworkPaths | None = None, grain: str | None = None) -> MvrPolicy:
+    """Load MVR policy for a grain; default grain when ``grain`` is omitted."""
+    config = load_mvr_config(paths=paths)
+    grain_name = grain or config.default_grain
+    if grain_name not in config.grains:
+        known = ", ".join(sorted(config.grains.keys()))
+        raise ValueError(
+            f"Unknown MVR grain {grain_name!r}; declared grains: {known}",
+        )
+    return config.grains[grain_name].to_mvr_policy()
 
 
 def normalized_lookup_values(lookup: dict[str, str]) -> dict[str, str]:
@@ -107,25 +261,3 @@ def missing_mvr_bind_fields(
     required = [field.strip().lower() for field in policy.bind_fields if field.strip()]
     provided = set(normalized_lookup_values(lookup).keys())
     return [field for field in required if field not in provided]
-
-
-def load_mvr(*, paths: NetworkPaths | None = None) -> MvrPolicy:
-    """Load MVR policy from ``network.json``; CRM default when ``mvr`` is absent."""
-    if paths is None:
-        root = resolve_network_root()
-        paths = NetworkPaths.from_root(root)
-
-    network_json = paths.root / "network.json"
-    if not network_json.is_file():
-        return _crm_default_mvr()
-
-    try:
-        data = json.loads(network_json.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return _crm_default_mvr()
-
-    if not isinstance(data, dict):
-        return _crm_default_mvr()
-
-    parsed = _parse_mvr_block(data.get("mvr"))
-    return parsed if parsed is not None else _crm_default_mvr()

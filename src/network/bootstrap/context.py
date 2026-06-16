@@ -23,3 +23,4 @@ class BootstrapResult:
     sources_processed: list[str] = field(default_factory=list)
     handler_id: str = "default_seed"
     errors: list[str] = field(default_factory=list)
+    entities_by_grain: dict[str, int] = field(default_factory=dict)

@@ -204,4 +204,5 @@ def test_capabilities_exposes_mvr_policy(crm_mvr_env: CoreStorage) -> None:
     capabilities = build_network_capabilities()
     policy = capabilities["policy"]
     assert "mvr" in policy
-    assert policy["mvr"]["bind_fields"] == ["name", "employer"]
+    assert policy["mvr"]["default_grain"] == "person"
+    assert policy["mvr"]["grains"]["person"]["bind_fields"] == ["name", "employer"]

@@ -67,7 +67,7 @@ Data addition via the public API was removed in the June 2026 refactor (tasks 10
   - Handler-only manifests (e.g. `"handler": "default_seed"` without `module`) are rejected.
 - **Stable test imports:** `network.seed_import` re-exports `import_seed_file`, `count_seed_rows`, and `bootstrap_seed_at_paths` for tests and legacy callers.
 - **Transform (maintainers):** `examples/networks/crm/prepare_seed.py` builds example `seed.json` from a CRM source file (name + employer only; no legacy `id` in the file). Full prototype data: git tag `prototype`.
-- **Runtime store:** `entities.json` holds canonical entities (uuid4 ids, `bind_values` keyed by `mvr.bind_fields`, generic `bind_index`, per-field indexes). `ensure_bound_entity` assigns stable ids on import; step-1 resolve uses `lookup` AND indexes. Seed `people[]` rows import into `bind_values` on refresh or `network create`.
+- **Runtime store:** Per-grain entity files at `<network_root>/entities/<grain>.json` (default query grain: `person` for CRM). Legacy root `entities.json` is read as fallback when the grain file is absent; writes always target the grain path. Each file holds uuid4 ids, `bind_values` keyed by that grain's `mvr.grains.<grain>.bind_fields`, generic `bind_index`, and per-field indexes. `ensure_bound_entity` assigns stable ids on import; step-1 resolve uses `lookup` AND indexes on the **default grain only** (orchestrator grain selection is a follow-on slice). Seed `people[]` rows import into the `person` grain (or `default_grain` when `person` is absent) on refresh or `network create`.
 - **No `core_data` specialist** — identity fields (name, employer) come from the registry; specialists may override them later.
 
 ### Supervisor and graph (current)
@@ -152,7 +152,7 @@ Phase 1 adds a **Classification Engine** (cached lookup in `src/agents/classific
 
 ## Storage (current)
 
-- **Entities (queries):** `<network_root>/entities.json` via `EntityRegistry` — seed is bootstrap-only when present. Each row stores MVR bind fields in **`bind_values: dict[str, str]`** keyed by `mvr.bind_fields`; **`bind_index`** is a generic compound key from normalized bind values in policy order (CRM: `name|employer`). Registry rows are **cache + protocol + indexes** (validation state, `attr_sources`, per-field lookup indexes). **Future:** registry ownership may move to an identity specialist; framework maintains it for now.
+- **Entities (queries):** default-grain store at `<network_root>/entities/<default_grain>.json` via `EntityRegistry` (legacy read fallback: root `entities.json`). **`network.json` → `mvr.grains`** declares each grain's `bind_fields`; **`mvr.default_grain`** selects the query path when callers omit `grain`. Legacy flat `mvr.bind_fields` maps to implicit `person` grain. Each row stores MVR bind fields in **`bind_values: dict[str, str]`** keyed by that grain's bind policy; **`bind_index`** is a generic compound key from normalized bind values in policy order (CRM `person`: `name|employer`). Registry rows are **cache + protocol + indexes** (validation state, `attr_sources`, per-field lookup indexes). **Future:** registry ownership may move to an identity specialist; framework maintains it for now.
 - **Specialists (opaque):** per-category data under `<network_root>/agents/<category>/`, owned and laid out by specialist code (`SpecialistStorage` in `src/agents/specialists/base.py` — **specialists package only**). Internally, CRM specialists use **`versioned_provenance_v1`** (`versions[]` + `current_version_id`). Framework code **must not** read or write those files directly; it dispatches through `agents.specialists.protocol` (tag `specialist_isolation`, June 2026).
 - **Framework write path:** `agents/attribute_write.py` resolves taxonomy owners, calls specialist dispatch (`write_fields` / multi-category bind), then syncs `entities.json` cache and indexes from returned current values. Seed import, create-on-deliver, and research persist use the same dispatch boundary.
 - **Framework read path:** context, provenance, admin status, and `tools/research` consume **normalized snapshots** from dispatch (`FieldSnapshot`, `FieldContextSnapshot` in `src/agents/specialists/snapshots.py`) — not raw `versions[]` layout. See § Specialist I/O protocol below.
@@ -207,7 +207,8 @@ Users download the **framework** (this repo: `src/`, `bin/`, docs, tests) and ru
   guide.md              # network policy prose (bootstrap context + MCP describe_network)
   seed.json             # optional bootstrap fixture (DefaultSeedHandler reads at refresh/create)
   bootstrap_handlers/   # optional network-pack bootstrap modules (copied from examples)
-  entities.json         # runtime canonical registry
+  entities/             # per-grain runtime stores (e.g. person.json)
+  entities.json         # legacy read fallback only (writes go to entities/<grain>.json)
   categories.json       # skeleton ontology at create; runtime (see docs/examples/sample-categories.json)
   agent_registry.json
   deliveries.json       # runtime — step-1 delivery scopes (TTL; MYCELIUM_DELIVERIES_PATH)

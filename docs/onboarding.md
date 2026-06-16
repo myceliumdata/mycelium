@@ -7,7 +7,7 @@
 ## 1. What Mycelium is (today)
 
 - **Framework repo** (this project): LangGraph supervisor + specialist agents, query-only CLI/MCP, entity registry.
-- **Networks**: isolated directories you choose (`network_root`). Each holds `entities.json`, ontology, specialist storage, checkpoints.
+- **Networks**: isolated directories you choose (`network_root`). Each holds per-grain entity stores under `entities/<grain>.json` (default query grain for CRM: `person`), ontology, specialist storage, checkpoints.
 - **Public API**: `query` / `query_entity` only. Callers do **not** submit ingest payloads.
 
 ---
@@ -16,7 +16,7 @@
 
 | Term | Meaning |
 |------|---------|
-| **`entities.json`** | Canonical identity store at runtime (UUID, `bind_values` keyed by `mvr.bind_fields`, generic `bind_index`, validation state). MVR bind values are cached here; canonical history is in specialist `versions[]` (Program 2). |
+| **`entities/<grain>.json`** | Canonical identity store per MVR grain at runtime (UUID, `bind_values`, generic `bind_index`, validation state). CRM queries use the **`person`** grain by default. Legacy root **`entities.json`** is read when the grain file is missing; new writes go to the grain path. MVR bind values are cached here; canonical history is in specialist `versions[]` (Program 2). |
 | **`seed.json`** | Optional **bootstrap fixture** — read by the declared bootstrap handler (CRM: `DefaultSeedHandler`) at `refresh-example-network` or `network create --seed` only. Not read on query. |
 | **`network.json` → `bootstrap`** | Required bootstrap handler declaration: **`module`** (Python module path) + **`handler`** (class name). Framework modules (`network.*`) ship with the repo; pack modules live under `<network_root>/bootstrap_handlers/`. See [architecture.md](architecture.md) § Seed bootstrap. |
 | **`IdentityRecord`** | Graph/MCP model for a matched registry row (renamed from `SeedRecord`, June 2026). |

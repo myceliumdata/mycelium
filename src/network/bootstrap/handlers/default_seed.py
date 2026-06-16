@@ -35,12 +35,23 @@ def load_seed_people(seed_path: Path) -> list[dict[str, Any]]:
     return people
 
 
+def resolve_seed_grain() -> str:
+    """Choose the grain that receives CRM-shaped seed rows."""
+    from network.mvr import default_mvr_grain, load_mvr_config
+
+    config = load_mvr_config()
+    if "person" in config.grains:
+        return "person"
+    return default_mvr_grain()
+
+
 def import_seed_rows(
     seed_path: Path,
     *,
     registry: EntityRegistry | None = None,
+    grain: str | None = None,
 ) -> int:
-    """Import seed people into ``entities.json`` via ``ensure_bound_entity``.
+    """Import seed people into the target grain entity store.
 
     Returns the number of rows processed, or ``0`` when ``seed_path`` is missing.
     Idempotent via registry ``bind_index``.
@@ -49,10 +60,11 @@ def import_seed_rows(
         return 0
 
     people = load_seed_people(seed_path)
+    target_grain = grain or resolve_seed_grain()
     if registry is None:
         from agents.entity_registry import get_entity_registry
 
-        registry = get_entity_registry()
+        registry = get_entity_registry(grain=target_grain)
 
     for row in people:
         name = str(row.get("name") or "").strip()
@@ -82,9 +94,11 @@ class DefaultSeedHandler:
                 sources_processed=[],
                 handler_id="default_seed",
             )
-        count = import_seed_rows(seed_path)
+        grain = resolve_seed_grain()
+        count = import_seed_rows(seed_path, grain=grain)
         return BootstrapResult(
             entities_committed=count,
             sources_processed=[str(seed_path.name)],
             handler_id="default_seed",
+            entities_by_grain={grain: count},
         )

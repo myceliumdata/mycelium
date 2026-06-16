@@ -7,19 +7,40 @@ import os
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
 from agents.field_index import normalize_field_index_value
 
-_registry: "EntityRegistry | None" = None
+if TYPE_CHECKING:
+    from network.mvr import MvrPolicy
+
+_registry: dict[str, EntityRegistry] = {}
 
 
-def _default_entities_path() -> Path:
-    from network.paths import runtime_path
+def _paths_for_runtime():
+    from network.paths import _paths_for_runtime as _load_paths
 
-    return runtime_path("MYCELIUM_ENTITIES_PATH")
+    return _load_paths()
+
+
+def _resolve_registry_paths(grain: str) -> tuple[Path, Path, str]:
+    """Return write path, read path, and resolved grain name."""
+    from network.mvr import default_mvr_grain
+    from network.paths import entity_store_path, resolve_entity_store_path
+
+    resolved_grain = grain or default_mvr_grain()
+    explicit = os.getenv("MYCELIUM_ENTITIES_PATH", "").strip()
+    if explicit and resolved_grain == default_mvr_grain():
+        path = Path(explicit).expanduser().resolve()
+        return path, path, resolved_grain
+    paths = _paths_for_runtime()
+    return (
+        entity_store_path(paths, resolved_grain),
+        resolve_entity_store_path(paths, resolved_grain),
+        resolved_grain,
+    )
 
 
 def require_full_bind_values(
@@ -124,32 +145,50 @@ def registry_entity_to_match(entity: RegistryEntity) -> dict[str, Any]:
 
 
 class EntityRegistry:
-    """Load/save ``entities.json`` with atomic writes."""
+    """Load/save per-grain entity store with atomic writes."""
 
-    def __init__(self, path: Path | None = None) -> None:
-        self.path = path if path is not None else _default_entities_path()
+    def __init__(
+        self,
+        path: Path | None = None,
+        *,
+        grain: str | None = None,
+        mvr: MvrPolicy | None = None,
+        read_path: Path | None = None,
+    ) -> None:
+        from network.mvr import load_mvr
+
+        if path is not None:
+            self.grain = grain or "person"
+            self._mvr = mvr or load_mvr(grain=self.grain)
+            self.path = path
+            self._read_path = read_path or path
+        else:
+            write_path, resolved_read_path, self.grain = _resolve_registry_paths(
+                grain or "",
+            )
+            self._mvr = mvr or load_mvr(grain=self.grain)
+            self.path = write_path
+            self._read_path = read_path or resolved_read_path
         self._data = EntitiesDocument()
         self._field_indexes: dict[str, dict[str, list[str]]] = {}
         self._load()
 
     def _rebuild_field_indexes(self) -> None:
         from agents.field_index import build_field_indexes
-        from network.mvr import load_mvr
 
-        mvr = load_mvr()
         self._field_indexes = build_field_indexes(
             self._data.entities,
-            mvr.bind_fields,
+            self._mvr.bind_fields,
         )
 
     def _load(self) -> None:
-        if not self.path.is_file():
+        if not self._read_path.is_file():
             self._data = EntitiesDocument()
             self._rebuild_field_indexes()
             return
         try:
-            raw = json.loads(self.path.read_text(encoding="utf-8"))
-            _reject_legacy_entity_rows(raw, self.path)
+            raw = json.loads(self._read_path.read_text(encoding="utf-8"))
+            _reject_legacy_entity_rows(raw, self._read_path)
             self._data = EntitiesDocument.model_validate(raw)
         except LegacyEntitiesSchemaError:
             raise
@@ -183,12 +222,11 @@ class EntityRegistry:
     def lookup_by_target_lookup(self, lookup: dict[str, str]) -> list[str]:
         """AND-match registry rows by MVR bind fields (exact normalized index)."""
         from agents.field_index import intersect_lookup
-        from network.mvr import load_mvr
 
         return intersect_lookup(
             self._field_indexes,
             lookup,
-            load_mvr().bind_fields,
+            self._mvr.bind_fields,
         )
 
     def field_indexes(self) -> dict[str, dict[str, list[str]]]:
@@ -205,9 +243,7 @@ class EntityRegistry:
         return list(self._data.entities.values())
 
     def _bind_fields(self) -> list[str]:
-        from network.mvr import load_mvr
-
-        return list(load_mvr().bind_fields)
+        return list(self._mvr.bind_fields)
 
     def lookup_by_bind_values(self, bind_values: dict[str, str]) -> RegistryEntity | None:
         bind_fields = self._bind_fields()
@@ -285,15 +321,13 @@ class EntityRegistry:
 
     def promote_validated(self, entity_id: str) -> RegistryEntity:
         """Promote provisional entity and MVR field states to validated."""
-        from network.mvr import load_mvr
-
         entity = self._data.entities.get(entity_id)
         if entity is None:
             raise KeyError(f"Unknown registry entity: {entity_id}")
         entity.validation_state = "validated"
         entity.field_states = {
             field.strip().lower(): "validated"
-            for field in load_mvr().bind_fields
+            for field in self._mvr.bind_fields
             if field.strip()
         }
         self._save()
@@ -315,13 +349,20 @@ class EntityRegistry:
         return entity
 
 
-def get_entity_registry() -> EntityRegistry:
-    global _registry
-    if _registry is None:
-        _registry = EntityRegistry()
-    return _registry
+def get_entity_registry(*, grain: str | None = None) -> EntityRegistry:
+    from network.mvr import default_mvr_grain
+
+    resolved_grain = grain or default_mvr_grain()
+    cached = _registry.get(resolved_grain)
+    if cached is not None:
+        return cached
+    registry = EntityRegistry(grain=resolved_grain)
+    _registry[resolved_grain] = registry
+    return registry
 
 
-def reset_entity_registry() -> None:
-    global _registry
-    _registry = None
+def reset_entity_registry(*, grain: str | None = None) -> None:
+    if grain is None:
+        _registry.clear()
+        return
+    _registry.pop(grain, None)

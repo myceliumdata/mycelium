@@ -58,7 +58,6 @@ def import_seed_for_test(
         if monkeypatch is not None:
             monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
             monkeypatch.setenv("MYCELIUM_SEED_PATH", str(dest))
-            monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(tmp_path / "entities.json"))
         seed_path = dest
     if seed_path is None:
         msg = "seed_path or (tmp_path, seed_src) required"

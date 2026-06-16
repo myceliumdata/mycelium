@@ -93,7 +93,7 @@ class NetworkPaths:
         return cls(
             root=resolved,
             seed_path=resolved / "seed.json",
-            entities_path=resolved / "entities.json",
+            entities_path=_default_entity_store_path(resolved),
             registry_path=resolved / "agent_registry.json",
             categories_path=resolved / "categories.json",
             agents_dir=resolved / "agents",
@@ -105,6 +105,61 @@ class NetworkPaths:
             deliveries_path=resolved / "deliveries.json",
             credits_path=resolved / "credits.json",
         )
+
+
+def _provisional_paths(root: Path) -> NetworkPaths:
+    """Build ``NetworkPaths`` before entity store resolution (internal)."""
+    return NetworkPaths(
+        root=root,
+        seed_path=root / "seed.json",
+        entities_path=root / "entities.json",
+        registry_path=root / "agent_registry.json",
+        categories_path=root / "categories.json",
+        agents_dir=root / "agents",
+        specialists_dir=root / "specialists",
+        checkpoint_path=root / "checkpoints.sqlite",
+        db_path=root / "mycelium.db",
+        entitlements_path=root / "entitlements.json",
+        quotes_path=root / "quotes.json",
+        deliveries_path=root / "deliveries.json",
+        credits_path=root / "credits.json",
+    )
+
+
+def _default_entity_store_path(root: Path) -> Path:
+    """Default-grain entity store path from ``network.json`` (or CRM default)."""
+    provisional = _provisional_paths(root)
+    try:
+        from network.mvr import default_mvr_grain
+
+        grain = default_mvr_grain(paths=provisional)
+        return entity_store_path(provisional, grain)
+    except Exception:
+        return root / "entities" / "person.json"
+
+
+def entity_store_path(paths: NetworkPaths, grain: str) -> Path:
+    """Canonical write path for a grain's entity store."""
+    from network.mvr import load_mvr_config
+
+    config = load_mvr_config(paths=paths)
+    if grain not in config.grains:
+        known = ", ".join(sorted(config.grains.keys()))
+        raise ValueError(
+            f"Unknown MVR grain {grain!r}; declared grains: {known}",
+        )
+    return paths.root / config.grains[grain].entities_file
+
+
+def resolve_entity_store_path(paths: NetworkPaths, grain: str) -> Path:
+    """Grain entity path with legacy root ``entities.json`` read fallback."""
+    grain_path = entity_store_path(paths, grain)
+    if grain_path.is_file():
+        return grain_path
+    legacy = paths.root / "entities.json"
+    if legacy.is_file():
+        return legacy
+    return grain_path
 
 
 _RUNTIME_ENV_FIELDS: dict[str, str] = {

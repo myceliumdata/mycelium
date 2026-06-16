@@ -124,7 +124,7 @@ def ensure_entity_bind_fields(
     """Allocate entity id when needed; unified write for all MVR bind fields present."""
     reg = registry if registry is not None else get_entity_registry()
     values = normalized_lookup_values({str(k): str(v) for k, v in fields.items()})
-    mvr = load_mvr()
+    mvr = reg._mvr
     bind_values = require_full_bind_values(values, list(mvr.bind_fields))
 
     resolved_actor = actor_kind or (

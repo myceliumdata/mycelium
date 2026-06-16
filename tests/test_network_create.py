@@ -208,8 +208,8 @@ def test_create_network_happy_path_writes_artifacts(
     assert result.entities_bootstrapped == 1
     assert result.specialists_count == 3
     assert (root / "seed.json").is_file()
-    assert (root / "entities.json").is_file()
-    entities = json.loads((root / "entities.json").read_text(encoding="utf-8"))
+    assert (root / "entities" / "person.json").is_file()
+    entities = json.loads((root / "entities" / "person.json").read_text(encoding="utf-8"))
     assert len(entities["entities"]) == 1
     assert "happy person|h" in entities["bind_index"]
     assert (root / "categories.json").is_file()
@@ -330,6 +330,7 @@ def test_create_network_without_seed(
     assert result.entities_bootstrapped == 0
     assert not (root / "seed.json").exists()
     assert not (root / "entities.json").exists()
+    assert not (root / "entities" / "person.json").exists()
     assert (root / "categories.json").is_file()
     assert (root / "agent_registry.json").is_file()
     assert (root / "network.json").is_file()
@@ -377,7 +378,7 @@ def test_create_network_force_without_seed_clears_stale_bootstrap(
         ontology_fn=lambda _p: _mock_ontology_three(),
     )
     assert (root / "seed.json").is_file()
-    assert (root / "entities.json").is_file()
+    assert (root / "entities" / "person.json").is_file()
 
     create_network(
         "stale_net",
@@ -389,6 +390,7 @@ def test_create_network_force_without_seed_clears_stale_bootstrap(
 
     assert not (root / "seed.json").exists()
     assert not (root / "entities.json").exists()
+    assert not (root / "entities" / "person.json").exists()
     categories = json.loads((root / "categories.json").read_text(encoding="utf-8"))
     assert categories["categories"]["alpha"]["description"].endswith("empty-pass")
 

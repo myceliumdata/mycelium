@@ -51,7 +51,7 @@ def apply_refreshed_root(monkeypatch: pytest.MonkeyPatch, root: Path) -> None:
 
 def assert_crm_seed_capstone(target: Path) -> None:
     """Post-refresh CRM: 15 entities and seed_bootstrap bind versions in specialist storage."""
-    entities_path = target / "entities.json"
+    entities_path = NetworkPaths.from_root(target).entities_path
     assert entities_path.is_file()
     payload = json.loads(entities_path.read_text(encoding="utf-8"))
     assert len(payload["entities"]) == 15

@@ -32,9 +32,9 @@ _RUNTIME_ARTIFACTS = (
     "mycelium.db",
     "agent_registry.json",
 )
-_RUNTIME_DIRS = ("agents",)
+_RUNTIME_DIRS = ("agents", "entities")
 # Seed bootstrap materializes these; they must not be copied from the example tree.
-_BOOTSTRAP_ALLOWED = frozenset({"categories.json", "entities.json"})
+_BOOTSTRAP_ALLOWED = frozenset({"categories.json", "entities"})
 
 
 def _run_refresh(
@@ -188,7 +188,7 @@ def test_refresh_crm_imports_seed_into_entities(tmp_path: Path) -> None:
     assert result.declined is False
     assert result.seed_bootstrap_count == 15
 
-    entities_path = target / "entities.json"
+    entities_path = NetworkPaths.from_root(target).entities_path
     assert entities_path.is_file()
     payload = json.loads(entities_path.read_text(encoding="utf-8"))
     assert len(payload["entities"]) == 15

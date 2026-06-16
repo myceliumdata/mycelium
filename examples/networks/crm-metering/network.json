@@ -7,8 +7,13 @@
     "handler": "DefaultSeedHandler"
   },
   "mvr": {
-    "bind_fields": ["name", "employer"],
-    "description": "CRM people: display name plus current employer before bind and research."
+    "default_grain": "person",
+    "grains": {
+      "person": {
+        "bind_fields": ["name", "employer"],
+        "description": "CRM people: display name plus current employer before bind and research."
+      }
+    }
   },
   "metering": {
     "enabled": true,

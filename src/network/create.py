@@ -155,6 +155,20 @@ def _write_guide(paths: NetworkPaths, *, title: str, creation_prompt: str) -> No
     )
 
 
+def _unlink_entity_stores(paths: NetworkPaths) -> None:
+    """Remove default-grain and declared per-grain entity store files."""
+    paths.entities_path.unlink(missing_ok=True)
+    (paths.root / "entities.json").unlink(missing_ok=True)
+    try:
+        from network.mvr import load_mvr_config
+
+        config = load_mvr_config(paths=paths)
+        for grain in config.grains.values():
+            (paths.root / grain.entities_file).unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
 def _write_network_manifest(
     paths: NetworkPaths,
     *,
@@ -271,7 +285,7 @@ def create_network(
         )
         if seed_file is None:
             paths.seed_path.unlink(missing_ok=True)
-            paths.entities_path.unlink(missing_ok=True)
+            _unlink_entity_stores(paths)
     entities_bootstrapped = 0
     if seed_file is not None:
         shutil.copy2(seed_file, paths.seed_path)
