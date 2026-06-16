@@ -56,7 +56,7 @@ Not a full application — iterative starter: design, schemas, skeleton ingest/q
 - **Franchise:** Lahman `TeamsFranchises` / `franchID` is **correct for research**, but only a small audience thinks that way. **Franchise specialist** + emergent linkage — client asks “aren’t those the same?” → offer re-aggregation by franchise.
 - **`Teams.csv` rows:** year-scoped **facts** for a fan team in a season (W/L, park, stats) — `yearID` remains query scope.
 - **Lahman `teamID` / `franchID`:** warehouse provenance — not MVR, not default organization for answers.
-- **Team MVR (open):** city + name or full canonical name — see [`conversations/2026-06-16-canonical-team-city-names.md`](conversations/2026-06-16-canonical-team-city-names.md). Lahman bootstrap: **241** distinct `Teams.name` strings; nickname-only (`Dodgers`) → incomplete / suggest.
+- **Team MVR:** **full canonical name** (locked). Discovery via **network bootstrap specialists** + `guide.md` policy — **not** framework-hardcoded columns; see [`conversations/2026-06-16-canonical-names-bootstrap-specialists.md`](conversations/2026-06-16-canonical-names-bootstrap-specialists.md). Nickname-alone → incomplete / suggest.
 - **Example:** `franchID=LAD` spans Brooklyn Dodgers (≤1957, `BRO`) and LA Dodgers (1958+, `LAN`) — **one franchise in Lahman, two team identities in our default ontology.**
 
 ---

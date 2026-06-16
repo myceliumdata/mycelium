@@ -11,6 +11,7 @@ Full-context notes from **Paul + Grok** design discussions. These preserve reaso
 | 2026-06-16 | LLM alias resolution (Yanks, 465 Ventures) vs explicit tables | [2026-06-16-llm-alias-resolution.md](2026-06-16-llm-alias-resolution.md) | [`baseball-example-program.md`](../baseball-example-program.md); [`fuzzy-lookup-policy.md`](../fuzzy-lookup-policy.md) |
 | 2026-06-16 | Cold start — ontology, data-source handoff, sort-yourself-out | [2026-06-16-baseball-cold-start.md](2026-06-16-baseball-cold-start.md) | [`baseball-example-program.md`](../baseball-example-program.md) § Cold start |
 | 2026-06-16 | Team vs franchise grain — emergent organization | [2026-06-16-team-vs-franchise-grain.md](2026-06-16-team-vs-franchise-grain.md) | Team registry ≠ `franchID`; franchise specialist |
-| 2026-06-16 | Canonical team/city names — ingest + LLM layers | [2026-06-16-canonical-team-city-names.md](2026-06-16-canonical-team-city-names.md) | Lahman 241 names bootstrap; nickname-alone incomplete |
+| 2026-06-16 | Canonical team/city names — ingest + LLM layers | [2026-06-16-canonical-team-city-names.md](2026-06-16-canonical-team-city-names.md) | Full canonical name; LLM aliases |
+| 2026-06-16 | Canonical bootstrap — generic framework vs network specialists | [2026-06-16-canonical-names-bootstrap-specialists.md](2026-06-16-canonical-names-bootstrap-specialists.md) | No custom orchestrator; bootstrap phase |
 
 When resuming work, read the relevant conversation doc first, then **`docs/plans/entity-protocol-and-registry-program.md`** (full slice map), then `TODO.md` for the current checklist.

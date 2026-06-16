@@ -20,13 +20,19 @@ Hardcoded alias tables per network do not scale; franchise table is the wrong pr
 
 ---
 
-## Lahman bootstrap (ground truth for v0)
+## Canonical form (locked)
 
-- **`Teams.name`:** **241** distinct full strings in 2025 CSV (e.g. `Brooklyn Dodgers`, `Los Angeles Dodgers` — not `LA Dodgers`).
-- **Use as initial canonical fan-team labels** — one registry candidate per distinct `name` (with uuid4 on load).
-- **Warehouse** retains Lahman rows keyed by `yearID` + `teamID`; map each row → canonical fan team via `Teams.name`.
+- **Full canonical name** only for team MVR/display (e.g. `Los Angeles Dodgers`) — not separate city + nickname fields.
 
-Nickname-only (**Dodgers**) is **ambiguous** — multiple fan teams share it (Brooklyn, Los Angeles, Newark). Treat as **incomplete lookup** → `lookup_suggested` (same pattern as CRM name-only), not a single canonical.
+## Discovery (not framework-hardcoded)
+
+**Do not** bake “read Lahman `Teams.name`” into Mycelium core. Baseball **bootstrap specialists** explore ingested sources per **`guide.md` policy** and propose registry rows.
+
+*Illustration only (Lahman 2025):* distinct season team label strings might yield ~241 fan-team candidates including `Brooklyn Dodgers` and `Los Angeles Dodgers` — the specialist discovers that; framework provides `distinct_values` + propose-registry tools.
+
+Nickname-only (**Dodgers**) is **ambiguous** → `lookup_suggested`, not one canonical.
+
+See [`2026-06-16-canonical-names-bootstrap-specialists.md`](2026-06-16-canonical-names-bootstrap-specialists.md).
 
 ---
 
