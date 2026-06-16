@@ -43,6 +43,7 @@ class LahmanSeedHandler:
         teams_committed = 0
         players_committed = 0
         player_ids: dict[str, str] = {}
+        bind_collisions: list[str] = []
 
         for team_name in distinct_team_labels(warehouse_path):
             _, duplicate = ensure_entity_bind_fields(
@@ -65,16 +66,12 @@ class LahmanSeedHandler:
                 if existing is not None and existing.id == mapped_id:
                     continue
                 if existing is not None and existing.id != mapped_id:
-                    msg = (
-                        f"bind key {bind_values!r} already maps to a different entity "
-                        f"for playerID {player_id!r}"
+                    bind_collisions.append(
+                        "skipped alias "
+                        f"{bind_values!r} for playerID {player_id!r}: "
+                        f"already bound to a different player",
                     )
-                    return BootstrapResult(
-                        entities_committed=teams_committed + players_committed,
-                        sources_processed=[],
-                        handler_id="lahman_seed",
-                        errors=[msg],
-                    )
+                    continue
                 player_registry.add_bind_alias(mapped_id, bind_values)
                 continue
 
@@ -105,4 +102,5 @@ class LahmanSeedHandler:
                 "team": teams_committed,
                 "player": players_committed,
             },
+            errors=bind_collisions,
         )

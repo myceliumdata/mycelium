@@ -8,8 +8,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from network.bootstrap.config import load_bootstrap_config
 from network.paths import NetworkPaths, framework_root
 from network.registry import load_network_registry, register_network
+from network.seed_fetch import fetch_example_seed, git_seed_summary, load_git_seed_source
 from network.seed_import import bootstrap_seed_at_paths, count_seed_rows
 
 _SKIP_NAMES = frozenset(
@@ -113,6 +115,7 @@ class RefreshExampleResult:
     registry_name: str | None
     is_default: bool
     seed_bootstrap_count: int = 0
+    seed_fetch_summary: str | None = None
     declined: bool = False
     dry_run: bool = False
 
@@ -148,11 +151,15 @@ def refresh_example_network(
             if not _should_skip(item)
         ]
         reg_name = resolve_registry_name(name, source) if register else None
-        seed_bootstrap_count = (
-            count_seed_rows(source / "seed.json")
-            if "seed.json" in would_copy
-            else 0
-        )
+        seed_fetch_summary: str | None = None
+        git_source = load_git_seed_source(source / "seed.source.json")
+        if git_source is not None:
+            seed_fetch_summary = git_seed_summary(git_source)
+        seed_bootstrap_count = 0
+        if "seed.json" in would_copy:
+            seed_bootstrap_count = count_seed_rows(source / "seed.json")
+        elif git_source is not None:
+            seed_bootstrap_count = -1
         return RefreshExampleResult(
             name=name,
             root=live_root,
@@ -163,6 +170,7 @@ def refresh_example_network(
             registry_name=reg_name,
             is_default=make_default if register else False,
             seed_bootstrap_count=seed_bootstrap_count,
+            seed_fetch_summary=seed_fetch_summary,
             dry_run=True,
         )
 
@@ -190,11 +198,20 @@ def refresh_example_network(
     live_root.mkdir(parents=True, exist_ok=True)
     copied = copy_example_network(name, live_root)
 
+    seed_fetch_summary: str | None = None
+    try:
+        seed_fetch_summary = fetch_example_seed(live_root)
+    except (ValueError, RuntimeError) as exc:
+        raise ValueError(f"Seed fetch failed for {name}: {exc}") from exc
+
+    paths = NetworkPaths.from_root(live_root)
     seed_bootstrap_count = 0
-    if (live_root / "seed.json").is_file():
-        seed_bootstrap_count = bootstrap_seed_at_paths(
-            NetworkPaths.from_root(live_root),
-        )
+    try:
+        load_bootstrap_config(paths)
+    except ValueError:
+        pass
+    else:
+        seed_bootstrap_count = bootstrap_seed_at_paths(paths)
 
     if register:
         registry_name = resolve_registry_name(name, live_root)
@@ -218,4 +235,5 @@ def refresh_example_network(
         registry_name=registry_name,
         is_default=make_default if register else False,
         seed_bootstrap_count=seed_bootstrap_count,
+        seed_fetch_summary=seed_fetch_summary,
     )

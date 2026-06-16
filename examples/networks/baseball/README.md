@@ -2,6 +2,22 @@
 
 Lahman second-network example. **Not** wired into `mycelium query` yet.
 
+## Quick start
+
+From the framework repo root:
+
+```bash
+uv sync
+./bin/refresh-example-network baseball --yes
+```
+
+Refresh copies `network.json`, `bootstrap_handlers/`, and `guide.md`, then:
+
+1. **Fetches** Lahman CSVs from [`myceliumdata/lahman-seed`](https://github.com/myceliumdata/lahman-seed) (`seed.source.json` pins tag `v2025.1`)
+2. **Bootstraps** via `LahmanSeedHandler`: warehouse ingest + team/player entity grains
+
+Default live root: `~/mycelium-networks/baseball` (registered in `networks.json`).
+
 ## Bootstrap (pack handler)
 
 `network.json` declares the Lahman pack handler:
@@ -13,15 +29,19 @@ Lahman second-network example. **Not** wired into `mycelium query` yet.
 }
 ```
 
-**Seed layout** (not committed to git): place Lahman CSVs under `<network_root>/seed/` as one of:
+Remote seed manifest (`seed.source.json`):
 
-- `lahman_1871-2025_csv.zip` (extracted idempotently to `seed/lahman_1871-2025_csv/`)
-- extracted folder `seed/lahman_1871-2025_csv/`
-- flat `seed/*.csv`
+```json
+{
+  "type": "git",
+  "repo": "https://github.com/myceliumdata/lahman-seed.git",
+  "ref": "v2025.1",
+  "source_path": "lahman_1871-2025_csv",
+  "dest": "seed/lahman_1871-2025_csv"
+}
+```
 
-`refresh-example-network baseball` copies `bootstrap_handlers/` from this example.
-
-When seed data is present, bootstrap:
+After fetch, bootstrap:
 
 1. Ingests CSVs → `<network_root>/warehouse/lahman.sqlite`
 2. Commits distinct `Teams.name` labels → `entities/team.json` (`bind_fields: ["name"]`)
@@ -29,12 +49,7 @@ When seed data is present, bootstrap:
 
 The baseball example copies CRM sample `categories.json` until a baseball ontology exists. Bind field `team` maps to the `professional` category (same as CRM `employer`).
 
-No seed → **0** entities (`handler_id: lahman_seed`).
-
-## Prerequisites (standalone experiment)
-
-- Lahman 2025 CSV zip at `~/mycelium-networks/baseball/seed/lahman_1871-2025_csv.zip` (or extracted folder)
-- `uv sync` at repo root
+**Attribution:** Lahman data is copyright SABR / Sean Lahman (CC BY-SA 3.0). See the [lahman-seed](https://github.com/myceliumdata/lahman-seed) repository.
 
 ## Bootstrap experiment (v0 — legacy spike)
 

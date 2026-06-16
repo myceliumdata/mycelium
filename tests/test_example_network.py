@@ -23,6 +23,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
 EXAMPLE_CRM_METERING = REPO_ROOT / "examples" / "networks" / "crm-metering"
 EXAMPLE_EMPTY_CRM = REPO_ROOT / "examples" / "networks" / "empty-crm"
+EXAMPLE_BASEBALL = REPO_ROOT / "examples" / "networks" / "baseball"
 _REFRESH_SCRIPT = REPO_ROOT / "bin" / "refresh-example-network"
 _RUNTIME_ARTIFACTS = (
     "categories.json",
@@ -154,7 +155,7 @@ def test_refresh_example_network_empty_root(tmp_path: Path) -> None:
         check=False,
     )
     assert result.returncode == 0, result.stderr or result.stdout
-    assert "seed: seed.json → 15 entities imported" in result.stdout
+    assert "bootstrap: 15 entities committed" in result.stdout
     assert (target / "seed.json").is_file()
     assert (target / "network.json").is_file()
     assert not (target / "README.md").exists()
@@ -400,3 +401,53 @@ def test_refresh_non_crm_example_with_explicit_manifest(
     entries = list_networks()
     assert entries[0].name == "fleet"
     assert entries[0].default is True
+
+
+def _write_minimal_lahman_fixture(seed_dir: Path) -> None:
+    seed_dir.mkdir(parents=True, exist_ok=True)
+    (seed_dir / "Teams.csv").write_text(
+        "yearID,lgID,teamID,franchID,name\n"
+        "1957,NL,BRO,LAD,Brooklyn Dodgers\n"
+        "1958,NL,LAN,LAD,Los Angeles Dodgers\n"
+        "2024,NL,MIL,MIL,Milwaukee Brewers\n",
+        encoding="utf-8",
+    )
+    (seed_dir / "People.csv").write_text(
+        "ID,playerID,nameFirst,nameLast\n"
+        "1,aaronha01,Hank,Aaron\n",
+        encoding="utf-8",
+    )
+    (seed_dir / "Appearances.csv").write_text(
+        "yearID,teamID,playerID\n"
+        "1957,BRO,aaronha01\n",
+        encoding="utf-8",
+    )
+
+
+@pytest.mark.smoke
+def test_refresh_baseball_fetches_seed_and_bootstraps(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fixture_csv = tmp_path / "lahman-fixture" / "lahman_1871-2025_csv"
+    _write_minimal_lahman_fixture(fixture_csv)
+    target = tmp_path / "baseball-live"
+
+    def fake_fetch(network_root: Path) -> str:
+        dest = network_root / "seed" / "lahman_1871-2025_csv"
+        if dest.exists():
+            shutil.rmtree(dest)
+        shutil.copytree(fixture_csv, dest)
+        return "lahman-seed@v2025.1"
+
+    monkeypatch.setattr("network.example.fetch_example_seed", fake_fetch)
+    result = refresh_example_network("baseball", root=target, register=False, yes=True)
+    assert result.declined is False
+    assert result.seed_fetch_summary == "lahman-seed@v2025.1"
+    assert result.seed_bootstrap_count == 4
+    assert (target / "seed" / "lahman_1871-2025_csv" / "People.csv").is_file()
+    assert (target / "entities" / "team.json").is_file()
+    assert (target / "entities" / "player.json").is_file()
+    assert (target / "warehouse" / "lahman.sqlite").is_file()
+    assert (EXAMPLE_BASEBALL / "seed.source.json").is_file()
+    assert not (EXAMPLE_BASEBALL / "seed").exists()

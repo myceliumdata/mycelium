@@ -107,15 +107,22 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  {action} existing live root")
     for entry in result.copied:
         print(f"  copy: {entry}")
+    if result.seed_fetch_summary:
+        action = "Would fetch" if result.dry_run else "Fetched"
+        print(f"  {action} seed: {result.seed_fetch_summary}")
     if result.seed_bootstrap_count > 0:
         if result.dry_run:
             print(
-                f"  Would import: seed.json → {result.seed_bootstrap_count} entities",
+                f"  Would bootstrap: {result.seed_bootstrap_count} entities",
             )
         else:
             print(
-                f"  seed: seed.json → {result.seed_bootstrap_count} entities imported",
+                f"  bootstrap: {result.seed_bootstrap_count} entities committed",
             )
+    elif result.seed_bootstrap_count == 0 and result.seed_fetch_summary and not result.dry_run:
+        print("  bootstrap: 0 entities committed")
+    elif result.seed_bootstrap_count == -1 and result.dry_run:
+        print("  Would bootstrap: Lahman warehouse + entity grains")
     if result.registered and result.registry_name:
         suffix = " (default)" if result.is_default else ""
         action = "Would register" if result.dry_run else "Registered"
