@@ -2,7 +2,11 @@
 
 **Program:** Storage evolution (specialist → entity) — [`docs/plans/storage-evolution-program.md`](../../docs/plans/storage-evolution-program.md)
 
-**Active (`next/`):** *(empty)*
+**Active (`next/`):**
+
+| Prompt | Scope |
+|--------|--------|
+| [`next/2026-06-18-0900-bootstrap-perf-profile-driven.md`](next/2026-06-18-0900-bootstrap-perf-profile-driven.md) | **READY** — skip field-index rebuild on alias-only attach (§ Profile results filled) |
 
 **Last approved:** [`done/2026-06-17-2340-specialist-minisql-incremental-writes/`](done/2026-06-17-2340-specialist-minisql-incremental-writes/) — **Approved** (commit below)
 
@@ -15,7 +19,7 @@
 | Baseline (pre slice 2) | **12,600 s (~3.5 h)** recorded |
 | Test 3 (post slice 2) | **~8,100 s (2 h 15 m) estimated** — update with `time -p` real when done |
 | Test 5 (post slice 4) | **~4.5 h est., abandoned** — no gain vs baseline; see timing-gates doc |
-| Test 6 (post incremental writes) | **Paul** — pending; fresh `--root`, record `time -p` **real** |
+| Test 6 (post incremental writes) | **Paul paste `time -p`** — refresh on `/tmp/mycelium-baseball-benchmark` finished overnight (~20 min est.) |
 
 **Design lock (Paul, June 2026):** Entity persistence = **`EntityStore`** + **`EntityRegistry` API unchanged**. Identity-agent refactor **deferred until full baseball example ships**.
 

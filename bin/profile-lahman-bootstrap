@@ -1,0 +1,94 @@
+#!/usr/bin/env python3
+"""Profile ``run_network_bootstrap`` on a baseball network root (Lahman handler).
+
+Requires ``<root>`` to already have ``network.json``, ``bootstrap_handlers/``,
+seed CSVs, and ``warehouse/lahman.sqlite`` (from a prior ``refresh-example-network``
+or manual setup). Does **not** wipe the root.
+
+Usage:
+  MYCELIUM_BOOTSTRAP_PROGRESS=0 ./bin/profile-lahman-bootstrap /tmp/mycelium-baseball-benchmark
+  ./bin/profile-lahman-bootstrap /tmp/mycelium-baseball-benchmark -o /tmp/lahman.prof
+"""
+
+from __future__ import annotations
+
+import argparse
+import cProfile
+import pstats
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+_SRC = REPO_ROOT / "src"
+_BASEBALL = REPO_ROOT / "examples" / "networks" / "baseball"
+_VENV_PYTHON = REPO_ROOT / ".venv" / "bin" / "python3"
+
+
+def _bootstrap() -> None:
+    if _VENV_PYTHON.is_file():
+        try:
+            if Path(sys.executable).resolve() != _VENV_PYTHON.resolve():
+                import os
+
+                os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON), *sys.argv])
+        except OSError:
+            pass
+    for path in (_SRC, _BASEBALL):
+        text = str(path)
+        if text not in sys.path:
+            sys.path.insert(0, text)
+
+
+_bootstrap()
+
+from network.bootstrap import run_network_bootstrap  # noqa: E402
+from network.paths import NetworkPaths, apply_network_paths  # noqa: E402
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("root", type=Path, help="Existing baseball network_root")
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        default=Path("/tmp/lahman-bootstrap.prof"),
+        help="cProfile output path",
+    )
+    parser.add_argument(
+        "--top",
+        type=int,
+        default=40,
+        help="Lines for pstats summary (default 40)",
+    )
+    args = parser.parse_args()
+    root = args.root.expanduser().resolve()
+    if not (root / "warehouse" / "lahman.sqlite").is_file():
+        print(f"Missing warehouse: {root / 'warehouse' / 'lahman.sqlite'}", file=sys.stderr)
+        return 1
+
+    paths = NetworkPaths.from_root(root)
+    apply_network_paths(paths)
+
+    profiler = cProfile.Profile()
+    profiler.enable()
+    result = run_network_bootstrap(paths)
+    profiler.disable()
+
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    profiler.dump_stats(str(args.output))
+
+    print(f"entities_committed={result.entities_committed} handler_id={result.handler_id}")
+    print(f"profile written: {args.output}")
+    print("--- cumulative top ---")
+    stats = pstats.Stats(str(args.output))
+    stats.sort_stats("cumulative").print_stats(args.top)
+    print("--- build_field_indexes / alias / write_fields (tottime) ---")
+    stats.sort_stats("tottime").print_stats(
+        "build_field_indexes|add_bind_alias|write_bind_fields|upsert_entity|save_entity|_rebuild_field",
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

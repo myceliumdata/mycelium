@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# Wait for baseball refresh to finish, then profile bootstrap and patch slice prompt.
+# Usage: ./bin/overnight-lahman-profile [/tmp/mycelium-baseball-benchmark]
+set -euo pipefail
+ROOT="${1:-/tmp/mycelium-baseball-benchmark}"
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
+PROF_OUT="/tmp/lahman-bootstrap-test6.prof"
+LOG="/tmp/lahman-bootstrap-test6.txt"
+SLICE="$REPO/prompts/cursor/next/2026-06-18-0900-bootstrap-perf-profile-driven.md"
+TIMING="$REPO/docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md"
+
+echo "Waiting for refresh-example-network baseball to exit..."
+while pgrep -f "refresh-example-network baseball.*${ROOT}" >/dev/null 2>&1; do
+  sleep 30
+done
+echo "Refresh finished (or not running). Profiling bootstrap on $ROOT..."
+
+cd "$REPO"
+export MYCELIUM_BOOTSTRAP_PROGRESS=0
+chmod +x bin/profile-lahman-bootstrap
+./bin/profile-lahman-bootstrap "$ROOT" -o "$PROF_OUT" 2>&1 | tee "$LOG"
+
+python3 - <<'PY' "$LOG" "$SLICE"
+import re
+import sys
+from pathlib import Path
+
+log = Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace")
+slice_path = Path(sys.argv[2])
+
+def grab_block(header: str) -> str:
+    if header not in log:
+        return "(not in log)"
+    part = log.split(header, 1)[1]
+    lines = []
+    for line in part.splitlines():
+        if line.startswith("---") and lines:
+            break
+        lines.append(line)
+    return "\n".join(lines[:20]).strip()
+
+entities = re.search(r"entities_committed=(\d+)", log)
+top = grab_block("--- cumulative top ---")
+tottime = grab_block("--- build_field_indexes")
+
+# crude cumulative seconds from pstats lines: ncalls tottime cumtime
+def sum_cumtime(pattern: str) -> str:
+    total = 0.0
+    for line in log.splitlines():
+        if pattern in line:
+            parts = line.split()
+            if len(parts) >= 5:
+                try:
+                    total += float(parts[3])
+                except ValueError:
+                    pass
+    return f"{total:.2f}" if total else "see log"
+
+build_idx = sum_cumtime("build_field_indexes")
+alias = sum_cumtime("add_bind_alias")
+write = sum_cumtime("write_bind_fields")
+
+verdict = (
+    "Implement O1: skip field-index rebuild on alias-only `add_bind_alias`."
+    if float(build_idx.split()[0] if build_idx != "see log" else "0") > 1.0
+    or "add_bind_alias" in log
+    else "Re-read log; alias hypothesis weak — Grok must rewrite § Locked scope before Cursor runs."
+)
+
+block = f"""| Metric | Value |
+|--------|-------|
+| Test 6 `time -p` real (s) | *Paul to paste from terminal — refresh complete* |
+| Profile run date | overnight auto |
+| Top cumulative (excerpt) | see log |
+| `build_field_indexes` cumtime sum (s) | {build_idx} |
+| `add_bind_alias` cumtime sum (s) | {alias} |
+| `write_bind_fields` cumtime sum (s) | {write} |
+| entities_committed (profile run) | {entities.group(1) if entities else "?"} |
+
+**Grok verdict:** {verdict}
+
+**Cumulative excerpt:**
+```
+{top[:2000]}
+```
+
+**Field-index / alias excerpt:**
+```
+{tottime[:1500]}
+```
+"""
+
+text = slice_path.read_text(encoding="utf-8")
+start = text.find("<!-- OVERNIGHT:")
+end = text.find("**Raw log:**")
+if start == -1 or end == -1:
+    print("Could not patch slice prompt markers", file=sys.stderr)
+    sys.exit(1)
+new = text[:start] + block + "\n\n" + text[end:]
+slice_path.write_text(new, encoding="utf-8")
+print(f"Patched {slice_path}")
+PY
+
+echo "Done. Log: $LOG  Slice: $SLICE"
