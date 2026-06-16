@@ -10,5 +10,6 @@ Full-context notes from **Paul + Grok** design discussions. These preserve reaso
 | 2026-06-15 | Baseball example — MVR grains, uuid4, name+team bind | [2026-06-15-baseball-example-design.md](2026-06-15-baseball-example-design.md) | `TODO.md` → `baseball` example |
 | 2026-06-16 | LLM alias resolution (Yanks, 465 Ventures) vs explicit tables | [2026-06-16-llm-alias-resolution.md](2026-06-16-llm-alias-resolution.md) | [`baseball-example-program.md`](../baseball-example-program.md); [`fuzzy-lookup-policy.md`](../fuzzy-lookup-policy.md) |
 | 2026-06-16 | Cold start — ontology, data-source handoff, sort-yourself-out | [2026-06-16-baseball-cold-start.md](2026-06-16-baseball-cold-start.md) | [`baseball-example-program.md`](../baseball-example-program.md) § Cold start |
+| 2026-06-16 | Team vs franchise grain — emergent organization | [2026-06-16-team-vs-franchise-grain.md](2026-06-16-team-vs-franchise-grain.md) | Team registry ≠ `franchID`; franchise specialist |
 
 When resuming work, read the relevant conversation doc first, then **`docs/plans/entity-protocol-and-registry-program.md`** (full slice map), then `TODO.md` for the current checklist.

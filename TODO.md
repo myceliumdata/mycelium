@@ -10,7 +10,7 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 ## Next up (Paul)
 
-- [ ] **`baseball` example network** — Lahman second example; [`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md) (ur: [`mycelium_lahman_design_prompt.md`](docs/plans/mycelium_lahman_design_prompt.md)). Two registry grains (**player** + **team**), agent-managed warehouse + derivations. **Locked:** uuid4 on load; Lahman `playerID` = source metadata only. **Player MVR (draft):** name + team — team disambiguates homonyms; any team the player played for → same uuid (index TBD). **Seed data:** Paul has `~/mycelium-networks/baseball/seed/lahman_1871-2025_csv.zip` (~40MB); hosting TBD — avoid git blob if possible; SABR Box not bot-fetchable; may self-host URL + ingest script.
+- [ ] **`baseball` example network** — Lahman second example; [`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md) (ur: [`mycelium_lahman_design_prompt.md`](docs/plans/mycelium_lahman_design_prompt.md)). Two registry grains (**player** + fan-facing **team** city+name; franchise via specialist), agent-managed warehouse + derivations. **Locked:** uuid4 on load; Lahman `playerID` = source metadata only. **Player MVR (draft):** name + team — team disambiguates homonyms; any team the player played for → same uuid (index TBD). **Seed data:** Paul has `~/mycelium-networks/baseball/seed/lahman_1871-2025_csv.zip` (~40MB); hosting TBD — avoid git blob if possible; SABR Box not bot-fetchable; may self-host URL + ingest script.
 
 ### Shipped (2026-06-14)
 

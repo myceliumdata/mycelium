@@ -33,7 +33,7 @@ Not a full application — iterative starter: design, schemas, skeleton ingest/q
 |-------|----------|
 | Network name | `baseball` |
 | Topology | **One network** (not multiple networks) |
-| Registry grains | **Two:** **player** and **team** |
+| Registry grains | **Two:** **player** and **team** (fan-facing city+name — **not** Lahman `franchID` as primary) |
 | Registry `id` | **uuid4** assigned on load |
 | Lahman `playerID` / `teamID` | **Source metadata** — provenance and re-import; not MVR; not a parallel public `id` |
 | Player MVR (draft) | **Name + team** — team disambiguates homonyms |
@@ -52,10 +52,12 @@ Not a full application — iterative starter: design, schemas, skeleton ingest/q
 
 ### Team
 
-- **What:** A **franchise** — Lahman `TeamsFranchises.franchID` / `franchName` (203 rows). Not a single `Teams.csv` row (those are **year-scoped** team-season facts: W/L, park, attendance, aggregated batting/pitching totals for that year).
-- **`teamID` variants:** one franchise can have many `teamID` codes over time (e.g. `ATL` franchise: `BSN`, `ML1`, `ATL`; `NYY`: `NYA`, `BLA`). Source metadata — not MVR.
-- **`Teams.name`:** display name **per year** (e.g. “Milwaukee Braves” vs “Atlanta Braves”) — useful for player MVR team disambiguator and LLM aliases; maps to `franchID` via `Teams.csv`.
-- **Team MVR (open):** likely `franchName` or canonical fan-facing name; LLM for `Yanks` → Yankees franchise.
+- **What (Paul, June 2026):** **Fan-facing team identity** — how people actually talk: **city + name** (e.g. **Brooklyn Dodgers** vs **Los Angeles Dodgers** = **two** teams). Not Lahman `franchID` as the primary registry grain — see [`conversations/2026-06-16-team-vs-franchise-grain.md`](conversations/2026-06-16-team-vs-franchise-grain.md).
+- **Franchise:** Lahman `TeamsFranchises` / `franchID` is **correct for research**, but only a small audience thinks that way. **Franchise specialist** + emergent linkage — client asks “aren’t those the same?” → offer re-aggregation by franchise.
+- **`Teams.csv` rows:** year-scoped **facts** for a fan team in a season (W/L, park, stats) — `yearID` remains query scope.
+- **Lahman `teamID` / `franchID`:** warehouse provenance — not MVR, not default organization for answers.
+- **Team MVR (open):** city + name (or full `Teams.name` string); LLM aliases (`Yanks`, `Dodgers` + context).
+- **Example:** `franchID=LAD` spans Brooklyn Dodgers (≤1957, `BRO`) and LA Dodgers (1958+, `LAN`) — **one franchise in Lahman, two team identities in our default ontology.**
 
 ---
 
@@ -165,7 +167,7 @@ flowchart TD
 ## Open questions
 
 1. **Team MVR fields** — partly LLM alias path; franchise identity still TBD
-2. **Franchise vs Lahman `teamID`** — relocations/rebrands; one team uuid?
+2. **Fan team entities** — how many distinct city+name teams; bootstrap from `Teams.name` vs agent-emergent; franchise links later
 3. **Warehouse layout** — v0 tables; agent-extensible schema
 4. **Seed hosting** — self-host URL vs manual download
 5. **Framework changes** — multi-registry, multi-MVR, multi-alias index, ingest API
@@ -184,8 +186,8 @@ flowchart TD
 | Table | Rows | Role |
 |-------|-----:|------|
 | **People** | 24,270 | Player biographical hub; `playerID` links all player facts. `ID` column is Lahman-internal numeric — **not used in joins** (per readme). |
-| **TeamsFranchises** | 203 | **Franchise** registry source — `franchID`, `franchName`, `active` |
-| **Teams** | 3,614 | **Year-scoped** franchise-season row: `yearID` + `teamID` + `franchID` + standings + team-level batting/pitching totals + `name` (display name) |
+| **TeamsFranchises** | 203 | **Franchise lineage** (franchise specialist / emergent) — not primary team registry |
+| **Teams** | 3,614 | **Year-scoped** row: `yearID` + `teamID` + `franchID` + `name` (fan-facing label) + standings + team totals |
 | **Parks** | 345 | Ballparks |
 
 ### Player-attached fact tables (parallel — none privileged)
@@ -227,22 +229,22 @@ flowchart TB
     People[People.playerID]
   end
 
-  subgraph franchise_hub [Team grain]
-    TF[TeamsFranchises.franchID]
+  subgraph team_hub [Team grain - fan identity]
+    Tfan[City + name e.g. Brooklyn Dodgers]
+  end
+
+  subgraph emergent [Emergent - not default grain]
+    TF[Franchise specialist franchID]
   end
 
   People --> Batting
   People --> Pitching
   People --> Fielding
   People --> Appearances
-  People --> Awards
 
-  TF --> Teams
-  Teams -->|"yearID+teamID"| Batting
-  Teams --> Appearances
-  Teams --> Managers
-
-  Batting -->|"player on roster"| People
+  Tfan --> Teams
+  Teams -->|"yearID facts"| Batting
+  TF -.->|on client pushback| Tfan
 ```
 
 - **Roster:** no player list on `Teams` — membership via **Appearances** or any player fact table for that `yearID` + `teamID`.
