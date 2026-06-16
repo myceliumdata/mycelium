@@ -187,3 +187,143 @@ def migrate_versioned_provenance_v1_json(
     if "meta" not in payload or not isinstance(payload["meta"], dict):
         payload["meta"] = {"created_by": "migration"}
     save_payload(sqlite_path, payload)
+
+
+_ENTITY_SCHEMA = """
+CREATE TABLE IF NOT EXISTS entity_storage_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS registry_entities (
+    entity_id TEXT PRIMARY KEY,
+    entity_json TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS registry_bind_index (
+    bind_key TEXT PRIMARY KEY,
+    entity_id TEXT NOT NULL
+);
+"""
+
+
+def _ensure_entity_sqlite(sqlite_path: Path) -> None:
+    conn = _connect(sqlite_path)
+    try:
+        conn.executescript(_ENTITY_SCHEMA)
+        conn.execute("BEGIN")
+        conn.execute("DELETE FROM registry_entities")
+        conn.execute("DELETE FROM registry_bind_index")
+        conn.execute("DELETE FROM entity_storage_meta")
+        now = datetime.now(timezone.utc).isoformat()
+        conn.execute(
+            "INSERT INTO entity_storage_meta (key, value) VALUES (?, ?)",
+            ("version", "1.0"),
+        )
+        conn.execute(
+            "INSERT INTO entity_storage_meta (key, value) VALUES (?, ?)",
+            ("last_updated", now),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def load_entities_document(sqlite_path: Path) -> dict[str, Any]:
+    """Load entity registry document from minisql_v1 SQLite."""
+    if not sqlite_path.is_file():
+        _ensure_entity_sqlite(sqlite_path)
+    conn = _connect(sqlite_path)
+    try:
+        meta_rows = conn.execute("SELECT key, value FROM entity_storage_meta").fetchall()
+        meta_dict = {str(row["key"]): str(row["value"]) for row in meta_rows}
+        entities: dict[str, Any] = {}
+        for row in conn.execute("SELECT entity_id, entity_json FROM registry_entities"):
+            entities[str(row["entity_id"])] = json.loads(row["entity_json"])
+        bind_index: dict[str, str] = {}
+        for row in conn.execute("SELECT bind_key, entity_id FROM registry_bind_index"):
+            bind_index[str(row["bind_key"])] = str(row["entity_id"])
+        return {
+            "version": meta_dict.get("version", "1.0"),
+            "last_updated": meta_dict.get("last_updated", ""),
+            "entities": entities,
+            "bind_index": bind_index,
+        }
+    finally:
+        conn.close()
+
+
+def save_entities_document(sqlite_path: Path, document: dict[str, Any]) -> None:
+    """Persist entity registry document transactionally."""
+    if not sqlite_path.is_file():
+        _ensure_entity_sqlite(sqlite_path)
+    entities = document.get("entities", {})
+    bind_index = document.get("bind_index", {})
+    if not isinstance(entities, dict):
+        entities = {}
+    if not isinstance(bind_index, dict):
+        bind_index = {}
+    last_updated = datetime.now(timezone.utc).isoformat()
+    version = str(document.get("version", "1.0"))
+
+    conn = _connect(sqlite_path)
+    try:
+        conn.executescript(_ENTITY_SCHEMA)
+        conn.execute("BEGIN")
+        conn.execute("DELETE FROM registry_entities")
+        conn.execute("DELETE FROM registry_bind_index")
+        for entity_id, entity_blob in entities.items():
+            conn.execute(
+                "INSERT INTO registry_entities (entity_id, entity_json) VALUES (?, ?)",
+                (entity_id, json.dumps(entity_blob)),
+            )
+        for bind_key, entity_id in bind_index.items():
+            conn.execute(
+                "INSERT INTO registry_bind_index (bind_key, entity_id) VALUES (?, ?)",
+                (bind_key, entity_id),
+            )
+        conn.execute("DELETE FROM entity_storage_meta")
+        conn.execute(
+            "INSERT INTO entity_storage_meta (key, value) VALUES (?, ?)",
+            ("version", version),
+        )
+        conn.execute(
+            "INSERT INTO entity_storage_meta (key, value) VALUES (?, ?)",
+            ("last_updated", last_updated),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def migrate_entities_document_v1_json(
+    json_path: Path,
+    sqlite_path: Path,
+    *,
+    grain: str,
+) -> None:
+    """Copy entities JSON document into minisql_v1 SQLite."""
+    _ = grain
+    if json_path.is_file():
+        payload = json.loads(json_path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            payload = {
+                "version": "1.0",
+                "entities": {},
+                "bind_index": {},
+            }
+    else:
+        payload = {
+            "version": "1.0",
+            "entities": {},
+            "bind_index": {},
+        }
+    if "entities" not in payload:
+        payload["entities"] = {}
+    if "bind_index" not in payload:
+        payload["bind_index"] = {}
+    save_entities_document(sqlite_path, payload)

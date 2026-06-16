@@ -4,19 +4,20 @@ from __future__ import annotations
 
 import json
 import os
-import tempfile
-from datetime import datetime, timezone
+from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Iterator
 
 from pydantic import BaseModel, Field
 
 from agents.field_index import normalize_field_index_value
+from storage.entity_store import EntityStore
 
 if TYPE_CHECKING:
     from network.mvr import MvrPolicy
 
 _registry: dict[str, EntityRegistry] = {}
+_bootstrap_deferred_depth: int = 0
 
 
 def _paths_for_runtime():
@@ -25,8 +26,27 @@ def _paths_for_runtime():
     return _load_paths()
 
 
+def _store_paths(json_path: Path) -> tuple[Path, Path]:
+    stem = json_path.stem
+    parent = json_path.parent
+    return parent / f"{stem}.storage_strategy.json", parent / f"{stem}.sqlite"
+
+
+@contextmanager
+def bootstrap_deferred_save() -> Iterator[None]:
+    """Defer entity store flushes for all grains during network bootstrap."""
+    global _bootstrap_deferred_depth
+    _bootstrap_deferred_depth += 1
+    try:
+        yield
+    finally:
+        _bootstrap_deferred_depth -= 1
+        if _bootstrap_deferred_depth == 0:
+            for registry in _registry.values():
+                registry.commit_deferred_save()
+
+
 def _resolve_registry_paths(grain: str) -> tuple[Path, str]:
-    """Return entity store path and resolved grain name."""
     from network.mvr import default_mvr_grain
     from network.paths import entity_store_path
 
@@ -163,9 +183,57 @@ class EntityRegistry:
             self.path = store_path
         if read_path is not None:
             self.path = read_path
+        strategy_path, sqlite_path = _store_paths(self.path)
+        self._store = EntityStore(
+            self.grain,
+            self.path,
+            strategy_path,
+            sqlite_path,
+        )
         self._data = EntitiesDocument()
         self._field_indexes: dict[str, dict[str, list[str]]] = {}
+        self._deferred_depth = 0
         self._load()
+
+    def optimize_storage_threshold(self) -> int:
+        raw = os.getenv("MYCELIUM_ENTITY_OPTIMIZE_STORAGE_THRESHOLD")
+        if raw is None:
+            raw = os.getenv("MYCELIUM_OPTIMIZE_STORAGE_THRESHOLD", "50")
+        try:
+            return int(raw)
+        except ValueError:
+            return 50
+
+    def optimize_storage(self) -> bool:
+        if self._store.current_strategy() != "entities_document_v1":
+            return False
+        return self.entity_count() >= self.optimize_storage_threshold()
+
+    def _maybe_optimize_storage(self) -> None:
+        if not self.optimize_storage():
+            return
+        try:
+            self._store.migrate_to("minisql_v1")
+        except NotImplementedError:
+            pass
+
+    def _defer_flush(self) -> bool:
+        return self._deferred_depth > 0 or _bootstrap_deferred_depth > 0
+
+    @contextmanager
+    def deferred_save(self) -> Iterator[EntityRegistry]:
+        self._deferred_depth += 1
+        try:
+            yield self
+        finally:
+            self._deferred_depth -= 1
+            if self._deferred_depth == 0:
+                self.commit_deferred_save()
+
+    def commit_deferred_save(self) -> None:
+        self._maybe_optimize_storage()
+        self._store.save(self._data)
+        self._rebuild_field_indexes()
 
     def _rebuild_field_indexes(self) -> None:
         from agents.field_index import build_field_indexes
@@ -176,14 +244,8 @@ class EntityRegistry:
         )
 
     def _load(self) -> None:
-        if not self.path.is_file():
-            self._data = EntitiesDocument()
-            self._rebuild_field_indexes()
-            return
         try:
-            raw = json.loads(self.path.read_text(encoding="utf-8"))
-            _reject_legacy_entity_rows(raw, self.path)
-            self._data = EntitiesDocument.model_validate(raw)
+            self._data = self._store.load()
         except LegacyEntitiesSchemaError:
             raise
         except (OSError, json.JSONDecodeError, ValueError):
@@ -191,23 +253,11 @@ class EntityRegistry:
         self._rebuild_field_indexes()
 
     def _save(self) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        self._data.last_updated = datetime.now(timezone.utc).isoformat()
-        payload = self._data.model_dump_json(indent=2)
-        fd, tmp_path = tempfile.mkstemp(
-            dir=self.path.parent,
-            suffix=".json.tmp",
-        )
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as handle:
-                handle.write(payload)
-            os.replace(tmp_path, self.path)
-        except Exception:
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
-            raise
+        if self._defer_flush():
+            self._rebuild_field_indexes()
+            return
+        self._maybe_optimize_storage()
+        self._store.save(self._data)
         self._rebuild_field_indexes()
 
     def reload(self) -> None:
@@ -368,7 +418,9 @@ def get_entity_registry(*, grain: str | None = None) -> EntityRegistry:
 
 
 def reset_entity_registry(*, grain: str | None = None) -> None:
+    global _bootstrap_deferred_depth
     if grain is None:
         _registry.clear()
+        _bootstrap_deferred_depth = 0
         return
     _registry.pop(grain, None)

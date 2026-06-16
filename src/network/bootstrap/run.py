@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agents.entity_registry import reset_entity_registry
+from agents.entity_registry import reset_entity_registry, bootstrap_deferred_save
 from network.bootstrap.context import BootstrapContext, BootstrapResult
 from network.bootstrap.handlers.resolve import resolve_handler
 from network.category_mvr_bootstrap import ensure_categories_for_mvr_bind
@@ -29,4 +29,5 @@ def run_network_bootstrap(paths: NetworkPaths) -> BootstrapResult:
         guide_text=_read_guide(paths),
     )
     handler = resolve_handler(paths)
-    return handler.run(ctx)
+    with bootstrap_deferred_save():
+        return handler.run(ctx)
