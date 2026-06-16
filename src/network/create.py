@@ -172,7 +172,8 @@ def _write_network_manifest(
         "creation_prompt": creation_prompt,
         "ontology_model": ontology_model,
         "bootstrap": {
-            "handler": "default_seed",
+            "module": "network.bootstrap.handlers.default_seed",
+            "handler": "DefaultSeedHandler",
         },
     }
     paths.root.mkdir(parents=True, exist_ok=True)

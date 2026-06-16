@@ -224,7 +224,10 @@ def test_create_network_happy_path_writes_artifacts(
     manifest = json.loads((root / "network.json").read_text(encoding="utf-8"))
     assert manifest["display_name"] == "Happy Net"
     assert manifest["creation_prompt"] == "Custom widget network"
-    assert manifest["bootstrap"] == {"handler": "default_seed"}
+    assert manifest["bootstrap"] == {
+        "module": "network.bootstrap.handlers.default_seed",
+        "handler": "DefaultSeedHandler",
+    }
 
     entries = load_network_registry()
     assert any(e.name == "happy_net" and e.default for e in entries)

@@ -7,17 +7,18 @@ from dataclasses import dataclass
 
 from network.paths import NetworkPaths
 
+_EXAMPLE_BOOTSTRAP = (
+    '{"bootstrap": {"module": "network.bootstrap.handlers.default_seed", '
+    '"handler": "DefaultSeedHandler"}}'
+)
+
 
 @dataclass(frozen=True)
 class BootstrapConfig:
     """Resolved bootstrap handler declaration from ``network.json``."""
 
-    builtin_key: str | None = None
-    module: str | None = None
-    class_name: str | None = None
-
-
-BUILTIN_HANDLER_KEYS = frozenset({"default_seed"})
+    module: str
+    class_name: str
 
 
 def load_bootstrap_config(paths: NetworkPaths) -> BootstrapConfig:
@@ -39,35 +40,23 @@ def load_bootstrap_config(paths: NetworkPaths) -> BootstrapConfig:
     if not isinstance(bootstrap, dict):
         raise ValueError(
             f"{manifest_path}: missing required 'bootstrap' object "
-            '(e.g. {"bootstrap": {"handler": "default_seed"}})',
+            f"(e.g. {_EXAMPLE_BOOTSTRAP})",
         )
 
-    handler_raw = bootstrap.get("handler")
     module_raw = bootstrap.get("module")
-    handler = str(handler_raw).strip() if isinstance(handler_raw, str) else None
-    module = str(module_raw).strip() if isinstance(module_raw, str) else None
+    handler_raw = bootstrap.get("handler")
+    module = str(module_raw).strip() if isinstance(module_raw, str) else ""
+    class_name = str(handler_raw).strip() if isinstance(handler_raw, str) else ""
 
-    if module:
-        if handler in BUILTIN_HANDLER_KEYS:
-            raise ValueError(
-                "network.json bootstrap: cannot combine built-in handler key "
-                f"{handler!r} with module {module!r}",
-            )
-        if not handler:
-            raise ValueError(
-                "network.json bootstrap.module requires bootstrap.handler "
-                "(handler class name for the pack module)",
-            )
-        return BootstrapConfig(module=module, class_name=handler)
-
-    if not handler:
+    if not module:
+        raise ValueError(
+            "network.json bootstrap.module is required "
+            '(e.g. "network.bootstrap.handlers.default_seed" or a pack module '
+            "under network_root)",
+        )
+    if not class_name:
         raise ValueError(
             "network.json bootstrap.handler is required "
-            '(built-in key, e.g. "default_seed", or use module+handler for pack)',
+            "(handler class name, e.g. DefaultSeedHandler)",
         )
-    if handler not in BUILTIN_HANDLER_KEYS:
-        known = ", ".join(sorted(BUILTIN_HANDLER_KEYS))
-        raise ValueError(
-            f"Unknown bootstrap handler {handler!r}; built-in keys: {known}",
-        )
-    return BootstrapConfig(builtin_key=handler)
+    return BootstrapConfig(module=module, class_name=class_name)

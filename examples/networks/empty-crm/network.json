@@ -3,7 +3,8 @@
   "display_name": "CRM (empty seed)",
   "description": "CRM MVR rules with no bootstrap seed — entities grow from query-time binds only.",
   "bootstrap": {
-    "handler": "default_seed"
+    "module": "network.bootstrap.handlers.default_seed",
+    "handler": "DefaultSeedHandler"
   },
   "mvr": {
     "bind_fields": ["name", "employer"],

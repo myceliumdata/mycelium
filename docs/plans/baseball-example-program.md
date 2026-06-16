@@ -274,7 +274,7 @@ See `examples/networks/baseball/README.md`.
 
 ## Slice map
 
-**Framework bootstrap phase (CRM):** ✅ `src/network/bootstrap/` — `run_network_bootstrap`, default `seed.json` handler via `network.json` → `bootstrap` (built-in `default_seed` or pack handlers under `bootstrap_handlers/`). Baseball cold start should add a **warehouse handler** pack under `bootstrap_handlers/`, not fork refresh/create.
+**Framework bootstrap phase (CRM):** ✅ `src/network/bootstrap/` — `run_network_bootstrap`, `seed.json` handler via `network.json` → `bootstrap` (`module` + class `handler`; framework `network.*` modules or pack handlers under `bootstrap_handlers/`). Baseball cold start should add a **warehouse handler** pack under `bootstrap_handlers/`, not fork refresh/create.
 
 **Experiment v0** (standalone, pre-formal-bootstrap): `bootstrap_experiment.py` — disposition TBD; do not treat as the long-term path.
 

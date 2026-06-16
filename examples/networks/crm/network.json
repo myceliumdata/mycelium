@@ -3,7 +3,8 @@
   "display_name": "CRM example",
   "description": "Public-safe subset of the prototype CRM seed for quick start and demos.",
   "bootstrap": {
-    "handler": "default_seed"
+    "module": "network.bootstrap.handlers.default_seed",
+    "handler": "DefaultSeedHandler"
   },
   "mvr": {
     "bind_fields": ["name", "employer"],

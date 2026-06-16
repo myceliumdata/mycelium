@@ -381,7 +381,10 @@ def test_refresh_non_crm_example_auto_defaults(
             {
                 "name": "fleet",
                 "display_name": "Fleet example",
-                "bootstrap": {"handler": "default_seed"},
+                "bootstrap": {
+                    "module": "network.bootstrap.handlers.default_seed",
+                    "handler": "DefaultSeedHandler",
+                },
             },
         ),
         encoding="utf-8",

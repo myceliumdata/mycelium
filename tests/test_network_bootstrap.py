@@ -19,6 +19,10 @@ from network.seed_import import bootstrap_seed_at_paths, count_seed_rows
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CRM_SEED = REPO_ROOT / "examples" / "networks" / "crm" / "seed.json"
 CRM_MANIFEST = REPO_ROOT / "examples" / "networks" / "crm" / "network.json"
+FRAMEWORK_BOOTSTRAP = {
+    "module": "network.bootstrap.handlers.default_seed",
+    "handler": "DefaultSeedHandler",
+}
 
 
 def _write_manifest(root: Path, bootstrap: dict | None, *, base: Path | None = None) -> None:
@@ -70,11 +74,39 @@ def test_run_network_bootstrap_missing_bootstrap_block(tmp_path: Path) -> None:
 
 
 @pytest.mark.smoke
-def test_run_network_bootstrap_unknown_builtin_handler(tmp_path: Path) -> None:
+def test_run_network_bootstrap_missing_module(tmp_path: Path) -> None:
     paths = _prepare_root(tmp_path, seed_src=CRM_SEED)
-    _write_manifest(paths.root, {"handler": "lahman_seed"})
-    with pytest.raises(ValueError, match="Unknown bootstrap handler"):
+    _write_manifest(paths.root, {"handler": "DefaultSeedHandler"})
+    with pytest.raises(ValueError, match="bootstrap.module is required"):
         run_network_bootstrap(paths)
+
+
+@pytest.mark.smoke
+def test_run_network_bootstrap_missing_handler(tmp_path: Path) -> None:
+    paths = _prepare_root(tmp_path, seed_src=CRM_SEED)
+    _write_manifest(
+        paths.root,
+        {"module": "network.bootstrap.handlers.default_seed"},
+    )
+    with pytest.raises(ValueError, match="bootstrap.handler is required"):
+        run_network_bootstrap(paths)
+
+
+@pytest.mark.smoke
+def test_run_network_bootstrap_rejects_legacy_handler_only(tmp_path: Path) -> None:
+    paths = _prepare_root(tmp_path, seed_src=CRM_SEED)
+    _write_manifest(paths.root, {"handler": "default_seed"})
+    with pytest.raises(ValueError, match="bootstrap.module is required"):
+        run_network_bootstrap(paths)
+
+
+@pytest.mark.smoke
+def test_framework_handler_does_not_require_network_root_module(tmp_path: Path) -> None:
+    paths = _prepare_root(tmp_path, seed_src=CRM_SEED)
+    assert not (paths.root / "bootstrap_handlers").exists()
+    result = run_network_bootstrap(paths)
+    assert result.entities_committed == 15
+    assert result.handler_id == "default_seed"
 
 
 @pytest.mark.smoke
@@ -204,7 +236,7 @@ def test_copy_example_network_includes_bootstrap_handlers(
     example = examples / "pack-demo"
     example.mkdir(parents=True)
     (example / "network.json").write_text(
-        json.dumps({"name": "pack-demo", "bootstrap": {"handler": "default_seed"}}),
+        json.dumps({"name": "pack-demo", "bootstrap": FRAMEWORK_BOOTSTRAP}),
         encoding="utf-8",
     )
     handlers = example / "bootstrap_handlers"

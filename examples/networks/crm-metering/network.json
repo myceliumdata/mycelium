@@ -3,7 +3,8 @@
   "display_name": "CRM metering demo",
   "description": "CRM example with metering.enabled for hands-on quote_required negotiation demos.",
   "bootstrap": {
-    "handler": "default_seed"
+    "module": "network.bootstrap.handlers.default_seed",
+    "handler": "DefaultSeedHandler"
   },
   "mvr": {
     "bind_fields": ["name", "employer"],
