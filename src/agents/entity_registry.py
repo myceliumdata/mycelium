@@ -6,6 +6,7 @@ import json
 import os
 from contextlib import contextmanager
 from pathlib import Path
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Iterator
 
 from pydantic import BaseModel, Field
@@ -33,7 +34,10 @@ def _store_paths(json_path: Path) -> tuple[Path, Path]:
 
 
 @contextmanager
-def bootstrap_deferred_save() -> Iterator[None]:
+def bootstrap_deferred_save(
+    *,
+    before_commit: Callable[[], None] | None = None,
+) -> Iterator[None]:
     """Defer entity store flushes for all grains during network bootstrap."""
     global _bootstrap_deferred_depth
     _bootstrap_deferred_depth += 1
@@ -42,6 +46,8 @@ def bootstrap_deferred_save() -> Iterator[None]:
     finally:
         _bootstrap_deferred_depth -= 1
         if _bootstrap_deferred_depth == 0:
+            if before_commit is not None:
+                before_commit()
             for registry in _registry.values():
                 registry.commit_deferred_save()
 

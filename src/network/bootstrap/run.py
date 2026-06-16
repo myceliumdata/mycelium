@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-from contextlib import contextmanager
-from typing import Iterator
-
-import agents.entity_registry as entity_registry_module
-from agents.entity_registry import reset_entity_registry
+from agents.entity_registry import bootstrap_deferred_save, reset_entity_registry
 from network.bootstrap.context import BootstrapContext, BootstrapResult
 from network.bootstrap.handlers.resolve import resolve_handler
 from network.bootstrap.progress import BootstrapProgress, make_bootstrap_progress
@@ -22,22 +18,6 @@ def _read_guide(paths: NetworkPaths) -> str | None:
         return guide_path.read_text(encoding="utf-8")
     except OSError:
         return None
-
-
-@contextmanager
-def _bootstrap_deferred_with_progress(
-    progress: BootstrapProgress | None,
-) -> Iterator[None]:
-    entity_registry_module._bootstrap_deferred_depth += 1
-    try:
-        yield
-    finally:
-        entity_registry_module._bootstrap_deferred_depth -= 1
-        if entity_registry_module._bootstrap_deferred_depth == 0:
-            if progress is not None:
-                progress.cleaning_up()
-            for registry in entity_registry_module._registry.values():
-                registry.commit_deferred_save()
 
 
 def run_network_bootstrap(
@@ -56,7 +36,8 @@ def run_network_bootstrap(
         progress=reporter,
     )
     handler = resolve_handler(paths)
-    with _bootstrap_deferred_with_progress(reporter):
+    before_commit = reporter.cleaning_up if reporter is not None else None
+    with bootstrap_deferred_save(before_commit=before_commit):
         result = handler.run(ctx)
     if reporter is not None:
         reporter.done()

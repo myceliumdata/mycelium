@@ -10,6 +10,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from network.bootstrap.progress import BootstrapProgress
+
 
 @dataclass(frozen=True)
 class GitSeedSource:
@@ -58,7 +60,7 @@ def fetch_git_seed(
     source: GitSeedSource,
     *,
     subprocess_run: Callable[..., subprocess.CompletedProcess[str]] | None = None,
-    progress: object | None = None,
+    progress: BootstrapProgress | None = None,
 ) -> str:
     """Shallow-clone ``source`` and copy ``source_path`` into ``network_root/dest``.
 
@@ -110,7 +112,7 @@ def fetch_git_seed(
 def fetch_example_seed(
     network_root: Path,
     *,
-    progress: object | None = None,
+    progress: BootstrapProgress | None = None,
 ) -> str | None:
     """Fetch remote seed when ``seed.source.json`` exists under ``network_root``."""
     manifest_path = network_root / "seed.source.json"

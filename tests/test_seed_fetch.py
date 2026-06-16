@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from network.bootstrap.progress import BootstrapProgress
 from network.seed_fetch import (
     GitSeedSource,
     fetch_example_seed,
@@ -99,7 +100,7 @@ def test_fetch_example_seed_reads_manifest(tmp_path: Path) -> None:
         source: GitSeedSource,
         *,
         subprocess_run: object | None = None,
-        progress: object | None = None,
+        progress: BootstrapProgress | None = None,
     ) -> str:
         return original(root, source, subprocess_run=fake_clone, progress=progress)
 

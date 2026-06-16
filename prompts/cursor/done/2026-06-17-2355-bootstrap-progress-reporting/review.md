@@ -69,11 +69,11 @@ Locked B1–B9: Pass.
 - Lahman preloads `player_rows` once (no double warehouse query).
 - CRM path unchanged when progress off (entity count test).
 
-**Nits (non-blocking):**
+**Nits (resolved in `9052f45` follow-up):**
 
-1. **`run.py` duplicates `bootstrap_deferred_save()`** — `_bootstrap_deferred_with_progress` reimplements depth tracking in `entity_registry` instead of wrapping the existing context manager. Works today; follow-up could compose `bootstrap_deferred_save()` + progress hook to avoid drift.
-2. **`seed_fetch` types progress as `object | None`** — use `BootstrapProgress | None` for consistency.
-3. **`HOLD.md` stale** — still listed progress in `next/`; Grok fixes on commit.
+1. ~~`run.py` duplicated `bootstrap_deferred_save()`~~ — now uses `bootstrap_deferred_save(before_commit=...)`.
+2. ~~`seed_fetch` typed progress as `object`~~ — now `BootstrapProgress | None`.
+3. ~~`HOLD.md` stale~~ — fixed on initial commit.
 
 ---
 
