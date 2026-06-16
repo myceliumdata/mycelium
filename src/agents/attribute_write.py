@@ -58,7 +58,7 @@ def write_bind_fields(
     if entity is None:
         raise ValueError(f"Unknown registry entity: {entity_id}")
 
-    mvr = load_mvr()
+    mvr = reg._mvr
     allowed = {field.strip().lower() for field in mvr.bind_fields if field.strip()}
     normalized_fields = {
         key.strip().lower(): value.strip()

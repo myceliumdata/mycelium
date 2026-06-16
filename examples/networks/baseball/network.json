@@ -3,8 +3,8 @@
   "display_name": "Baseball example (Lahman)",
   "description": "Experimental second example — Lahman warehouse + bootstrap identity discovery.",
   "bootstrap": {
-    "module": "network.bootstrap.handlers.default_seed",
-    "handler": "DefaultSeedHandler"
+    "module": "bootstrap_handlers.lahman_seed",
+    "handler": "LahmanSeedHandler"
   },
   "experiment": {
     "bootstrap": "v0",

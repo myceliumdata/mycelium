@@ -19,6 +19,7 @@ from network.paths import NetworkPaths, framework_root
 CRM_MVR_FIELD_CATEGORY: dict[str, str] = {
     "name": "demographic",
     "employer": "professional",
+    "team": "professional",
 }
 
 _MINIMAL_MVR_CATEGORIES: dict[str, tuple[str, str]] = {
@@ -40,7 +41,23 @@ def sample_categories_path() -> Path:
     return Path(__file__).resolve().parents[2] / "docs" / "examples" / "sample-categories.json"
 
 
-def categories_map_mvr_fields(categories_path: Any) -> bool:
+def _required_bind_fields(paths: NetworkPaths) -> set[str]:
+    from network.mvr import load_mvr_config
+
+    config = load_mvr_config(paths=paths)
+    fields: set[str] = set()
+    for grain in config.grains.values():
+        for field in grain.bind_fields:
+            key = field.strip().lower()
+            if key:
+                fields.add(key)
+    return fields
+
+
+def categories_map_mvr_fields(
+    categories_path: Any,
+    required_fields: set[str] | None = None,
+) -> bool:
     if not categories_path.is_file():
         return False
     try:
@@ -50,28 +67,32 @@ def categories_map_mvr_fields(categories_path: Any) -> bool:
     attr_map = data.get("attribute_map") if isinstance(data, dict) else None
     if not isinstance(attr_map, dict):
         return False
-    return bool(attr_map.get("name") and attr_map.get("employer"))
+    needed = required_fields if required_fields is not None else set(CRM_MVR_FIELD_CATEGORY)
+    return bool(needed) and all(attr_map.get(field) for field in needed)
 
 
 def ensure_categories_for_mvr_bind(paths: NetworkPaths) -> None:
     """Ensure MVR bind fields are mapped; copy sample or merge into existing tree."""
     from agents.classification import get_category_tree, reset_category_tree
 
+    required_fields = _required_bind_fields(paths)
     paths.categories_path.parent.mkdir(parents=True, exist_ok=True)
-    if not categories_map_mvr_fields(paths.categories_path):
+    if not categories_map_mvr_fields(paths.categories_path, required_fields):
         if paths.categories_path.is_file():
             try:
                 raw = json.loads(paths.categories_path.read_text(encoding="utf-8"))
                 tree = CategoryTreeData.model_validate(raw)
-                updated = ensure_mvr_fields_in_category_tree(tree)
+                updated = ensure_mvr_fields_in_category_tree(tree, required_fields)
                 paths.categories_path.write_text(
                     updated.model_dump_json(indent=2) + "\n",
                     encoding="utf-8",
                 )
             except (OSError, json.JSONDecodeError, ValueError):
                 _copy_sample_categories(paths.categories_path)
+                _merge_required_bind_fields(paths, required_fields)
         else:
             _copy_sample_categories(paths.categories_path)
+            _merge_required_bind_fields(paths, required_fields)
     reset_category_tree()
     get_category_tree()
 
@@ -84,13 +105,28 @@ def _copy_sample_categories(categories_path: Path) -> None:
     shutil.copy(sample, categories_path)
 
 
-def ensure_mvr_fields_in_category_tree(tree: CategoryTreeData) -> CategoryTreeData:
-    """Merge CRM MVR bind fields into ontology ``attribute_map`` when absent."""
+def _merge_required_bind_fields(paths: NetworkPaths, required_fields: set[str]) -> None:
+    raw = json.loads(paths.categories_path.read_text(encoding="utf-8"))
+    tree = CategoryTreeData.model_validate(raw)
+    updated = ensure_mvr_fields_in_category_tree(tree, required_fields)
+    paths.categories_path.write_text(
+        updated.model_dump_json(indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def ensure_mvr_fields_in_category_tree(
+    tree: CategoryTreeData,
+    bind_fields: set[str] | None = None,
+) -> CategoryTreeData:
+    """Merge manifest MVR bind fields into ontology ``attribute_map`` when absent."""
     updated = tree.model_copy(deep=True)
-    for field, category_name in CRM_MVR_FIELD_CATEGORY.items():
+    fields_to_map = bind_fields if bind_fields is not None else set(CRM_MVR_FIELD_CATEGORY)
+    for field in sorted(fields_to_map):
         key = field.strip().lower()
-        if key in updated.attribute_map:
+        if not key or key in updated.attribute_map:
             continue
+        category_name = CRM_MVR_FIELD_CATEGORY.get(key, "professional")
         if category_name not in updated.categories:
             desc, agent = _MINIMAL_MVR_CATEGORIES[category_name]
             updated.categories[category_name] = Category(

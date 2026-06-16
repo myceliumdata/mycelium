@@ -271,6 +271,18 @@ class EntityRegistry:
         bind_fields = self._bind_fields()
         self._data.bind_index[make_bind_key(bind_values, bind_fields)] = entity_id
 
+    def add_bind_alias(self, entity_id: str, bind_values: dict[str, str]) -> None:
+        """Attach another bind_index key to an existing entity (bootstrap aliases)."""
+        entity = self._data.entities.get(entity_id)
+        if entity is None:
+            raise ValueError(f"Unknown registry entity: {entity_id}")
+        full = require_full_bind_values(
+            {str(k).strip().lower(): str(v).strip() for k, v in bind_values.items()},
+            self._bind_fields(),
+        )
+        self.assign_bind_index(entity_id, full)
+        self.save_entity(entity)
+
     def pop_bind_index(self, bind_values: dict[str, str]) -> None:
         bind_fields = self._bind_fields()
         self._data.bind_index.pop(make_bind_key(bind_values, bind_fields), None)

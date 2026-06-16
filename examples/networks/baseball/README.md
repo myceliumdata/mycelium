@@ -2,20 +2,34 @@
 
 Lahman second-network example. **Not** wired into `mycelium query` yet.
 
-## Bootstrap (framework)
+## Bootstrap (pack handler)
 
-`network.json` declares the same framework handler as CRM until a Lahman pack handler ships:
+`network.json` declares the Lahman pack handler:
 
 ```json
 "bootstrap": {
-  "module": "network.bootstrap.handlers.default_seed",
-  "handler": "DefaultSeedHandler"
+  "module": "bootstrap_handlers.lahman_seed",
+  "handler": "LahmanSeedHandler"
 }
 ```
 
-There is no `seed.json` in this example today, so refresh runs the handler but imports **0** registry rows. The long-term path is a **network-pack handler** under `bootstrap_handlers/` (e.g. `LahmanSeedHandler`) declared in `network.json` with `"module": "bootstrap_handlers.lahman_seed"`. See [`docs/architecture.md`](../../../docs/architecture.md) § Seed bootstrap.
+**Seed layout** (not committed to git): place Lahman CSVs under `<network_root>/seed/` as one of:
 
-`refresh-example-network baseball` copies `bootstrap_handlers/` from this example when present (directory not shipped yet).
+- `lahman_1871-2025_csv.zip` (extracted idempotently to `seed/lahman_1871-2025_csv/`)
+- extracted folder `seed/lahman_1871-2025_csv/`
+- flat `seed/*.csv`
+
+`refresh-example-network baseball` copies `bootstrap_handlers/` from this example.
+
+When seed data is present, bootstrap:
+
+1. Ingests CSVs → `<network_root>/warehouse/lahman.sqlite`
+2. Commits distinct `Teams.name` labels → `entities/team.json` (`bind_fields: ["name"]`)
+3. Commits player rows from Appearances (one uuid per Lahman `playerID`, multiple bind keys for multi-team aliases) → `entities/player.json`
+
+The baseball example copies CRM sample `categories.json` until a baseball ontology exists. Bind field `team` maps to the `professional` category (same as CRM `employer`).
+
+No seed → **0** entities (`handler_id: lahman_seed`).
 
 ## Prerequisites (standalone experiment)
 
@@ -24,7 +38,7 @@ There is no `seed.json` in this example today, so refresh runs the handler but i
 
 ## Bootstrap experiment (v0 — legacy spike)
 
-Standalone script, **not** the formal bootstrap path. Disposition TBD.
+Standalone script, **not** the formal bootstrap path. Disposition unchanged.
 
 Heuristic mode (no API key) — distinct season team labels → auto-committed `team_registry.json`:
 

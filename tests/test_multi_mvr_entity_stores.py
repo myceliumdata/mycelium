@@ -248,9 +248,12 @@ def test_reset_entity_registry_clears_all_grains(tmp_path: Path) -> None:
 @pytest.mark.smoke
 def test_baseball_bootstrap_commits_zero_rows(tmp_path: Path) -> None:
     shutil.copy(BASEBALL_MANIFEST, tmp_path / "network.json")
+    handlers_src = REPO_ROOT / "examples" / "networks" / "baseball" / "bootstrap_handlers"
+    shutil.copytree(handlers_src, tmp_path / "bootstrap_handlers")
     paths = NetworkPaths.from_root(tmp_path)
     apply_network_paths(paths)
     result = run_network_bootstrap(paths)
+    assert result.handler_id == "lahman_seed"
     assert result.entities_committed == 0
     assert get_entity_registry(grain="player").entity_count() == 0
     assert get_entity_registry(grain="team").entity_count() == 0

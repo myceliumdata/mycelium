@@ -283,7 +283,7 @@ See `examples/networks/baseball/README.md`.
 | 0 | ~~Unzip Lahman; ER/schema note~~ ✅ done |
 | 0b | ~~Formal bootstrap phase (CRM seed)~~ ✅ done — extend for baseball warehouse |
 | 1 | `examples/networks/baseball/` skeleton + `network.json` + hosting story |
-| 2 | Baseball bootstrap handler: warehouse ingest + team/player registry via bootstrap contract |
+| 2 | Baseball bootstrap handler: warehouse ingest + team/player registry via bootstrap contract — **v1 `LahmanSeedHandler` shipped** (`bootstrap_handlers/lahman_seed.py`; playerID dedup + multi-team bind aliases) |
 | 3 | Player registry load + multi-alias index |
 | 4 | Team registry + MVR (may merge with 2) |
 | 5 | One end-to-end query (resolve player → simple derived stat) |
