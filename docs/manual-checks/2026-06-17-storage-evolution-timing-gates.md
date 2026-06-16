@@ -13,7 +13,7 @@
 | **Baseline** | Pre slice 2 | **12,600** (~3.5 h) | Recorded (Paul wall-clock) | JSON specialists + per-row entity JSON flush |
 | **Test 3** | Post slice 2 (`179e80d`) | **~8,100** estimated | **Unreliable** — run never finished; extrapolated at ~25% | Do not use for decisions |
 | **Test 5** | Post slice 4 (`c898036`+) | **~16,200** estimated (~4.5 h) | **Abandoned** — killed in progress; no `time -p` final | ~No gain vs baseline; slice 4 not the big win |
-| **Test 6** | Post incremental (`c5e5bce`+) | — | **Pending** | Expected: hours → minutes |
+| **Test 6** | Post incremental (`c5e5bce`+) | **1,202** (~20 min) | **Recorded** | ~10× vs baseline; still dominated by field-index rebuilds |
 
 **Takeaway:** Lahman bootstrap is **not** “50k INSERTs.” Warehouse ingest is **~2 s**. The bind loop is ~58k identity operations with **O(n²)** costs until incremental specialist writes (test 6). Slice 4 (deferred entity flush) traded disk JSON rewrites for in-memory index rebuilds — **roughly a wash** while specialists still did full-table SQLite rewrites.
 
@@ -109,7 +109,7 @@ Record **real**, **user**, **sys** from `time -p` output. Stderr progress (post 
 
 | Run | Date | real (s) | user (s) | sys (s) | Notes |
 |-----|------|----------|----------|---------|-------|
-| Test 6 | | | | | Post incremental specialist writes; use **fresh** `--root` |
+| **Test 6** | 2026-06-17 | **1,202.19** (~**20 min**) | 1,142.45 | 42.09 | Post incremental (`c5e5bce`+). `--root /tmp/mycelium-baseball-benchmark --yes --no-default` (wiped + refreshed). 57,627 player binds; **23,777** entities committed. Incremental specialists delivered step change; **not demo-fast** — profile shows `build_field_indexes` still ~97% of bind-loop CPU. Morning slice: alias-only skip rebuild. |
 
 **Follow-up perf (optional, post–test 6):** skip `_rebuild_field_indexes()` on alias-only `add_bind_alias` (bind_index changes, `entity.bind_values` unchanged).
 

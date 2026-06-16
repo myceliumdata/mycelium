@@ -18,7 +18,7 @@
 
 | Metric | Value |
 |--------|-------|
-| Test 6 `time -p` real (s) | *Paul paste from refresh terminal* (~20 min observed overnight; authoritative `real` TBD) |
+| Test 6 `time -p` real (s) | **1,202.19** (user 1142.45, sys 42.09) — 23,777 entities, 57,627 binds |
 | Profile run date | 2026-06-17 overnight (`bin/overnight-lahman-profile`) |
 | Profile mode | **Warm re-bootstrap** on post–test 6 root (`entities_committed=29`; most binds already on disk) |
 | Handler wall (cProfile) | 4725 s (~79 min — cProfile overhead ~10×; ~8 min wall estimated) |
