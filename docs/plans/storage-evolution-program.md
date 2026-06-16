@@ -1,6 +1,6 @@
 # Storage evolution program — specialist → entity (June 2026)
 
-**Status:** **Active** — slices 1–2 queued in `prompts/cursor/next/`; slice 4 in `hold/`  
+**Status:** **Active** — slices 1–2 shipped; slice 4 in `prompts/cursor/next/`
 **Motivation:** Baseball-scale bootstrap (`LahmanSeedHandler`) exposed O(n) JSON rewrite cost on every save. Specialist category storage and per-grain entity stores both need threshold-gated migration to **`minisql_v1`** (SQLite) plus bootstrap-friendly batch persistence for entity grains.  
 **Prerequisite shipped:** [`SpecialistAgent` class](../architecture.md) — `prompts/cursor/done/2026-06-17-1800-specialist-agent-class/` (Approved 2026-06-17)  
 **Timing gates:** [`docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md`](../manual-checks/2026-06-17-storage-evolution-timing-gates.md)
@@ -25,7 +25,7 @@ Specialist evolution (slices 1–2) does **not** fix entity I/O. Entity evolutio
 | **1** | Cursor | `prompts/cursor/next/2026-06-17-1900-specialist-optimize-storage-check.md` | Threshold `optimize_storage()` on base `SpecialistAgent` (policy only; migration still no-op) |
 | **2** | Cursor | `prompts/cursor/next/2026-06-17-2100-specialist-minisql-v1-migrate.md` | Implement `migrate_to("minisql_v1")` + shared `src/storage/minisql_v1.py` |
 | **3** | Paul + Grok | — | **Timing test 3** after slice 2 approved; record baseline in manual-check doc |
-| **4** | Cursor | `prompts/cursor/hold/2026-06-17-2300-entity-registry-storage-evolution.md` | `EntityStore` abstraction, deferred bootstrap save, entity `minisql_v1` (reuse shared module) |
+| **4** | Cursor | `prompts/cursor/next/2026-06-17-2300-entity-registry-storage-evolution.md` | **Option C:** `EntityStore` + `EntityRegistry` API unchanged; deferred bootstrap save; entity `minisql_v1` |
 | **5** | Paul + Grok | — | **Timing test 5** after slice 4 approved; compare to test 3 |
 
 **Queue index:** `prompts/cursor/HOLD.md`
@@ -73,6 +73,7 @@ Bootstrap (LahmanSeedHandler, DefaultSeedHandler)
 - Removing JSON storage backends entirely (both JSON and SQLite coexist)
 - Full relational normalization of versioned field blobs (v1 stores JSON text per key; optimize I/O first)
 - Unifying graph `get_specialist_storage()` with `AGENT.storage` (review nit N1 — follow-up)
+- **`IdentityAgent` / identity specialist** — deferred until **full baseball example** ships; then evaluate refactor against live data/behavior baseline (Paul, June 2026)
 
 ---
 
