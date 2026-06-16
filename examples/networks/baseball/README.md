@@ -1,4 +1,6 @@
-# Baseball example (experimental)
+# Baseball example (work in progress)
+
+> **WIP (June 2026)** — Bootstrap and warehouse ingest are usable; **query orchestration, derivatives, and performance are not production-ready.** Lahman refresh can take a long time on the identity-bind pass alone; load optimization is ongoing ([`docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md`](../../../docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md)). Do not treat this example as a finished demo until [`docs/plans/baseball-example-program.md`](../../../docs/plans/baseball-example-program.md) checklist advances.
 
 Lahman second-network example. **Not** wired into `mycelium query` yet.
 

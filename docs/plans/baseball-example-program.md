@@ -1,6 +1,6 @@
 # Baseball example — program design (`baseball` network)
 
-**Status:** **Exploratory** — design in progress (June 2026)  
+**Status:** **Work in progress** (June 2026) — `LahmanSeedHandler` + warehouse shipped; query grain selection, derivatives, and bootstrap performance **not** done. Safe to refresh for development; not demo-ready on `origin`.  
 **Ur artifact:** [`mycelium_lahman_design_prompt.md`](mycelium_lahman_design_prompt.md) — original Grok design brief; preserved, not maintained as source of truth  
 **Conversations:** [`conversations/2026-06-14-data-factory-origin.md`](conversations/2026-06-14-data-factory-origin.md), [`conversations/2026-06-15-baseball-example-design.md`](conversations/2026-06-15-baseball-example-design.md)  
 **Roadmap:** [`TODO.md`](../../TODO.md) → `baseball` example
