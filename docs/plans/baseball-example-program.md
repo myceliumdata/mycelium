@@ -138,7 +138,9 @@ flowchart TD
 4. **Autonomous organization** — sees `Pitching.csv` (etc.) → decides **which specialist** owns it → specialist decides **warehouse layout**, materializations, derivations. Empirical — “interesting to see how that works.”
 5. **JSON specialist storage** — likely unwieldy at Lahman volume; **defer** (warehouse is primary; `storage.json` not the bulk store).
 
-**Cold-start open:** minimum human/scripted bootstrap vs full agent autonomy on day one; v0 may hybrid (scripted warehouse load + agent ontology growth).
+**Bootstrap (locked):** identity/canonical proposals **auto-commit** for v0 — measure quality before adding operator gates ([`conversations/2026-06-16-canonical-names-bootstrap-specialists.md`](conversations/2026-06-16-canonical-names-bootstrap-specialists.md)).
+
+**Cold-start open:** scripted warehouse load vs agent autonomy boundary beyond identity commit.
 
 ---
 
@@ -172,7 +174,7 @@ flowchart TD
 4. **Seed hosting** — self-host URL vs manual download
 5. **Framework changes** — multi-registry, multi-MVR, multi-alias index, ingest API
 6. **Example queries** — 3–5 concrete derived questions (ur prompt)
-7. **Cold start v0** — how much is scripted vs “sort yourself out” agent autonomy
+7. **Cold start v0** — scripted warehouse load vs agent autonomy (identity auto-commit **locked**)
 
 ---
 

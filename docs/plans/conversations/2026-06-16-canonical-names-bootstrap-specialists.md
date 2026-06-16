@@ -103,9 +103,12 @@ Same pattern for CRM: framework generic; CRM doesn’t need identity bootstrap b
 
 ---
 
+## Locked (Paul, June 2026)
+
+- **Bootstrap proposals:** **auto-commit** for v0 — test what agents produce before adding operator gates. Revisit manual intervention only if quality fails in practice.
+
 ## Open
 
-- Bootstrap: auto-commit proposals vs operator gate for v0
 - One identity specialist per grain vs one ingest specialist
 - How bootstrap is triggered (`network create --seed`, admin button, first query)
 
