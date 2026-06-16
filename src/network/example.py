@@ -12,6 +12,7 @@ from network.bootstrap.config import load_bootstrap_config
 from network.paths import NetworkPaths, framework_root
 from network.registry import load_network_registry, register_network
 from network.seed_fetch import fetch_example_seed, git_seed_summary, load_git_seed_source
+from network.bootstrap.progress import make_bootstrap_progress
 from network.seed_import import bootstrap_seed_at_paths, count_seed_rows
 
 _SKIP_NAMES = frozenset(
@@ -198,9 +199,10 @@ def refresh_example_network(
     live_root.mkdir(parents=True, exist_ok=True)
     copied = copy_example_network(name, live_root)
 
+    progress = make_bootstrap_progress()
     seed_fetch_summary: str | None = None
     try:
-        seed_fetch_summary = fetch_example_seed(live_root)
+        seed_fetch_summary = fetch_example_seed(live_root, progress=progress)
     except (ValueError, RuntimeError) as exc:
         raise ValueError(f"Seed fetch failed for {name}: {exc}") from exc
 
@@ -211,7 +213,7 @@ def refresh_example_network(
     except ValueError:
         pass
     else:
-        seed_bootstrap_count = bootstrap_seed_at_paths(paths)
+        seed_bootstrap_count = bootstrap_seed_at_paths(paths, progress=progress)
 
     if register:
         registry_name = resolve_registry_name(name, live_root)

@@ -18,6 +18,8 @@ Refresh copies `network.json`, `bootstrap_handlers/`, and `guide.md`, then:
 
 Default live root: `~/mycelium-networks/baseball` (registered in `networks.json`).
 
+Long Lahman bootstraps print **phase progress on stderr** (`Retrieving data…`, `Processing records (x/y)…`, `Cleaning up…`). Set `MYCELIUM_BOOTSTRAP_PROGRESS=0` to silence; progress defaults to on when stderr is a TTY.
+
 ## Bootstrap (pack handler)
 
 `network.json` declares the Lahman pack handler:

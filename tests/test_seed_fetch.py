@@ -99,8 +99,9 @@ def test_fetch_example_seed_reads_manifest(tmp_path: Path) -> None:
         source: GitSeedSource,
         *,
         subprocess_run: object | None = None,
+        progress: object | None = None,
     ) -> str:
-        return original(root, source, subprocess_run=fake_clone)
+        return original(root, source, subprocess_run=fake_clone, progress=progress)
 
     seed_fetch_mod.fetch_git_seed = patched_fetch  # type: ignore[assignment]
     try:

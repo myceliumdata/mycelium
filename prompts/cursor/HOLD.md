@@ -2,9 +2,13 @@
 
 **Program:** Storage evolution (specialist → entity) — [`docs/plans/storage-evolution-program.md`](../../docs/plans/storage-evolution-program.md)
 
-**Active (`next/`):** *(empty — storage evolution code slices complete)*
+**Active (`next/`):**
 
-**Last approved:** [`done/2026-06-17-2300-entity-registry-storage-evolution/`](done/2026-06-17-2300-entity-registry-storage-evolution/) — **Approved** (pending commit hash above)
+| Prompt | Scope |
+|--------|--------|
+| [`next/2026-06-17-2340-specialist-minisql-incremental-writes.md`](next/2026-06-17-2340-specialist-minisql-incremental-writes.md) | **Perf fix:** per-entity upsert on minisql_v1; stop full-table rewrite per bind |
+
+**Last approved:** [`done/2026-06-17-2355-bootstrap-progress-reporting/`](done/2026-06-17-2355-bootstrap-progress-reporting/) — **Approved** (commit pending below)
 
 **Manual gates (Paul + Grok):** [`docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md`](../../docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md)
 

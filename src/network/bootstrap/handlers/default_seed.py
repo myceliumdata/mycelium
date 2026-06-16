@@ -10,6 +10,7 @@ from network.bootstrap.context import BootstrapContext, BootstrapResult
 
 if TYPE_CHECKING:
     from agents.entity_registry import EntityRegistry
+    from network.bootstrap.progress import BootstrapProgress
 
 
 def load_seed_people(seed_path: Path) -> list[dict[str, Any]]:
@@ -50,6 +51,7 @@ def import_seed_rows(
     *,
     registry: EntityRegistry | None = None,
     grain: str | None = None,
+    progress: BootstrapProgress | None = None,
 ) -> int:
     """Import seed people into the target grain entity store.
 
@@ -66,7 +68,8 @@ def import_seed_rows(
 
         registry = get_entity_registry(grain=target_grain)
 
-    for row in people:
+    total = len(people)
+    for index, row in enumerate(people, start=1):
         name = str(row.get("name") or "").strip()
         employer = str(row.get("employer") or "").strip()
         if not employer:
@@ -80,7 +83,9 @@ def import_seed_rows(
             source="seed_bootstrap",
             validation_state="validated",
         )
-    return len(people)
+        if progress is not None:
+            progress.processing(index, total)
+    return total
 
 
 class DefaultSeedHandler:
@@ -95,7 +100,7 @@ class DefaultSeedHandler:
                 handler_id="default_seed",
             )
         grain = resolve_seed_grain()
-        count = import_seed_rows(seed_path, grain=grain)
+        count = import_seed_rows(seed_path, grain=grain, progress=ctx.progress)
         return BootstrapResult(
             entities_committed=count,
             sources_processed=[str(seed_path.name)],

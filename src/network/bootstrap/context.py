@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from network.paths import NetworkPaths
+
+if TYPE_CHECKING:
+    from network.bootstrap.progress import BootstrapProgress
 
 
 @dataclass(frozen=True)
@@ -13,6 +17,7 @@ class BootstrapContext:
 
     paths: NetworkPaths
     guide_text: str | None
+    progress: BootstrapProgress | None = None
 
 
 @dataclass

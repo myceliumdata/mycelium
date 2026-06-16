@@ -11,6 +11,7 @@ from network.paths import NetworkPaths
 
 if TYPE_CHECKING:
     from agents.entity_registry import EntityRegistry
+    from network.bootstrap.progress import BootstrapProgress
 
 
 def _load_seed_people(seed_path: Path) -> list[dict]:
@@ -38,6 +39,10 @@ def count_seed_rows(seed_path: Path) -> int:
     return len(load_seed_people(seed_path))
 
 
-def bootstrap_seed_at_paths(paths: NetworkPaths) -> int:
+def bootstrap_seed_at_paths(
+    paths: NetworkPaths,
+    *,
+    progress: BootstrapProgress | None = None,
+) -> int:
     """Apply network paths, reset registry, run formal bootstrap when seed present."""
-    return run_network_bootstrap(paths).entities_committed
+    return run_network_bootstrap(paths, progress=progress).entities_committed

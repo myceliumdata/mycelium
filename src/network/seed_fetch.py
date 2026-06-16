@@ -58,6 +58,7 @@ def fetch_git_seed(
     source: GitSeedSource,
     *,
     subprocess_run: Callable[..., subprocess.CompletedProcess[str]] | None = None,
+    progress: object | None = None,
 ) -> str:
     """Shallow-clone ``source`` and copy ``source_path`` into ``network_root/dest``.
 
@@ -70,6 +71,9 @@ def fetch_git_seed(
     dest_dir.parent.mkdir(parents=True, exist_ok=True)
 
     runner = subprocess_run if subprocess_run is not None else subprocess.run
+    summary = git_seed_summary(source)
+    if progress is not None:
+        progress.retrieving(summary)
     with tempfile.TemporaryDirectory(prefix="mycelium-seed-") as tmp:
         clone_root = Path(tmp) / "clone"
         completed = runner(
@@ -98,13 +102,19 @@ def fetch_git_seed(
                 f"Seed path missing in {git_seed_summary(source)}: {source.source_path}",
             )
         shutil.copytree(src, dest_dir)
-    return git_seed_summary(source)
+    if progress is not None:
+        progress.complete_retrieving()
+    return summary
 
 
-def fetch_example_seed(network_root: Path) -> str | None:
+def fetch_example_seed(
+    network_root: Path,
+    *,
+    progress: object | None = None,
+) -> str | None:
     """Fetch remote seed when ``seed.source.json`` exists under ``network_root``."""
     manifest_path = network_root / "seed.source.json"
     source = load_git_seed_source(manifest_path)
     if source is None:
         return None
-    return fetch_git_seed(network_root, source)
+    return fetch_git_seed(network_root, source, progress=progress)

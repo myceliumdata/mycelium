@@ -433,7 +433,7 @@ def test_refresh_baseball_fetches_seed_and_bootstraps(
     _write_minimal_lahman_fixture(fixture_csv)
     target = tmp_path / "baseball-live"
 
-    def fake_fetch(network_root: Path) -> str:
+    def fake_fetch(network_root: Path, *, progress: object | None = None) -> str:
         dest = network_root / "seed" / "lahman_1871-2025_csv"
         if dest.exists():
             shutil.rmtree(dest)

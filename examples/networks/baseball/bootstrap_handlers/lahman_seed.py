@@ -36,7 +36,11 @@ class LahmanSeedHandler:
             )
 
         warehouse_path = ctx.paths.root / "warehouse" / "lahman.sqlite"
+        progress = ctx.progress
+        if progress is not None:
+            progress.retrieving("building warehouse")
         ingest_counts = ingest_warehouse(csv_dir, warehouse_path)
+        player_rows = distinct_player_team_rows(warehouse_path)
 
         team_registry = get_entity_registry(grain="team")
         player_registry = get_entity_registry(grain="player")
@@ -56,9 +60,10 @@ class LahmanSeedHandler:
                 continue
             teams_committed += 1
 
-        for player_id, display_name, team_label in distinct_player_team_rows(
-            warehouse_path,
-        ):
+        total_players = len(player_rows)
+        for index, (player_id, display_name, team_label) in enumerate(player_rows, start=1):
+            if progress is not None:
+                progress.processing(index, total_players, detail="player binds")
             bind_values = {"name": display_name, "team": team_label}
             mapped_id = player_ids.get(player_id)
             if mapped_id is not None:
