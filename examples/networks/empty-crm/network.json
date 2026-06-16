@@ -2,6 +2,9 @@
   "name": "empty-crm",
   "display_name": "CRM (empty seed)",
   "description": "CRM MVR rules with no bootstrap seed — entities grow from query-time binds only.",
+  "bootstrap": {
+    "handler": "default_seed"
+  },
   "mvr": {
     "bind_fields": ["name", "employer"],
     "description": "CRM people: display name plus current employer before bind and research."

@@ -21,11 +21,12 @@ _SKIP_NAMES = frozenset(
         "deliveries.json",
         "agent_registry.json",
         "agents",
-        "specialists",
+        "specialists",  # generated runtime modules — not copied from examples
         "checkpoints.sqlite",
         "mycelium.db",
     },
 )
+# ``bootstrap_handlers/`` is intentionally not skipped — network-pack handlers copy with refresh.
 _RUNTIME_SUFFIXES = (".db", ".sqlite")
 
 

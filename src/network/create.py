@@ -171,6 +171,9 @@ def _write_network_manifest(
         "created_at": now,
         "creation_prompt": creation_prompt,
         "ontology_model": ontology_model,
+        "bootstrap": {
+            "handler": "default_seed",
+        },
     }
     paths.root.mkdir(parents=True, exist_ok=True)
     (paths.root / "network.json").write_text(
@@ -275,8 +278,6 @@ def create_network(
     _write_categories(paths, ontology.categories)
     _write_agent_registry(paths, ontology.agents)
     _render_specialists(ontology, paths)
-    if seed_file is not None:
-        entities_bootstrapped = bootstrap_seed_at_paths(paths)
     _write_network_manifest(
         paths,
         name=clean_name,
@@ -284,6 +285,8 @@ def create_network(
         creation_prompt=prompt,
         ontology_model=ontology.model_used,
     )
+    if seed_file is not None:
+        entities_bootstrapped = bootstrap_seed_at_paths(paths)
     _write_guide(
         paths,
         title=display_name or clean_name,

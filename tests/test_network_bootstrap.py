@@ -12,11 +12,23 @@ from agents.entity_registry import get_entity_registry, reset_entity_registry
 from network.bootstrap import run_network_bootstrap
 from network.bootstrap.handlers.default_seed import import_seed_rows, load_seed_people
 from network.category_mvr_bootstrap import ensure_categories_for_mvr_bind
+from network.example import copy_example_network
 from network.paths import NetworkPaths, apply_network_paths
 from network.seed_import import bootstrap_seed_at_paths, count_seed_rows
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CRM_SEED = REPO_ROOT / "examples" / "networks" / "crm" / "seed.json"
+CRM_MANIFEST = REPO_ROOT / "examples" / "networks" / "crm" / "network.json"
+
+
+def _write_manifest(root: Path, bootstrap: dict | None, *, base: Path | None = None) -> None:
+    src = base or CRM_MANIFEST
+    manifest = json.loads(src.read_text(encoding="utf-8"))
+    if bootstrap is None:
+        manifest.pop("bootstrap", None)
+    else:
+        manifest["bootstrap"] = bootstrap
+    (root / "network.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 
 def _prepare_root(tmp_path: Path, *, seed_src: Path | None = None) -> NetworkPaths:
@@ -24,10 +36,7 @@ def _prepare_root(tmp_path: Path, *, seed_src: Path | None = None) -> NetworkPat
     root.mkdir(parents=True, exist_ok=True)
     if seed_src is not None:
         shutil.copy(seed_src, root / "seed.json")
-    shutil.copy(
-        REPO_ROOT / "examples" / "networks" / "crm" / "network.json",
-        root / "network.json",
-    )
+    shutil.copy(CRM_MANIFEST, root / "network.json")
     return NetworkPaths.from_root(root)
 
 
@@ -50,6 +59,22 @@ def test_run_network_bootstrap_missing_seed(tmp_path: Path) -> None:
     result = run_network_bootstrap(paths)
     assert result.entities_committed == 0
     assert result.sources_processed == []
+
+
+@pytest.mark.smoke
+def test_run_network_bootstrap_missing_bootstrap_block(tmp_path: Path) -> None:
+    paths = _prepare_root(tmp_path, seed_src=CRM_SEED)
+    _write_manifest(paths.root, None)
+    with pytest.raises(ValueError, match="missing required 'bootstrap'"):
+        run_network_bootstrap(paths)
+
+
+@pytest.mark.smoke
+def test_run_network_bootstrap_unknown_builtin_handler(tmp_path: Path) -> None:
+    paths = _prepare_root(tmp_path, seed_src=CRM_SEED)
+    _write_manifest(paths.root, {"handler": "lahman_seed"})
+    with pytest.raises(ValueError, match="Unknown bootstrap handler"):
+        run_network_bootstrap(paths)
 
 
 @pytest.mark.smoke
@@ -88,67 +113,105 @@ def test_count_seed_rows(tmp_path: Path) -> None:
 
 
 @pytest.mark.smoke
-def test_bootstrap_override_hook(tmp_path: Path) -> None:
+def test_pack_handler_from_network_root(tmp_path: Path) -> None:
     paths = _prepare_root(tmp_path, seed_src=CRM_SEED)
-    specialists = paths.specialists_dir
-    specialists.mkdir(parents=True, exist_ok=True)
-    override = specialists / "bootstrap_specialist.py"
-    override.write_text(
-        """
+    handlers_dir = paths.root / "bootstrap_handlers"
+    handlers_dir.mkdir(parents=True, exist_ok=True)
+    (handlers_dir / "pack_handler.py").write_text(
+        '''
 from network.bootstrap.context import BootstrapContext, BootstrapResult
 
-def run_bootstrap(ctx: BootstrapContext) -> BootstrapResult:
-    return BootstrapResult(
-        entities_committed=42,
-        sources_processed=["override"],
-        handler_id="test_override",
-    )
-""",
+class PackHandler:
+    def run(self, ctx: BootstrapContext) -> BootstrapResult:
+        return BootstrapResult(
+            entities_committed=42,
+            sources_processed=["pack"],
+            handler_id="pack_stub",
+        )
+''',
         encoding="utf-8",
     )
+    _write_manifest(
+        paths.root,
+        {
+            "module": "bootstrap_handlers.pack_handler",
+            "handler": "PackHandler",
+        },
+    )
     result = run_network_bootstrap(paths)
-    assert result.handler_id == "test_override"
+    assert result.handler_id == "pack_stub"
     assert result.entities_committed == 42
-    assert result.sources_processed == ["override"]
-    registry = get_entity_registry()
-    assert len(registry.list_entities()) == 0
+    assert result.sources_processed == ["pack"]
+    assert len(get_entity_registry().list_entities()) == 0
 
 
 @pytest.mark.smoke
-def test_bootstrap_override_import_failure(tmp_path: Path) -> None:
+def test_pack_handler_import_failure(tmp_path: Path) -> None:
     paths = _prepare_root(tmp_path, seed_src=CRM_SEED)
-    specialists = paths.specialists_dir
-    specialists.mkdir(parents=True, exist_ok=True)
-    override = specialists / "bootstrap_specialist.py"
-    override.write_text("def run_bootstrap(  # syntax error\n", encoding="utf-8")
-    with pytest.raises(ValueError, match=r"Cannot import bootstrap override at"):
+    _write_manifest(
+        paths.root,
+        {
+            "module": "bootstrap_handlers.missing_module",
+            "handler": "MissingHandler",
+        },
+    )
+    with pytest.raises(ValueError, match="Cannot import bootstrap pack module"):
         run_network_bootstrap(paths)
 
 
 @pytest.mark.smoke
-def test_run_network_bootstrap_loads_guide_text(tmp_path: Path) -> None:
+def test_pack_handler_receives_guide_text(tmp_path: Path) -> None:
     paths = _prepare_root(tmp_path, seed_src=CRM_SEED)
     shutil.copy(
         REPO_ROOT / "examples" / "networks" / "crm" / "guide.md",
         paths.root / "guide.md",
     )
-    specialists = paths.specialists_dir
-    specialists.mkdir(parents=True, exist_ok=True)
-    override = specialists / "bootstrap_specialist.py"
-    override.write_text(
-        """
+    handlers_dir = paths.root / "bootstrap_handlers"
+    handlers_dir.mkdir(parents=True, exist_ok=True)
+    (handlers_dir / "guide_probe.py").write_text(
+        '''
 from network.bootstrap.context import BootstrapContext, BootstrapResult
 
-def run_bootstrap(ctx: BootstrapContext) -> BootstrapResult:
-    assert ctx.guide_text is not None
-    assert "investor" in ctx.guide_text.lower()
-    return BootstrapResult(
-        entities_committed=0,
-        sources_processed=[],
-        handler_id="guide_probe",
-    )
-""",
+class GuideProbeHandler:
+    def run(self, ctx: BootstrapContext) -> BootstrapResult:
+        assert ctx.guide_text is not None
+        assert "investor" in ctx.guide_text.lower()
+        return BootstrapResult(
+            entities_committed=0,
+            sources_processed=[],
+            handler_id="guide_probe",
+        )
+''',
         encoding="utf-8",
+    )
+    _write_manifest(
+        paths.root,
+        {
+            "module": "bootstrap_handlers.guide_probe",
+            "handler": "GuideProbeHandler",
+        },
     )
     result = run_network_bootstrap(paths)
     assert result.handler_id == "guide_probe"
+
+
+@pytest.mark.smoke
+def test_copy_example_network_includes_bootstrap_handlers(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    examples = tmp_path / "examples" / "networks"
+    example = examples / "pack-demo"
+    example.mkdir(parents=True)
+    (example / "network.json").write_text(
+        json.dumps({"name": "pack-demo", "bootstrap": {"handler": "default_seed"}}),
+        encoding="utf-8",
+    )
+    handlers = example / "bootstrap_handlers"
+    handlers.mkdir()
+    (handlers / "handler.py").write_text("class Stub: pass\n", encoding="utf-8")
+    monkeypatch.setattr("network.example.examples_root", lambda: examples)
+    target = tmp_path / "live"
+    copied = copy_example_network("pack-demo", target)
+    assert "bootstrap_handlers" in copied
+    assert (target / "bootstrap_handlers" / "handler.py").is_file()

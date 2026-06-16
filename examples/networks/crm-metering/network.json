@@ -2,6 +2,9 @@
   "name": "crm-metering",
   "display_name": "CRM metering demo",
   "description": "CRM example with metering.enabled for hands-on quote_required negotiation demos.",
+  "bootstrap": {
+    "handler": "default_seed"
+  },
   "mvr": {
     "bind_fields": ["name", "employer"],
     "description": "CRM people: display name plus current employer before bind and research."

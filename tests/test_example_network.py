@@ -377,7 +377,13 @@ def test_refresh_non_crm_example_auto_defaults(
     example.mkdir(parents=True)
     shutil.copy(EXAMPLE_CRM / "seed.json", example / "seed.json")
     (example / "network.json").write_text(
-        json.dumps({"name": "fleet", "display_name": "Fleet example"}),
+        json.dumps(
+            {
+                "name": "fleet",
+                "display_name": "Fleet example",
+                "bootstrap": {"handler": "default_seed"},
+            },
+        ),
         encoding="utf-8",
     )
     monkeypatch.setenv("MYCELIUM_FRAMEWORK_ROOT", str(framework))

@@ -2,6 +2,9 @@
   "name": "crm",
   "display_name": "CRM example",
   "description": "Public-safe subset of the prototype CRM seed for quick start and demos.",
+  "bootstrap": {
+    "handler": "default_seed"
+  },
   "mvr": {
     "bind_fields": ["name", "employer"],
     "description": "CRM people: display name plus current employer before bind and research."

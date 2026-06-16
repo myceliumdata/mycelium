@@ -2,6 +2,9 @@
   "name": "baseball",
   "display_name": "Baseball example (Lahman)",
   "description": "Experimental second example — Lahman warehouse + bootstrap identity discovery.",
+  "bootstrap": {
+    "handler": "default_seed"
+  },
   "experiment": {
     "bootstrap": "v0",
     "registries": ["team", "player"]
