@@ -43,6 +43,12 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ---
 
+## Examples & demos (open)
+
+- [ ] **Example network READMEs — standard + gaps** — Coverage today is **uneven**: [`crm/README.md`](examples/networks/crm/README.md) is strong (quick start, admin, growth, layout); [`crm-metering/README.md`](examples/networks/crm-metering/README.md) + [`queries/README.md`](examples/networks/crm-metering/queries/README.md) are adequate; [`empty-crm/README.md`](examples/networks/empty-crm/README.md) and [`baseball/README.md`](examples/networks/baseball/README.md) are thinner (bootstrap-only for baseball; no `examples/networks/README.md` index). **Do:** (1) `examples/networks/README.md` — when to use each network; (2) README checklist (purpose, refresh, step-1/2 queries, MCP fixtures, admin, expected outcomes, links to program doc); (3) bring **empty-crm** + **baseball** up to bar as features land; (4) any new demo (derivative token-efficiency USP) ships with a **solid README** from day one.
+
+---
+
 ## Admin UI (open)
 
 - [ ] **Admin auth** — localhost-only today; design before remote admin.
@@ -97,4 +103,4 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ---
 
-Last updated: 2026-06-17 (derivative token-efficiency USP; test 6 + profiling on deck)
+Last updated: 2026-06-17 (example README standard; derivative USP; test 6 + profiling)
