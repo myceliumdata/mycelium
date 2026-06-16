@@ -28,7 +28,7 @@
 ## Registry grains (two MVRs → two registries)
 
 1. **Player** — biographical / career identity (`People` and attached stat tables)
-2. **Team-season** — franchise in a year (`Teams`); roster = players via fact-table joins, not a column on `Teams`
+2. **Team** — organization/franchise identity (not “team in one season” as a separate grain — Lahman `Teams` rows are per-year; **year** is query scope). Roster = players via fact-table joins.
 
 Stat tables (`Batting`, `Pitching`, `Fielding`, `Appearances`, …) are **parallel** player-attached facts — none is privileged over the others.
 
@@ -40,7 +40,7 @@ Stat tables (`Batting`, `Pitching`, `Fielding`, `Appearances`, …) are **parall
 - **Draft MVR:** player name + team (fields and normalization TBD).
 - **Team is a disambiguator, not a scope.** MVR identifies *which person*. If Aaron played for the Braves and the Red Sox, **`Aaron + Braves`** and **`Aaron + Red Sox`** must resolve to the **same** player row — any team he played for is valid for bind lookup when distinguishing homonyms.
 - **Twist:** bind index cannot be a single `name|team` compound key if multiple teams per player are all valid aliases for the same uuid. Index design TBD (e.g. index each (name, team) pair seen in Lahman → same entity id).
-- **Team-season / stint** scope is a separate question (query step 2 / derivation), not part of player identity.
+- **Season / stint** scope is separate (query step 2 / derivation), not part of player or team identity.
 
 ---
 
