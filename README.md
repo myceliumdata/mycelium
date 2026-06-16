@@ -1,6 +1,6 @@
 # Mycelium
 
-**Download the framework** (this repo), then **run named networks** at paths you choose. Each **network** is an isolated data namespace (`entities.json`, optional bootstrap `seed.json`, ontology, specialist storage, checkpoints). The **supervisor** and specialist agents operate inside one network at a time.
+**Download the framework** (this repo), then **run named networks** at paths you choose. Each **network** is an isolated data namespace (`network.json`, `entities.json`, optional bootstrap `seed.json`, ontology, specialist storage, checkpoints). Bootstrap on refresh/create is driven by **`network.json` → `bootstrap`** (`module` + handler class name). The **supervisor** and specialist agents operate inside one network at a time.
 
 **New contributors:** [`docs/onboarding.md`](docs/onboarding.md) — terminology, read order, and repo layout.
 
@@ -49,7 +49,7 @@ uv run mycelium network create wheat_farm \
   --default
 ```
 
-`network create` runs an LLM **skeleton ontology** (categories + specialists under `<root>/specialists/`), registers the name, and prints an MCP snippet. With `--seed`, it copies the file and imports people into `entities.json`; without `--seed`, the registry stays empty until the first query bind (same as `empty-crm`). `./bin/refresh-example-network` auto-imports when the copied example ships `seed.json`. **Ontology** is fixed at create; **classification** still grows `attribute_map` lazily when clients request unknown attributes. See [docs/plans/networks-phase5.md](docs/plans/networks-phase5.md).
+`network create` runs an LLM **skeleton ontology** (categories + specialists under `<root>/specialists/`), registers the name, and prints an MCP snippet. Created networks include a **`bootstrap`** block in `network.json` (CRM uses framework `DefaultSeedHandler`). With `--seed`, refresh/create copies `seed.json` and the declared handler imports people into `entities.json`; without `--seed`, the handler runs but commits 0 rows until the first query bind (same as `empty-crm`). Custom networks can ship a **pack handler** under `<root>/bootstrap_handlers/` and point `bootstrap.module` at it (same manifest pattern planned for specialists). See [docs/architecture.md](docs/architecture.md) § Seed bootstrap and [docs/plans/networks-phase5.md](docs/plans/networks-phase5.md).
 
 ### CLI
 
@@ -230,7 +230,7 @@ Long-lived **HTTP on localhost** (default `http://127.0.0.1:8741`) — one proce
 | `GET /capabilities` | Guide, ontology, policy (same payload as MCP `describe_network`) |
 | `POST /query` | Target-protocol query (`EntityQuery` JSON); returns `QueryResponse.public_dict()` |
 
-After `./bin/refresh-example-network`, the daemon picks up registry changes on the next `GET /status` (entity registry is reset per request). When `seed.json` is present, refresh imports it into `entities.json` at bootstrap only — queries read the registry, not seed. **Restart the daemon after a code deploy** or if specialist module counts look stale.
+After `./bin/refresh-example-network`, the daemon picks up registry changes on the next `GET /status` (entity registry is reset per request). Refresh runs `run_network_bootstrap` using the handler declared in `network.json`; when `seed.json` is present and the handler is `DefaultSeedHandler`, rows land in `entities.json` at bootstrap only — queries read the registry, not seed. **Restart the daemon after a code deploy** or if specialist module counts look stale.
 
 Compare daemon output to CLI:
 

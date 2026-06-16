@@ -2,7 +2,7 @@
 
 ## Identity (canonical)
 
-Queries resolve people from `<network_root>/entities.json` via the entity registry. Optional `seed.json` is imported at bootstrap only (`refresh-example-network`, `network create` with `--seed`). The legacy `mycelium seed` CLI subcommand was removed in the seed-elimination phase.
+Queries resolve people from `<network_root>/entities.json` via the entity registry. Optional `seed.json` is imported at bootstrap only (`refresh-example-network`, `network create` with `--seed`) by the handler declared in `network.json` → `bootstrap` (CRM: `DefaultSeedHandler`). The legacy `mycelium seed` CLI subcommand was removed in the seed-elimination phase.
 
 ## LangGraph checkpoints
 

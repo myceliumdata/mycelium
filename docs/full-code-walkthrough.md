@@ -71,7 +71,7 @@ Package: `mycelium_mcp` (renamed from `mcp` to avoid SDK collision).
 ## 6. Entity registry + bootstrap import
 
 - **`entities.json`** — runtime store (`EntityRegistry`); rows use `bind_values` keyed by `mvr.bind_fields` and generic `bind_index`. Cache + protocol + indexes (framework-maintained for now).
-- **`network/bootstrap/`** — formal bootstrap phase (`run_network_bootstrap`): paths, MVR category merge, registry reset, then the handler declared in **`network.json` → `bootstrap`** (`module` + class `handler`). Framework modules (`network.*`) import from the installed package; pack modules load from `<network_root>/bootstrap_handlers/`. Same manifest-driven pattern planned for specialists. `network/seed_import.py` re-exports stable entry points for tests.
+- **`network/bootstrap/`** — formal bootstrap phase (`run_network_bootstrap`): paths, MVR category merge, registry reset, `guide.md` in `BootstrapContext`, then handler from **`network.json` → `bootstrap`** (`module` + class `handler`). CRM: `network.bootstrap.handlers.default_seed.DefaultSeedHandler` reads `seed.json`. Pack handlers: modules under `<network_root>/bootstrap_handlers/` (see `handlers/resolve.py`). Same manifest-driven pattern planned for specialists. `network/seed_import.py` re-exports stable entry points for tests.
 - Query-time resolution: `target_resolve` step-1 uses per-field indexes and `lookup` AND matching.
 
 Committed examples: `examples/networks/crm/` (bootstrap seed), `examples/networks/empty-crm/` (no seed, growth from queries).

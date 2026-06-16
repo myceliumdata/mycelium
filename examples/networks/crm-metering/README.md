@@ -1,12 +1,14 @@
 # CRM metering demo network
 
-Committed example with **`metering.enabled: true`** and **`payment.enabled: false`**. Same `seed.json` as `crm`; negotiation only (no settlement).
+Committed example with **`metering.enabled: true`** and **`payment.enabled: false`**. Same `seed.json` and bootstrap handler as `crm` (`network.json` → `bootstrap`: `DefaultSeedHandler`); negotiation only (no settlement).
 
 ## Bootstrap
 
 ```bash
 ./bin/refresh-example-network crm-metering --yes
 ```
+
+Refresh copies `network.json`, `seed.json`, and `guide.md`, then runs `DefaultSeedHandler` to import 15 seed people into `entities.json`.
 
 Default live root: `~/mycelium-networks/crm-metering` (registered as `crm-metering`).
 

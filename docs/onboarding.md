@@ -17,7 +17,8 @@
 | Term | Meaning |
 |------|---------|
 | **`entities.json`** | Canonical identity store at runtime (UUID, `bind_values` keyed by `mvr.bind_fields`, generic `bind_index`, validation state). MVR bind values are cached here; canonical history is in specialist `versions[]` (Program 2). |
-| **`seed.json`** | Optional **bootstrap fixture** — imported at `refresh-example-network` or `network create --seed` only. Not read on query. |
+| **`seed.json`** | Optional **bootstrap fixture** — read by the declared bootstrap handler (CRM: `DefaultSeedHandler`) at `refresh-example-network` or `network create --seed` only. Not read on query. |
+| **`network.json` → `bootstrap`** | Required bootstrap handler declaration: **`module`** (Python module path) + **`handler`** (class name). Framework modules (`network.*`) ship with the repo; pack modules live under `<network_root>/bootstrap_handlers/`. See [architecture.md](architecture.md) § Seed bootstrap. |
 | **`IdentityRecord`** | Graph/MCP model for a matched registry row (renamed from `SeedRecord`, June 2026). |
 | **`network create`** | Scaffold ontology + register name. `--seed` is optional; empty registry + first-query bind is valid (`empty-crm`). |
 | **Slice plans** | Point-in-time specs in `docs/plans/`. May describe removed code — check **Active backlogs** in [`plans/README.md`](plans/README.md). |
@@ -85,9 +86,10 @@ JSON includes `resolve: { id, lookup }` mirroring the inspect input, plus `entit
 
 - Treating `docs/plans/entity-seed-elimination-*.md` as current runtime behavior.
 - Assuming `mycelium.db` holds identity (it does not; optional empty bootstrap file only).
+- Omitting `bootstrap` in `network.json` — bootstrap fails on refresh/create; re-copy from a committed example or add the block (CRM: `network.bootstrap.handlers.default_seed` + `DefaultSeedHandler`).
 - Expecting a public ingest API (removed June 2026; internal data addition is future design).
 - Editing website copy in this repo (use **mycelium-website**).
 
 ---
 
-*Last updated: June 2026 (Program 3 protocol cleanup; status `resolve` JSON).*
+*Last updated: June 2026 (bootstrap handler manifest; Program 3 protocol cleanup).*

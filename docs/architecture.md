@@ -61,6 +61,10 @@ Data addition via the public API was removed in the June 2026 refactor (tasks 10
 
 - **Optional fixture:** `<network_root>/seed.json` — static `people` array for bootstrap only (not read at query time). Committed CRM example: `examples/networks/crm/seed.json`. Import via `./bin/refresh-example-network crm` or `mycelium network create` when the file is present.
 - **Bootstrap phase:** `network.bootstrap.run_network_bootstrap(paths)` orchestrates create/refresh bootstrap — applies paths, MVR category merge, registry reset, loads `guide.md` into `BootstrapContext`, then invokes the handler declared in **`network.json` → `bootstrap`**. Every network declares **`module`** (Python module path) and **`handler`** (class name). Framework handlers use modules under `network.*` (imported from the installed package); network-pack handlers use modules under `<network_root>/bootstrap_handlers/` (loaded via `sys.path`). The same manifest-driven pattern is planned for specialists. CRM’s `DefaultSeedHandler` imports `seed.json` via `ensure_bound_entity` (`source=seed_bootstrap`, `validation_state=validated`). `bootstrap_seed_at_paths()` is a thin wrapper returning `entities_committed`. Bootstrap bypasses the two-step lookup/create protocol by design; baseball cold start will add pack handlers under `bootstrap_handlers/` rather than forking refresh.
+- **Bootstrap manifest (required):**
+  - **Framework handler (CRM):** `"module": "network.bootstrap.handlers.default_seed"`, `"handler": "DefaultSeedHandler"`.
+  - **Network-pack handler (custom / baseball):** `"module": "bootstrap_handlers.<module>"`, `"handler": "<ClassName>"` — class must implement `run(self, ctx: BootstrapContext) -> BootstrapResult`. Pack modules live under `<network_root>/bootstrap_handlers/` and are copied from committed examples on refresh when present.
+  - Handler-only manifests (e.g. `"handler": "default_seed"` without `module`) are rejected.
 - **Stable test imports:** `network.seed_import` re-exports `import_seed_file`, `count_seed_rows`, and `bootstrap_seed_at_paths` for tests and legacy callers.
 - **Transform (maintainers):** `examples/networks/crm/prepare_seed.py` builds example `seed.json` from a CRM source file (name + employer only; no legacy `id` in the file). Full prototype data: git tag `prototype`.
 - **Runtime store:** `entities.json` holds canonical entities (uuid4 ids, `bind_values` keyed by `mvr.bind_fields`, generic `bind_index`, per-field indexes). `ensure_bound_entity` assigns stable ids on import; step-1 resolve uses `lookup` AND indexes. Seed `people[]` rows import into `bind_values` on refresh or `network create`.
@@ -199,8 +203,10 @@ Users download the **framework** (this repo: `src/`, `bin/`, docs, tests) and ru
 
 ```
 <network_root>/
-  network.json
-  seed.json             # optional bootstrap fixture (refresh/create import only)
+  network.json          # manifest; bootstrap.module + bootstrap.handler (class) required
+  guide.md              # network policy prose (bootstrap context + MCP describe_network)
+  seed.json             # optional bootstrap fixture (DefaultSeedHandler reads at refresh/create)
+  bootstrap_handlers/   # optional network-pack bootstrap modules (copied from examples)
   entities.json         # runtime canonical registry
   categories.json       # skeleton ontology at create; runtime (see docs/examples/sample-categories.json)
   agent_registry.json
