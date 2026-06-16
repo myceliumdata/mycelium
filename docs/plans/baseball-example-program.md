@@ -116,14 +116,60 @@ Not a full application — iterative starter: design, schemas, skeleton ingest/q
 
 ---
 
+## Cold start (draft — Paul, June 2026)
+
+Bootstrap is **not** CRM-shaped (tiny `people[]` seed → research fills gaps). Sequence:
+
+```mermaid
+flowchart TD
+  A[Define 2 MVR profiles + registries] --> B[Ontology skeleton like CRM network create]
+  B --> C[Point orchestrator at data source URL/zip]
+  C --> D["Sort yourself out" — ingest, classify tables, stand up specialists]
+  D --> E[Registries populated uuid4 + bind indexes]
+  E --> F[Queries resolve → warehouse read / derive]
+```
+
+1. **Two MVRs** — player + team (`network.json`; framework extension TBD).
+2. **Ontology** — `network create` / creation prompt → `categories.json` + specialist skeleton (same *mechanism* as CRM, different prompt).
+3. **Data source handoff** — orchestrator told where Lahman lives (URL, zip path, glossary docs); **ingestion** is agent-driven, not static `seed.json` import alone.
+4. **Autonomous organization** — sees `Pitching.csv` (etc.) → decides **which specialist** owns it → specialist decides **warehouse layout**, materializations, derivations. Empirical — “interesting to see how that works.”
+5. **JSON specialist storage** — likely unwieldy at Lahman volume; **defer** (warehouse is primary; `storage.json` not the bulk store).
+
+**Cold-start open:** minimum human/scripted bootstrap vs full agent autonomy on day one; v0 may hybrid (scripted warehouse load + agent ontology growth).
+
+---
+
+## Problems to resolve (checklist)
+
+| # | Problem | Notes |
+|---|---------|--------|
+| 1 | **Multi-MVR + multi-registry** | One `baseball` network, two bind policies, two entity stores (framework design) |
+| 2 | **Cold start / ingest handoff** | Protocol for “here is the data source; organize it” |
+| 3 | **Table → specialist routing** | Taxonomy / supervisor: pitching vs batting vs bio vs teams |
+| 4 | **Specialist autonomy** | What pitching specialist *does* with rows (schema, indexes, derived artifacts) |
+| 5 | **Registry population** | When/how People/Teams → uuid4 rows + multi-alias `(name, team)` index |
+| 6 | **Team MVR + franchise mapping** | Lahman `teamID` / moves; LLM aliases (`Yanks`) |
+| 7 | **Grain + scope in queries** | Player vs team identity; year/season as scope not MVR |
+| 8 | **Query protocol fit** | Two-step + `requested_attributes` vs warehouse SQL/derive ops |
+| 9 | **Derivation + provenance** | Recipe storage, lineage, agent retention (deferred) |
+| 10 | **LLM alias resolution** | Shorthand bind fields; local LLM assumption |
+| 11 | **Seed hosting** | ~40MB zip; no Box bot fetch |
+| 12 | **Lahman schema pass** | Unzip; complete ER / table roles in this doc |
+| 13 | **Re-import / annual refresh** | Lahman updates vs uuid stability |
+| 14 | **Cross-grain queries** | e.g. team roster + player career — multi-specialist merge |
+| 15 | **Bulk storage** | Warehouse yes; JSON `storage.json` volume — separate track |
+
+---
+
 ## Open questions
 
-1. **Team MVR fields** — what do humans/agents actually say? (“Yankees”, “New York Yankees”, `NYA`?) — partly handled by LLM alias step above
-2. **Franchise vs Lahman `teamID`** — relocations/rebrands; map to one team uuid?
-3. **Warehouse layout** — which tables v0; ingest from zip
-4. **Seed hosting** — self-host URL, manual download doc, or thin git pointer
-5. **Framework changes** — multi-registry / multi-MVR in one `network.json`; multi-alias bind index
-6. **Example queries** — 3–5 concrete derived questions (ur prompt deliverable)
+1. **Team MVR fields** — partly LLM alias path; franchise identity still TBD
+2. **Franchise vs Lahman `teamID`** — relocations/rebrands; one team uuid?
+3. **Warehouse layout** — v0 tables; agent-extensible schema
+4. **Seed hosting** — self-host URL vs manual download
+5. **Framework changes** — multi-registry, multi-MVR, multi-alias index, ingest API
+6. **Example queries** — 3–5 concrete derived questions (ur prompt)
+7. **Cold start v0** — how much is scripted vs “sort yourself out” agent autonomy
 
 ---
 
