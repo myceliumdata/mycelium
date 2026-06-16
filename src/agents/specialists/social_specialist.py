@@ -47,15 +47,9 @@ from agents.specialists.agent import SpecialistAgent
 from agents.specialists.base import SpecialistStorage
 from models.state import MyceliumGraphState, graph_requested_attributes
 
-_storage: SpecialistStorage | None = None
-
-
 def get_specialist_storage() -> SpecialistStorage:
-    """Lazy per-module storage (respects MYCELIUM_AGENT_DATA_DIR for tests)."""
-    global _storage
-    if _storage is None:
-        _storage = SpecialistStorage(category="social")
-    return _storage
+    """Return storage owned by this module's ``AGENT`` singleton."""
+    return AGENT.storage
 
 
 def _coerce(state: MyceliumGraphState | dict[str, Any]) -> MyceliumGraphState:

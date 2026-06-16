@@ -8,7 +8,9 @@ from agents.specialists.agent import SpecialistAgent
 
 
 def _agent(category: str, specialist_name: str) -> SpecialistAgent:
-    return SpecialistAgent(category=category, agent_name=specialist_name)
+    from agents.registry import get_agent_registry
+
+    return get_agent_registry().get_agent_instance(specialist_name)
 
 
 def write_fields(

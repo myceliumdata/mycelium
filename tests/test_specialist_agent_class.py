@@ -164,3 +164,21 @@ def test_write_bind_fields_multi_routes_through_agent(
         at="2026-06-17T12:00:00+00:00",
     )
     handlers_write_mock.assert_not_called()
+
+
+@pytest.mark.smoke
+def test_write_bind_fields_multi_uses_subclass_override(
+    attribute_write_env: CoreStorage,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _ = attribute_write_env
+    professional_mod = importlib.import_module("agents.specialists.professional_specialist")
+    counting = CountingSpecialist()
+    monkeypatch.setattr(professional_mod, "AGENT", counting)
+    dispatch_write_bind_fields_multi(
+        "entity-multi-counting-test",
+        {"name": "Paul Murphy", "employer": "Acme Corp"},
+        actor_kind="bind",
+        at="2026-06-17T12:00:00+00:00",
+    )
+    assert counting.writes == 1
