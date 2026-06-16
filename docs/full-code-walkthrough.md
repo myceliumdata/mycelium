@@ -71,7 +71,7 @@ Package: `mycelium_mcp` (renamed from `mcp` to avoid SDK collision).
 ## 6. Entity registry + bootstrap import
 
 - **`entities.json`** — runtime store (`EntityRegistry`); rows use `bind_values` keyed by `mvr.bind_fields` and generic `bind_index`. Cache + protocol + indexes (framework-maintained for now).
-- **`network/seed_import.py`** — imports optional `seed.json` rows at bootstrap (refresh/create) via `ensure_bound_entity` → `attribute_write` → **specialist dispatch** (storage writes inside specialists package).
+- **`network/bootstrap/`** — formal bootstrap phase (`run_network_bootstrap`): paths, MVR category merge, registry reset, then a bootstrap handler. Default handler imports `seed.json` via `ensure_bound_entity` → **specialist dispatch**. Networks may override with `<network_root>/specialists/bootstrap_specialist.py` (`run_bootstrap(ctx)`). `network/seed_import.py` re-exports stable entry points for tests.
 - Query-time resolution: `target_resolve` step-1 uses per-field indexes and `lookup` AND matching.
 
 Committed examples: `examples/networks/crm/` (bootstrap seed), `examples/networks/empty-crm/` (no seed, growth from queries).

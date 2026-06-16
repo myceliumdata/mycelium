@@ -274,17 +274,20 @@ See `examples/networks/baseball/README.md`.
 
 ## Slice map
 
-**Experiment v0 running.** Next framework slices after schema pass:
+**Framework bootstrap phase (CRM):** ✅ `src/network/bootstrap/` — `run_network_bootstrap`, default `seed.json` handler, optional `specialists/bootstrap_specialist.py` override. Baseball cold start should add a **warehouse handler** under `network/bootstrap/handlers/`, not fork refresh/create.
+
+**Experiment v0** (standalone, pre-formal-bootstrap): `bootstrap_experiment.py` — disposition TBD; do not treat as the long-term path.
 
 | Order | Scope |
 |-------|--------|
 | 0 | ~~Unzip Lahman; ER/schema note~~ ✅ done |
+| 0b | ~~Formal bootstrap phase (CRM seed)~~ ✅ done — extend for baseball warehouse |
 | 1 | `examples/networks/baseball/` skeleton + `network.json` + hosting story |
-| 2 | Ingest warehouse (People + core tables) |
+| 2 | Baseball bootstrap handler: warehouse ingest + team/player registry via bootstrap contract |
 | 3 | Player registry load + multi-alias index |
-| 4 | Team registry + MVR |
+| 4 | Team registry + MVR (may merge with 2) |
 | 5 | One end-to-end query (resolve player → simple derived stat) |
 
 ---
 
-*Updated: 2026-06-16 — Lahman schema pass complete; team grain = franchise (`TeamsFranchises`).*
+*Updated: 2026-06-16 — Lahman schema pass; fan-facing team grain locked; CRM bootstrap module shipped.*

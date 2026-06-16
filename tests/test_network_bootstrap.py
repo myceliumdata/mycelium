@@ -13,7 +13,7 @@ from network.bootstrap import run_network_bootstrap
 from network.bootstrap.handlers.default_seed import import_seed_rows, load_seed_people
 from network.category_mvr_bootstrap import ensure_categories_for_mvr_bind
 from network.paths import NetworkPaths, apply_network_paths
-from network.seed_import import bootstrap_seed_at_paths, count_seed_rows, import_seed_file
+from network.seed_import import bootstrap_seed_at_paths, count_seed_rows
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CRM_SEED = REPO_ROOT / "examples" / "networks" / "crm" / "seed.json"
@@ -75,20 +75,6 @@ def test_import_seed_rows_missing_employer(tmp_path: Path) -> None:
 
 
 @pytest.mark.smoke
-def test_import_seed_file_idempotent(tmp_path: Path) -> None:
-    paths = _prepare_root(tmp_path, seed_src=CRM_SEED)
-    apply_network_paths(paths)
-    ensure_categories_for_mvr_bind(paths)
-    reset_entity_registry()
-    first = import_seed_file(paths.seed_path)
-    second = import_seed_file(paths.seed_path)
-    assert first == 15
-    assert second == 15
-    payload = json.loads(paths.entities_path.read_text(encoding="utf-8"))
-    assert len(payload["entities"]) == 15
-
-
-@pytest.mark.smoke
 def test_bootstrap_seed_at_paths_delegates(tmp_path: Path) -> None:
     paths = _prepare_root(tmp_path, seed_src=CRM_SEED)
     assert bootstrap_seed_at_paths(paths) == 15
@@ -126,3 +112,43 @@ def run_bootstrap(ctx: BootstrapContext) -> BootstrapResult:
     assert result.sources_processed == ["override"]
     registry = get_entity_registry()
     assert len(registry.list_entities()) == 0
+
+
+@pytest.mark.smoke
+def test_bootstrap_override_import_failure(tmp_path: Path) -> None:
+    paths = _prepare_root(tmp_path, seed_src=CRM_SEED)
+    specialists = paths.specialists_dir
+    specialists.mkdir(parents=True, exist_ok=True)
+    override = specialists / "bootstrap_specialist.py"
+    override.write_text("def run_bootstrap(  # syntax error\n", encoding="utf-8")
+    with pytest.raises(ValueError, match=r"Cannot import bootstrap override at"):
+        run_network_bootstrap(paths)
+
+
+@pytest.mark.smoke
+def test_run_network_bootstrap_loads_guide_text(tmp_path: Path) -> None:
+    paths = _prepare_root(tmp_path, seed_src=CRM_SEED)
+    shutil.copy(
+        REPO_ROOT / "examples" / "networks" / "crm" / "guide.md",
+        paths.root / "guide.md",
+    )
+    specialists = paths.specialists_dir
+    specialists.mkdir(parents=True, exist_ok=True)
+    override = specialists / "bootstrap_specialist.py"
+    override.write_text(
+        """
+from network.bootstrap.context import BootstrapContext, BootstrapResult
+
+def run_bootstrap(ctx: BootstrapContext) -> BootstrapResult:
+    assert ctx.guide_text is not None
+    assert "investor" in ctx.guide_text.lower()
+    return BootstrapResult(
+        entities_committed=0,
+        sources_processed=[],
+        handler_id="guide_probe",
+    )
+""",
+        encoding="utf-8",
+    )
+    result = run_network_bootstrap(paths)
+    assert result.handler_id == "guide_probe"

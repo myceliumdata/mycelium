@@ -94,13 +94,13 @@ New `test_network_bootstrap.py` covers CRM count, missing seed, invalid JSON, mi
 
 ## Nits (polish backlog)
 
-| ID | Nit | Severity |
-|----|-----|------------|
-| N1 | Duplicate idempotency coverage: `test_network_bootstrap.test_import_seed_file_idempotent` and `test_example_network.test_import_seed_file_idempotent` | Low — dedupe in a future test hygiene pass |
-| N2 | Add smoke test for override import failure message (`Cannot import bootstrap override at …`) | Low |
-| N3 | Optional: assert `ctx.guide_text` is populated when `guide.md` exists (documents B6 wiring) | Low |
+| ID | Nit | Status |
+|----|-----|--------|
+| N1 | Duplicate idempotency test | ✅ Removed from `test_network_bootstrap`; kept stronger test in `test_example_network` |
+| N2 | Override import failure test | ✅ `test_bootstrap_override_import_failure` |
+| N3 | `guide_text` in bootstrap context | ✅ `test_run_network_bootstrap_loads_guide_text` |
 
-None block commit.
+Addressed in polish commit after initial slice approval.
 
 ---
 
