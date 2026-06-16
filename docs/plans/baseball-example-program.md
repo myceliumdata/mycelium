@@ -98,9 +98,27 @@ Not a full application — iterative starter: design, schemas, skeleton ingest/q
 
 ---
 
+## Alias resolution (draft — Paul, June 2026)
+
+**Problem:** Shorthand and nicknames fail today’s fuzzy bind-field ranker (`SequenceMatcher` — good for typos, not `645` → `645 Ventures` or `Yanks` → Yankees). See [`fuzzy-lookup-policy.md`](fuzzy-lookup-policy.md).
+
+**Direction:** **LLM-in-the-loop alias expansion** instead of growing explicit alias/prefix tables in the framework.
+
+- On 0-hit (or low-confidence) lookup, prompt a **local LLM** with network context, e.g.  
+  *“In the context of baseball teams, what could `Yanks` refer to?”*  
+  CRM analogue: *“In the context of companies, what could `465` refer to?”*
+- Model returns canonical bind-field value(s) → retry step-1 with `suggested_lookup` (same outcome contract as fuzzy typos).
+- **Assume local LLMs eventually** — cost acceptable for this path; avoid hardcoding domain alias maps in Python.
+
+**Not the same as** multi-team player bind (Aaron + Braves / Aaron + Red Sox → same uuid): that is **indexing known Lahman pairs** after canonical resolution, not nickname expansion.
+
+**Explicit non-goal (for now):** prefix indexes, per-network alias tables in repo — unless LLM path proves insufficient.
+
+---
+
 ## Open questions
 
-1. **Team MVR fields** — what do humans/agents actually say? (“Yankees”, “New York Yankees”, `NYA`?)
+1. **Team MVR fields** — what do humans/agents actually say? (“Yankees”, “New York Yankees”, `NYA`?) — partly handled by LLM alias step above
 2. **Franchise vs Lahman `teamID`** — relocations/rebrands; map to one team uuid?
 3. **Warehouse layout** — which tables v0; ingest from zip
 4. **Seed hosting** — self-host URL, manual download doc, or thin git pointer

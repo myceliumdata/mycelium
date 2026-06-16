@@ -61,7 +61,7 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 - [ ] **Multi-turn thread semantics** — Reuse specialist cache across attributes on one `thread_id` without redundant research.
 - [ ] **Long-running threads** — Suspend and ask client for clarification (`thread_id` + checkpoints).
 - [ ] **Search indices** — Scale partial lookup + secondary indices (email → id, etc.). Design when beyond CRM scale.
-- [ ] **Fuzzy match upgrades (aliases & prefixes)** — `645` → 645 Ventures, `ibm` → IBM; prefix index, alias table, or token-overlap. Policy: [`docs/plans/fuzzy-lookup-policy.md`](docs/plans/fuzzy-lookup-policy.md).
+- [ ] **Fuzzy match upgrades (aliases & prefixes)** — prefer **LLM alias expansion** with domain context (local LLM; see [`docs/plans/conversations/2026-06-16-llm-alias-resolution.md`](docs/plans/conversations/2026-06-16-llm-alias-resolution.md)) over explicit prefix/alias tables. Policy: [`docs/plans/fuzzy-lookup-policy.md`](docs/plans/fuzzy-lookup-policy.md).
 - [ ] **Query / search any field** — Lookup/search on extended attrs, not only MVR/indexed fields; fuzzy on 0-hit. After index story matures.
 - [ ] **Operator attribute correction** — Admin (primary): view/edit specialist storage values, operator override provenance, re-research policy.
 - [ ] **Operator force re-research** — Explicit retry per entity + attribute; optional operator hints in research context.

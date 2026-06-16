@@ -24,7 +24,9 @@
 | `645` | `645 ventures` | 0.40 | ❌ shorthand |
 | `ibm` | `ibm corporation` | 0.33 | ❌ prefix nickname |
 
-**Implication:** Searching `{"employer": "645"}` as a common name for **645 Ventures** will **not** fuzzy-match with the current algorithm. That needs a follow-up (prefix index, alias table, or token-overlap policy) — track under search-indices / any-field work.
+**Implication:** Searching `{"employer": "645"}` as a common name for **645 Ventures** will **not** fuzzy-match with the current algorithm.
+
+**Follow-up direction (Paul, June 2026):** prefer **LLM alias expansion** with domain context (*“In the context of companies, what could `465` refer to?”*; baseball: *“…baseball teams…`Yanks`?”*) over explicit prefix/alias tables — assume local LLMs eventually. See [`baseball-example-program.md`](baseball-example-program.md) § Alias resolution. Legacy options (prefix index, alias table) remain on TODO if needed.
 
 ## Slices
 
