@@ -37,7 +37,9 @@ def import_seed_for_test(
     """Import ``seed.json`` into ``entities.json`` after ``MYCELIUM_*`` env is set.
 
     Simulates the **seed-import / refresh bootstrap** path: calls
-    ``ensure_categories_for_mvr_bind`` before ``import_seed_file``. Do not use
+    ``ensure_categories_for_mvr_bind`` before ``import_seed_file`` (which delegates
+    to the default seed handler; full orchestration is ``run_network_bootstrap``).
+    Do not use
     in create-on-deliver or empty-crm cold-start tests unless that path is under test.
 
     When ``seed_src`` and ``tmp_path`` are given, copies the file to
