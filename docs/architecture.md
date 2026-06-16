@@ -59,7 +59,7 @@ Data addition via the public API was removed in the June 2026 refactor (tasks 10
 
 ### Seed bootstrap and identity (June 2026 — seed elimination)
 
-- **Optional fixture:** `<network_root>/seed.json` — static `people` array for bootstrap only (not read at query time). Committed CRM example: `examples/networks/crm/seed.json`. Import via `./bin/refresh-example-network crm` or `mycelium network create` when the file is present (`network/seed_import.py` → `entities.json`).
+- **Optional fixture:** `<network_root>/seed.json` — static `people` array for bootstrap only (not read at query time). Committed CRM example: `examples/networks/crm/seed.json`. Import via `./bin/refresh-example-network crm` or `mycelium network create` when the file is present (`network/seed_import.py` → `entities.json`). **`bootstrap_seed_at_paths()`** bypasses the two-step lookup/create protocol and writes via `ensure_bound_entity` — acceptable for now; **rewire to the formal data-add API** when that ships (see § Data addition above).
 - **Transform (maintainers):** `examples/networks/crm/prepare_seed.py` builds example `seed.json` from a CRM source file (name + employer only; no legacy `id` in the file). Full prototype data: git tag `prototype`.
 - **Runtime store:** `entities.json` holds canonical entities (uuid4 ids, `bind_values` keyed by `mvr.bind_fields`, generic `bind_index`, per-field indexes). `ensure_bound_entity` assigns stable ids on import; step-1 resolve uses `lookup` AND indexes. Seed `people[]` rows import into `bind_values` on refresh or `network create`.
 - **No `core_data` specialist** — identity fields (name, employer) come from the registry; specialists may override them later.

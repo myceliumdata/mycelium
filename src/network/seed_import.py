@@ -1,4 +1,10 @@
-"""Bootstrap import of ``seed.json`` rows into ``entities.json``."""
+"""Bootstrap import of ``seed.json`` rows into ``entities.json``.
+
+Bypasses the public target two-step protocol (lookup → delivery) and writes
+directly via ``ensure_bound_entity``. Acceptable until a formal network data-add
+API exists; ``bootstrap_seed_at_paths`` should be rewired to that API when it
+ships.
+"""
 
 from __future__ import annotations
 
@@ -80,7 +86,12 @@ def count_seed_rows(seed_path: Path) -> int:
 
 
 def bootstrap_seed_at_paths(paths: NetworkPaths) -> int:
-    """Apply network paths, reset registry, import ``seed.json`` when present."""
+    """Apply network paths, reset registry, import ``seed.json`` when present.
+
+    Intentionally does not use the standard lookup/create (two-step) mechanism.
+    When a formal data-add path exists, this function should delegate to it
+    instead of calling ``import_seed_file`` directly.
+    """
     apply_network_paths(paths)
     ensure_categories_for_mvr_bind(paths)
     reset_entity_registry()
