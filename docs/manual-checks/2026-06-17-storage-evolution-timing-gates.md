@@ -37,11 +37,11 @@ Record **real**, **user**, **sys** from `time -p` output.
 
 | Run | Date | real (s) | user (s) | sys (s) | Notes |
 |-----|------|----------|----------|---------|-------|
-| Test 3 | | | | | Post slice 2 |
+| **Test 3** | 2026-06-16 | **8,100** (~**2 h 15 m**) **estimated** | — | — | Post slice 2 (`179e80d`). Run in progress when estimated (~25% player binds, ~6.6/s). Specialist `minisql_v1` confirmed (demographic + professional on `storage.sqlite`). Entity grains still JSON — modest speedup vs baseline expected. **Replace with `time -p` real when run completes.** |
 
-**Gate:** No blocking threshold — record numbers and proceed. If regression vs pre-program baseline is severe, investigate before releasing slice 4.
+**Gate:** No blocking threshold — proceed to slice 4. Slice 4 queued: `prompts/cursor/next/2026-06-17-2300-entity-registry-storage-evolution.md`.
 
-**After recording:** Grok or Paul moves `prompts/cursor/hold/2026-06-17-2300-entity-registry-storage-evolution.md` → `prompts/cursor/next/`.
+**vs baseline:** ~8,100 s estimated vs 12,600 s (~35% faster) — entity JSON still dominant until slice 4.
 
 ---
 
