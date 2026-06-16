@@ -63,13 +63,15 @@ Record **real**, **user**, **sys** from `time -p` output.
 
 ---
 
-## Optional baseline (pre slice 2)
+## Baseline (pre slice 2) — **recorded**
 
-If not already captured elsewhere, run once **before** slice 2 lands and note as "pre-program" or "post SpecialistAgent only":
+**When:** After slice 1 (`optimize_storage` threshold policy); **before** slice 2 (`minisql_v1` specialist migration). SpecialistAgent + Lahman bootstrap shipped; entity registry still per-row JSON flush.
 
 | Run | Date | real (s) | user (s) | sys (s) | Notes |
 |-----|------|----------|----------|---------|-------|
-| Baseline | | | | | SpecialistAgent shipped; no minisql |
+| **Baseline** | 2026-06-16 | **12,600** (~**3.5 h**) | — | — | Paul wall-clock. `--root /tmp/mycelium-baseball-benchmark --yes --no-default`. Dominant cost: `LahmanSeedHandler` player loop (~57.6k player–team bind rows) — each `save_entity` rewrites full `entities/player.json` + specialist bind storage. Team grain (241) finished in first minute; warehouse ingest ~26 MB at start. |
+
+**Compare test 3 and test 5 against this row.**
 
 ---
 
