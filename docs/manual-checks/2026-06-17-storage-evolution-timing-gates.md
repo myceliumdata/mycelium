@@ -6,12 +6,27 @@
 
 ---
 
+## Summary (posterity — June 2026)
+
+| Test | Commit era | `real` (s) | Status | Headline |
+|------|------------|------------|--------|----------|
+| **Baseline** | Pre slice 2 | **12,600** (~3.5 h) | Recorded (Paul wall-clock) | JSON specialists + per-row entity JSON flush |
+| **Test 3** | Post slice 2 (`179e80d`) | **~8,100** estimated | **Unreliable** — run never finished; extrapolated at ~25% | Do not use for decisions |
+| **Test 5** | Post slice 4 (`c898036`+) | **~16,200** estimated (~4.5 h) | **Abandoned** — killed in progress; no `time -p` final | ~No gain vs baseline; slice 4 not the big win |
+| **Test 6** | Post incremental (`c5e5bce`+) | — | **Pending** | Expected: hours → minutes |
+
+**Takeaway:** Lahman bootstrap is **not** “50k INSERTs.” Warehouse ingest is **~2 s**. The bind loop is ~58k identity operations with **O(n²)** costs until incremental specialist writes (test 6). Slice 4 (deferred entity flush) traded disk JSON rewrites for in-memory index rebuilds — **roughly a wash** while specialists still did full-table SQLite rewrites.
+
+See [Lessons learned](#lessons-learned-posterity-june-2026) and [`docs/plans/storage-evolution-program.md`](../plans/storage-evolution-program.md) § Post-mortem.
+
+---
+
 ## Environment
 
 Use a **dedicated benchmark root** so runs are comparable and do not disturb a live network:
 
 ```bash
-export BENCHMARK_ROOT=/tmp/mycelium-baseball-benchmark
+export BENCHMARK_ROOT=/tmp/mycelium-baseball-benchmark-test6   # fresh root per test
 ```
 
 Ensure Lahman seed is available (framework fetches on refresh when configured — see `093f4a0` fetch commit). First run may download seed; note that in results.
@@ -23,55 +38,22 @@ Ensure Lahman seed is available (framework fetches on refresh when configured �
   --root "$BENCHMARK_ROOT" --yes --no-default
 ```
 
-Record **real**, **user**, **sys** from `time -p` output.
+Record **real**, **user**, **sys** from `time -p` output. Stderr progress (post `9052f45`): `Retrieving data…`, `Processing records (x/y)…`, `Cleaning up…`; silence with `MYCELIUM_BOOTSTRAP_PROGRESS=0`.
 
 ---
 
-## Timing test 3 — after slice 2 approved
+## What the benchmark actually does
 
-**When:** `2026-06-17-2100-specialist-minisql-v1-migrate` reviewed **Approved** and committed locally.
+| Phase | Scale | Typical time (measured) |
+|-------|--------|-------------------------|
+| Git seed fetch + CSV → `lahman.sqlite` | ~128k appearance rows ingested | **~2–3 s** |
+| Team grain bootstrap | ~241 distinct team labels | **&lt; 1 min** |
+| Player loop | **~57,627** `(playerID, name, team)` rows from Appearances | **Hours** (pre-incremental) |
+| — new players (first sight of `playerID`) | **~24,011** → `write_bind_fields` → 2 specialists | Full-table SQLite rewrite per bind (pre-`c5e5bce`) |
+| — alias rows (same `playerID`, new team) | **~33,616** → `add_bind_alias` only | No specialist write; **full in-memory index rebuild** per row when entity save deferred |
+| Deferred entity flush | 1× per grain at handler end | **Seconds** |
 
-**What changed:** Specialist category storage can migrate to `minisql_v1` when record count crosses threshold. Entity registry I/O is **unchanged** — expect **modest** improvement at best until slice 4.
-
-**Record in this table:**
-
-| Run | Date | real (s) | user (s) | sys (s) | Notes |
-|-----|------|----------|----------|---------|-------|
-| **Test 3** | 2026-06-16 | **8,100** (~**2 h 15 m**) **estimated** | — | — | Post slice 2 (`179e80d`). Run in progress when estimated (~25% player binds, ~6.6/s). Specialist `minisql_v1` confirmed (demographic + professional on `storage.sqlite`). Entity grains still JSON — modest speedup vs baseline expected. **Replace with `time -p` real when run completes.** |
-
-**Gate:** No blocking threshold — proceed to slice 4. Slice 4 queued: `prompts/cursor/next/2026-06-17-2300-entity-registry-storage-evolution.md`.
-
-**vs baseline:** ~8,100 s estimated vs 12,600 s (~35% faster) — entity JSON still dominant until slice 4.
-
----
-
-## Timing test 5 — after slice 4 approved
-
-**When:** `2026-06-17-2300-entity-registry-storage-evolution` reviewed **Approved** and committed locally.
-
-**What changed:** Deferred bootstrap save (one flush per grain) + entity `minisql_v1` migration at threshold. This is the **primary** baseball bootstrap perf slice.
-
-**Record in this table:**
-
-| Run | Date | real (s) | user (s) | sys (s) | Notes |
-|-----|------|----------|----------|---------|-------|
-| Test 5 | | | | | Post slice 4 |
-
-**Compare** to Test 3 (and optional pre-program baseline if captured).
-
-**Gate:** Paul decides program push / baseball demo readiness from these numbers + `./bin/ci-local` + capstone tests.
-
----
-
-## Timing test 6 — after incremental specialist writes approved
-
-**When:** `2026-06-17-2340-specialist-minisql-incremental-writes` reviewed **Approved** and committed.
-
-**What changed:** Specialist `minisql_v1` `write_fields` upserts one entity per bind (no full-table DELETE/INSERT). Expect **large** improvement vs test 5 (target: hours → minutes; record actual).
-
-| Run | Date | real (s) | user (s) | sys (s) | Notes |
-|-----|------|----------|----------|---------|-------|
-| Test 6 | | | | | Post incremental specialist writes |
+“50k records in seconds” applies only to **warehouse ingest**, not the bind loop.
 
 ---
 
@@ -83,7 +65,89 @@ Record **real**, **user**, **sys** from `time -p` output.
 |-----|------|----------|----------|---------|-------|
 | **Baseline** | 2026-06-16 | **12,600** (~**3.5 h**) | — | — | Paul wall-clock. `--root /tmp/mycelium-baseball-benchmark --yes --no-default`. Dominant cost: `LahmanSeedHandler` player loop (~57.6k player–team bind rows) — each `save_entity` rewrites full `entities/player.json` + specialist bind storage. Team grain (241) finished in first minute; warehouse ingest ~26 MB at start. |
 
-**Compare test 3 and test 5 against this row.**
+---
+
+## Timing test 3 — after slice 2 approved
+
+**When:** `2026-06-17-2100-specialist-minisql-v1-migrate` reviewed **Approved** and committed locally.
+
+**What changed:** Specialist category storage can migrate to `minisql_v1` when record count crosses threshold. Entity registry I/O is **unchanged** — expect **modest** improvement at best until entity work is addressed.
+
+| Run | Date | real (s) | user (s) | sys (s) | Notes |
+|-----|------|----------|----------|---------|-------|
+| **Test 3** | 2026-06-16 | **8,100** (~**2 h 15 m**) **estimated only** | — | — | Post slice 2 (`179e80d`). Extrapolated from run in progress (~25% player binds, ~6.6/s). **Run never completed; estimate is optimistic** — rate slows as specialist table grows (O(n²)). Treat as invalid for comparison. |
+
+**Gate:** Proceeded to slice 4 (reasonable); test 3 should have been run to completion or not extrapolated early.
+
+---
+
+## Timing test 5 — after slice 4 approved
+
+**When:** `2026-06-17-2300-entity-registry-storage-evolution` reviewed **Approved** and committed.
+
+**What changed:** Deferred bootstrap save (one flush per grain) + entity `minisql_v1` migration at threshold. Program doc called this the “primary” baseball perf slice — **retrospectively overstated** (see lessons).
+
+| Run | Date | real (s) | user (s) | sys (s) | Notes |
+|-----|------|----------|----------|---------|-------|
+| **Test 5** | 2026-06-16 | **~16,200** (~**4.5 h**) **estimated** | — | — | Post slice 4, **pre-incremental** (`c5e5bce`). `--root /tmp/mycelium-baseball-benchmark`. Started ~21:45; **abandoned** ~46 min in at ~10,277/24,011 specialist entities (~18% of quadratic specialist work done). Projected total ~4–4.5 h — **no meaningful improvement vs baseline**. `entities/player.json` not on disk until cleanup (deferred flush — expected). |
+
+**Proxy snapshot at abandonment (~46 min elapsed):**
+
+- Demographic `entity_records`: **10,277**
+- CPU ~93% on bind loop
+- Quadratic model: `(10277/24011)² ≈ 18%` of specialist rewrite work complete despite **~43%** of new players written
+
+**Gate:** Slice 4 alone insufficient for demo readiness; incremental specialist writes required (test 6).
+
+---
+
+## Timing test 6 — after incremental specialist writes approved
+
+**When:** `2026-06-17-2340-specialist-minisql-incremental-writes` reviewed **Approved** and committed (`c5e5bce`).
+
+**What changed:** Specialist `minisql_v1` `write_fields` upserts **one entity** per bind (no full-table `DELETE`/`INSERT`). Progress reporting on stderr (`9052f45` / `2f9d673`). Expect **large** improvement vs test 5 (target: hours → minutes; record actual).
+
+| Run | Date | real (s) | user (s) | sys (s) | Notes |
+|-----|------|----------|----------|---------|-------|
+| Test 6 | | | | | Post incremental specialist writes; use **fresh** `--root` |
+
+**Follow-up perf (optional, post–test 6):** skip `_rebuild_field_indexes()` on alias-only `add_bind_alias` (bind_index changes, `entity.bind_values` unchanged).
+
+---
+
+## Lessons learned (posterity — June 2026)
+
+### 1. `minisql_v1` ≠ incremental (slice 2)
+
+Slice 2 moved specialists from JSON **files** to SQLite but kept **document semantics**: each `save_payload` did `DELETE FROM field_records` + `DELETE FROM entity_records` + re-INSERT **all** rows. Lahman bootstrap: ~24k new players × 2 categories → **O(n²)** SQLite + JSON parse work. Slice 2 review noted “full replace — follow-up” but did not block or queue the fix before timing gates. **Fixed in `c5e5bce` (test 6).**
+
+### 2. Slice 4 deferred flush ≠ loop cheap
+
+Deferred entity save removed **~58k rewrites** of growing `entities/player.json` (~17 MB at end). But each `save_entity` / `add_bind_alias` during deferral still calls `_rebuild_field_indexes()` — full scan of all entities in memory. ~58k iterations × growing entity count ≈ **O(n²) CPU** on the registry side. Alias rows (~34k) trigger rebuild even when only `bind_index` changes. **Net: comparable to baseline, not a step change.**
+
+### 3. Dominant costs (pre-incremental)
+
+| Cost | Order | Affected tests |
+|------|--------|----------------|
+| Specialist full-table rewrite per new player | O(n²) disk/CPU | Baseline, 3, 5 |
+| Entity JSON flush per row | O(n²) disk | Baseline, 3 |
+| Entity index rebuild per row (deferred) | O(n²) CPU | 5 |
+| Warehouse ingest | O(n) | All (~2 s) |
+
+### 4. Measurement pitfalls
+
+- **Do not extrapolate** Lahman progress from early player count or bind rate — specialist cost grows with table size.
+- Use **`time -p` real** on a **completed** run with a **fresh `--root`**.
+- Test 5 on pre-incremental code is historical only; **test 6 is the meaningful gate.**
+
+### 5. Incremental write granularity (`c5e5bce`)
+
+Per-entity upsert still `DELETE FROM field_records WHERE entity_id = ?` then re-inserts **all fields on that entity** (entity-scoped replace, not single-field patch). Cost per bind is O(fields on that entity) — fine for bootstrap (1–2 bind fields). See `docs/architecture.md` § `minisql_v1` storage.
+
+### 6. Review/process
+
+- Storage evolution program labeled slice 4 “primary perf slice” — accurate for **entity I/O design**, not for **wall-clock** until specialists were incremental.
+- Grok + Paul: queue incremental specialist slice **before** declaring timing gates on slice 4.
 
 ---
 
