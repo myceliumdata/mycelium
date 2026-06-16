@@ -188,7 +188,7 @@ Early CRM specialists subclass **`SpecialistAgent`** (`src/agents/specialists/ag
 
 **Storage migration policy (June 2026):** Base `SpecialistAgent.optimize_storage()` returns `True` when `current_strategy()` is `versioned_provenance_v1` and `record_count()` ≥ threshold (default **50**, env `MYCELIUM_OPTIMIZE_STORAGE_THRESHOLD`). Each category’s `AGENT` evaluates independently. Subclasses may override `optimize_storage_threshold()` or `optimize_storage()` (e.g. opt-out). Crossing threshold calls `migrate_to("minisql_v1")` before writes.
 
-**`minisql_v1` storage (June 2026):** When threshold is crossed, `SpecialistStorage.migrate_to("minisql_v1")` copies `storage.json` into `<agents>/<category>/storage.sqlite` via shared `src/storage/minisql_v1.py` (reused by entity stores in a follow-up slice), renames JSON to `storage.json.pre-minisql-v1`, and updates `storage_strategy.json`. Subsequent `load`/`save` use SQLite row storage (versioned field blobs as JSON text per `(entity_id, field_name)`). Protocol snapshots and CRM behavior under threshold are unchanged.
+**`minisql_v1` storage (June 2026):** When threshold is crossed, `SpecialistStorage.migrate_to("minisql_v1")` copies `storage.json` into `<agents>/<category>/storage.sqlite` via shared `src/storage/minisql_v1.py` (reused by entity stores in a follow-up slice), renames JSON to `storage.json.pre-minisql-v1`, and updates `storage_strategy.json`. Hot-path `write_fields` / `read_fields` use **per-entity** `load_entity` + `save_entity` upserts (one entity's field rows only). Bulk `load()` / `save()` / `save_payload` remain for migration, tests, and `analyze_storage`. Protocol snapshots and CRM behavior under threshold are unchanged.
 
 ---
 

@@ -32,11 +32,74 @@ def _connect(sqlite_path: Path) -> sqlite3.Connection:
     return conn
 
 
+def _ensure_schema(conn: sqlite3.Connection) -> None:
+    conn.executescript(_SCHEMA)
+
+
+def _touch_storage_meta(
+    conn: sqlite3.Connection,
+    *,
+    version: str = "1.0",
+    created_by: str | None = None,
+) -> None:
+    last_updated = datetime.now(timezone.utc).isoformat()
+    by = created_by or "minisql_v1"
+    conn.execute("DELETE FROM storage_meta")
+    conn.execute(
+        "INSERT INTO storage_meta (key, value) VALUES (?, ?)",
+        ("version", version),
+    )
+    conn.execute(
+        "INSERT INTO storage_meta (key, value) VALUES (?, ?)",
+        ("last_updated", last_updated),
+    )
+    conn.execute(
+        "INSERT INTO storage_meta (key, value) VALUES (?, ?)",
+        ("created_by", by),
+    )
+
+
+def _write_entity_fields(
+    conn: sqlite3.Connection,
+    entity_id: str,
+    fields: dict[str, Any],
+) -> None:
+    conn.execute(
+        "INSERT OR REPLACE INTO entity_records (entity_id) VALUES (?)",
+        (entity_id,),
+    )
+    if not isinstance(fields, dict):
+        return
+    for field_name, blob in fields.items():
+        conn.execute(
+            "INSERT OR REPLACE INTO field_records (entity_id, field_name, field_json) "
+            "VALUES (?, ?, ?)",
+            (entity_id, field_name, json.dumps(blob)),
+        )
+
+
+def _delete_entity(conn: sqlite3.Connection, entity_id: str) -> None:
+    conn.execute("DELETE FROM field_records WHERE entity_id = ?", (entity_id,))
+    conn.execute("DELETE FROM entity_records WHERE entity_id = ?", (entity_id,))
+
+
+def _write_all_records(conn: sqlite3.Connection, records: dict[str, Any]) -> None:
+    for entity_id, fields in records.items():
+        if not isinstance(fields, dict):
+            conn.execute(
+                "INSERT OR REPLACE INTO entity_records (entity_id) VALUES (?)",
+                (entity_id,),
+            )
+            continue
+        conn.execute("DELETE FROM field_records WHERE entity_id = ?", (entity_id,))
+        _write_entity_fields(conn, entity_id, fields)
+
+
 def ensure_empty_sqlite(sqlite_path: Path) -> None:
     """Create an empty minisql_v1 database with schema."""
     conn = _connect(sqlite_path)
     try:
-        conn.executescript(_SCHEMA)
+        _ensure_schema(conn)
         conn.execute("BEGIN")
         conn.execute("DELETE FROM field_records")
         conn.execute("DELETE FROM entity_records")
@@ -73,6 +136,7 @@ def load_payload(sqlite_path: Path) -> dict[str, Any]:
         ensure_empty_sqlite(sqlite_path)
     conn = _connect(sqlite_path)
     try:
+        _ensure_schema(conn)
         meta_rows = conn.execute("SELECT key, value FROM storage_meta").fetchall()
         meta_dict = {str(row["key"]): str(row["value"]) for row in meta_rows}
         records: dict[str, dict[str, Any]] = {}
@@ -90,6 +154,80 @@ def load_payload(sqlite_path: Path) -> dict[str, Any]:
             "records": records,
             "meta": {"created_by": meta_dict.get("created_by", "minisql_v1")},
         }
+    finally:
+        conn.close()
+
+
+def load_entity_record(sqlite_path: Path, entity_id: str) -> dict[str, Any] | None:
+    """Load one entity's versioned field blobs; ``None`` when the entity row is absent."""
+    if not sqlite_path.is_file():
+        return None
+    conn = _connect(sqlite_path)
+    try:
+        _ensure_schema(conn)
+        row = conn.execute(
+            "SELECT 1 FROM entity_records WHERE entity_id = ?",
+            (entity_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        fields: dict[str, Any] = {}
+        for field_row in conn.execute(
+            "SELECT field_name, field_json FROM field_records WHERE entity_id = ?",
+            (entity_id,),
+        ):
+            fields[str(field_row["field_name"])] = json.loads(field_row["field_json"])
+        return fields
+    finally:
+        conn.close()
+
+
+def upsert_entity_record(
+    sqlite_path: Path,
+    entity_id: str,
+    fields: dict[str, Any],
+    *,
+    version: str = "1.0",
+    created_by: str | None = None,
+) -> None:
+    """Upsert one entity's field rows and bump ``storage_meta.last_updated``."""
+    if not sqlite_path.is_file():
+        ensure_empty_sqlite(sqlite_path)
+    conn = _connect(sqlite_path)
+    try:
+        _ensure_schema(conn)
+        conn.execute("BEGIN")
+        conn.execute("DELETE FROM field_records WHERE entity_id = ?", (entity_id,))
+        if isinstance(fields, dict) and fields:
+            _write_entity_fields(conn, entity_id, fields)
+        elif not isinstance(fields, dict) or not fields:
+            conn.execute(
+                "INSERT OR REPLACE INTO entity_records (entity_id) VALUES (?)",
+                (entity_id,),
+            )
+        _touch_storage_meta(conn, version=version, created_by=created_by)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def delete_entity_record(sqlite_path: Path, entity_id: str) -> None:
+    """Remove one entity and its field rows."""
+    if not sqlite_path.is_file():
+        return
+    conn = _connect(sqlite_path)
+    try:
+        _ensure_schema(conn)
+        conn.execute("BEGIN")
+        _delete_entity(conn, entity_id)
+        _touch_storage_meta(conn)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
 
@@ -126,23 +264,11 @@ def save_payload(sqlite_path: Path, data: dict[str, Any]) -> None:
 
     conn = _connect(sqlite_path)
     try:
-        conn.executescript(_SCHEMA)
+        _ensure_schema(conn)
         conn.execute("BEGIN")
         conn.execute("DELETE FROM field_records")
         conn.execute("DELETE FROM entity_records")
-        for entity_id, fields in records.items():
-            conn.execute(
-                "INSERT INTO entity_records (entity_id) VALUES (?)",
-                (entity_id,),
-            )
-            if not isinstance(fields, dict):
-                continue
-            for field_name, blob in fields.items():
-                conn.execute(
-                    "INSERT INTO field_records (entity_id, field_name, field_json) "
-                    "VALUES (?, ?, ?)",
-                    (entity_id, field_name, json.dumps(blob)),
-                )
+        _write_all_records(conn, records)
         conn.execute("DELETE FROM storage_meta")
         conn.execute(
             "INSERT INTO storage_meta (key, value) VALUES (?, ?)",

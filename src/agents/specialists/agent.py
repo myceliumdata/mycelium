@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import os
 from datetime import datetime, timezone
 from typing import Any, Callable
@@ -110,9 +109,15 @@ class SpecialistAgent:
         """Write fields to specialist storage; return current values for written keys."""
         self._maybe_optimize_storage()
         timestamp = at or _now_iso()
-        data = self.storage.load()
-        records = data.setdefault("records", {})
-        record = records.setdefault(entity_id, {})
+        use_incremental = self.storage.current_strategy() == "minisql_v1"
+        if use_incremental:
+            record = self.storage.load_entity(entity_id)
+            if record is None:
+                record = {}
+        else:
+            data = self.storage.load()
+            records = data.setdefault("records", {})
+            record = records.setdefault(entity_id, {})
         current: dict[str, str] = {}
         for field, value in fields.items():
             key = field.strip().lower()
@@ -137,7 +142,10 @@ class SpecialistAgent:
             written = current_value(record[key])
             if written is not None:
                 current[key] = written
-        self.storage.save(data)
+        if use_incremental:
+            self.storage.save_entity(entity_id, record)
+        else:
+            self.storage.save(data)
         return current
 
     def read_fields(
@@ -149,9 +157,14 @@ class SpecialistAgent:
         include_provenance: bool | None = None,
     ) -> dict[str, Any]:
         with_provenance = include_versions if include_provenance is None else include_provenance
-        record = self.storage.load().get("records", {}).get(entity_id, {})
-        if not isinstance(record, dict):
-            record = {}
+        if self.storage.current_strategy() == "minisql_v1":
+            record = self.storage.load_entity(entity_id)
+            if record is None:
+                record = {}
+        else:
+            record = self.storage.load().get("records", {}).get(entity_id, {})
+            if not isinstance(record, dict):
+                record = {}
         out: dict[str, Any] = {}
         for raw_field in fields:
             field = raw_field.strip().lower()
@@ -296,13 +309,13 @@ def write_bind_fields_multi(
         by_category.setdefault(category, {})[field] = value
         specialists[category] = specialist
 
-    snapshots: dict[str, dict[str, Any]] = {}
+    snapshots: dict[str, dict[str, Any] | None] = {}
     saved: list[str] = []
     merged: dict[str, str] = {}
     try:
         for category, fields in by_category.items():
             agent = _resolve_agent_for_write(specialists[category], category)
-            snapshots[category] = copy.deepcopy(agent.storage.load())
+            snapshots[category] = agent.storage.load_entity(entity_id)
             merged.update(
                 agent.write_fields(
                     entity_id,
@@ -315,6 +328,10 @@ def write_bind_fields_multi(
     except Exception:
         for category in saved:
             agent = _resolve_agent_for_write(specialists[category], category)
-            agent.storage.save(snapshots[category])
+            snapshot = snapshots[category]
+            if snapshot is None:
+                agent.storage.delete_entity(entity_id)
+            else:
+                agent.storage.save_entity(entity_id, snapshot)
         raise
     return merged

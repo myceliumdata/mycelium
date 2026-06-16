@@ -148,6 +148,45 @@ class SpecialistStorage:
         payload["last_updated"] = datetime.now(timezone.utc).isoformat()
         self._atomic_write(self.storage_file, payload)
 
+    def load_entity(self, entity_id: str) -> dict[str, Any] | None:
+        """Return one entity's field map, or ``None`` when the entity is absent."""
+        if self.current_strategy() == "minisql_v1":
+            from storage.minisql_v1 import load_entity_record
+
+            return load_entity_record(self.sqlite_file, entity_id)
+        records = self.load().get("records", {})
+        if not isinstance(records, dict) or entity_id not in records:
+            return None
+        entry = records[entity_id]
+        if not isinstance(entry, dict):
+            return {}
+        return dict(entry)
+
+    def save_entity(self, entity_id: str, fields: dict[str, Any]) -> None:
+        """Persist one entity (incremental upsert on ``minisql_v1``)."""
+        if self.current_strategy() == "minisql_v1":
+            from storage.minisql_v1 import upsert_entity_record
+
+            upsert_entity_record(self.sqlite_file, entity_id, fields)
+            return
+        data = self.load()
+        records = data.setdefault("records", {})
+        records[entity_id] = fields
+        self.save(data)
+
+    def delete_entity(self, entity_id: str) -> None:
+        """Remove one entity from storage."""
+        if self.current_strategy() == "minisql_v1":
+            from storage.minisql_v1 import delete_entity_record
+
+            delete_entity_record(self.sqlite_file, entity_id)
+            return
+        data = self.load()
+        records = data.get("records", {})
+        if isinstance(records, dict) and entity_id in records:
+            del records[entity_id]
+            self.save(data)
+
     def get_strategy(self) -> dict[str, Any]:
         if not self.strategy_file.exists():
             self._ensure_initialized()

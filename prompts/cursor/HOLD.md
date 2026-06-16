@@ -2,13 +2,11 @@
 
 **Program:** Storage evolution (specialist → entity) — [`docs/plans/storage-evolution-program.md`](../../docs/plans/storage-evolution-program.md)
 
-**Active (`next/`):**
+**Active (`next/`):** *(empty)*
 
-| Prompt | Scope |
-|--------|--------|
-| [`next/2026-06-17-2340-specialist-minisql-incremental-writes.md`](next/2026-06-17-2340-specialist-minisql-incremental-writes.md) | **Perf fix:** per-entity upsert on minisql_v1; stop full-table rewrite per bind |
+**Last approved:** [`done/2026-06-17-2340-specialist-minisql-incremental-writes/`](done/2026-06-17-2340-specialist-minisql-incremental-writes/) — **Approved** (commit below)
 
-**Last approved:** [`done/2026-06-17-2355-bootstrap-progress-reporting/`](done/2026-06-17-2355-bootstrap-progress-reporting/) — **Approved** (commit pending below)
+**Prior:** [`done/2026-06-17-2355-bootstrap-progress-reporting/`](done/2026-06-17-2355-bootstrap-progress-reporting/) — Approved (`2f9d673`)
 
 **Manual gates (Paul + Grok):** [`docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md`](../../docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md)
 
@@ -16,7 +14,8 @@
 |------|--------|
 | Baseline (pre slice 2) | **12,600 s (~3.5 h)** recorded |
 | Test 3 (post slice 2) | **~8,100 s (2 h 15 m) estimated** — update with `time -p` real when done |
-| Test 5 (post slice 4) | After slice 4 approved |
+| Test 5 (post slice 4) | Paul run (pre-incremental) |
+| Test 6 (post incremental writes) | **Paul** — re-benchmark after `2340` commit |
 
 **Design lock (Paul, June 2026):** Entity persistence = **`EntityStore`** + **`EntityRegistry` API unchanged**. Identity-agent refactor **deferred until full baseball example ships**.
 

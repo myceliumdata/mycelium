@@ -63,6 +63,18 @@ Record **real**, **user**, **sys** from `time -p` output.
 
 ---
 
+## Timing test 6 — after incremental specialist writes approved
+
+**When:** `2026-06-17-2340-specialist-minisql-incremental-writes` reviewed **Approved** and committed.
+
+**What changed:** Specialist `minisql_v1` `write_fields` upserts one entity per bind (no full-table DELETE/INSERT). Expect **large** improvement vs test 5 (target: hours → minutes; record actual).
+
+| Run | Date | real (s) | user (s) | sys (s) | Notes |
+|-----|------|----------|----------|---------|-------|
+| Test 6 | | | | | Post incremental specialist writes |
+
+---
+
 ## Baseline (pre slice 2) — **recorded**
 
 **When:** After slice 1 (`optimize_storage` threshold policy); **before** slice 2 (`minisql_v1` specialist migration). SpecialistAgent + Lahman bootstrap shipped; entity registry still per-row JSON flush.
