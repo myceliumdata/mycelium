@@ -72,6 +72,7 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 - [ ] **Operator force re-research** — Explicit retry per entity + attribute; optional operator hints in research context.
 - [ ] **Research robustness** — [`docs/plans/research-robustness-backlog.md`](docs/plans/research-robustness-backlog.md): source-quality rules, multi-identity → `na`, `network.json` research policy.
 - [ ] **Data attribution (product — USP)** — MCP/`describe_network` surfacing, staleness/re-research policy beyond Slice 8 basics.
+- [ ] **Derivative data — token-efficiency examples (USP)** — Once specialists materialize **derivative** attrs (warehouse joins, aggregates, rate stats, etc.), ship **worked examples** that quantify **lower client token cost** when retrieving the derivative via Mycelium vs. fetching/reasoning over all **source** rows the specialist used to build it. Deliverables TBD: side-by-side MCP/query transcripts or scripts (token counts), `examples/networks/` demo query pack, website narrative. Natural first host: **baseball** Lahman derivations ([`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md)). Depends on specialist-owned derivative storage + query path to read it.
 - [ ] **Seed export (`export-growth-seed`)** — Validated `entities.json` → `seed.json` fragment.
 - [ ] **Seed vs grown entity linking** — Network-type-specific merge/override rules.
 
@@ -96,4 +97,4 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ---
 
-Last updated: 2026-06-17 (storage evolution post-mortem; test 6 + profiling on deck)
+Last updated: 2026-06-17 (derivative token-efficiency USP; test 6 + profiling on deck)
