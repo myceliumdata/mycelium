@@ -125,6 +125,7 @@ Implementation handoffs live in `prompts/cursor/done/<slug>/` with `prompt.md`, 
 | Doc | Topic |
 |-----|-------|
 | [`attribute-provenance-and-storage.md`](attribute-provenance-and-storage.md) | Architecture — entity/index/protocol split |
+| [`storage-evolution-program.md`](storage-evolution-program.md) | **Active** — specialist + entity `minisql_v1`, deferred bootstrap save (slices in `prompts/cursor/next/` + `hold/`) |
 | [`baseball-example-program.md`](baseball-example-program.md) | **Exploratory** — `baseball` second example (Lahman); ur [`mycelium_lahman_design_prompt.md`](mycelium_lahman_design_prompt.md) |
 | [`next-chunk-prep.md`](next-chunk-prep.md) | Handoff notes |
 | [`research-robustness-backlog.md`](research-robustness-backlog.md) | Post-2010 research hardening |
@@ -149,4 +150,4 @@ Archived Paul + Grok threads: [`conversations/README.md`](conversations/README.m
 
 ---
 
-*Last updated: June 2026 (Program 3 **complete**; `baseball` example program exploratory).*
+*Last updated: June 2026 (Program 3 **complete**; storage evolution program **active**; `baseball` example exploratory).*

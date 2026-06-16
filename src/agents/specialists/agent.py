@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import os
 from datetime import datetime, timezone
 from typing import Any, Callable
 
@@ -66,9 +67,19 @@ class SpecialistAgent:
     def storage(self) -> SpecialistStorage:
         return self._resolve_storage()
 
+    def optimize_storage_threshold(self) -> int:
+        """Records-at-or-above this count trigger migration (env override)."""
+        raw = os.getenv("MYCELIUM_OPTIMIZE_STORAGE_THRESHOLD", "50")
+        try:
+            return int(raw)
+        except ValueError:
+            return 50
+
     def optimize_storage(self) -> bool:
-        """Return True when the agent should attempt storage migration before save."""
-        return False
+        """Return True when record count crosses threshold on versioned JSON storage."""
+        if self.storage.current_strategy() != "versioned_provenance_v1":
+            return False
+        return self.record_count() >= self.optimize_storage_threshold()
 
     def migrate_to(self, target: str) -> None:
         """Delegate storage strategy migration to the backing store."""

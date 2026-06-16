@@ -186,6 +186,8 @@ See `src/storage/core.py` (path bootstrap for MCP/admin startup).
 
 Early CRM specialists subclass **`SpecialistAgent`** (`src/agents/specialists/agent.py`) and expose a module singleton `AGENT`; graph entrypoints delegate to `AGENT.run(state)` and protocol dispatch resolves `get_agent_instance(name)` → `AGENT.write_fields` / `read_fields` / etc. Users override storage or research by subclassing and replacing `AGENT`. Shared JSON mechanics live in the base class; `handlers.py` is an internal specialists-package helper only — framework code routes through `agents.specialists.protocol`, not `handlers` directly. Heterogeneous specialists (e.g. baseball warehouse) may use different internal storage if read/write handlers emit the same snapshots.
 
+**Storage migration policy (June 2026):** Base `SpecialistAgent.optimize_storage()` returns `True` when `current_strategy()` is `versioned_provenance_v1` and `record_count()` ≥ threshold (default **50**, env `MYCELIUM_OPTIMIZE_STORAGE_THRESHOLD`). Each category’s `AGENT` evaluates independently. Subclasses may override `optimize_storage_threshold()` or `optimize_storage()` (e.g. opt-out). Crossing threshold calls `migrate_to("minisql_v1")` before writes; implementation lands in a follow-up slice.
+
 ---
 
 ## Networks (product model — documented June 2026; runtime in Phases 2–4)
