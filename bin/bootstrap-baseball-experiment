@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+"""Run baseball bootstrap experiment (examples/networks/baseball/bootstrap_experiment.py)."""
+
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+_SCRIPT = REPO_ROOT / "examples" / "networks" / "baseball" / "bootstrap_experiment.py"
+_VENV_PYTHON = REPO_ROOT / ".venv" / "bin" / "python3"
+
+
+def main() -> int:
+    if _VENV_PYTHON.is_file():
+        try:
+            if Path(sys.executable).resolve() != _VENV_PYTHON.resolve():
+                os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON), str(_SCRIPT), *sys.argv[1:]])
+        except OSError:
+            pass
+    os.execv(sys.executable, [sys.executable, str(_SCRIPT), *sys.argv[1:]])
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

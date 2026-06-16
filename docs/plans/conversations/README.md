@@ -13,5 +13,6 @@ Full-context notes from **Paul + Grok** design discussions. These preserve reaso
 | 2026-06-16 | Team vs franchise grain — emergent organization | [2026-06-16-team-vs-franchise-grain.md](2026-06-16-team-vs-franchise-grain.md) | Team registry ≠ `franchID`; franchise specialist |
 | 2026-06-16 | Canonical team/city names — ingest + LLM layers | [2026-06-16-canonical-team-city-names.md](2026-06-16-canonical-team-city-names.md) | Full canonical name; LLM aliases |
 | 2026-06-16 | Canonical bootstrap — generic framework vs network specialists | [2026-06-16-canonical-names-bootstrap-specialists.md](2026-06-16-canonical-names-bootstrap-specialists.md) | No custom orchestrator; bootstrap phase |
+| 2026-06-16 | Bootstrap experiment v0 results | [2026-06-16-bootstrap-experiment-v0-results.md](2026-06-16-bootstrap-experiment-v0-results.md) | 241 teams auto-commit; LLM hybrid |
 
 When resuming work, read the relevant conversation doc first, then **`docs/plans/entity-protocol-and-registry-program.md`** (full slice map), then `TODO.md` for the current checklist.

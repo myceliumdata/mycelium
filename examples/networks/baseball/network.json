@@ -1,0 +1,16 @@
+{
+  "name": "baseball",
+  "display_name": "Baseball example (Lahman)",
+  "description": "Experimental second example — Lahman warehouse + bootstrap identity discovery.",
+  "experiment": {
+    "bootstrap": "v0",
+    "registries": ["team", "player"]
+  },
+  "mvr": {
+    "bind_fields": ["name", "employer"],
+    "description": "Placeholder CRM-shaped MVR until multi-MVR framework ships; bootstrap experiment uses separate registry files."
+  },
+  "metering": {
+    "enabled": false
+  }
+}

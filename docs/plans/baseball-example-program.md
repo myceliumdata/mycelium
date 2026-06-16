@@ -260,9 +260,21 @@ flowchart TB
 
 ---
 
+## Bootstrap experiment (v0 — shipped in repo)
+
+Standalone script (not query graph): `examples/networks/baseball/bootstrap_experiment.py` / `bin/bootstrap-baseball-experiment`.
+
+- Ingests Lahman → `~/mycelium-networks/baseball/warehouse/lahman.sqlite`
+- **Heuristic:** distinct season team labels → auto-commit `bootstrap/team_registry.json`
+- **`--llm`:** OpenAI proposes canon + aliases from `guide.md` + schema sample (test when key available)
+
+See `examples/networks/baseball/README.md`.
+
+---
+
 ## Slice map
 
-**None queued.** First slice candidates after schema pass:
+**Experiment v0 running.** Next framework slices after schema pass:
 
 | Order | Scope |
 |-------|--------|
