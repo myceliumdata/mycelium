@@ -61,6 +61,7 @@ class SpecialistStorage:
             base_dir = runtime_path("MYCELIUM_AGENT_DATA_DIR")
         self.base_dir = base_dir / self._slug(category)
         self.storage_file = self.base_dir / "storage.json"
+        self.sqlite_file = self.base_dir / "storage.sqlite"
         self.strategy_file = self.base_dir / "storage_strategy.json"
         self._ensure_initialized()
 
@@ -92,6 +93,15 @@ class SpecialistStorage:
                 },
             }
             self._atomic_write(self.strategy_file, strategy)
+
+        strategy_name = self.current_strategy()
+        if strategy_name == "minisql_v1":
+            from storage.minisql_v1 import ensure_empty_sqlite
+
+            if not self.sqlite_file.exists():
+                ensure_empty_sqlite(self.sqlite_file)
+            return
+
         if not self.storage_file.exists():
             # records keyed by id (uuid from seed loader), e.g.:
             # {"<person-id>": {"email": "a@b.com", "phone": {"status": "pending", ...},
@@ -120,11 +130,20 @@ class SpecialistStorage:
             raise
 
     def load(self) -> dict[str, Any]:
+        if self.current_strategy() == "minisql_v1":
+            from storage.minisql_v1 import load_payload
+
+            return load_payload(self.sqlite_file)
         if not self.storage_file.exists():
             self._ensure_initialized()
         return json.loads(self.storage_file.read_text(encoding="utf-8"))
 
     def save(self, data: dict[str, Any]) -> None:
+        if self.current_strategy() == "minisql_v1":
+            from storage.minisql_v1 import save_payload
+
+            save_payload(self.sqlite_file, data)
+            return
         payload = dict(data)
         payload["last_updated"] = datetime.now(timezone.utc).isoformat()
         self._atomic_write(self.storage_file, payload)
@@ -138,18 +157,30 @@ class SpecialistStorage:
         return self.get_strategy().get("strategy", "versioned_provenance_v1")
 
     def migrate_to(self, target: str) -> None:
-        """Future hook for agent self-managed storage evolution.
-
-        A specialist agent (the generated .py) can decide (based on its own data volume,
-        access patterns, config, or even LLM advice) to call this. Base implementation
-        can later contain actual migration (copy data, swap files, update strategy json).
-        For Phase 2 this is a deliberate no-op / documented extension point.
-        """
+        """Migrate specialist storage strategy (agent-managed evolution hook)."""
         current = self.current_strategy()
         if current == target:
+            return
+        if target == "minisql_v1" and current == "versioned_provenance_v1":
+            from storage.minisql_v1 import migrate_versioned_provenance_v1_json
+
+            migrate_versioned_provenance_v1_json(
+                self.storage_file,
+                self.sqlite_file,
+                category=self.category,
+            )
+            backup_path = self.base_dir / "storage.json.pre-minisql-v1"
+            if self.storage_file.exists():
+                if backup_path.exists():
+                    backup_path.unlink()
+                self.storage_file.rename(backup_path)
+            strategy = self.get_strategy()
+            strategy["strategy"] = "minisql_v1"
+            strategy["last_migrated"] = datetime.now(timezone.utc).isoformat()
+            self._atomic_write(self.strategy_file, strategy)
             return
         raise NotImplementedError(
             f"Storage migration from {current} to {target} not implemented in this "
             f"version of the {self.category} specialist. "
-            "Edit the specialist or extend base.py to add migration logic."
+            "Edit the specialist or extend base.py to add migration logic.",
         )
