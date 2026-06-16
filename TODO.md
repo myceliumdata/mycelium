@@ -10,7 +10,10 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 ## Next up (Paul)
 
+- [ ] **Profiling — Lahman bootstrap / storage hot paths** — After **timing test 6** (`c5e5bce` incremental specialist writes), profile `refresh-example-network baseball` bind loop if wall-clock still surprises. Goal: confirm incremental upsert dominates; quantify remaining costs (`add_bind_alias` + `_rebuild_field_indexes`, `write_bind_fields_multi`, SQLite). Tools: `time -p`, `cProfile` / `py-spy` on `LahmanSeedHandler` + `write_fields` path; record in [`docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md`](docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md). Prior post-mortem: [`docs/plans/storage-evolution-program.md`](docs/plans/storage-evolution-program.md) § Post-mortem.
+- [ ] **Storage evolution timing test 6** — Fresh `--root`; `time -p ./bin/refresh-example-network baseball --yes --no-default`; record **real** in timing-gates doc Test 6 row. Kill any pre-incremental test 5 run first.
 - [ ] **`baseball` example network** — Lahman second example; [`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md) (ur: [`mycelium_lahman_design_prompt.md`](docs/plans/mycelium_lahman_design_prompt.md)). Two registry grains (**player** + fan-facing **team** city+name; franchise via specialist), agent-managed warehouse + derivations. **Locked:** uuid4 on load; Lahman `playerID` = source metadata only. **Player MVR (draft):** name + team — team disambiguates homonyms; any team the player played for → same uuid (index TBD). **Seed data:** Paul has `~/mycelium-networks/baseball/seed/lahman_1871-2025_csv.zip` (~40MB); hosting TBD — avoid git blob if possible; SABR Box not bot-fetchable; may self-host URL + ingest script.
+  - **Storage evolution:** code slices complete; test 6 + profiling gate demo readiness.
   - **Cursor queue:** query orchestrator grain selection (`target_resolve`, supervisor) — next slice to queue.
   - **LahmanSeedHandler** shipped slice `1700` (committed). Improvised spike in `git stash` (`cursor-improvised lahman seed handler`) — compare optional; drop when done.
 
@@ -93,4 +96,4 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ---
 
-Last updated: 2026-06-15 (`baseball` example design; product narrative + seed hosting TBD)
+Last updated: 2026-06-17 (storage evolution post-mortem; test 6 + profiling on deck)
