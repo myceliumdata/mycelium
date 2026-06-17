@@ -42,6 +42,9 @@ def main() -> int:
         print(__doc__.strip(), file=sys.stderr)
         return 2
     _bootstrap()
+    from dotenv import load_dotenv
+
+    load_dotenv(REPO_ROOT / ".env")
     from graphs.core import reset_core_graph, run_query
     from models.state import EntityQuery
 
