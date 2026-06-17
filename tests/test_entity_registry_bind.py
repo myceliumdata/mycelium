@@ -410,7 +410,7 @@ def test_lookup_entities_by_key_stable_after_reimport(
     seed.write_text(
         json.dumps(
             {
-                "people": [
+                "rows": [
                     {"name": "Andrea Kalmans", "employer": "Example Co"},
                 ],
             },

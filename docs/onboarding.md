@@ -17,8 +17,8 @@
 | Term | Meaning |
 |------|---------|
 | **`entities/<grain>.json`** | Canonical identity store per MVR grain at runtime (UUID, `bind_values`, generic `bind_index`, validation state). CRM queries use the **`person`** grain by default. Requires explicit `mvr.grains` and `mvr.default_grain` in `network.json`. MVR bind values are cached here; canonical history is in specialist `versions[]` (Program 2). |
-| **`seed.json`** | Optional **bootstrap fixture** — read by the declared bootstrap handler (CRM: `DefaultSeedHandler`) at `refresh-example-network` or `network create --seed` only. Not read on query. |
-| **`network.json` → `bootstrap`** | Required bootstrap handler declaration: **`module`** (Python module path) + **`handler`** (class name). Framework modules (`network.*`) ship with the repo; pack modules live under `<network_root>/bootstrap_handlers/`. See [architecture.md](architecture.md) § Seed bootstrap. |
+| **`seed.json`** | Optional **bootstrap fixture** — `rows[]` read by the declared bootstrap handler (CRM: `DefaultSeedHandler`) at `refresh-example-network` or `network create --seed` only. Not read on query. See [seed-bootstrap.md](seed-bootstrap.md). |
+| **`network.json` → `bootstrap`** | Required bootstrap handler declaration: **`module`**, **`handler`**, optional **`seed_grain`**. Framework modules (`network.*`) ship with the repo; pack modules live under `<network_root>/bootstrap_handlers/`. See [architecture.md](architecture.md) § Seed bootstrap and [seed-bootstrap.md](seed-bootstrap.md). |
 | **`IdentityRecord`** | Graph/MCP model for a matched registry row: `id` + `bind_values` keyed by active MVR bind fields (renamed from `SeedRecord`, June 2026). |
 | **`network create`** | Scaffold ontology + register name. `--seed` is optional; empty registry + first-query bind is valid (`empty-crm`). |
 | **Slice plans** | Point-in-time specs in `docs/plans/`. May describe removed code — check **Active backlogs** in [`plans/README.md`](plans/README.md). |

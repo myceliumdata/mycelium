@@ -30,7 +30,7 @@ _CRM_SIX = frozenset(
 
 
 def _write_seed(path: Path, people: list[dict[str, str]]) -> Path:
-    path.write_text(json.dumps({"people": people}, indent=2) + "\n", encoding="utf-8")
+    path.write_text(json.dumps({"rows": people}, indent=2) + "\n", encoding="utf-8")
     return path
 
 
@@ -267,7 +267,7 @@ def test_create_network_invalid_seed_before_ontology(tmp_path: Path) -> None:
         msg = "ontology should not be called for invalid seed"
         raise AssertionError(msg)
 
-    with pytest.raises(ValueError, match="people"):
+    with pytest.raises(ValueError, match="'rows' array"):
         create_network(
             "bad_seed",
             root,

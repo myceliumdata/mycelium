@@ -61,7 +61,7 @@ def _reset_runtime_singletons() -> None:
 def _write_network_seed(root: Path, people: list[dict[str, str | None]]) -> None:
     root.mkdir(parents=True, exist_ok=True)
     (root / "seed.json").write_text(
-        json.dumps({"people": people}, indent=2) + "\n",
+        json.dumps({"rows": people}, indent=2) + "\n",
         encoding="utf-8",
     )
     copy_crm_network_manifest(root)

@@ -25,7 +25,7 @@ def test_network_paths_from_root(tmp_path: Path) -> None:
     root = tmp_path / "my_network"
     root.mkdir()
     copy_crm_network_manifest(root)
-    (root / "seed.json").write_text(json.dumps({"people": []}), encoding="utf-8")
+    (root / "seed.json").write_text(json.dumps({"rows": []}), encoding="utf-8")
 
     paths = NetworkPaths.from_root(root)
 

@@ -29,7 +29,7 @@ def temp_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> CoreStorage
     seed.write_text(
         json.dumps(
             {
-                "people": [
+                "rows": [
                     {
                         "name": "Test User",
                         "employer": "Test Co",

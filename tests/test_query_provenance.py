@@ -37,7 +37,7 @@ def _write_network_root(tmp_path: Path) -> None:
     copy_crm_network_manifest(tmp_path)
     seed = tmp_path / "seed.json"
     seed.write_text(
-        json.dumps({"people": [{"name": "Paul Murphy", "employer": "Acme Corp"}]}),
+        json.dumps({"rows": [{"name": "Paul Murphy", "employer": "Acme Corp"}]}),
         encoding="utf-8",
     )
 

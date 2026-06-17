@@ -50,7 +50,7 @@ def test_run_query_clears_trace_id_when_tracing_disabled(
     seed.write_text(
         json.dumps(
             {
-                "people": [
+                "rows": [
                     {"name": "Test User", "employer": "Test Co"},
                 ],
             },
@@ -93,7 +93,7 @@ def test_run_query_sets_trace_id_on_response_when_captured(
     seed.write_text(
         json.dumps(
             {
-                "people": [
+                "rows": [
                     {"name": "Test User", "employer": "Test Co"},
                 ],
             },

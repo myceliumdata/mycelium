@@ -255,7 +255,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--seed",
         default=None,
         metavar="FILE",
-        help="Optional seed JSON file (people array); imported into entities.json when provided",
+        help="Optional seed JSON file (rows array); imported into entities.json when provided",
     )
     prompt_group = create_cmd.add_mutually_exclusive_group(required=True)
     prompt_group.add_argument(

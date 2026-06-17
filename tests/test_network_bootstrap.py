@@ -10,7 +10,7 @@ import pytest
 
 from agents.entity_registry import get_entity_registry, reset_entity_registry
 from network.bootstrap import run_network_bootstrap
-from network.bootstrap.handlers.default_seed import import_seed_rows, load_seed_people
+from network.bootstrap.handlers.default_seed import import_seed_rows, load_seed_rows
 from network.category_mvr_bootstrap import ensure_categories_for_mvr_bind
 from network.example import copy_example_network
 from network_helpers import copy_crm_network_manifest
@@ -111,18 +111,18 @@ def test_framework_handler_does_not_require_network_root_module(tmp_path: Path) 
 
 
 @pytest.mark.smoke
-def test_load_seed_people_invalid_json(tmp_path: Path) -> None:
+def test_load_seed_rows_invalid_json(tmp_path: Path) -> None:
     bad = tmp_path / "seed.json"
     bad.write_text("{not json", encoding="utf-8")
     with pytest.raises(ValueError, match="Invalid seed JSON"):
-        load_seed_people(bad)
+        load_seed_rows(bad, bind_fields=["name"])
 
 
 @pytest.mark.smoke
 def test_import_seed_rows_missing_employer(tmp_path: Path) -> None:
     seed = tmp_path / "seed.json"
     seed.write_text(
-        json.dumps({"people": [{"name": "Ada Lovelace"}]}),
+        json.dumps({"rows": [{"name": "Ada Lovelace"}]}),
         encoding="utf-8",
     )
     copy_crm_network_manifest(tmp_path)
@@ -130,7 +130,57 @@ def test_import_seed_rows_missing_employer(tmp_path: Path) -> None:
     ensure_categories_for_mvr_bind(NetworkPaths.from_root(tmp_path))
     reset_entity_registry()
     with pytest.raises(ValueError, match="bind field 'employer'"):
-        import_seed_rows(seed)
+        import_seed_rows(seed, paths=NetworkPaths.from_root(tmp_path))
+
+
+@pytest.mark.smoke
+def test_bootstrap_seed_grain_overrides_default_grain(tmp_path: Path) -> None:
+    root = tmp_path / "net"
+    root.mkdir(parents=True, exist_ok=True)
+    crm_metering = json.loads(CRM_MANIFEST.read_text(encoding="utf-8"))["metering"]
+    manifest = {
+        "name": "dual-grain",
+        "mvr": {
+            "default_grain": "company",
+            "grains": {
+                "person": {
+                    "bind_fields": ["name", "employer"],
+                    "description": "People",
+                },
+                "company": {
+                    "bind_fields": ["name"],
+                    "description": "Companies",
+                },
+            },
+        },
+        "metering": dict(crm_metering),
+        "bootstrap": {
+            **FRAMEWORK_BOOTSTRAP,
+            "seed_grain": "person",
+        },
+    }
+    (root / "network.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    shutil.copy(CRM_SEED, root / "seed.json")
+    paths = NetworkPaths.from_root(root)
+    apply_network_paths(paths)
+    ensure_categories_for_mvr_bind(paths)
+    reset_entity_registry()
+    result = run_network_bootstrap(paths)
+    assert result.entities_by_grain == {"person": 15}
+
+
+@pytest.mark.smoke
+def test_bootstrap_seed_grain_rejects_unknown_grain(tmp_path: Path) -> None:
+    root = tmp_path / "net"
+    root.mkdir(parents=True, exist_ok=True)
+    manifest = json.loads(CRM_MANIFEST.read_text(encoding="utf-8"))
+    manifest["bootstrap"] = {
+        **FRAMEWORK_BOOTSTRAP,
+        "seed_grain": "missing_grain",
+    }
+    (root / "network.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="bootstrap.seed_grain"):
+        run_network_bootstrap(NetworkPaths.from_root(root))
 
 
 @pytest.mark.smoke

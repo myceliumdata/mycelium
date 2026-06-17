@@ -97,7 +97,7 @@ def test_example_crm_metering_layout() -> None:
 @pytest.mark.smoke
 def test_example_crm_seed_has_demo_people() -> None:
     payload = json.loads((EXAMPLE_CRM / "seed.json").read_text(encoding="utf-8"))
-    names = [person["name"] for person in payload["people"]]
+    names = [row["name"] for row in payload["rows"]]
     assert "Nichanan Kesonpat" in names
     assert "Andrea Kalmans" in names
     assert names.count("Kevin Zhang") == 2

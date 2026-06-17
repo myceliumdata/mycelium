@@ -550,7 +550,7 @@ _POLICY_ENTITY_GROWTH = (
 _POLICY_REGISTRY = (
     "Registry rows in entities.json store MVR bind fields in bind_values keyed by "
     "mvr.bind_fields (e.g. name, employer). bind_index is a generic compound key from "
-    "normalized bind_values in policy order. Seed import maps seed people[] into "
+    "normalized bind_values in policy order. Seed import maps seed rows[] into "
     "bind_values on refresh or network create."
 )
 _POLICY_STATUS_INSPECT = (

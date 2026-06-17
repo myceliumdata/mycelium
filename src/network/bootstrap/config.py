@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
+from network.mvr import default_mvr_grain, load_mvr_config
 from network.paths import NetworkPaths
 
 _EXAMPLE_BOOTSTRAP = (
@@ -19,6 +20,7 @@ class BootstrapConfig:
 
     module: str
     class_name: str
+    seed_grain: str | None = None
 
 
 def load_bootstrap_config(paths: NetworkPaths) -> BootstrapConfig:
@@ -59,4 +61,27 @@ def load_bootstrap_config(paths: NetworkPaths) -> BootstrapConfig:
             "network.json bootstrap.handler is required "
             "(handler class name, e.g. DefaultSeedHandler)",
         )
-    return BootstrapConfig(module=module, class_name=class_name)
+
+    seed_grain: str | None = None
+    seed_grain_raw = bootstrap.get("seed_grain")
+    if seed_grain_raw is not None:
+        if not isinstance(seed_grain_raw, str) or not seed_grain_raw.strip():
+            raise ValueError("network.json bootstrap.seed_grain must be a non-empty string")
+        seed_grain = seed_grain_raw.strip()
+        grains = load_mvr_config(paths=paths).grains
+        if seed_grain not in grains:
+            known = ", ".join(sorted(grains.keys()))
+            raise ValueError(
+                f"network.json bootstrap.seed_grain {seed_grain!r} is not declared "
+                f"in mvr.grains ({known})",
+            )
+
+    return BootstrapConfig(module=module, class_name=class_name, seed_grain=seed_grain)
+
+
+def resolve_bootstrap_grain(paths: NetworkPaths) -> str:
+    """Return the entity grain that receives ``DefaultSeedHandler`` rows."""
+    bootstrap = load_bootstrap_config(paths)
+    if bootstrap.seed_grain:
+        return bootstrap.seed_grain
+    return default_mvr_grain(paths=paths)

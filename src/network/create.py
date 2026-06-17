@@ -56,7 +56,7 @@ def validate_network_name(name: str) -> str:
 
 
 def validate_seed_file(seed_path: Path) -> list[dict[str, Any]]:
-    """Read and validate seed JSON (``people`` list with ``name`` per row)."""
+    """Read and validate seed JSON (``rows`` list of objects)."""
     if not seed_path.is_file():
         raise ValueError(f"Seed file not found: {seed_path}")
     try:
@@ -64,17 +64,14 @@ def validate_seed_file(seed_path: Path) -> list[dict[str, Any]]:
     except (OSError, json.JSONDecodeError) as exc:
         raise ValueError(f"Invalid seed JSON: {exc}") from exc
     if not isinstance(payload, dict):
-        raise ValueError("Seed JSON must be an object with a 'people' array")
-    people = payload.get("people")
-    if not isinstance(people, list):
-        raise ValueError("Seed JSON must contain a 'people' array")
-    for index, row in enumerate(people):
+        raise ValueError("Seed JSON must be an object with a 'rows' array")
+    rows = payload.get("rows")
+    if not isinstance(rows, list):
+        raise ValueError("Seed JSON must contain a 'rows' array")
+    for index, row in enumerate(rows):
         if not isinstance(row, dict):
-            raise ValueError(f"Seed people[{index}] must be an object")
-        name = row.get("name")
-        if not isinstance(name, str) or not name.strip():
-            raise ValueError(f"Seed people[{index}] must include a non-empty 'name'")
-    return people
+            raise ValueError(f"Seed rows[{index}] must be an object")
+    return rows
 
 
 def _network_description(creation_prompt: str) -> str:

@@ -36,7 +36,7 @@ def test_refresh_runtime_preserves_entity_ids_from_entities_json(
     seed = tmp_path / "seed.json"
     seed.write_text(
         json.dumps(
-            {"people": [{"name": "Andrea Kalmans", "employer": "Example Co"}]},
+            {"rows": [{"name": "Andrea Kalmans", "employer": "Example Co"}]},
         ),
         encoding="utf-8",
     )

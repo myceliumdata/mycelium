@@ -144,7 +144,7 @@ def test_empty_network_without_seed_initializes_storage(
 @pytest.mark.smoke
 def test_example_crm_seed_has_sanitized_employers() -> None:
     payload = json.loads((EXAMPLE_CRM / "seed.json").read_text(encoding="utf-8"))
-    for person in payload["people"]:
-        employer = person.get("employer") or ""
+    for row in payload["rows"]:
+        employer = row.get("employer") or ""
         assert "[" not in employer
         assert "Contacts Valuable" not in employer
