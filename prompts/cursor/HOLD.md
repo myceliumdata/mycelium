@@ -4,7 +4,7 @@
 
 **Active (`next/`):** *empty*
 
-**Paul (June 2026):** **Test 8c** bootstrap timing — post-0800 `save_entity` source-key skip. Record `real` when run completes; expect ~555 s (test 7 ballpark).
+**Paul (June 2026):** **Ship gate** — [`docs/manual-checks/2026-06-17-baseball-identity-ship-gate.md`](../../docs/manual-checks/2026-06-17-baseball-identity-ship-gate.md). Run after **Test 8c**; identity-only (no ontology/specialists). Push when gate **CLEAR**.
 
 **Recently landed (local, ahead of `origin`):**
 
