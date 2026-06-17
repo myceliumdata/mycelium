@@ -39,8 +39,12 @@ class LookupSuggestion(BaseModel):
             "Why this candidate was suggested: sequence_ratio (fuzzy primary bind "
             "field), bind_field_fuzzy_match (fuzzy non-primary bind field), "
             "same_bind_field_conflict (exact match on other bind fields, conflict "
-            "on one field)."
+            "on one field), cross_grain_ambiguous (multi-grain disambiguation)."
         ),
+    )
+    grain: str | None = Field(
+        default=None,
+        description="MVR grain when suggestion targets a specific registry store.",
     )
 
 
@@ -50,6 +54,7 @@ def lookup_suggestion(
     score: float,
     reason: str,
     id: str | None = None,
+    grain: str | None = None,
 ) -> LookupSuggestion:
     """Build a suggestion with a consistent target-protocol retry map."""
     cleaned = {
@@ -65,6 +70,7 @@ def lookup_suggestion(
         id=id,
         score=round(score, 4),
         reason=reason,
+        grain=grain,
     )
 
 
@@ -183,6 +189,13 @@ class EntityQuery(BaseModel):
             "Use only after reviewing lookup_suggested."
         ),
     )
+    grain: str | None = Field(
+        default=None,
+        description=(
+            "Step 1 only. Optional MVR grain override; skips multi-grain fan-out "
+            "and disambiguation when set."
+        ),
+    )
 
     @model_validator(mode="after")
     def _validate_target_protocol_step(self) -> EntityQuery:
@@ -190,6 +203,8 @@ class EntityQuery(BaseModel):
         if delivery_id:
             if self.confirm_new_entity:
                 raise ValueError("confirm_new_entity is step 1 only")
+            if self.grain:
+                raise ValueError("grain is step 1 only")
             if self.lookup:
                 raise ValueError("step 2 accepts only delivery_id")
             if (self.id or "").strip():

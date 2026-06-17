@@ -24,6 +24,7 @@ from network.mvr import (
     is_closed_identity_grain,
     is_full_mvr_lookup,
     load_mvr,
+    load_mvr_config,
     missing_mvr_bind_fields,
     normalized_lookup_values,
 )
@@ -38,19 +39,23 @@ class TargetResolveResult:
     create_on_deliver: bool = False
     required_fields: list[str] = field(default_factory=list)
     suggestions: list[LookupSuggestion] = field(default_factory=list)
+    grain: str | None = None
 
 
 def _same_bind_field_conflict_suggestions(
     lookup: dict[str, str],
+    *,
+    grain: str | None = None,
 ) -> list[LookupSuggestion]:
     norm = normalized_lookup_values(lookup)
-    mvr = load_mvr()
+    resolved_grain = grain or default_mvr_grain()
+    mvr = load_mvr(grain=resolved_grain)
     bind_fields = [f.strip().lower() for f in mvr.bind_fields if f.strip()]
     if len(bind_fields) < 2 or not all(field in norm for field in bind_fields):
         return []
 
     suggestions: list[LookupSuggestion] = []
-    registry = get_entity_registry()
+    registry = get_entity_registry(grain=resolved_grain)
 
     for conflict_field in bind_fields:
         lookup_value = normalize_field_index_value(norm[conflict_field])
@@ -80,6 +85,7 @@ def _same_bind_field_conflict_suggestions(
                     id=entity.id,
                     score=1.0,
                     reason="same_bind_field_conflict",
+                    grain=resolved_grain,
                 ),
             )
     return suggestions
@@ -87,8 +93,11 @@ def _same_bind_field_conflict_suggestions(
 
 def _lookup_suggestions_for_full_mvr(
     lookup: dict[str, str],
+    *,
+    grain: str | None = None,
 ) -> list[LookupSuggestion]:
-    conflicts = _same_bind_field_conflict_suggestions(lookup)
+    resolved_grain = grain or default_mvr_grain()
+    conflicts = _same_bind_field_conflict_suggestions(lookup, grain=resolved_grain)
     if conflicts:
         return conflicts
 
@@ -158,9 +167,10 @@ def _resolve_closed_grain_zero_hit(
             kind="resolved",
             entity_ids=expansion.entity_ids,
             lookup_snapshot=dict(lookup),
+            grain=grain,
         )
 
-    suggestions = _lookup_suggestions_for_full_mvr(lookup)
+    suggestions = _lookup_suggestions_for_full_mvr(lookup, grain=grain)
     if suggestions:
         return TargetResolveResult(
             kind="lookup_suggested",
@@ -176,16 +186,15 @@ def _resolve_closed_grain_zero_hit(
     )
 
 
-def resolve_target_step1(
+def _resolve_single_grain_step1(
     query: EntityQuery,
     *,
-    grain: str | None = None,
+    grain: str,
     alias_expander: AliasExpander | None = None,
 ) -> TargetResolveResult:
-    """Resolve step-1 target query by id or lookup AND (read-only)."""
-    resolved_grain = grain or default_mvr_grain()
-    registry = get_entity_registry(grain=resolved_grain)
-    closed_grain = is_closed_identity_grain(resolved_grain)
+    """Resolve step-1 on one grain (CRM default path and explicit grain override)."""
+    registry = get_entity_registry(grain=grain)
+    closed_grain = is_closed_identity_grain(grain)
     entity_id = (query.id or "").strip()
     if entity_id:
         entity = registry.lookup_by_id(entity_id)
@@ -199,6 +208,7 @@ def resolve_target_step1(
             kind="resolved",
             entity_ids=[entity_id],
             lookup_snapshot={"id": entity_id},
+            grain=grain,
         )
 
     if query.lookup:
@@ -208,9 +218,10 @@ def resolve_target_step1(
                 kind="resolved",
                 entity_ids=entity_ids,
                 lookup_snapshot=dict(query.lookup),
+                grain=grain,
             )
 
-        mvr = load_mvr(grain=resolved_grain)
+        mvr = load_mvr(grain=grain)
         if not is_full_mvr_lookup(query.lookup, mvr):
             norm = normalized_lookup_values(query.lookup)
             for field, value in norm.items():
@@ -235,7 +246,7 @@ def resolve_target_step1(
             if closed_grain:
                 return _resolve_closed_grain_zero_hit(
                     query.lookup,
-                    grain=resolved_grain,
+                    grain=grain,
                     registry=registry,
                     mvr=mvr,
                     alias_expander=alias_expander,
@@ -245,9 +256,10 @@ def resolve_target_step1(
                 entity_ids=[],
                 lookup_snapshot=dict(query.lookup),
                 create_on_deliver=True,
+                grain=grain,
             )
 
-        suggestions = _lookup_suggestions_for_full_mvr(query.lookup)
+        suggestions = _lookup_suggestions_for_full_mvr(query.lookup, grain=grain)
         if suggestions:
             return TargetResolveResult(
                 kind="lookup_suggested",
@@ -259,7 +271,7 @@ def resolve_target_step1(
         if closed_grain:
             return _resolve_closed_grain_zero_hit(
                 query.lookup,
-                grain=resolved_grain,
+                grain=grain,
                 registry=registry,
                 mvr=mvr,
                 alias_expander=alias_expander,
@@ -270,6 +282,52 @@ def resolve_target_step1(
             entity_ids=[],
             lookup_snapshot=dict(query.lookup),
             create_on_deliver=True,
+            grain=grain,
+        )
+
+    return TargetResolveResult(kind="not_found", entity_ids=[], lookup_snapshot={})
+
+
+def resolve_target_step1(
+    query: EntityQuery,
+    *,
+    grain: str | None = None,
+    alias_expander: AliasExpander | None = None,
+    disambiguator: Any | None = None,
+) -> TargetResolveResult:
+    """Resolve step-1 target query by id or lookup AND (read-only)."""
+    config = load_mvr_config()
+    explicit_grain = (query.grain or "").strip() or grain
+    if explicit_grain:
+        if explicit_grain not in config.grains:
+            known = ", ".join(sorted(config.grains.keys()))
+            raise ValueError(
+                f"Unknown MVR grain {explicit_grain!r}; declared grains: {known}",
+            )
+        return _resolve_single_grain_step1(
+            query,
+            grain=explicit_grain,
+            alias_expander=alias_expander,
+        )
+
+    if len(config.grains) == 1:
+        return _resolve_single_grain_step1(
+            query,
+            grain=config.default_grain,
+            alias_expander=alias_expander,
+        )
+
+    from agents.query_grain_router import resolve_id_all_grains, resolve_lookup_multi_grain
+
+    entity_id = (query.id or "").strip()
+    if entity_id:
+        return resolve_id_all_grains(entity_id)
+
+    if query.lookup:
+        return resolve_lookup_multi_grain(
+            query,
+            alias_expander=alias_expander,
+            disambiguator=disambiguator,
         )
 
     return TargetResolveResult(kind="not_found", entity_ids=[], lookup_snapshot={})
@@ -280,8 +338,10 @@ def issue_target_delivery(
     entity_ids: list[str],
     *,
     create_on_deliver: bool = False,
+    grain: str | None = None,
 ) -> DeliveryPayload:
     """Issue and persist a delivery scope for a resolved step-1 query."""
+    resolved_grain = grain or default_mvr_grain()
     scope = issue_delivery(
         entity_ids=entity_ids,
         lookup=(
@@ -292,6 +352,7 @@ def issue_target_delivery(
         requested_attributes=list(query.requested_attributes),
         provenance=bool(query.provenance),
         create_on_deliver=create_on_deliver,
+        grain=resolved_grain,
     )
     get_delivery_store().put(scope)
     return DeliveryPayload.from_scope(scope)

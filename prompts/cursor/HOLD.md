@@ -6,12 +6,11 @@
 
 | Prompt | Scope |
 |--------|--------|
-| [`next/2026-06-17-2100-query-grain-router.md`](next/2026-06-17-2100-query-grain-router.md) | **READY** (after 2000) — multi-grain fan-out, disambiguation LLM trigger A, 3c suggest, `docs/query-grain-router.md` |
 | [`next/2026-06-18-0900-registry-source-keys-polish-nits.md`](next/2026-06-18-0900-registry-source-keys-polish-nits.md) | **LOW** — post-1900 review nits (P1–P4); after 2100 unless Paul prioritizes |
 
 **Paul (June 2026):** Test 8 bootstrap timing (post-1900) — record `real` when run completes; large regression → consider polish P4.
 
-**In progress / review:** [`done/2026-06-17-2000-baseball-closed-identity-lazy-aliases/`](done/2026-06-17-2000-baseball-closed-identity-lazy-aliases/) — slice 2 approved
+**In progress / review:** [`done/2026-06-17-2100-query-grain-router/`](done/2026-06-17-2100-query-grain-router/) — slice 3 ready for Grok review
 
 **Design locked (slice 3):** Fan-out + per-grain filter · 0-hit pipeline · LLM trigger A · outputs `chosen` / `chosen_grain` / `ambiguous` · 3c cross-grain suggest · optional `EntityQuery.grain` · `delivery.grain` · team queries use `name` key (docs)
 

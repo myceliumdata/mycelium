@@ -58,6 +58,24 @@ from models.state import (
 )
 from network.delivery import DeliveryScope, get_delivery_store
 from network.metering_policy import load_metering_policy
+from network.mvr import default_mvr_grain
+
+
+def _state_with_resolve_grain(
+    current: MyceliumGraphState,
+    grain: str | None,
+    result: dict[str, Any],
+) -> dict[str, Any]:
+    """Attach resolved MVR grain to graph context for downstream registry access."""
+    if not grain:
+        return result
+    ctx = dict(current.context) if isinstance(current.context, dict) else {}
+    meta_raw = ctx.get("_meta")
+    meta = dict(meta_raw) if isinstance(meta_raw, dict) else {}
+    meta["resolve_grain"] = grain
+    ctx["_meta"] = meta
+    result["context"] = ctx
+    return result
 
 
 def _target_metering_block_response(
@@ -152,6 +170,7 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
                 "audit_log": ["target_resolve: deliver not_found (scope hydration failed)."],
             }
 
+        resolve_grain = scope.grain or default_mvr_grain()
         policy = load_metering_policy()
         metering_state: dict[str, Any] = {}
         if step2_should_quote(policy):
@@ -188,7 +207,7 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
             }
             if len(matched) == 1:
                 result["current_id"] = matched[0].get("id")
-            return result
+            return _state_with_resolve_grain(current, resolve_grain, result)
 
         if any(is_provisional_registry_match(rec) for rec in matched):
             result = {
@@ -202,7 +221,7 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
             }
             if len(matched) == 1:
                 result["current_id"] = matched[0].get("id")
-            return result
+            return _state_with_resolve_grain(current, resolve_grain, result)
 
         identity_records = _identity_records_from_match(matched)
         message = None
@@ -273,6 +292,7 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
         query,
         resolved.entity_ids,
         create_on_deliver=resolved.create_on_deliver,
+        grain=resolved.grain,
     )
     total = len(resolved.entity_ids)
     scope = get_delivery_store().get(delivery.delivery_id)
@@ -329,7 +349,9 @@ def validate_entity_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str
             "audit_log": ["validate_entity: skip (no matches)."],
         }
 
-    registry = get_entity_registry()
+    registry = get_entity_registry(
+        grain=_meta(current).get("resolve_grain") or default_mvr_grain(),
+    )
     updated_matches: list[dict[str, Any]] = []
     all_contribs: list[dict[str, Any]] = []
     logs: list[str] = []
