@@ -10,7 +10,7 @@ See also [architecture.md](architecture.md) § Target protocol and [seed-bootstr
 |-------------|-------|---------|
 | `player` + `team` | `player` | Person on a roster |
 | `team` only | `team` | Fan-facing franchise label |
-| `player` only | — | `lookup_incomplete` (`required_fields: ["team"]`) |
+| `player` only | `player` (partial) | Try field index on player grain (CRM parity); unique hit → `lookup_resolved`; homonyms → multi-match; 0-hit → `lookup_incomplete` (`required_fields: ["team"]`) |
 | Other / unknown keys | — | `not_found` or `lookup_incomplete` |
 
 Manifest (`examples/networks/baseball/network.json`):
@@ -25,7 +25,7 @@ Manifest (`examples/networks/baseball/network.json`):
 1. Normalize lookup keys via `normalized_lookup_values`.
 2. Find grains whose `bind_fields` set **equals** the lookup key set exactly.
 3. **One match** → `_resolve_single_grain_step1` on that grain.
-4. **Zero matches** → `lookup_incomplete` when keys are a strict subset of one grain's bind fields; else `not_found`.
+4. **Zero matches** → `lookup_incomplete` when keys are a strict subset of one grain's bind fields (then multi-grain step-1 **delegates** to `_resolve_single_grain_step1` on that grain — field index, fuzzy, then incomplete); else `not_found`. Single-grain networks already call `_resolve_single_grain_step1` directly.
 5. **Two+ matches** → should not occur with disjoint field names.
 
 `id`-only step 1 still uses `resolve_id_all_grains` (search all stores; no LLM).

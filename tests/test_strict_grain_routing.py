@@ -174,14 +174,56 @@ def test_player_alias_bind_lookup_resolved(
 
 
 @pytest.mark.smoke
-def test_player_only_lookup_incomplete(
+def test_player_only_lookup_incomplete_when_unknown(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _prepare_baseball_registry(tmp_path, monkeypatch)
-    result = resolve_target_step1(EntityQuery(lookup={"player": "Hank Aaron"}))
+    result = resolve_target_step1(EntityQuery(lookup={"player": "Nobody Here"}))
     assert result.kind == "lookup_incomplete"
     assert "team" in result.required_fields
+
+
+@pytest.mark.smoke
+def test_player_only_lookup_resolved_unique(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _prepare_baseball_registry(tmp_path, monkeypatch)
+    result = resolve_target_step1(EntityQuery(lookup={"player": "Washington"}))
+    assert result.kind == "resolved"
+    assert result.entity_ids == ["player-wash"]
+    assert result.grain == "player"
+
+
+@pytest.mark.smoke
+def test_player_only_homonym_multi_match(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _prepare_baseball_registry(tmp_path, monkeypatch)
+    player = get_entity_registry(grain="player")
+    second = RegistryEntity(
+        id="player-smith-2",
+        bind_values={"player": "John Smith", "team": "Boston Red Sox"},
+        source="test",
+        created_at="2026-06-17T12:00:00+00:00",
+    )
+    first = RegistryEntity(
+        id="player-smith-1",
+        bind_values={"player": "John Smith", "team": "Chicago Cubs"},
+        source="test",
+        created_at="2026-06-17T12:00:00+00:00",
+    )
+    for row in (first, second):
+        player.register_entity(row)
+        player.assign_bind_index(row.id, row.bind_values)
+        player.save_entity(row)
+
+    result = resolve_target_step1(EntityQuery(lookup={"player": "John Smith"}))
+    assert result.kind == "resolved"
+    assert set(result.entity_ids) == {"player-smith-1", "player-smith-2"}
+    assert result.grain == "player"
 
 
 @pytest.mark.smoke

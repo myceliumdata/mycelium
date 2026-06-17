@@ -352,6 +352,12 @@ def resolve_target_step1(
                 alias_expander=alias_expander,
             )
         if inference.kind == "lookup_incomplete":
+            if inference.grain:
+                return _resolve_single_grain_step1(
+                    query,
+                    grain=inference.grain,
+                    alias_expander=alias_expander,
+                )
             return TargetResolveResult(
                 kind="lookup_incomplete",
                 entity_ids=[],

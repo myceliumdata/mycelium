@@ -10,7 +10,7 @@
 |-------------|-------|------------------------|
 | `{player, team}` | player | `lookup_resolved` (1) or `lookup_suggested` / `not_found` |
 | `{team}` | team | `lookup_resolved` (1 or multi) or `not_found` |
-| `{player}` only | — | `lookup_incomplete` (`required_fields: ["team"]`) |
+| `{player}` only | player (partial) | known name → `lookup_resolved`; unknown → `lookup_incomplete` (`team`) |
 | `{name, …}` (old keys) | — | `not_found` |
 
 ---
@@ -199,10 +199,10 @@ After Q01, `AARON_ID` is set. Proves step-1 `id` resolve → fresh `delivery_id`
 
 ## B — Player grain (incomplete / negative)
 
-### Q05 — Player only (no team)
+### Q05 — Player only (no team) — unknown name
 
 ```json
-{"lookup": {"player": "Hank Aaron"}}
+{"lookup": {"player": "Nobody Here"}}
 ```
 
 | Expect |
@@ -211,6 +211,23 @@ After Q01, `AARON_ID` is set. Proves step-1 `id` resolve → fresh `delivery_id`
 | `required_fields` includes `team` |
 | `delivery` null |
 | `total_matches` = `0` |
+
+---
+
+### Q17 — Player only — known unique name (CRM parity)
+
+```json
+{"lookup": {"player": "Hank Aaron"}}
+```
+
+| Expect |
+|--------|
+| `outcome` = `lookup_resolved` |
+| `total_matches` = `1` |
+| `delivery.delivery_id` present |
+| Same uuid as Q01 when full `{player, team}` bind exists |
+
+Use any player with a unique `player` field index hit on your benchmark root (e.g. Hank Aaron, Ty Cobb).
 
 ---
 
@@ -412,7 +429,8 @@ MCP `health_check` (or equivalent ping tool your server exposes).
 |----|-------------|-----------------------------|
 | Q01 | `{player, team}` Atlanta | `lookup_resolved` → `found` |
 | Q02 | `{player, team}` Milwaukee Braves | `lookup_resolved`, same uuid |
-| Q05 | `{player}` only | `lookup_incomplete` |
+| Q05 | `{player}` unknown | `lookup_incomplete` |
+| Q17 | `{player}` known unique | `lookup_resolved` |
 | Q06 | unknown bind | `not_found` / `lookup_suggested`, no create |
 | Q08 | `{team}` Brooklyn | `lookup_resolved` → `found` |
 | Q10 | `{id}` team uuid | `lookup_resolved` → `found` |
