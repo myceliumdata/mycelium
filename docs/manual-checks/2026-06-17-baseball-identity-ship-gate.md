@@ -160,12 +160,13 @@ LIMIT 10;
 "
 ```
 
-Pick **two** distinct `team_label` values from output; set shell vars (example):
+Pick **two** distinct `team_label` values from output; set shell vars (**required before Checks 3–4**):
 
 ```bash
 AARON_NAME="Hank Aaron"
 TEAM_A="Milwaukee Braves"    # replace from SQL
 TEAM_B="Atlanta Braves"      # replace from SQL — must differ from TEAM_A
+echo "Aaron: $AARON_NAME | $TEAM_A | $TEAM_B"   # must not be empty
 ```
 
 **Pass:** at least **two** team labels for `aaronha01` on full Lahman (multi-team career).
@@ -174,23 +175,42 @@ TEAM_B="Atlanta Braves"      # replace from SQL — must differ from TEAM_A
 
 ## Check 3 — `source_keys` + bind aliases (required)
 
+Self-contained (no shell vars) — discovers two Aaron teams from warehouse:
+
 ```bash
 uv run python -c "
+import os, sqlite3
+from pathlib import Path
 from network.paths import NetworkPaths, apply_network_paths
 from agents.entity_registry import get_entity_registry, reset_entity_registry
-import os
-root = os.environ['ROOT']
-apply_network_paths(NetworkPaths.from_root(__import__('pathlib').Path(root)))
+
+root = Path(os.environ['ROOT'])
+apply_network_paths(NetworkPaths.from_root(root))
 reset_entity_registry()
+wh = root / 'warehouse' / 'lahman.sqlite'
+teams = [
+    row[0]
+    for row in sqlite3.connect(wh).execute('''
+        SELECT DISTINCT t.name
+        FROM Appearances a
+        JOIN Teams t ON a.teamID = t.teamID AND a.yearID = t.yearID
+        JOIN People p ON a.playerID = p.playerID
+        WHERE p.playerID = ?
+        ORDER BY t.name
+        LIMIT 2
+    ''', ('aaronha01',))
+]
+assert len(teams) == 2, teams
+name = 'Hank Aaron'
 reg = get_entity_registry(grain='player')
 e1 = reg.lookup_by_source_key('lahman.playerID', 'aaronha01')
 assert e1, 'missing player by source key'
-e2 = reg.lookup_by_bind_values({'name': '$AARON_NAME', 'team': '$TEAM_A'})
-e3 = reg.lookup_by_bind_values({'name': '$AARON_NAME', 'team': '$TEAM_B'})
-assert e2 and e3, 'missing bind lookups'
+e2 = reg.lookup_by_bind_values({'name': name, 'team': teams[0]})
+e3 = reg.lookup_by_bind_values({'name': name, 'team': teams[1]})
+assert e2 and e3, f'missing bind lookups for {teams}'
 assert e1.id == e2.id == e3.id, f'id mismatch: {e1.id} {e2.id} {e3.id}'
 assert e1.source_keys.get('lahman.playerID') == 'aaronha01'
-print('OK same uuid', e1.id, 'binds', len(reg._data.bind_index))
+print('OK same uuid', e1.id, 'teams', teams, 'bind_index', len(reg._data.bind_index))
 "
 ```
 
