@@ -125,6 +125,24 @@ def _reject_legacy_entity_rows(raw: object, path: Path) -> None:
             )
 
 
+def make_source_key_index_key(key: str, value: str) -> str:
+    """Composite persisted index key for ``lookup_by_source_key``."""
+    return f"{key.strip()}|{str(value).strip()}"
+
+
+def build_source_key_index(
+    entities: dict[str, RegistryEntity],
+) -> dict[str, str]:
+    """Build composite source key → entity id map from registry rows."""
+    index: dict[str, str] = {}
+    for entity_id, entity in entities.items():
+        for key, value in entity.source_keys.items():
+            if not key.strip() or not str(value).strip():
+                continue
+            index[make_source_key_index_key(key, str(value))] = entity_id
+    return index
+
+
 class RegistryEntity(BaseModel):
     id: str
     bind_values: dict[str, str] = Field(default_factory=dict)
@@ -137,6 +155,14 @@ class RegistryEntity(BaseModel):
     last_researched_at: dict[str, str] = Field(
         default_factory=dict,
         description="Attr name → ISO8601 UTC timestamp of last successful research write.",
+    )
+    source_keys: dict[str, str] = Field(
+        default_factory=dict,
+        description="Namespaced source-system identifiers (e.g. lahman.playerID).",
+    )
+    field_aliases: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="Per bind-field alternate lookup values (field index only).",
     )
     source: str = "query_bind"
     created_at: str = ""
@@ -153,6 +179,7 @@ class EntitiesDocument(BaseModel):
     last_updated: str = ""
     entities: dict[str, RegistryEntity] = Field(default_factory=dict)
     bind_index: dict[str, str] = Field(default_factory=dict)
+    source_key_index: dict[str, str] = Field(default_factory=dict)
 
 
 def registry_entity_to_match(
@@ -249,6 +276,7 @@ class EntityRegistry:
 
     def commit_deferred_save(self) -> None:
         self._maybe_optimize_storage()
+        self._rebuild_source_key_index()
         self._store.save(self._data)
         self._rebuild_field_indexes()
 
@@ -260,6 +288,9 @@ class EntityRegistry:
             self._mvr.bind_fields,
         )
 
+    def _rebuild_source_key_index(self) -> None:
+        self._data.source_key_index = build_source_key_index(self._data.entities)
+
     def _load(self) -> None:
         try:
             self._data = self._store.load()
@@ -267,14 +298,17 @@ class EntityRegistry:
             raise
         except (OSError, json.JSONDecodeError, ValueError):
             self._data = EntitiesDocument()
+        self._rebuild_source_key_index()
         self._rebuild_field_indexes()
 
     def _save(self, *, rebuild_field_indexes: bool = True) -> None:
         if self._defer_flush():
+            self._rebuild_source_key_index()
             if rebuild_field_indexes:
                 self._rebuild_field_indexes()
             return
         self._maybe_optimize_storage()
+        self._rebuild_source_key_index()
         self._store.save(self._data)
         if rebuild_field_indexes:
             self._rebuild_field_indexes()
@@ -318,6 +352,55 @@ class EntityRegistry:
 
     def lookup_by_id(self, entity_id: str) -> RegistryEntity | None:
         return self._data.entities.get(entity_id)
+
+    def lookup_by_source_key(self, key: str, value: str) -> RegistryEntity | None:
+        """Resolve entity by namespaced source key (e.g. lahman.playerID)."""
+        if not key.strip() or not str(value).strip():
+            return None
+        composite = make_source_key_index_key(key, str(value))
+        entity_id = self._data.source_key_index.get(composite)
+        if not entity_id:
+            return None
+        return self._data.entities.get(entity_id)
+
+    def set_source_keys(
+        self,
+        entity_id: str,
+        keys: dict[str, str],
+    ) -> RegistryEntity:
+        """Merge namespaced source identifiers onto an entity and persist index."""
+        entity = self._data.entities.get(entity_id)
+        if entity is None:
+            raise ValueError(f"Unknown registry entity: {entity_id}")
+        for raw_key, raw_value in keys.items():
+            key = raw_key.strip()
+            value = str(raw_value).strip()
+            if key and value:
+                entity.source_keys[key] = value
+        self._save()
+        return entity
+
+    def add_field_alias(
+        self,
+        entity_id: str,
+        field: str,
+        alias_value: str,
+    ) -> RegistryEntity:
+        """Add a field-index alias for one bind field (multi-entity nicknames allowed)."""
+        entity = self._data.entities.get(entity_id)
+        if entity is None:
+            raise ValueError(f"Unknown registry entity: {entity_id}")
+        field_key = field.strip().lower()
+        alias = str(alias_value).strip()
+        if not field_key:
+            raise ValueError("field must be a non-empty bind field name")
+        if not alias:
+            raise ValueError("alias_value must be non-empty")
+        aliases = entity.field_aliases.setdefault(field_key, [])
+        if alias not in aliases:
+            aliases.append(alias)
+        self._save()
+        return entity
 
     def lookup_by_field(self, field: str, value: str) -> list[RegistryEntity]:
         norm = normalize_field_index_value(value)

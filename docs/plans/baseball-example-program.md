@@ -67,7 +67,8 @@ Not a full application — iterative starter: design, schemas, skeleton ingest/q
 |-------|------|
 | **MVR** | Lookup / create — human-meaningful bind fields |
 | **`id`** | uuid4 — client shortcut after resolve (`step 1` with `id`) |
-| **Source keys** | Lahman IDs — import stability and lineage only |
+| **Source keys** | Namespaced Lahman IDs on `RegistryEntity.source_keys` + persisted `source_key_index` — bootstrap dedup and warehouse joins only (not default `results[]`) |
+| **Field aliases** | Optional per-field nicknames in `field_aliases` — field index only; shared ambiguous values across entities (e.g. `"Dodgers"` on two team rows) |
 
 ---
 

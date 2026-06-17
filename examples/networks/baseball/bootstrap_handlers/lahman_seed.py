@@ -6,12 +6,16 @@ from agents.attribute_write import ensure_entity_bind_fields
 from agents.entity_registry import get_entity_registry
 from bootstrap_handlers.lahman_common import (
     distinct_player_team_rows,
-    distinct_team_labels,
+    distinct_team_label_rows,
     ingest_warehouse,
     resolve_lahman_csv_dir,
     resolve_network_seed,
 )
 from network.bootstrap.context import BootstrapContext, BootstrapResult
+
+LAHMAN_PLAYER_ID = "lahman.playerID"
+LAHMAN_TEAM_ID = "lahman.teamID"
+LAHMAN_FRANCH_ID = "lahman.franchID"
 
 
 class LahmanSeedHandler:
@@ -46,11 +50,10 @@ class LahmanSeedHandler:
         player_registry = get_entity_registry(grain="player")
         teams_committed = 0
         players_committed = 0
-        player_ids: dict[str, str] = {}
         bind_collisions: list[str] = []
 
-        for team_name in distinct_team_labels(warehouse_path):
-            _, duplicate = ensure_entity_bind_fields(
+        for team_name, team_id, franch_id in distinct_team_label_rows(warehouse_path):
+            entity, duplicate = ensure_entity_bind_fields(
                 {"name": team_name},
                 source="seed_bootstrap",
                 validation_state="validated",
@@ -58,6 +61,10 @@ class LahmanSeedHandler:
             )
             if duplicate:
                 continue
+            source_keys = {LAHMAN_TEAM_ID: team_id}
+            if franch_id:
+                source_keys[LAHMAN_FRANCH_ID] = franch_id
+            team_registry.set_source_keys(entity.id, source_keys)
             teams_committed += 1
 
         total_players = len(player_rows)
@@ -65,8 +72,12 @@ class LahmanSeedHandler:
             if progress is not None:
                 progress.processing(index, total_players, detail="player binds")
             bind_values = {"name": display_name, "team": team_label}
-            mapped_id = player_ids.get(player_id)
-            if mapped_id is not None:
+            existing_by_source = player_registry.lookup_by_source_key(
+                LAHMAN_PLAYER_ID,
+                player_id,
+            )
+            if existing_by_source is not None:
+                mapped_id = existing_by_source.id
                 existing = player_registry.lookup_by_bind_values(bind_values)
                 if existing is not None and existing.id == mapped_id:
                     continue
@@ -86,7 +97,7 @@ class LahmanSeedHandler:
                 validation_state="validated",
                 registry=player_registry,
             )
-            player_ids[player_id] = entity.id
+            player_registry.set_source_keys(entity.id, {LAHMAN_PLAYER_ID: player_id})
             if duplicate:
                 continue
             players_committed += 1

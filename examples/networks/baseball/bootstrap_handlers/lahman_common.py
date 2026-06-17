@@ -104,21 +104,28 @@ def ingest_warehouse(csv_dir: Path, warehouse_path: Path) -> dict[str, int]:
     return counts
 
 
-def distinct_team_labels(warehouse_path: Path) -> list[str]:
+def distinct_team_label_rows(warehouse_path: Path) -> list[tuple[str, str, str]]:
+    """Return stable ``(team_label, teamID, franchID)`` per distinct ``Teams.name``."""
     conn = sqlite3.connect(warehouse_path)
     try:
         rows = conn.execute(
             '''
-            SELECT TRIM("name") AS label
+            SELECT TRIM("name") AS label,
+                   MIN(TRIM("teamID")) AS team_id,
+                   MIN(TRIM("franchID")) AS franch_id
             FROM "Teams"
             WHERE TRIM(COALESCE("name", "")) != ""
             GROUP BY TRIM("name")
             ORDER BY label
             ''',
         ).fetchall()
-        return [str(label) for label, in rows]
+        return [(str(label), str(team_id), str(franch_id)) for label, team_id, franch_id in rows]
     finally:
         conn.close()
+
+
+def distinct_team_labels(warehouse_path: Path) -> list[str]:
+    return [label for label, _, _ in distinct_team_label_rows(warehouse_path)]
 
 
 def distinct_player_team_rows(warehouse_path: Path) -> list[tuple[str, str, str]]:

@@ -35,12 +35,21 @@ def build_field_indexes(
     indexes: dict[str, dict[str, list[str]]] = {field: {} for field in fields}
     for entity_id, entity in entities.items():
         for field in fields:
-            raw = _entity_field_value(entity, field)
-            if raw is None:
-                continue
-            norm = normalize_field_index_value(raw)
             bucket = indexes[field]
-            bucket.setdefault(norm, []).append(entity_id)
+            values: list[str] = []
+            raw = _entity_field_value(entity, field)
+            if raw is not None:
+                values.append(raw)
+            for alias in entity.field_aliases.get(field, []):
+                if alias.strip():
+                    values.append(alias.strip())
+            for value in values:
+                norm = normalize_field_index_value(value)
+                if not norm:
+                    continue
+                ids = bucket.setdefault(norm, [])
+                if entity_id not in ids:
+                    ids.append(entity_id)
     return indexes
 
 

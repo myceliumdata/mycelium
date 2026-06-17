@@ -234,3 +234,58 @@ def test_save_entity_rebuilds_field_indexes_for_lookup(
     matches = reg.lookup_by_field("name", "Babe Ruth")
     assert len(matches) == 1
     assert matches[0].id == "player-new"
+
+
+@pytest.mark.smoke
+def test_lookup_by_source_key_round_trip(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reg = _baseball_registry(tmp_path, monkeypatch, "player")
+    entity = RegistryEntity(
+        id="player-src",
+        bind_values={"name": "Hank Aaron", "team": "Milwaukee Braves"},
+        source="test",
+        created_at="2026-06-17T12:00:00+00:00",
+    )
+    reg.register_entity(entity)
+    reg.assign_bind_index(entity.id, entity.bind_values)
+    reg.set_source_keys(entity.id, {"lahman.playerID": "aaronha01"})
+    assert reg.lookup_by_source_key("lahman.playerID", "aaronha01") is not None
+    assert reg.lookup_by_source_key("lahman.playerID", "aaronha01").id == "player-src"
+
+    reg.reload()
+    assert reg.lookup_by_source_key("lahman.playerID", "aaronha01").id == "player-src"
+    payload = json.loads(reg.path.read_text(encoding="utf-8"))
+    assert payload["source_key_index"]["lahman.playerID|aaronha01"] == "player-src"
+
+
+@pytest.mark.smoke
+def test_add_field_alias_allows_multi_entity_lookup(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reg = _baseball_registry(tmp_path, monkeypatch, "team")
+    brooklyn = RegistryEntity(
+        id="team-brooklyn",
+        bind_values={"name": "Brooklyn Dodgers"},
+        source="test",
+        created_at="2026-06-17T12:00:00+00:00",
+    )
+    los_angeles = RegistryEntity(
+        id="team-la",
+        bind_values={"name": "Los Angeles Dodgers"},
+        source="test",
+        created_at="2026-06-17T12:00:00+00:00",
+    )
+    reg.register_entity(brooklyn)
+    reg.assign_bind_index(brooklyn.id, brooklyn.bind_values)
+    reg.save_entity(brooklyn)
+    reg.register_entity(los_angeles)
+    reg.assign_bind_index(los_angeles.id, los_angeles.bind_values)
+    reg.save_entity(los_angeles)
+    reg.add_field_alias(brooklyn.id, "name", "Dodgers")
+    reg.add_field_alias(los_angeles.id, "name", "Dodgers")
+
+    matched_ids = reg.lookup_by_target_lookup({"name": "Dodgers"})
+    assert sorted(matched_ids) == ["team-brooklyn", "team-la"]

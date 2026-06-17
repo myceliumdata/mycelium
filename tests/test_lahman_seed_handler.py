@@ -106,6 +106,7 @@ def test_lahman_seed_handler_commits_teams_and_players(tmp_path: Path) -> None:
     player = next(iter(player_payload["entities"].values()))
     assert player["bind_values"]["name"] == "Hank Aaron"
     assert player["bind_values"]["team"] == "Brooklyn Dodgers"
+    assert player["source_keys"]["lahman.playerID"] == "aaronha01"
     assert (paths.root / "warehouse" / "lahman.sqlite").is_file()
 
 
@@ -130,6 +131,7 @@ def test_lahman_seed_handler_multi_team_same_player_id(tmp_path: Path) -> None:
     assert brooklyn is not None
     assert los_angeles is not None
     assert brooklyn.id == los_angeles.id
+    assert brooklyn.source_keys["lahman.playerID"] == "aaronha01"
 
     player_path = entity_store_path(paths, "player")
     payload = json.loads(player_path.read_text(encoding="utf-8"))
