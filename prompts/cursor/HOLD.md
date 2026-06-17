@@ -2,13 +2,11 @@
 
 **Program:** Storage evolution (specialist → entity) — [`docs/plans/storage-evolution-program.md`](../../docs/plans/storage-evolution-program.md)
 
-**Active (`next/`):**
+**Active (`next/`):** *(empty — queue Test 7 timing after Paul re-benchmarks)*
 
-| Prompt | Scope |
-|--------|--------|
-| [`next/2026-06-18-0900-bootstrap-perf-profile-driven.md`](next/2026-06-18-0900-bootstrap-perf-profile-driven.md) | **READY** — skip field-index rebuild on alias-only attach (§ Profile results filled) |
+**Last approved:** [`done/2026-06-18-0900-bootstrap-perf-profile-driven/`](done/2026-06-18-0900-bootstrap-perf-profile-driven/) — **Approved** (commit below)
 
-**Last approved:** [`done/2026-06-17-2340-specialist-minisql-incremental-writes/`](done/2026-06-17-2340-specialist-minisql-incremental-writes/) — **Approved** (commit below)
+**Prior:** [`done/2026-06-17-2340-specialist-minisql-incremental-writes/`](done/2026-06-17-2340-specialist-minisql-incremental-writes/) — Approved (`c5e5bce`)
 
 **Prior:** [`done/2026-06-17-2355-bootstrap-progress-reporting/`](done/2026-06-17-2355-bootstrap-progress-reporting/) — Approved (`2f9d673`)
 

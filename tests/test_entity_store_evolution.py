@@ -176,3 +176,61 @@ def test_optimize_storage_skips_when_already_minisql(
     with patch.object(reg, "entity_count") as count_mock:
         assert reg.optimize_storage() is False
         count_mock.assert_not_called()
+
+
+@pytest.mark.smoke
+def test_add_bind_alias_skips_field_index_rebuild(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reg = _baseball_registry(tmp_path, monkeypatch, "player")
+    entity = RegistryEntity(
+        id="player-alias",
+        bind_values={"name": "Hank Aaron", "team": "Brooklyn Dodgers"},
+        source="test",
+        created_at="2026-06-17T12:00:00+00:00",
+    )
+    reg.register_entity(entity)
+    reg.assign_bind_index(entity.id, entity.bind_values)
+    reg.save_entity(entity)
+
+    with patch.object(reg, "_rebuild_field_indexes", autospec=True) as rebuild_mock:
+        reg.add_bind_alias(
+            entity.id,
+            {"name": "Hank Aaron", "team": "Los Angeles Dodgers"},
+        )
+
+    rebuild_mock.assert_not_called()
+    alias_hit = reg.lookup_by_bind_values(
+        {"name": "Hank Aaron", "team": "Los Angeles Dodgers"},
+    )
+    assert alias_hit is not None
+    assert alias_hit.id == entity.id
+
+
+@pytest.mark.smoke
+def test_save_entity_rebuilds_field_indexes_for_lookup(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reg = _baseball_registry(tmp_path, monkeypatch, "player")
+    entity = RegistryEntity(
+        id="player-new",
+        bind_values={"name": "Babe Ruth", "team": "New York Yankees"},
+        source="test",
+        created_at="2026-06-17T12:00:00+00:00",
+    )
+
+    with patch.object(
+        reg,
+        "_rebuild_field_indexes",
+        wraps=reg._rebuild_field_indexes,
+    ) as rebuild_mock:
+        reg.register_entity(entity)
+        reg.assign_bind_index(entity.id, entity.bind_values)
+        reg.save_entity(entity)
+
+    rebuild_mock.assert_called_once()
+    matches = reg.lookup_by_field("name", "Babe Ruth")
+    assert len(matches) == 1
+    assert matches[0].id == "player-new"

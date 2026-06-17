@@ -258,13 +258,15 @@ class EntityRegistry:
             self._data = EntitiesDocument()
         self._rebuild_field_indexes()
 
-    def _save(self) -> None:
+    def _save(self, *, rebuild_field_indexes: bool = True) -> None:
         if self._defer_flush():
-            self._rebuild_field_indexes()
+            if rebuild_field_indexes:
+                self._rebuild_field_indexes()
             return
         self._maybe_optimize_storage()
         self._store.save(self._data)
-        self._rebuild_field_indexes()
+        if rebuild_field_indexes:
+            self._rebuild_field_indexes()
 
     def reload(self) -> None:
         self._load()
@@ -328,7 +330,11 @@ class EntityRegistry:
         self._data.bind_index[make_bind_key(bind_values, bind_fields)] = entity_id
 
     def add_bind_alias(self, entity_id: str, bind_values: dict[str, str]) -> None:
-        """Attach another bind_index key to an existing entity (bootstrap aliases)."""
+        """Attach another bind_index key to an existing entity (bootstrap aliases).
+
+        Only ``bind_index`` changes; ``entity.bind_values`` stay the same, so field
+        indexes are unchanged and ``lookup_by_bind_values`` resolves via the new key.
+        """
         entity = self._data.entities.get(entity_id)
         if entity is None:
             raise ValueError(f"Unknown registry entity: {entity_id}")
@@ -337,7 +343,7 @@ class EntityRegistry:
             self._bind_fields(),
         )
         self.assign_bind_index(entity_id, full)
-        self.save_entity(entity)
+        self._save(rebuild_field_indexes=False)
 
     def pop_bind_index(self, bind_values: dict[str, str]) -> None:
         bind_fields = self._bind_fields()
