@@ -12,7 +12,7 @@
 |-------|--------|--------|
 | 1000 bind_index fallback | `7ba6dfc` | Step-1 full MVR → `bind_index` for multi-team alias binds |
 | 1100 strict grain routing | `bc73c23` | Lookup keys infer grain; fan-out + `EntityQuery.grain` removed |
-| 1200 partial player lookup | *(pending commit)* | `{player}` only delegates to single-grain resolver (CRM parity) |
+| 1200 partial player lookup | `286811e` | `{player}` only delegates to single-grain resolver (CRM parity) |
 
 **In progress / review:** none
 
