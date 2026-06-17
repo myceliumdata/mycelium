@@ -127,6 +127,8 @@ Proves slice 1000: Milwaukee is not primary `bind_values` but is in `bind_index`
 | `player` = `Hank Aaron` |
 | `team` = `Atlanta Braves` in `results[0].team` (canonical row; lookup used alias bind) |
 
+**UX note (open design):** Step 1 used Milwaukee Braves; step 2 returns **primary** `bind_values.team` (Atlanta), not the team from the lookup. Registry-correct (same uuid), but **feels wrong** (“I asked for Milwaukee”). Backlog: echo lookup team, `matched_bind`, or scope for specialists — TBD.
+
 ---
 
 ### Q03 — Aaron, another alias (Milwaukee Brewers)
@@ -331,6 +333,8 @@ These should **fail cleanly** after 1100 — not return three random teams.
 
 ### Q12 — Old keys + Milwaukee (pre-1100 failure mode)
 
+Uses legacy key **`name`**, not `player`. Do not confuse with **Q02** (`player` + Milwaukee), which should resolve.
+
 ```json
 {"lookup": {"name": "Hank Aaron", "team": "Milwaukee Braves"}}
 ```
@@ -338,6 +342,8 @@ These should **fail cleanly** after 1100 — not return three random teams.
 | Expect |
 |--------|
 | `not_found` — **not** `lookup_resolved` with 3 team entities |
+
+If you get `lookup_resolved` + Hank Aaron / Atlanta, you likely ran **Q02** (`player` key) by mistake.
 
 ---
 
@@ -371,17 +377,30 @@ Run only if you want lazy field-alias behavior on closed team grain.
 
 ### Q15 — Nickname `Dodgers` (0-hit → expansion or suggest)
 
-Requires `OPENAI_API_KEY` for real LLM expansion on first hit; otherwise `not_found` or pre-seeded `field_aliases`.
+Requires `OPENAI_API_KEY` for real LLM expansion on first hit; otherwise immediate `not_found` (no LLM call).
 
 ```json
 {"lookup": {"team": "Dodgers"}}
 ```
 
+**Important:** `./bin/baseball-query` does **not** call `load_dotenv()` — a key only in repo `.env` is invisible unless exported. MCP server **does** load `.env`.
+
+```bash
+# Before Q15 via baseball-query (from repo root):
+set -a && source .env && set +a
+export MYCELIUM_NETWORK_ROOT="$ROOT"
+
+./bin/baseball-query '{"lookup": {"team": "Dodgers"}}' | jq '{outcome, total_matches}'
+```
+
 | Expect (lenient) |
 |------------------|
-| First run without aliases: `not_found` or `lookup_suggested` |
-| After expansion / seeded aliases: `lookup_resolved`, `total_matches` = 2 (Brooklyn + LA) |
+| Without API key in **process env**: immediate `not_found` |
+| With key + first run (no aliases yet): `lookup_resolved` after LLM writes `field_aliases` (may take a few seconds) |
+| `total_matches` ≥ 2 (Brooklyn + LA; may be higher if aliases already polluted from prior runs) |
 | Record outcome |
+
+**Backlog:** `bin/baseball-query` should `load_dotenv()` like MCP/CLI main — slice TBD.
 
 ---
 
@@ -513,6 +532,14 @@ alias bq2='./bin/baseball-query "$1" | jq "{outcome, results: .results}"'
 ---
 
 ## Notes
+
+### Open design / manual findings (June 2026)
+
+| Topic | Status |
+|-------|--------|
+| **Alias lookup → canonical team on deliver** (Q02) | Step 1 accepts `{player, team: Milwaukee}`; step 2 `results[0].team` is **primary** bind (e.g. Atlanta). Same uuid — correct for registry — but **odd UX**. Decide before specialist assembly: surface `lookup` echo, `matched_bind`, or scope team for downstream reads. |
+| **Q12 vs Q02** | Q12 uses `{name, …}` → `not_found`. Q02 uses `{player, team: Milwaukee}` → resolve + canonical Atlanta on deliver. |
+| **Q15 + `.env`** | `OPENAI_API_KEY` in `.env` alone is not enough for `./bin/baseball-query`; export or use MCP. |
 
 - **Do not** pipe `uv run mycelium query` into `jq` — Rich ANSI output breaks JSON parsing. Use `./bin/baseball-query` or MCP.
 - **CRM** is out of scope; run `./bin/smoke-crm-e2e` separately if needed.

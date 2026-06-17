@@ -16,6 +16,11 @@
 
 **In progress / review:** none
 
+**Manual gate findings (Paul, June 2026):**
+
+- **Canonical team on deliver:** alias team in lookup (e.g. Milwaukee) → step 2 shows primary bind team (Atlanta). Registry-correct, UX TBD.
+- **Q15:** `./bin/baseball-query` skips `load_dotenv` — export `.env` or use MCP for lazy alias LLM.
+
 **Design locked (routing):** Disjoint bind fields per grain — baseball `{player, team}` → player, `{team}` → team; partial `{player}` tries field index then incomplete (slice 1200, CRM parity). See [`docs/query-grain-router.md`](../../docs/query-grain-router.md). **Paul:** re-bootstrap only if root still has pre-1100 `{name, team}` keys.
 
 **Git:** Local commits ahead of `origin`; no push until Paul asks.
