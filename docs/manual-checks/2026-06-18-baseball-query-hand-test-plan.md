@@ -155,6 +155,48 @@ Run Q01 step 1, then step 2 twice with the same `delivery_id` (before expiry).
 
 ---
 
+### Q16 — UUID round-trip (player grain)
+
+After Q01, `AARON_ID` is set. Proves step-1 `id` resolve → fresh `delivery_id` → step-2 deliver. **Step 2 never accepts a raw uuid** — only `delivery_id`.
+
+**Step 1**
+
+```json
+{"id": "PASTE_AARON_ID"}
+```
+
+```bash
+./bin/baseball-query "{\"id\": \"$AARON_ID\"}" | \
+  jq '{outcome, total_matches, delivery_id: .delivery.delivery_id, results}'
+```
+
+| Expect step 1 |
+|---------------|
+| `outcome` = `lookup_resolved` |
+| `total_matches` = `1` |
+| `delivery_id` present (new `d_…`, not reused from Q01) |
+| `results` = `[]` (no uuid in step-1 body) |
+
+**Step 2** — paste `delivery_id` from Q16 step 1:
+
+```bash
+./bin/baseball-query '{"delivery_id": "PASTE_D_ID"}' | \
+  jq '{outcome, id: .results[0].id, player: .results[0].player, team: .results[0].team}'
+```
+
+| Expect step 2 |
+|---------------|
+| `outcome` = `found` |
+| `id` = **same** as `AARON_ID` |
+| `player` = `Hank Aaron` |
+| `team` = `Atlanta Braves` (canonical primary bind — not “all career teams”) |
+
+**Negative:** `{"delivery_id": "<uuid>"}` (uuid where `delivery_id` belongs) → `not_found` or validation error — not a valid step-2 payload.
+
+**MCP:** same JSON as step 1 / step 2 in `query_entity`.
+
+---
+
 ## B — Player grain (incomplete / negative)
 
 ### Q05 — Player only (no team)
@@ -373,10 +415,70 @@ MCP `health_check` (or equivalent ping tool your server exposes).
 | Q05 | `{player}` only | `lookup_incomplete` |
 | Q06 | unknown bind | `not_found` / `lookup_suggested`, no create |
 | Q08 | `{team}` Brooklyn | `lookup_resolved` → `found` |
+| Q10 | `{id}` team uuid | `lookup_resolved` → `found` |
 | Q11 | `{name, team}` old | `not_found` |
 | Q12 | `{name, team}` Milwaukee old | `not_found` |
 | Q13 | `grain` field | parse error |
 | Q14 | `{name}` team old | `not_found` |
+| Q16 | `{id}` player uuid (`AARON_ID`) | `lookup_resolved` → `found`, same uuid |
+
+---
+
+## H — Career teams (out of query protocol)
+
+**Not a ship-gate pass/fail row.** The two-step identity API returns **one** canonical player row per deliver (`team` = primary bind in `bind_values`, e.g. Atlanta Braves). It does **not** list every team a player appeared for. No `requested_attributes` path for roster or career-team lists in identity scope.
+
+Use these when you need “what teams did Hank Aaron play on?”:
+
+### H1 — Warehouse SQL (authoritative Lahman)
+
+Same pattern as ship gate Check 2 — [`2026-06-17-baseball-identity-ship-gate.md`](2026-06-17-baseball-identity-ship-gate.md):
+
+```bash
+export WAREHOUSE="${WAREHOUSE:-$ROOT/warehouse/lahman.sqlite}"
+
+sqlite3 "$WAREHOUSE" "
+SELECT DISTINCT t.name AS team_label
+FROM Appearances a
+JOIN Teams t ON a.teamID = t.teamID AND a.yearID = t.yearID
+JOIN People p ON a.playerID = p.playerID
+WHERE p.playerID = 'aaronha01'
+ORDER BY team_label;
+"
+```
+
+On full Lahman you should see **three** fan-facing names (e.g. Indianapolis Clowns, Milwaukee Braves, Milwaukee Brewers) — distinct from the single `team` on step-2 deliver.
+
+### H2 — Registry `bind_index` scan (bootstrap aliases)
+
+Lists every `(player, team)` bind key committed for Aaron’s uuid (should align with warehouse teams bootstrap indexed):
+
+```bash
+uv run python -c "
+import os
+from pathlib import Path
+from network.paths import NetworkPaths, apply_network_paths
+from agents.entity_registry import get_entity_registry, reset_entity_registry
+
+root = Path(os.environ['ROOT'])
+apply_network_paths(NetworkPaths.from_root(root))
+reset_entity_registry()
+reg = get_entity_registry(grain='player')
+e = reg.lookup_by_source_key('lahman.playerID', 'aaronha01')
+assert e, 'missing aaronha01'
+alias_keys = sorted(k for k, eid in reg._data.bind_index.items() if eid == e.id)
+print('uuid', e.id)
+print('bind_index keys for entity', len(alias_keys))
+print('sample keys', alias_keys[:5])
+print('primary bind team', e.bind_values.get('team'))
+"
+```
+
+**Expect:** `bind_index keys for entity` ≥ number of distinct teams from H1 (normalized `player|team` strings — use H1 for readable labels); `primary bind team` matches Q01/Q16 step-2 `results[0].team`.
+
+### H3 — Per-team lookups (proof, not enumeration)
+
+`{"lookup": {"player": "Hank Aaron", "team": "<each team from H1>"}}` should each `lookup_resolved` to the **same** uuid (Q02/Q03 pattern). That proves a team was a valid bind alias; it does **not** discover unknown teams without trying every franchise name.
 
 ---
 
@@ -397,4 +499,5 @@ alias bq2='./bin/baseball-query "$1" | jq "{outcome, results: .results}"'
 - **Do not** pipe `uv run mycelium query` into `jq` — Rich ANSI output breaks JSON parsing. Use `./bin/baseball-query` or MCP.
 - **CRM** is out of scope; run `./bin/smoke-crm-e2e` separately if needed.
 - Parent ship gate (timing, SQL, registry counts): [`2026-06-17-baseball-identity-ship-gate.md`](2026-06-17-baseball-identity-ship-gate.md)
+- **Career teams:** use **H1** or **H2** — not the public query protocol (see § H).
 - After all **G** rows pass on your re-bootstrapped root, mark ship gate query sections **CLEAR** and continue checks 1–3 / 7 if not already done.
