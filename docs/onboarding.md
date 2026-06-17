@@ -19,7 +19,7 @@
 | **`entities/<grain>.json`** | Canonical identity store per MVR grain at runtime (UUID, `bind_values`, generic `bind_index`, validation state). CRM queries use the **`person`** grain by default. Requires explicit `mvr.grains` and `mvr.default_grain` in `network.json`. MVR bind values are cached here; canonical history is in specialist `versions[]` (Program 2). |
 | **`seed.json`** | Optional **bootstrap fixture** — read by the declared bootstrap handler (CRM: `DefaultSeedHandler`) at `refresh-example-network` or `network create --seed` only. Not read on query. |
 | **`network.json` → `bootstrap`** | Required bootstrap handler declaration: **`module`** (Python module path) + **`handler`** (class name). Framework modules (`network.*`) ship with the repo; pack modules live under `<network_root>/bootstrap_handlers/`. See [architecture.md](architecture.md) § Seed bootstrap. |
-| **`IdentityRecord`** | Graph/MCP model for a matched registry row (renamed from `SeedRecord`, June 2026). |
+| **`IdentityRecord`** | Graph/MCP model for a matched registry row: `id` + `bind_values` keyed by active MVR bind fields (renamed from `SeedRecord`, June 2026). |
 | **`network create`** | Scaffold ontology + register name. `--seed` is optional; empty registry + first-query bind is valid (`empty-crm`). |
 | **Slice plans** | Point-in-time specs in `docs/plans/`. May describe removed code — check **Active backlogs** in [`plans/README.md`](plans/README.md). |
 
@@ -52,6 +52,7 @@ uv run mycelium query --network crm \
 # Step 2 — paste delivery_id
 uv run mycelium query --network crm --delivery-id d_…
 ./bin/ci-local         # same gate as GitHub CI before you open a PR
+./bin/smoke-crm-e2e    # CRM end-to-end: refresh + two-step query scenarios (~3s)
 ```
 
 Optional: `./bin/restart-admin` → `http://127.0.0.1:5173` for the admin UI (`POST /query` **Run query** panel mirrors the same two-step flow).
@@ -65,7 +66,7 @@ uv run mycelium network status --network crm --id <uuid> --json
 
 JSON includes `resolve: { id, lookup }` mirroring the inspect input, plus `entity_fields[]` with versioned storage.
 
-**Step-1 negotiation (June 2026):** Branch on `outcome` before step 2. Partial lookup missing MVR fields → `lookup_incomplete` + `required_fields`. Near-miss typos or same-name collisions → `lookup_suggested` + `suggestions[].suggested_lookup` (merge into retry `lookup`, or use `suggestions[].id`). Intentional create after a warning → re-run step 1 with `confirm_new_entity: true`. Policy: [`plans/fuzzy-lookup-policy.md`](plans/fuzzy-lookup-policy.md). **Restart MCP** after pulling suggestion-shape changes.
+**Step-1 negotiation (June 2026):** Branch on `outcome` before step 2. Partial lookup missing MVR fields → `lookup_incomplete` + `required_fields`. Near-miss typos or bind-field conflicts → `lookup_suggested` + `suggestions[].suggested_lookup` (merge into retry `lookup`, or use `suggestions[].id`). Suggestion `reason` values: `sequence_ratio`, `bind_field_fuzzy_match`, `same_bind_field_conflict`. Intentional create after a warning → re-run step 1 with `confirm_new_entity: true`. Policy: [`plans/fuzzy-lookup-policy.md`](plans/fuzzy-lookup-policy.md). **Restart MCP** after pulling suggestion-shape changes.
 
 ---
 
@@ -92,4 +93,4 @@ JSON includes `resolve: { id, lookup }` mirroring the inspect input, plus `entit
 
 ---
 
-*Last updated: June 2026 (bootstrap handler manifest; Program 3 protocol cleanup).*
+*Last updated: June 2026 (framework MVR generic vocabulary; `./bin/smoke-crm-e2e`).*

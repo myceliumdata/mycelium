@@ -32,9 +32,9 @@ From `docs/architecture.md` and `prompts/system/CORE_PROMPT.md`:
 
 ## 3. Data model & contracts (`src/models/state.py`)
 
-- **`IdentityRecord`**: `id`, `name`, `employer` only.
+- **`IdentityRecord`**: `id` + **`bind_values`** (`dict[str, str]` aligned with registry rows).
 - **`EntityQuery`** (target protocol): step 1 — `id` or `lookup`, optional `requested_attributes`, `provenance`; step 2 — `delivery_id`, optional `quote_id`. `EntityQuery` rejects `entity_key` / `binding` (`extra="forbid"`).
-- **`LookupSuggestion`**: `reason`, optional `id` / display fields, and **`suggested_lookup`** (partial MVR map for step-1 retry). Built via `lookup_suggestion()` helper.
+- **`LookupSuggestion`**: `suggested_lookup` (partial/full MVR bind map), `score`, `reason` (`sequence_ratio`, `bind_field_fuzzy_match`, `same_bind_field_conflict`), optional `id`. No parallel `name` / `employer` convenience fields. Built via `lookup_suggestion()` helper.
 - **`QueryResponse`**: `outcome`, `total_matches`, `delivery`, `quote`, `suggestions`, `required_fields`, `results`, `message`, `provenance`, `debug`, `trace_id`, `thread_id`. Step-1 outcomes include `lookup_incomplete`, `lookup_suggested`, and `lookup_resolved`. Public JSON via `public_dict()` / `public_json()` (omits inapplicable keys).
 - **`MyceliumGraphState`**: `query` required at input; internal fields (`route`, `identity_record`, `response`, `audit_log`, classifications, etc.).
 
@@ -122,6 +122,8 @@ CLI/MCP/admin → resolve network_root → EntityQuery → run_query → graph.a
 
 Two-step example: `mycelium query --lookup-json '{…}'` then `mycelium query --delivery-id d_…`. Admin UI mirrors the same explicit two-step flow.
 
+**CRM E2E smoke gate:** `./bin/smoke-crm-e2e` refreshes the committed CRM example into a temp root and asserts two-step query scenarios + `results[]` shape (`--with-pytest` adds related smoke tests).
+
 ---
 
 ## 11. Historical notes
@@ -137,8 +139,9 @@ Two-step example: `mycelium query --lookup-json '{…}'` then `mycelium query --
 From `TODO.md` (June 2026):
 
 - **MVR redesign M1–M10** — shipped (two-step protocol, `DeliveryStore`, admin query UI).
+- **Framework MVR generic vocabulary** — shipped (June 2026); CRM example unchanged; `./bin/smoke-crm-e2e`.
 - **Networks Phases 1–5** — delivered (`network create`, per-network `specialists/`, skeleton ontology).
-- **Next:** Program 3 (entity protocol legacy cleanup), query-as-seed launch (v2), inter-network handoff (Phase 6).
+- **Next:** Baseball example query path, query-as-seed launch (v2), inter-network handoff (Phase 6).
 - LangSmith E2E verification in operator `.env`.
 
 ---
@@ -154,4 +157,4 @@ entities.json (framework cache/indexes)
 
 ---
 
-*Last major refresh: June 2026 (specialist isolation: dispatch + normalized snapshots; tag `specialist_isolation`).*
+*Last major refresh: June 2026 (MVR generic vocabulary; specialist isolation dispatch + snapshots).*

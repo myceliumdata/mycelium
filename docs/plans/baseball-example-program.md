@@ -11,7 +11,7 @@
 
 Second committed example network beside CRM: **Lahman baseball** under the name **`baseball`**, in a **single network**. Demonstrate:
 
-1. Where the framework still assumes CRM-shaped people / seed / research-only attributes
+1. Multi-grain networks (player + team) on the **generic** framework — CRM vocabulary excision shipped June 2026; remaining work is baseball ontology, `playerID` bridge, stat query path, derivatives
 2. **Agent-managed data factory** — warehouse ingest, derivations, provenance, evolving organization (see origin conversation)
 
 Not a full application — iterative starter: design, schemas, skeleton ingest/query paths, example queries.

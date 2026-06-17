@@ -32,6 +32,7 @@ uv run mycelium query --delivery-id d_abc123
 | Goal | Command |
 |------|---------|
 | **CRM example** (committed reference; wipe stale research before demos) | `./bin/refresh-example-network crm` |
+| **CRM E2E smoke** (two-step queries + `results[]` shape; optional pytest) | `./bin/smoke-crm-e2e` |
 | **Empty-seed CRM** (no bootstrap people; growth from query binds) | `./bin/refresh-example-network empty-crm` |
 | **Custom domain** (your categories + specialists) | `uv run mycelium network create <name> --root <path> --prompt "..."` (optional `--seed <file>`) |
 | **Live demo UI** (network state while you query) | `./bin/restart-admin` → open `http://127.0.0.1:5173` |
@@ -207,7 +208,7 @@ Two networks in parallel (paths are examples):
 
 Bind attrs and `provenance` on **step 1 only**; step 2 sends `delivery_id` (+ `quote_id` when required).
 
-**Attribute fan-out:** Each requested attribute is classified to a category (contact, social, professional, etc.) and routed to the matching specialist. Multiple attributes may invoke **multiple specialists** in one query (e.g. `["email", "linkedin"]` → contact + social). Core fields (`name`, `employer`) come from the registry; everything else is specialist-owned.
+**Attribute fan-out:** Each requested attribute is classified to a category (contact, social, professional, etc.) and routed to the matching specialist. Multiple attributes may invoke **multiple specialists** in one query (e.g. `["email", "linkedin"]` → contact + social). MVR bind fields (CRM: `name`, `employer`) come from the registry; extended attributes are specialist-owned.
 
 The MCP server reloads the entity registry, categories, and specialist modules from disk before each query; **restart MCP only after a code deploy or if reload fails** and results still disagree with a fresh CLI query. MCP returns the same `trace_id` as the CLI when LangSmith tracing is on (verify in the LangSmith UI under project `mycelium`). Call **`describe_network`** at connect time for the author `guide.md`, ontology, and usage policy. Other tools: **`pay_quote`** (when `metering.payment.enabled`), **`health_check`** (includes an internal step-1 + step-2 ping for diagnostics).
 

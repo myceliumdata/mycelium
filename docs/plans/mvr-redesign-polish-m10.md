@@ -28,7 +28,7 @@ Non-blocking nits from Grok review of MVR slices **M1–M9** were logged here **
 | P11 | M6 | Metering accept duplication | **Closed** — `accept_quote_for_workload()` |
 | P12 | M6 | `principal_required` / `payment_required` tests | **Partial** — principal only |
 | P13 | M6 | Provenance-only step-1 quote | **Closed** — smoke |
-| P14 | M7 | `bind_provisional_from_scope` hard-coded | **Partial** — loop; still name/employer bind |
+| P14 | M7 | `bind_provisional_from_scope` hard-coded | **Closed** — MVR `bind_fields` loop (June 2026 vocabulary slice) |
 | P15 | M7 | `is_full_mvr_lookup` empty values | **Closed** — docstring |
 | P16 | M7 | Metered create-on-deliver | **Closed** — smoke |
 | P17 | M7 | Architecture slice bullets | **Closed** — subsections |

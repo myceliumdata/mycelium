@@ -60,15 +60,15 @@ Data addition via the public API was removed in the June 2026 refactor (tasks 10
 ### Seed bootstrap and identity (June 2026 — seed elimination)
 
 - **Optional fixture:** `<network_root>/seed.json` — static `people` array for bootstrap only (not read at query time). Committed CRM example: `examples/networks/crm/seed.json`. Import via `./bin/refresh-example-network crm` or `mycelium network create` when the file is present.
-- **Bootstrap phase:** `network.bootstrap.run_network_bootstrap(paths)` orchestrates create/refresh bootstrap — applies paths, MVR category merge, registry reset, loads `guide.md` into `BootstrapContext`, then invokes the handler declared in **`network.json` → `bootstrap`**. Every network declares **`module`** (Python module path) and **`handler`** (class name). Framework handlers use modules under `network.*` (imported from the installed package); network-pack handlers use modules under `<network_root>/bootstrap_handlers/` (loaded via `sys.path`). The same manifest-driven pattern is planned for specialists. CRM’s `DefaultSeedHandler` imports `seed.json` via `ensure_bound_entity` (`source=seed_bootstrap`, `validation_state=validated`). `bootstrap_seed_at_paths()` is a thin wrapper returning `entities_committed`. Bootstrap bypasses the two-step lookup/create protocol by design; baseball cold start will add pack handlers under `bootstrap_handlers/` rather than forking refresh.
+- **Bootstrap phase:** `network.bootstrap.run_network_bootstrap(paths)` orchestrates create/refresh bootstrap — applies paths, MVR category merge, registry reset, loads `guide.md` into `BootstrapContext`, then invokes the handler declared in **`network.json` → `bootstrap`**. Every network declares **`module`** (Python module path) and **`handler`** (class name). Framework handlers use modules under `network.*` (imported from the installed package); network-pack handlers use modules under `<network_root>/bootstrap_handlers/` (loaded via `sys.path`). The same manifest-driven pattern is planned for specialists. CRM’s `DefaultSeedHandler` imports `seed.json` via `ensure_entity_bind_fields` (`source=seed_bootstrap`, `validation_state=validated`) using each row’s active-grain `mvr.bind_fields`. `bootstrap_seed_at_paths()` is a thin wrapper returning `entities_committed`. Bootstrap bypasses the two-step lookup/create protocol by design; baseball cold start will add pack handlers under `bootstrap_handlers/` rather than forking refresh.
 - **Bootstrap manifest (required):**
   - **Framework handler (CRM):** `"module": "network.bootstrap.handlers.default_seed"`, `"handler": "DefaultSeedHandler"`.
   - **Network-pack handler (custom / baseball):** `"module": "bootstrap_handlers.<module>"`, `"handler": "<ClassName>"` — class must implement `run(self, ctx: BootstrapContext) -> BootstrapResult`. Pack modules live under `<network_root>/bootstrap_handlers/` and are copied from committed examples on refresh when present.
   - Handler-only manifests (e.g. `"handler": "default_seed"` without `module`) are rejected.
 - **Stable test imports:** `network.seed_import` re-exports `import_seed_file`, `count_seed_rows`, and `bootstrap_seed_at_paths` for tests and legacy callers.
 - **Transform (maintainers):** `examples/networks/crm/prepare_seed.py` builds example `seed.json` from a CRM source file (name + employer only; no legacy `id` in the file). Full prototype data: git tag `prototype`.
-- **Runtime store:** Per-grain entity files at `<network_root>/entities/<grain>.json`. Each file holds uuid4 ids, `bind_values` keyed by that grain's `mvr.grains.<grain>.bind_fields`, generic `bind_index`, and per-field indexes. `ensure_bound_entity` assigns stable ids on import; step-1 resolve uses `lookup` AND indexes on the **default grain only** (orchestrator grain selection is a follow-on slice). Seed `people[]` rows import into the `person` grain (or `default_grain` when `person` is absent) on refresh or `network create`.
-- **No `core_data` specialist** — identity fields (name, employer) come from the registry; specialists may override them later.
+- **Runtime store:** Per-grain entity files at `<network_root>/entities/<grain>.json`. Each file holds uuid4 ids, `bind_values` keyed by that grain's `mvr.grains.<grain>.bind_fields`, generic `bind_index`, and per-field indexes. `ensure_entity_bind_fields` assigns stable ids on import; step-1 resolve uses `lookup` AND indexes on the **default grain only** (orchestrator grain selection is a follow-on slice). Seed `people[]` rows import into the `person` grain (or `default_grain` when `person` is absent) on refresh or `network create`.
+- **No `core_data` specialist** — MVR bind fields come from the registry; specialists may override them later when requested (CRM example: `name`, `employer`).
 
 ### Supervisor and graph (current)
 
@@ -264,7 +264,7 @@ Future (not v1): per-network LangSmith project names, optional credential profil
 
 **M6 (metering):** Metered step-1 with attrs → `quote_required` + `delivery_id`; step-2 requires `quote_id` when `metering.enabled`; batch line items scale × N entities.
 
-**M7 (create):** Full MVR lookup + attrs on 0 matches → create-on-deliver scope; step-2 `bind_provisional` + research.
+**M7 (create):** Full MVR lookup + attrs on 0 matches → create-on-deliver scope; step-2 `bind_provisional_from_scope` + research.
 
 **M8 (batch):** N-match scopes research and deliver all entities; batch `provenance.entities[]`.
 
@@ -317,7 +317,7 @@ Legacy outcomes (`entity_unknown`, `entity_key_unresolved`, `entity_bound_provis
 
 ### Create flow (0 matches) — M7
 
-Partial `lookup` with 0 matches → `not_found` (no create). Full MVR in step-1 `lookup` with 0 registry matches → step-1 returns `lookup_resolved` with `total_matches=0`, `delivery.create_on_deliver: true`, and a `delivery_id` scoped for provisional create; step-2 deliver calls `bind_provisional` from scope `lookup` then runs attribute research when attrs were bound on step 1. `requested_attributes` are optional for identity-only create (no research on step 2 unless attrs were requested). `name` is supplied in `lookup` like any other MVR bind field.
+Partial `lookup` with 0 matches → `not_found` (no create). Full MVR in step-1 `lookup` with 0 registry matches → step-1 returns `lookup_resolved` with `total_matches=0`, `delivery.create_on_deliver: true`, and a `delivery_id` scoped for provisional create; step-2 deliver calls `bind_provisional_from_scope` from scope `lookup` then runs attribute research when attrs were bound on step 1. `requested_attributes` are optional for identity-only create (no research on step 2 unless attrs were requested). Each MVR bind field is supplied in `lookup` like any other key in the map.
 
 **Step-1 `message` (aligned with JSON):** existing match — e.g. `1 registry match. Use delivery_id on step 2 to deliver.`; create pending — `No registry match. Full MVR lookup — step 2 will create a provisional entity, then deliver.`
 
@@ -327,7 +327,7 @@ Multi-match step-1 scopes carry `entity_ids[]` (N > 1). Step-2 deliver hydrates 
 
 ### Public surfaces (CLI, MCP, admin) — M9
 
-CLI `query`, MCP `query_entity`, and admin `POST /query` use the **target protocol only** — no `entity_key` / `binding` on public entry points. Public JSON uses `QueryResponse.public_dict()` / `public_json()` — omits fields that do not apply to the response `outcome` (e.g. step-2 `found` omits `total_matches` and `delivery`; empty `required_fields`/`suggestions` and null `quote`/`provenance`/`trace_id` are absent keys; `delivery.create_on_deliver` only when true). Step-1 adds `lookup_incomplete` (partial lookup missing MVR fields) and `lookup_suggested` (same-name or fuzzy near-miss); `lookup_suggested` retry hints use `suggestions[].suggested_lookup` (partial/full MVR bind map); `confirm_new_entity` on step-1 lookup opts into create after suggestions. Example query JSON under `examples/networks/*/queries/` documents two-step resolve → deliver. Admin UI (`admin-ui/`) uses lookup fields + stored `delivery_id` (M10); shows `total_matches: 0 (full MVR)` when `create_on_deliver` is true.
+CLI `query`, MCP `query_entity`, and admin `POST /query` use the **target protocol only** — no `entity_key` / `binding` on public entry points. Public JSON uses `QueryResponse.public_dict()` / `public_json()` — omits fields that do not apply to the response `outcome` (e.g. step-2 `found` omits `total_matches` and `delivery`; empty `required_fields`/`suggestions` and null `quote`/`provenance`/`trace_id` are absent keys; `delivery.create_on_deliver` only when true). Step-1 adds `lookup_incomplete` (partial lookup missing MVR fields) and `lookup_suggested` (bind-field conflict or fuzzy near-miss); `lookup_suggested` retry hints use `suggestions[].suggested_lookup` (partial/full MVR bind map) and optional `suggestions[].id`; `confirm_new_entity` on step-1 lookup opts into create after suggestions. Example query JSON under `examples/networks/*/queries/` documents two-step resolve → deliver. Admin UI (`admin-ui/`) uses lookup fields + stored `delivery_id` (M10); shows `total_matches: 0 (full MVR)` when `create_on_deliver` is true.
 
 **Status inspect (D2-b):** CLI `mycelium network status --id` / `--lookup-json` and admin `GET /status?id=` / `?lookup=` accept exact `id` or `lookup` only (no fuzzy suggestions). JSON responses include `resolve: { id, lookup }` mirroring the inspect input, plus `resolve_matches`, `resolve_kind`, and `entity_fields[]` with versioned storage detail.
 
@@ -344,7 +344,7 @@ One inverted index per MVR field on `entities.json` (normalized value → `[uuid
 
 ## Public query flow (current runtime)
 
-Core storage holds `id`, `name`, and `employer` on registry rows. Callers send a query-only **`EntityQuery`** using the [target two-step protocol](#mvr-redesign-target-protocol). The graph state always includes `MyceliumGraphState.query`; LangSmith trace input therefore always shows a `query` section even for internal-only operations.
+Registry rows hold `id` and `bind_values` keyed by active-grain `mvr.bind_fields` (CRM example: `name`, `employer`; baseball player grain: `name`, `team`). Public `results[]` flatten those bind keys alongside `id`. Callers send a query-only **`EntityQuery`** using the [target two-step protocol](#mvr-redesign-target-protocol). The graph state always includes `MyceliumGraphState.query`; LangSmith trace input therefore always shows a `query` section even for internal-only operations.
 
 ### Flow summary
 
@@ -362,7 +362,7 @@ All external responses use the minimalist **`QueryResponse`** (`results`, `messa
 
 - **`results`** — One dict per match. Always includes `"id"` (stable UUID). With no `requested_attributes`: `id` plus active MVR `bind_fields`. With `requested_attributes`: `id` plus only those keys after specialist-first merge (specialist value wins; seed provisional while pending). No `person_id` field.
 - **`message`** — Primary channel: found / not-found / per-attribute status. Visiting agents read natural-language sentences built from supervisor classifications: **researching** (in-scope, pending), **unavailable** (researched, no value), **out_of_scope** (`category == "unknown"` — never "researching" wording). Found attribute values appear only in `results`, not repeated in `message`. Multi-match uses a collective prefix (`Found N records for 'key'.`).
-- **`provenance`** — Optional structured version history. **`EntityQuery.provenance`** (request flag, default `false`) controls whether this block is populated; it is unrelated to the response field name. When `true` and the outcome delivers results (`assembled` / `found`) with requested extended attributes, `provenance.entities[]` lists each match `id` and per-attribute `current_version_id` + `versions[]` copied from specialist storage (bind fields `name` / `employer` omitted). Default flat `results[]` is unchanged. Metering may charge a `query_provenance` line when enabled. See [`attribute-provenance-program1.md`](plans/attribute-provenance-program1.md).
+- **`provenance`** — Optional structured version history. **`EntityQuery.provenance`** (request flag, default `false`) controls whether this block is populated; it is unrelated to the response field name. When `true` and the outcome delivers results (`assembled` / `found`) with requested extended attributes, `provenance.entities[]` lists each match `id` and per-attribute `current_version_id` + `versions[]` copied from specialist storage (MVR bind fields omitted). Default flat `results[]` is unchanged. Metering may charge a `query_provenance` line when enabled. See [`attribute-provenance-program1.md`](plans/attribute-provenance-program1.md).
 - **`debug`** — Internal context (`lookup` / `delivery_id`, `requested_attributes`, outcome tags). Callers should not depend on it.
 - **`trace_id`** — LangSmith trace identifier for this graph invocation when `LANGCHAIN_TRACING_V2` is enabled; otherwise `null`. Lets operators and developers jump from a JSON response to the matching trace in LangSmith for debugging. When creating your LangSmith API key, select **Personal Access Token (PAT)** (prefix `lsv2_pt_`). `LANGCHAIN_PROJECT` (default "mycelium") names the tracing project in the LangSmith UI — it will be created automatically on first use; no manual pre-creation required. See README.md for full setup steps.
 - **`thread_id`** — Conversation/session identifier for this request. CLI and MCP callers may pass a stable `thread_id` to tie follow-up queries to the same LangGraph checkpoint thread; when omitted, the runtime generates one per invocation.
@@ -419,7 +419,8 @@ See `prompts/cursor/WORKFLOW.md` for the current handoff protocol.
 The seed-data-context redesign is **implemented** (Cursor slices `2026-06-09-1500` through `1720` via the reprocess queue):
 
 - Seed JSON origin (`<network_root>/seed.json`; example at `examples/networks/crm/`) with no legacy `id` in the file; public `results["id"]` = stable UUID
-- No `core_data` specialist; `name`/`employer` are specialist-owned like any other attribute
+- No `core_data` specialist; MVR bind fields are specialist-owned like any other attribute when requested
+- **Framework MVR generic vocabulary (June 2026):** `IdentityRecord.bind_values`, `LookupSuggestion.suggested_lookup` only, validation/context/suggestions driven by active `mvr.bind_fields` — no hardcoded CRM field pairs in `src/`. CRM example network unchanged (`name` + `employer` in seed and `results[]` because that is what CRM `network.json` declares). Verification: `./bin/smoke-crm-e2e`.
 - Supervisor is a pure planner (resolves seed, classifies, builds full context plan in state)
 - Graph: `target_resolve` → (`assemble_response` on step 1, or `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` on step 2)
 - Agent Factory template with 3 scenarios (`found` / `pending` / `N/A`), `specialist_contrib`, `id`/`context`/`target_fields`
@@ -438,4 +439,4 @@ See `TODO.md` for follow-ups.
 
 ---
 
-**Last major update:** June 2026 (specialist isolation: dispatch protocol + normalized read snapshots; tag `specialist_isolation`)
+**Last major update:** June 2026 (framework MVR generic vocabulary; specialist isolation dispatch protocol)

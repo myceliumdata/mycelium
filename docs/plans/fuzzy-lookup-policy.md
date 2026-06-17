@@ -6,7 +6,7 @@
 ## Scope today (MVR v1)
 
 - Step-1 `lookup` searches **MVR bind fields only** (CRM: `name`, `employer`) via exact per-field indexes.
-- **Fuzzy suggestions** (`lookup_suggested`, `SUGGESTION_MIN_SCORE = 0.85`) apply when exact index lookup returns 0 hits — partial/full paths for **names** (`sequence_ratio`, `1430`) and **employers** (`employer_sequence_ratio`, `1435`/`1440`). Employer typos suggest the **corrected employer string** in `suggested_lookup` (e.g. `{"employer": "645 Ventures"}`); **do not** auto-resolve to all employees (parity with name fuzzy).
+- **Fuzzy suggestions** (`lookup_suggested`, `SUGGESTION_MIN_SCORE = 0.85`) apply when exact index lookup returns 0 hits — partial/full paths for any bind field via `_rank_bind_field_fuzzy_suggestions` (CRM: **names** → `sequence_ratio`; **employers** → `bind_field_fuzzy_match`, slices `1435`/`1440`). Employer typos suggest the **corrected employer string** in `suggested_lookup` (e.g. `{"employer": "645 Ventures"}`); **do not** auto-resolve to all employees (parity with name fuzzy). Full-MVR bind-field conflicts use `same_bind_field_conflict` (was `same_name_different_employer`).
 
 ## Policy (Paul, June 2026)
 
@@ -37,7 +37,7 @@
 | `1440` | employer suggestion shape | **Approved** |
 | `1450` | `suggested_lookup` rename | **Approved** |
 
-**Retry contract:** On `lookup_suggested`, merge `suggestions[].suggested_lookup` into step-1 `lookup` (or use `suggestions[].id` for one known row). Legacy `entity_key_unresolved` uses `suggested_lookup` too (typically `{"name": "…"}`).
+**Retry contract:** On `lookup_suggested`, merge `suggestions[].suggested_lookup` into step-1 `lookup` (or use `suggestions[].id` for one known row). `LookupSuggestion` exposes `suggested_lookup` only — no parallel `name` / `employer` fields on the MCP schema.
 
 ## References
 
