@@ -51,7 +51,10 @@ After fetch, bootstrap:
 2. Commits distinct `Teams.name` labels → `entities/team.json` (`bind_fields: ["name"]`)
 3. Commits player rows from Appearances (one uuid per Lahman `playerID`, multiple bind keys for multi-team aliases) → `entities/player.json`
 
-Each committed row stores Lahman IDs in **`source_keys`** (`lahman.playerID`, `lahman.teamID`, optional `lahman.franchID`) for warehouse joins; public entity `id` stays uuid4. **Bind aliases** (`add_bind_alias`) attach extra full player `(name, team)` tuples; **field aliases** (`add_field_alias`, slice 2) attach shared nicknames like `"Dodgers"` to multiple team entities via the field index only.
+Each committed row stores Lahman IDs in **`source_keys`** (`lahman.playerID`, `lahman.teamID`, optional `lahman.franchID`) for warehouse joins; public entity `id` stays uuid4.
+
+- **Bind aliases** (`add_bind_alias`) — bootstrap-time alternate full player `(name, team)` tuples for one `playerID` (multi-team careers).
+- **Field aliases** (`add_field_alias`) — field-index nicknames on one bind field; multiple entities may share one alias (`"Dodgers"` → Brooklyn + LA). Bootstrap may seed some; **closed-grain query-time** expansion (`bind_alias_expansion`) can add more lazily without changing canonical bind values.
 
 The baseball example copies CRM sample `categories.json` until a baseball ontology exists. Bind field `team` maps to the `professional` category (same as CRM `employer`).
 

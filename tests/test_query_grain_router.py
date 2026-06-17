@@ -20,22 +20,13 @@ from agents.target_deliver import load_delivery_scope
 from agents.target_resolve import issue_target_delivery, resolve_target_step1
 from models.state import EntityQuery
 from network.delivery import get_delivery_store, reset_delivery_store
-from network.paths import NetworkPaths, _RUNTIME_ENV_FIELDS
-from network_helpers import import_seed_for_test
+from network.paths import NetworkPaths
+from network_helpers import apply_network_paths_monkeypatch, import_seed_for_test
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BASEBALL_MANIFEST = REPO_ROOT / "examples" / "networks" / "baseball" / "network.json"
 CRM_MANIFEST = REPO_ROOT / "examples" / "networks" / "crm" / "network.json"
 CRM_SEED = REPO_ROOT / "examples" / "networks" / "crm" / "seed.json"
-
-
-def _apply_paths_monkeypatch(
-    paths: NetworkPaths,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(paths.root))
-    for env_var, field in _RUNTIME_ENV_FIELDS.items():
-        monkeypatch.setenv(env_var, str(getattr(paths, field)))
 
 
 def _prepare_baseball_multi_grain(
@@ -47,7 +38,7 @@ def _prepare_baseball_multi_grain(
     shutil.copy(BASEBALL_MANIFEST, root / "network.json")
     shutil.copy(REPO_ROOT / "examples" / "networks" / "baseball" / "guide.md", root / "guide.md")
     paths = NetworkPaths.from_root(root)
-    _apply_paths_monkeypatch(paths, monkeypatch)
+    apply_network_paths_monkeypatch(paths, monkeypatch)
     reset_entity_registry()
     reset_delivery_store()
 
@@ -91,12 +82,39 @@ def _mock_disambiguation_chosen_team(
     return GrainDisambiguationResult(kind="ambiguous")
 
 
+def _mock_disambiguation_chosen_entity(
+    hits,
+    guide_text,
+) -> GrainDisambiguationResult:
+    _ = hits, guide_text
+    return GrainDisambiguationResult(
+        kind="chosen",
+        grain="team",
+        entity_id="team-brooklyn",
+    )
+
+
 def _mock_disambiguation_ambiguous(
     hits,
     guide_text,
 ) -> GrainDisambiguationResult:
     _ = hits, guide_text
     return GrainDisambiguationResult(kind="ambiguous")
+
+
+def _mock_team_alias_expander(
+    grain: str,
+    field: str,
+    query_value: str,
+    registry,
+    guide_text: str | None,
+) -> list[str]:
+    _ = field, registry, guide_text
+    if grain != "team":
+        return []
+    if query_value == "Bronx Bombers":
+        return ["team-yankees"]
+    return []
 
 
 @pytest.mark.smoke
@@ -133,6 +151,48 @@ def test_fan_out_name_and_team_filters_team_grain(
     hits = fan_out_lookup(lookup)
     assert "team" not in hits
     assert hits.get("player") == ["player-wash"]
+
+
+@pytest.mark.smoke
+def test_dodgers_two_hits_one_grain_no_llm_via_resolve_target_step1(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _prepare_baseball_multi_grain(tmp_path, monkeypatch)
+    team = get_entity_registry(grain="team")
+    team.add_field_alias("team-brooklyn", "name", "Dodgers")
+    team.add_field_alias("team-la", "name", "Dodgers")
+
+    result = resolve_target_step1(EntityQuery(lookup={"name": "Dodgers"}))
+    assert result.kind == "resolved"
+    assert result.grain == "team"
+    assert set(result.entity_ids) == {"team-brooklyn", "team-la"}
+
+
+@pytest.mark.smoke
+def test_mock_disambiguation_chosen_single_entity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _prepare_baseball_multi_grain(tmp_path, monkeypatch)
+    team = get_entity_registry(grain="team")
+    washington_team = RegistryEntity(
+        id="team-wash",
+        bind_values={"name": "Washington"},
+        source="test",
+        created_at="2026-06-17T12:00:00+00:00",
+    )
+    team.register_entity(washington_team)
+    team.assign_bind_index("team-wash", washington_team.bind_values)
+    team.save_entity(washington_team)
+
+    result = resolve_target_step1(
+        EntityQuery(lookup={"name": "Washington"}),
+        disambiguator=_mock_disambiguation_chosen_entity,
+    )
+    assert result.kind == "resolved"
+    assert result.entity_ids == ["team-brooklyn"]
+    assert result.grain == "team"
 
 
 @pytest.mark.smoke
@@ -186,6 +246,53 @@ def test_mock_disambiguation_ambiguous_lookup_suggested_with_grain(
     grains = {item.grain for item in result.suggestions}
     assert grains == {"team", "player"}
     assert all(item.id for item in result.suggestions)
+
+
+@pytest.mark.smoke
+def test_duplicate_id_across_grains_not_found(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _prepare_baseball_multi_grain(tmp_path, monkeypatch)
+    team = get_entity_registry(grain="team")
+    dup_team = RegistryEntity(
+        id="dup-id",
+        bind_values={"name": "Dup Team"},
+        source="test",
+        created_at="2026-06-17T12:00:00+00:00",
+    )
+    team.register_entity(dup_team)
+    team.assign_bind_index("dup-id", dup_team.bind_values)
+    team.save_entity(dup_team)
+
+    player = get_entity_registry(grain="player")
+    dup_player = RegistryEntity(
+        id="dup-id",
+        bind_values={"name": "Dup Player", "team": "Dup"},
+        source="test",
+        created_at="2026-06-17T12:00:00+00:00",
+    )
+    player.register_entity(dup_player)
+    player.assign_bind_index("dup-id", dup_player.bind_values)
+    player.save_entity(dup_player)
+
+    result = resolve_id_all_grains("dup-id")
+    assert result.kind == "not_found"
+
+
+@pytest.mark.smoke
+def test_zero_hit_alias_retry_smoke(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _prepare_baseball_multi_grain(tmp_path, monkeypatch)
+    result = resolve_lookup_multi_grain(
+        EntityQuery(lookup={"name": "Bronx Bombers"}),
+        alias_expander=_mock_team_alias_expander,
+    )
+    assert result.kind == "resolved"
+    assert result.entity_ids == ["team-yankees"]
+    assert result.grain == "team"
 
 
 @pytest.mark.smoke

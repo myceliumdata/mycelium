@@ -413,7 +413,10 @@ class EntityRegistry:
         field: str,
         alias_value: str,
     ) -> RegistryEntity:
-        """Add a field-index alias for one bind field (multi-entity nicknames allowed)."""
+        """Add a field-index alias for one bind field (multi-entity nicknames allowed).
+
+        Query-time writes (``bind_alias_expansion``) persist without provenance metadata in v1.
+        """
         entity = self._data.entities.get(entity_id)
         if entity is None:
             raise ValueError(f"Unknown registry entity: {entity_id}")

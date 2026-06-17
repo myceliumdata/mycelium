@@ -59,11 +59,14 @@ class LahmanSeedHandler:
                 validation_state="validated",
                 registry=team_registry,
             )
-            if duplicate:
-                continue
             source_keys = {LAHMAN_TEAM_ID: team_id}
             if franch_id:
                 source_keys[LAHMAN_FRANCH_ID] = franch_id
+            if duplicate:
+                existing = team_registry.lookup_by_bind_values({"name": team_name})
+                if existing is not None:
+                    team_registry.set_source_keys(existing.id, source_keys)
+                continue
             team_registry.set_source_keys(entity.id, source_keys)
             teams_committed += 1
 

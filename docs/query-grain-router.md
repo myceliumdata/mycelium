@@ -20,7 +20,7 @@ filtered = {k: v for k, v in lookup.items() if k in g.bind_fields}
 | `{name: y}`          | `{name: y}`               | `{name: y}`                   |
 
 
-**Agent note:** team-grain queries use the `**name`** bind field (canonical city+name). The key `**team**` applies to the **player** grain only as a disambiguator — not as the team entity’s primary key.
+**Agent note:** team-grain queries use the **name** bind field (canonical city+name). The key **team** applies to the **player** grain only as a disambiguator — not as the team entity’s primary key.
 
 ## Step-1 flow (lookup)
 
@@ -77,7 +77,7 @@ Env: `OPENAI_API_KEY` for production; `MYCELIUM_GRAIN_DISAMBIGUATION_MODEL` (def
 
 ## Cross-grain ambiguous (3c)
 
-When the LLM returns `ambiguous` (e.g. one team + one player for the same string), step 1 returns `**lookup_suggested`** with candidates tagged with `**grain**`, `id`, and `suggested_lookup`. No mixed-grain `delivery_id` in v1 — the client sends a new step 1 with optional `grain` override.
+When the LLM returns `ambiguous` (e.g. one team + one player for the same string), step 1 returns **lookup_suggested** with candidates tagged with **grain**, `id`, and `suggested_lookup`. No mixed-grain `delivery_id` in v1 — the client sends a new step 1 with optional `grain` override.
 
 Within one grain, multi-match delivery is unchanged (single `grain`, multiple `entity_ids`).
 

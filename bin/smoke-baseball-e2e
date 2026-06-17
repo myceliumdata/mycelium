@@ -6,7 +6,7 @@ not the full ~9+ minute Lahman refresh.
 
 TODO(full): expand to parity with ``bin/smoke-crm-e2e``:
   - ``--full``: real git seed fetch + full Lahman bootstrap (manual / timing gate only)
-  - team-grain queries (``{name: "Brooklyn Dodgers"}``) after query grain router (2100)
+  - team-grain queries (``{name: "Brooklyn Dodgers"}`` with ``grain=team``) — inline in this script
   - lazy field-alias scenarios (Bronx Bombers, Dodgers multi-match) via mock expander
   - optional warehouse stat / derivative queries when those paths exist
 See ``TODO.md`` → ``smoke-baseball-e2e`` full gate.
@@ -349,6 +349,63 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
                 ),
             )
 
+        # Team grain: step-1 lookup with explicit grain override
+        q_team = EntityQuery(
+            lookup={"name": "Brooklyn Dodgers"},
+            grain="team",
+        )
+        r_team = run_query(q_team)
+        p_team = _pub(r_team)
+        if r_team.outcome != "lookup_resolved" or r_team.total_matches != 1:
+            results.append(
+                _fail(
+                    "team_grain_lookup_exact",
+                    f"expected lookup_resolved with 1 team, got {r_team.outcome!r} "
+                    f"total_matches={r_team.total_matches}",
+                    request=q_team.model_dump(exclude_none=True),
+                    response=p_team,
+                ),
+            )
+        else:
+            results.append(
+                _ok(
+                    "team_grain_lookup_exact",
+                    request=q_team.model_dump(exclude_none=True),
+                    response=p_team,
+                ),
+            )
+
+        if r_team.delivery and r_team.delivery.delivery_id:
+            q_team_deliver = EntityQuery(delivery_id=r_team.delivery.delivery_id)
+            r_team_deliver = run_query(q_team_deliver)
+            p_team_deliver = _pub(r_team_deliver)
+            if r_team_deliver.outcome != "found" or not r_team_deliver.results:
+                results.append(
+                    _fail(
+                        "team_grain_deliver_identity",
+                        f"expected found, got {r_team_deliver.outcome!r}",
+                        request=q_team_deliver.model_dump(exclude_none=True),
+                        response=p_team_deliver,
+                    ),
+                )
+            elif r_team_deliver.results[0].get("name") != "Brooklyn Dodgers":
+                results.append(
+                    _fail(
+                        "team_grain_deliver_identity",
+                        f"unexpected team name: {r_team_deliver.results[0]!r}",
+                        request=q_team_deliver.model_dump(exclude_none=True),
+                        response=p_team_deliver,
+                    ),
+                )
+            else:
+                results.append(
+                    _ok(
+                        "team_grain_deliver_identity",
+                        request=q_team_deliver.model_dump(exclude_none=True),
+                        response=p_team_deliver,
+                    ),
+                )
+
     return results, meta
 
 
@@ -371,7 +428,7 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="bin/smoke-baseball-e2e",
         description=(
             "Baseball end-to-end smoke gate (minimal fixture): fake seed fetch, "
-            "bootstrap team+player grains, player-grain two-step query scenarios. "
+            "bootstrap team+player grains, player- and team-grain two-step query scenarios. "
             "Full Lahman refresh is intentionally not run here."
         ),
     )

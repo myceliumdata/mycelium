@@ -15,7 +15,11 @@ from agents.registry import reset_agent_registry
 from graphs.core import reset_core_graph
 from mycelium_mcp.server import _parse_query_payload, query_entity
 from network.delivery import reset_delivery_store
-from network_helpers import import_seed_for_test
+from network_helpers import (
+    import_seed_for_test,
+    mock_email_research,
+    register_contact_specialist,
+)
 from storage.core import reset_storage
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -95,6 +99,9 @@ def crm_public_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
     reset_category_tree()
     get_category_tree()
+    reset_agent_registry()
+    reset_agent_factory()
+    register_contact_specialist()
     import_seed_for_test(root / "seed.json")
     reset_core_graph()
     return root
@@ -152,6 +159,7 @@ def test_mcp_example_batch_fixture_roundtrip(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _ = crm_public_env
+    mock_email_research(monkeypatch)
     resolve_json = (EXAMPLE_QUERIES / "01-resolve-batch.json").read_text()
     raw_step1 = query_entity(resolve_json)
     step1 = json.loads(raw_step1)

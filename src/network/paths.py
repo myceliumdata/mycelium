@@ -198,6 +198,11 @@ def shell_export_network_paths() -> str:
     return "\n".join(lines)
 
 
+def runtime_env_field_names() -> dict[str, str]:
+    """Map ``MYCELIUM_*`` env var names to ``NetworkPaths`` attribute names."""
+    return dict(_RUNTIME_ENV_FIELDS)
+
+
 def apply_network_paths(paths: NetworkPaths) -> None:
     """Set MYCELIUM_* env vars consumed by seed, registry, storage, and graphs."""
     os.environ["MYCELIUM_NETWORK_ROOT"] = str(paths.root)

@@ -13,6 +13,7 @@ from agents.entity_registry import (
     EntityRegistry,
     RegistryEntity,
     get_entity_registry,
+    registry_entity_to_match,
     reset_entity_registry,
 )
 from network.mvr import load_mvr
@@ -346,3 +347,25 @@ def test_add_field_alias_allows_multi_entity_lookup(
 
     matched_ids = reg.lookup_by_target_lookup({"name": "Dodgers"})
     assert sorted(matched_ids) == ["team-brooklyn", "team-la"]
+
+
+@pytest.mark.smoke
+def test_registry_entity_to_match_omits_internal_registry_fields(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reg = _baseball_registry(tmp_path, monkeypatch, "player")
+    entity = RegistryEntity(
+        id="player-1",
+        bind_values={"name": "Hank Aaron", "team": "Milwaukee Braves"},
+        source="test",
+        created_at="2026-06-17T12:00:00+00:00",
+        source_keys={"lahman.playerID": "aaronha01"},
+        field_aliases={"name": ["Hammerin' Hank"]},
+    )
+    reg.register_entity(entity)
+    match = registry_entity_to_match(entity, mvr=reg._mvr)
+    assert "source_keys" not in match
+    assert "field_aliases" not in match
+    assert match["id"] == "player-1"
+    assert match["name"] == "Hank Aaron"

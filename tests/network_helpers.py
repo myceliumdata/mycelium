@@ -130,3 +130,74 @@ def import_seed_at_root(root: Path) -> int:
     ensure_categories_for_mvr_bind(paths)
     reset_entity_registry()
     return import_seed_file(paths.seed_path)
+
+
+def apply_network_paths_monkeypatch(
+    paths: Path | object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Mirror ``NetworkPaths`` into pytest monkeypatch only (no ``os.environ`` leak)."""
+    from network.paths import NetworkPaths, runtime_env_field_names
+
+    if not isinstance(paths, NetworkPaths):
+        msg = "paths must be a NetworkPaths instance"
+        raise TypeError(msg)
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(paths.root))
+    for env_var, field in runtime_env_field_names().items():
+        monkeypatch.setenv(env_var, str(getattr(paths, field)))
+
+
+def mock_email_research(monkeypatch: pytest.MonkeyPatch) -> dict[str, list[str]]:
+    """Stub contact email research for fast batch-deliver smoke tests."""
+    from datetime import datetime, timezone
+
+    from tools.research import ResearchRunResult
+    from versioned_storage_fixtures import versioned_found
+
+    calls: dict[str, list[str]] = {}
+
+    def _fake_run_field_research(
+        *,
+        category: str,
+        specialist_name: str,
+        person_id: str,
+        target_fields: list[str],
+        context: dict[str, Any],
+        llm: object | None = None,
+    ) -> ResearchRunResult:
+        _ = category, specialist_name, context, llm
+        calls.setdefault(person_id, []).extend(target_fields)
+        from agents.specialists.base import SpecialistStorage
+
+        storage = SpecialistStorage(category=category)
+        data = storage.load()
+        rec = data.setdefault("records", {}).setdefault(person_id, {})
+        now = datetime.now(timezone.utc).isoformat()
+        for field in target_fields:
+            rec[field] = versioned_found(
+                at=now,
+                value=f"{person_id[:8]}@batch.example",
+                confidence=0.9,
+                sources=[f"https://example.com/{person_id[:8]}"],
+                category="contact",
+                specialist_name="contact_specialist",
+            )
+        storage.save(data)
+        return ResearchRunResult(fields_updated=list(target_fields), tool_calls_count=1)
+
+    monkeypatch.setattr("tools.research.is_research_available", lambda: True)
+    monkeypatch.setattr("tools.research.run_field_research", _fake_run_field_research)
+    return calls
+
+
+def register_contact_specialist() -> None:
+    """Register CRM contact specialist (required for email deliver smoke paths)."""
+    from agents.factory.agent_factory import get_agent_factory
+
+    get_agent_factory().create_specialist(
+        "contact",
+        "contact_specialist",
+        "Direct contact info",
+        examples=["email", "phone"],
+        auto_commit=False,
+    )

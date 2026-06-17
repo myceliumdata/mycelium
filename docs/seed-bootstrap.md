@@ -98,6 +98,8 @@ Two alias mechanisms — do not conflate:
 
 Field aliases live in `field_aliases` on the entity row and are merged into per-field inverted indexes at load/save. Lazy nickname expansion at query time is a separate slice.
 
+Query-time `add_field_alias` (via `bind_alias_expansion`) persists aliases but does not yet record actor/provenance metadata — intentional v1 omission; bootstrap rows use `source="seed_bootstrap"`.
+
 ## Open vs closed identity (`identity_mode`)
 
 Per-grain setting in `network.json` → `mvr.grains.<grain>.identity_mode`:

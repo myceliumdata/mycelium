@@ -11,6 +11,7 @@ from agents.bind_alias_expansion import (
     expand_field_aliases,
     load_network_guide_text,
 )
+from agents.grain_disambiguation import GrainDisambiguator
 from agents.entity_registry import EntityRegistry, get_entity_registry
 from agents.field_index import normalize_field_index_value
 from agents.entity_resolution import (
@@ -293,7 +294,7 @@ def resolve_target_step1(
     *,
     grain: str | None = None,
     alias_expander: AliasExpander | None = None,
-    disambiguator: Any | None = None,
+    disambiguator: GrainDisambiguator | None = None,
 ) -> TargetResolveResult:
     """Resolve step-1 target query by id or lookup AND (read-only)."""
     config = load_mvr_config()

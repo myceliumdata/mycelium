@@ -181,7 +181,7 @@ def _partial_lookup_result(
             continue
         norm = normalized_lookup_values(filtered)
         for field, value in norm.items():
-            suggestions = _rank_bind_field_fuzzy_suggestions(field, value)
+            suggestions = _rank_bind_field_fuzzy_suggestions(field, value, grain=grain)
             if suggestions:
                 return TargetResolveResult(
                     kind="lookup_suggested",

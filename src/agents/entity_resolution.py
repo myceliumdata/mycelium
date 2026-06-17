@@ -51,15 +51,23 @@ def is_provisional_registry_match(record: dict[str, Any]) -> bool:
     )
 
 
-def _rank_name_suggestions(name_value: str) -> list[LookupSuggestion]:
+def _rank_name_suggestions(
+    name_value: str,
+    *,
+    grain: str | None = None,
+) -> list[LookupSuggestion]:
+    from network.mvr import default_mvr_grain
+
     query_norm = normalize_name_for_comparison(name_value)
     if not query_norm:
         return []
 
     query_first = _first_token(query_norm)
     candidates: list[LookupSuggestion] = []
+    resolved_grain = grain or default_mvr_grain()
+    registry = get_entity_registry(grain=resolved_grain)
 
-    for entity in get_entity_registry().list_entities():
+    for entity in registry.list_entities():
         name = entity.bind_value("name") or ""
         candidate_norm = normalize_name_for_comparison(name)
         if not candidate_norm:
@@ -82,22 +90,31 @@ def _rank_name_suggestions(name_value: str) -> list[LookupSuggestion]:
     return candidates[:SUGGESTION_MAX_COUNT]
 
 
-def _rank_suggestions(entity_key: str) -> list[LookupSuggestion]:
+def _rank_suggestions(entity_key: str, *, grain: str | None = None) -> list[LookupSuggestion]:
     """Fuzzy name suggestions (primary bind field when present in MVR)."""
-    return _rank_name_suggestions(entity_key)
+    return _rank_name_suggestions(entity_key, grain=grain)
 
 
-def _rank_bind_field_fuzzy_suggestions(field: str, value: str) -> list[LookupSuggestion]:
+def _rank_bind_field_fuzzy_suggestions(
+    field: str,
+    value: str,
+    *,
+    grain: str | None = None,
+) -> list[LookupSuggestion]:
     field_key = field.strip().lower()
     if field_key == "name":
-        return _rank_name_suggestions(value)
+        return _rank_name_suggestions(value, grain=grain)
+
+    from network.mvr import default_mvr_grain
 
     query_norm = normalize_field_index_value(value)
     if not query_norm:
         return []
 
+    resolved_grain = grain or default_mvr_grain()
+    registry = get_entity_registry(grain=resolved_grain)
     canonical_by_norm: dict[str, str] = {}
-    for entity in get_entity_registry().list_entities():
+    for entity in registry.list_entities():
         raw_value = entity.bind_value(field_key)
         if raw_value is None or not str(raw_value).strip():
             continue
