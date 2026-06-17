@@ -35,6 +35,7 @@ class GrainMvrPolicy:
     bind_fields: list[str]
     description: str
     entities_file: str
+    identity_mode: str = "open"
 
     def to_mvr_policy(self) -> MvrPolicy:
         return MvrPolicy(
@@ -47,6 +48,7 @@ class GrainMvrPolicy:
             "bind_fields": list(self.bind_fields),
             "description": self.description,
             "entities_file": self.entities_file,
+            "identity_mode": self.identity_mode,
         }
 
 
@@ -107,6 +109,15 @@ def _parse_grain_policy(raw: Any, *, grain_name: str, manifest_path: Path) -> Mv
     return MvrPolicy(bind_fields=fields, description=description.strip())
 
 
+def _parse_identity_mode(raw: Any) -> str:
+    if raw is None:
+        return "open"
+    text = str(raw).strip().lower()
+    if text == "closed":
+        return "closed"
+    return "open"
+
+
 def _parse_grains_block(
     mvr_raw: dict[str, Any],
     *,
@@ -134,10 +145,14 @@ def _parse_grains_block(
             entities_file = entities_file_raw.strip()
         else:
             entities_file = f"entities/{name}.json"
+        identity_mode = _parse_identity_mode(
+            grain_raw.get("identity_mode") if isinstance(grain_raw, dict) else None,
+        )
         grains[name] = GrainMvrPolicy(
             bind_fields=policy.bind_fields,
             description=policy.description,
             entities_file=entities_file,
+            identity_mode=identity_mode,
         )
     if not grains:
         raise ValueError(
@@ -254,3 +269,17 @@ def mvr_bind_field_names(mvr: MvrPolicy | None = None) -> list[str]:
 def mvr_bind_field_set(mvr: MvrPolicy | None = None) -> frozenset[str]:
     """Frozen set of active MVR bind field names."""
     return frozenset(mvr_bind_field_names(mvr))
+
+
+def is_closed_identity_grain(
+    grain: str | None = None,
+    *,
+    paths: NetworkPaths | None = None,
+) -> bool:
+    """True when the grain uses closed-world identity (no query-time entity creation)."""
+    config = load_mvr_config(paths=paths)
+    grain_name = grain or config.default_grain
+    grain_policy = config.grains.get(grain_name)
+    if grain_policy is None:
+        return False
+    return grain_policy.identity_mode == "closed"

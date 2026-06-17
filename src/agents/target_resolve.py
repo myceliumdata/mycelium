@@ -5,7 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from agents.entity_registry import get_entity_registry
+from agents.bind_alias_expansion import (
+    AliasExpander,
+    AliasExpansionResult,
+    expand_field_aliases,
+    load_network_guide_text,
+)
+from agents.entity_registry import EntityRegistry, get_entity_registry
 from agents.field_index import normalize_field_index_value
 from agents.entity_resolution import (
     _rank_bind_field_fuzzy_suggestions,
@@ -14,6 +20,8 @@ from agents.entity_resolution import (
 from models.state import DeliveryPayload, EntityQuery, LookupSuggestion, lookup_suggestion
 from network.delivery import get_delivery_store, issue_delivery
 from network.mvr import (
+    default_mvr_grain,
+    is_closed_identity_grain,
     is_full_mvr_lookup,
     load_mvr,
     missing_mvr_bind_fields,
@@ -91,9 +99,93 @@ def _lookup_suggestions_for_full_mvr(
     return []
 
 
-def resolve_target_step1(query: EntityQuery) -> TargetResolveResult:
+def _try_closed_grain_alias_expansion(
+    lookup: dict[str, str],
+    *,
+    grain: str,
+    registry: EntityRegistry,
+    mvr: Any,
+    alias_expander: AliasExpander | None = None,
+) -> AliasExpansionResult:
+    """Expand field aliases for lookup fields, retrying after each write batch."""
+    guide_text = load_network_guide_text()
+    norm = normalized_lookup_values(lookup)
+    bind_fields = [field.strip().lower() for field in mvr.bind_fields if field.strip()]
+    total_written = 0
+    matched_ids: list[str] = []
+
+    for field_key in bind_fields:
+        if field_key not in norm:
+            continue
+        result = expand_field_aliases(
+            grain,
+            field_key,
+            norm[field_key],
+            registry=registry,
+            guide_text=guide_text,
+            expander=alias_expander,
+        )
+        total_written += result.aliases_written
+        if result.aliases_written:
+            matched_ids = registry.lookup_by_target_lookup(lookup)
+            if matched_ids:
+                break
+
+    return AliasExpansionResult(
+        entity_ids=matched_ids,
+        aliases_written=total_written,
+    )
+
+
+def _resolve_closed_grain_zero_hit(
+    lookup: dict[str, str],
+    *,
+    grain: str,
+    registry: EntityRegistry,
+    mvr: Any,
+    alias_expander: AliasExpander | None = None,
+) -> TargetResolveResult:
+    """Closed grains: lazy alias expansion, then suggest/not_found — never create."""
+    expansion = _try_closed_grain_alias_expansion(
+        lookup,
+        grain=grain,
+        registry=registry,
+        mvr=mvr,
+        alias_expander=alias_expander,
+    )
+    if expansion.entity_ids:
+        return TargetResolveResult(
+            kind="resolved",
+            entity_ids=expansion.entity_ids,
+            lookup_snapshot=dict(lookup),
+        )
+
+    suggestions = _lookup_suggestions_for_full_mvr(lookup)
+    if suggestions:
+        return TargetResolveResult(
+            kind="lookup_suggested",
+            entity_ids=[],
+            lookup_snapshot=dict(lookup),
+            suggestions=suggestions,
+        )
+
+    return TargetResolveResult(
+        kind="not_found",
+        entity_ids=[],
+        lookup_snapshot=dict(lookup),
+    )
+
+
+def resolve_target_step1(
+    query: EntityQuery,
+    *,
+    grain: str | None = None,
+    alias_expander: AliasExpander | None = None,
+) -> TargetResolveResult:
     """Resolve step-1 target query by id or lookup AND (read-only)."""
-    registry = get_entity_registry()
+    resolved_grain = grain or default_mvr_grain()
+    registry = get_entity_registry(grain=resolved_grain)
+    closed_grain = is_closed_identity_grain(resolved_grain)
     entity_id = (query.id or "").strip()
     if entity_id:
         entity = registry.lookup_by_id(entity_id)
@@ -118,7 +210,7 @@ def resolve_target_step1(query: EntityQuery) -> TargetResolveResult:
                 lookup_snapshot=dict(query.lookup),
             )
 
-        mvr = load_mvr()
+        mvr = load_mvr(grain=resolved_grain)
         if not is_full_mvr_lookup(query.lookup, mvr):
             norm = normalized_lookup_values(query.lookup)
             for field, value in norm.items():
@@ -140,6 +232,14 @@ def resolve_target_step1(query: EntityQuery) -> TargetResolveResult:
             )
 
         if query.confirm_new_entity:
+            if closed_grain:
+                return _resolve_closed_grain_zero_hit(
+                    query.lookup,
+                    grain=resolved_grain,
+                    registry=registry,
+                    mvr=mvr,
+                    alias_expander=alias_expander,
+                )
             return TargetResolveResult(
                 kind="create_pending",
                 entity_ids=[],
@@ -154,6 +254,15 @@ def resolve_target_step1(query: EntityQuery) -> TargetResolveResult:
                 entity_ids=[],
                 lookup_snapshot=dict(query.lookup),
                 suggestions=suggestions,
+            )
+
+        if closed_grain:
+            return _resolve_closed_grain_zero_hit(
+                query.lookup,
+                grain=resolved_grain,
+                registry=registry,
+                mvr=mvr,
+                alias_expander=alias_expander,
             )
 
         return TargetResolveResult(

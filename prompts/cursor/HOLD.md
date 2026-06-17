@@ -1,34 +1,21 @@
 # Cursor queue
 
-**Program:** Storage evolution (specialist → entity) — [`docs/plans/storage-evolution-program.md`](../../docs/plans/storage-evolution-program.md)
+**Program:** Baseball identity — [`docs/plans/baseball-example-program.md`](../../docs/plans/baseball-example-program.md)
 
 **Active (`next/`):**
 
 | Prompt | Scope |
 |--------|--------|
-| [`next/2026-06-18-1400-framework-mvr-generic-vocabulary.md`](next/2026-06-18-1400-framework-mvr-generic-vocabulary.md) | **READY** — remove CRM field hardcoding; MVR-generic IdentityRecord, validation, context (before baseball playerID work) |
+| [`next/2026-06-17-2100-query-grain-router.md`](next/2026-06-17-2100-query-grain-router.md) | **READY** (after 2000) — multi-grain fan-out, disambiguation LLM trigger A, 3c suggest, `docs/query-grain-router.md` |
+| [`next/2026-06-18-0900-registry-source-keys-polish-nits.md`](next/2026-06-18-0900-registry-source-keys-polish-nits.md) | **LOW** — post-1900 review nits (P1–P4); after 2100 unless Paul prioritizes |
 
-**Last approved:** [`done/2026-06-18-0900-bootstrap-perf-profile-driven/`](done/2026-06-18-0900-bootstrap-perf-profile-driven/) — **Approved** (commit below)
+**Paul (June 2026):** Test 8 bootstrap timing (post-1900) — record `real` when run completes; large regression → consider polish P4.
 
-**Prior:** [`done/2026-06-17-2340-specialist-minisql-incremental-writes/`](done/2026-06-17-2340-specialist-minisql-incremental-writes/) — Approved (`c5e5bce`)
+**In progress / review:** [`done/2026-06-17-2000-baseball-closed-identity-lazy-aliases/`](done/2026-06-17-2000-baseball-closed-identity-lazy-aliases/) — slice 2 approved
 
-**Prior:** [`done/2026-06-17-2355-bootstrap-progress-reporting/`](done/2026-06-17-2355-bootstrap-progress-reporting/) — Approved (`2f9d673`)
+**Design locked (slice 3):** Fan-out + per-grain filter · 0-hit pipeline · LLM trigger A · outputs `chosen` / `chosen_grain` / `ambiguous` · 3c cross-grain suggest · optional `EntityQuery.grain` · `delivery.grain` · team queries use `name` key (docs)
 
-**Manual gates (Paul + Grok):** [`docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md`](../../docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md)
-
-| Test | Status |
-|------|--------|
-| Baseline (pre slice 2) | **12,600 s (~3.5 h)** recorded |
-| Test 3 (post slice 2) | **~8,100 s (2 h 15 m) estimated** — update with `time -p` real when done |
-| Test 5 (post slice 4) | **~4.5 h est., abandoned** — no gain vs baseline; see timing-gates doc |
-| Test 6 (post incremental writes) | **1,202 s (~20 min)** recorded |
-| Test 7 (post alias skip rebuild) | **555 s (~9 min)** recorded — **2.2×** vs test 6; further perf deferred |
-
-**Design lock (Paul, June 2026):** Entity persistence = **`EntityStore`** + **`EntityRegistry` API unchanged**. Identity-agent refactor **deferred until full baseball example ships**.
-
-**Prior:** [`done/2026-06-17-2100-specialist-minisql-v1-migrate/`](done/2026-06-17-2100-specialist-minisql-v1-migrate/) — Approved (`179e80d`)
-
-**Git:** Local commits ahead of `origin`; no mid-program push until Paul asks.
+**Git:** Local commits ahead of `origin`; no push until Paul asks.
 
 ---
 

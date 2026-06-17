@@ -15,11 +15,13 @@
     "grains": {
       "player": {
         "bind_fields": ["name", "team"],
-        "description": "Player identity: display name plus team disambiguator (draft)."
+        "description": "Player identity: display name plus team disambiguator (draft).",
+        "identity_mode": "closed"
       },
       "team": {
         "bind_fields": ["name"],
-        "description": "Fan-facing team: full canonical city+name (draft)."
+        "description": "Fan-facing team: full canonical city+name (draft).",
+        "identity_mode": "closed"
       }
     }
   },
