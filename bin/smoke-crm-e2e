@@ -1,0 +1,456 @@
+#!/usr/bin/env python3
+"""CRM end-to-end smoke: refresh example network → query scenarios → optional pytest."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+import tempfile
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+_SRC_ROOT = REPO_ROOT / "src"
+_VENV_PYTHON = REPO_ROOT / ".venv" / "bin" / "python3"
+
+CRM_PYTEST_FILES = (
+    "tests/test_example_network_capstones.py",
+    "tests/test_example_network.py",
+    "tests/test_target_step1_lookup_clarity.py",
+    "tests/test_mvr_target_public.py",
+    "tests/test_mvr_batch_deliver.py",
+    "tests/test_mvr_create_on_deliver.py",
+)
+
+
+def _bootstrap() -> None:
+    os.environ.setdefault("LANGCHAIN_TRACING_V2", "false")
+    os.environ.setdefault("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
+    if _VENV_PYTHON.is_file():
+        try:
+            if Path(sys.executable).resolve() != _VENV_PYTHON.resolve():
+                os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON), *sys.argv])
+        except OSError:
+            pass
+    src = str(_SRC_ROOT)
+    if src not in sys.path:
+        sys.path.insert(0, src)
+
+
+_bootstrap()
+
+from agents.classification import reset_category_tree  # noqa: E402
+from agents.entity_registry import get_entity_registry, reset_entity_registry  # noqa: E402
+from agents.factory.agent_factory import reset_agent_factory  # noqa: E402
+from agents.registry import reset_agent_registry  # noqa: E402
+from graphs.core import reset_core_graph, run_query  # noqa: E402
+from models.state import EntityQuery  # noqa: E402
+from network.delivery import reset_delivery_store  # noqa: E402
+from network.example import refresh_example_network  # noqa: E402
+from network.paths import NetworkPaths, apply_network_paths  # noqa: E402
+from storage.core import reset_storage  # noqa: E402
+
+
+@dataclass
+class ScenarioResult:
+    name: str
+    passed: bool
+    detail: str
+    request: dict[str, Any] | None = None
+    response: dict[str, Any] | None = None
+
+
+def _reset_query_runtime() -> None:
+    for reset_fn in (
+        reset_storage,
+        reset_entity_registry,
+        reset_core_graph,
+        reset_category_tree,
+        reset_delivery_store,
+        reset_agent_registry,
+        reset_agent_factory,
+    ):
+        reset_fn()
+
+
+def _pub(response: Any) -> dict[str, Any]:
+    return response.public_dict()
+
+
+def _fail(name: str, detail: str, **payload: Any) -> ScenarioResult:
+    return ScenarioResult(
+        name=name,
+        passed=False,
+        detail=detail,
+        **payload,
+    )
+
+
+def _ok(
+    name: str,
+    *,
+    request: dict[str, Any] | None = None,
+    response: dict[str, Any] | None = None,
+) -> ScenarioResult:
+    return ScenarioResult(
+        name=name,
+        passed=True,
+        detail="ok",
+        request=request,
+        response=response,
+    )
+
+
+def _sample_seed_person() -> dict[str, str]:
+    entity = next(iter(get_entity_registry().list_entities()))
+    return {
+        "id": entity.id,
+        "name": str(entity.bind_value("name") or ""),
+        "employer": str(entity.bind_value("employer") or ""),
+    }
+
+
+def _assert_identity_row(row: dict[str, Any]) -> str | None:
+    for key in ("id", "name", "employer"):
+        if key not in row or not str(row.get(key) or "").strip():
+            return f"results[] missing non-empty {key!r}"
+    return None
+
+
+def run_crm_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
+    """Refresh CRM into a temp root and run in-process query scenarios."""
+    meta: dict[str, Any] = {}
+    results: list[ScenarioResult] = []
+
+    with tempfile.TemporaryDirectory(prefix="smoke-crm-e2e-") as tmp:
+        root = Path(tmp)
+        refresh = refresh_example_network("crm", root=root, register=False, yes=True)
+        apply_network_paths(NetworkPaths.from_root(root))
+        _reset_query_runtime()
+        reset_core_graph()
+
+        registry = get_entity_registry()
+        meta["network_root"] = str(root)
+        meta["seed_bootstrap_count"] = refresh.seed_bootstrap_count
+        meta["registry_entity_count"] = registry.entity_count()
+
+        if refresh.seed_bootstrap_count != 15:
+            results.append(
+                _fail(
+                    "seed_bootstrap",
+                    f"expected 15 seed rows, got {refresh.seed_bootstrap_count}",
+                ),
+            )
+            return results, meta
+
+        if registry.entity_count() != 15:
+            results.append(
+                _fail(
+                    "registry_entity_count",
+                    f"expected 15 entities, got {registry.entity_count()}",
+                ),
+            )
+            return results, meta
+
+        sample = _sample_seed_person()
+        meta["sample_seed_person"] = sample
+        results.append(_ok("seed_bootstrap"))
+
+        # Partial employer resolve (examples/networks/crm/queries/01-resolve-batch.json)
+        q1 = EntityQuery(
+            lookup={"employer": "645 Ventures"},
+            requested_attributes=["email"],
+        )
+        r1 = run_query(q1)
+        p1 = _pub(r1)
+        if r1.outcome != "lookup_resolved":
+            results.append(
+                _fail(
+                    "partial_employer_resolve",
+                    f"expected lookup_resolved, got {r1.outcome!r}",
+                    request=q1.model_dump(exclude_none=True),
+                    response=p1,
+                ),
+            )
+        elif r1.total_matches < 1 or r1.delivery is None:
+            results.append(
+                _fail(
+                    "partial_employer_resolve",
+                    "expected total_matches >= 1 and delivery",
+                    request=q1.model_dump(exclude_none=True),
+                    response=p1,
+                ),
+            )
+        elif p1.get("results"):
+            results.append(
+                _fail(
+                    "partial_employer_resolve",
+                    "step 1 results[] must be empty",
+                    request=q1.model_dump(exclude_none=True),
+                    response=p1,
+                ),
+            )
+        else:
+            results.append(
+                _ok(
+                    "partial_employer_resolve",
+                    request=q1.model_dump(exclude_none=True),
+                    response=p1,
+                ),
+            )
+
+        # Full MVR exact seed person
+        q2 = EntityQuery(
+            lookup={"name": sample["name"], "employer": sample["employer"]},
+        )
+        r2 = run_query(q2)
+        p2 = _pub(r2)
+        if r2.outcome != "lookup_resolved" or r2.total_matches != 1 or not r2.delivery:
+            results.append(
+                _fail(
+                    "full_lookup_exact",
+                    f"expected lookup_resolved with 1 match, got {r2.outcome!r} "
+                    f"total_matches={r2.total_matches}",
+                    request=q2.model_dump(exclude_none=True),
+                    response=p2,
+                ),
+            )
+        else:
+            results.append(
+                _ok(
+                    "full_lookup_exact",
+                    request=q2.model_dump(exclude_none=True),
+                    response=p2,
+                ),
+            )
+
+        # Step 2 identity-only deliver
+        if r2.delivery and r2.delivery.delivery_id:
+            q2b = EntityQuery(delivery_id=r2.delivery.delivery_id)
+            r2b = run_query(q2b)
+            p2b = _pub(r2b)
+            row_err = (
+                _assert_identity_row(r2b.results[0])
+                if r2b.results
+                else "expected one result row"
+            )
+            if r2b.outcome != "found" or row_err:
+                results.append(
+                    _fail(
+                        "deliver_identity_only",
+                        row_err or f"expected found, got {r2b.outcome!r}",
+                        request=q2b.model_dump(exclude_none=True),
+                        response=p2b,
+                    ),
+                )
+            elif r2b.results[0]["id"] != sample["id"]:
+                results.append(
+                    _fail(
+                        "deliver_identity_only",
+                        "result id does not match sample seed person",
+                        request=q2b.model_dump(exclude_none=True),
+                        response=p2b,
+                    ),
+                )
+            else:
+                results.append(
+                    _ok(
+                        "deliver_identity_only",
+                        request=q2b.model_dump(exclude_none=True),
+                        response=p2b,
+                    ),
+                )
+
+        # Fuzzy employer typo
+        q3 = EntityQuery(lookup={"employer": "654 Ventures"})
+        r3 = run_query(q3)
+        p3 = _pub(r3)
+        suggestion = r3.suggestions[0] if r3.suggestions else None
+        if (
+            r3.outcome != "lookup_suggested"
+            or r3.total_matches != 0
+            or suggestion is None
+            or suggestion.suggested_lookup != {"employer": "645 Ventures"}
+            or suggestion.reason != "bind_field_fuzzy_match"
+        ):
+            results.append(
+                _fail(
+                    "fuzzy_employer_typo",
+                    "expected lookup_suggested with 645 Ventures correction",
+                    request=q3.model_dump(exclude_none=True),
+                    response=p3,
+                ),
+            )
+        else:
+            results.append(
+                _ok(
+                    "fuzzy_employer_typo",
+                    request=q3.model_dump(exclude_none=True),
+                    response=p3,
+                ),
+            )
+
+        # Full MVR miss → create_on_deliver
+        q4 = EntityQuery(
+            lookup={"name": "Nobody Here", "employer": "Nowhere Inc"},
+        )
+        r4 = run_query(q4)
+        p4 = _pub(r4)
+        delivery = r4.delivery
+        if (
+            r4.outcome != "lookup_resolved"
+            or r4.total_matches != 0
+            or delivery is None
+            or not delivery.create_on_deliver
+        ):
+            results.append(
+                _fail(
+                    "create_on_deliver_pending",
+                    "expected lookup_resolved 0-hit with create_on_deliver",
+                    request=q4.model_dump(exclude_none=True),
+                    response=p4,
+                ),
+            )
+        else:
+            results.append(
+                _ok(
+                    "create_on_deliver_pending",
+                    request=q4.model_dump(exclude_none=True),
+                    response=p4,
+                ),
+            )
+
+        # Batch step 2 (multi-match + requested attr)
+        if r1.delivery and r1.delivery.delivery_id:
+            q5 = EntityQuery(delivery_id=r1.delivery.delivery_id)
+            r5 = run_query(q5)
+            p5 = _pub(r5)
+            if r5.outcome != "assembled" or len(r5.results) != r1.total_matches:
+                results.append(
+                    _fail(
+                        "batch_deliver_with_email",
+                        f"expected assembled with {r1.total_matches} rows, "
+                        f"got {r5.outcome!r} count={len(r5.results)}",
+                        request=q5.model_dump(exclude_none=True),
+                        response=p5,
+                    ),
+                )
+            else:
+                results.append(
+                    _ok(
+                        "batch_deliver_with_email",
+                        request=q5.model_dump(exclude_none=True),
+                        response=p5,
+                    ),
+                )
+
+    return results, meta
+
+
+def run_crm_pytest() -> int:
+    cmd = [
+        "uv",
+        "run",
+        "pytest",
+        *CRM_PYTEST_FILES,
+        "-m",
+        "smoke",
+        "-q",
+    ]
+    print("==> pytest CRM smoke integration", file=sys.stderr)
+    return subprocess.call(cmd, cwd=REPO_ROOT)
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="bin/smoke-crm-e2e",
+        description=(
+            "CRM end-to-end smoke gate: refresh committed example network, "
+            "run in-process query scenarios (two-step protocol, results shape), "
+            "optionally run related pytest smoke tests."
+        ),
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print JSON report only (scenarios + meta)",
+    )
+    parser.add_argument(
+        "--pytest-only",
+        action="store_true",
+        help="Skip inline scenarios; run pytest CRM smoke files only",
+    )
+    parser.add_argument(
+        "--with-pytest",
+        action="store_true",
+        help="Run inline scenarios then pytest CRM smoke files",
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _build_parser().parse_args(argv)
+
+    if args.pytest_only:
+        return run_crm_pytest()
+
+    scenario_results, meta = run_crm_scenarios()
+    failures = [item for item in scenario_results if not item.passed]
+
+    report = {
+        "meta": meta,
+        "scenarios": [
+            {
+                "name": item.name,
+                "passed": item.passed,
+                "detail": item.detail,
+                **(
+                    {"request": item.request, "response": item.response}
+                    if item.request is not None
+                    else {}
+                ),
+            }
+            for item in scenario_results
+        ],
+        "passed": len(failures) == 0,
+        "failure_count": len(failures),
+    }
+
+    if args.json:
+        print(json.dumps(report, indent=2))
+    else:
+        print("==> CRM E2E scenarios")
+        print(f"  network: {meta.get('network_root', '(temp)')}")
+        print(f"  seed_bootstrap: {meta.get('seed_bootstrap_count')}")
+        print(f"  registry_entities: {meta.get('registry_entity_count')}")
+        if meta.get("sample_seed_person"):
+            person = meta["sample_seed_person"]
+            print(f"  sample: {person['name']} @ {person['employer']}")
+        for item in scenario_results:
+            mark = "ok" if item.passed else "FAIL"
+            print(f"  [{mark}] {item.name}: {item.detail}")
+        if failures:
+            print("\nFailed scenarios:", file=sys.stderr)
+            for item in failures:
+                print(f"  - {item.name}: {item.detail}", file=sys.stderr)
+
+    if failures:
+        return 1
+
+    if args.with_pytest:
+        pytest_rc = run_crm_pytest()
+        if pytest_rc != 0:
+            return pytest_rc
+
+    if not args.json:
+        suffix = " + pytest" if args.with_pytest else ""
+        print(f"\nCRM E2E smoke passed ({len(scenario_results)} scenarios{suffix}).")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
