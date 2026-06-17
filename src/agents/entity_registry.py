@@ -426,7 +426,7 @@ class EntityRegistry:
         aliases = entity.field_aliases.setdefault(field_key, [])
         if alias not in aliases:
             aliases.append(alias)
-        self._save()
+        self._save(rebuild_source_key_index=False)
         return entity
 
     def lookup_by_field(self, field: str, value: str) -> list[RegistryEntity]:
@@ -470,8 +470,13 @@ class EntityRegistry:
         self._data.entities[entity.id] = entity
 
     def save_entity(self, entity: RegistryEntity) -> None:
+        """Persist entity row; rebuild field indexes for bind lookups.
+
+        ``source_keys`` and ``source_key_index`` are maintained by ``set_source_keys``;
+        bind-only saves skip the full source-key scan.
+        """
         self._data.entities[entity.id] = entity
-        self._save()
+        self._save(rebuild_source_key_index=False)
 
     def promote_validated(self, entity_id: str) -> RegistryEntity:
         """Promote provisional entity and MVR field states to validated."""

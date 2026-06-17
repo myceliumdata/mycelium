@@ -146,7 +146,11 @@ Record **real**, **user**, **sys** from `time -p` output. Stderr progress (post 
 |-----|------|----------|----------|---------|-------|
 | **Test 8b** | 2026-06-17 | **1,398.87** (~**23 min**) | 1,287.77 | 44.84 | Post `c96c5e2`. Same command/root. 57,627 player binds; **23,777** entities committed. **2.11× faster** than test 8 (2,946 s). Still **2.52× slower** than test 7 (555 s). |
 
-**Remaining gap vs test 7:** `ensure_entity_bind_fields` → `save_entity` still runs full `_rebuild_source_key_index()` on every new player (~24k) even though `source_keys` are written **after** via `set_source_keys`. Test 7 had no `source_key_index` at all. Optional follow-up: skip source-key rebuild on `save_entity` when `source_keys` unchanged (or empty until `set_source_keys`).
+**Remaining gap vs test 7 (test 8b):** `save_entity` still ran full `_rebuild_source_key_index()` on every new player (~24k). **Fixed** in slice `2026-06-18-0800` — bind-only `save_entity` skips source-key rebuild; pending **Test 8c** confirmation.
+
+| Run | Date | real (s) | user (s) | sys (s) | Notes |
+|-----|------|----------|----------|---------|-------|
+| **Test 8c** | *pending Paul re-run* | *pending* | *pending* | *pending* | Post `save_entity` source-key skip (slice `2026-06-18-0800`). Same command/root as test 7/8/8b. Expect **~555 s real** (test 7 ballpark, ± variance). |
 
 ---
 
