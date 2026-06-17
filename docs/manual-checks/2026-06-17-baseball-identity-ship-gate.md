@@ -218,19 +218,21 @@ print('OK same uuid', e1.id, 'teams', teams, 'bind_index', len(reg._data.bind_in
 
 ---
 
-## Check 4 — CLI player two-step (required)
+## Check 4 — Player two-step (required)
 
-Use vars from Check 2:
+**Do not pipe `mycelium query` into `jq`** — the CLI prints Rich-styled JSON (ANSI), not raw JSON.
+
+Use `baseball_query` from Helpers (or vars from Check 2):
 
 ```bash
-export MYCELIUM_NETWORK_ROOT="$ROOT"
-STEP1=$(uv run mycelium query --network-dir "$ROOT" \
-  --lookup-json "{\"name\":\"$AARON_NAME\",\"team\":\"$TEAM_A\"}")
+export AARON_NAME="Hank Aaron"
+export TEAM_A="Milwaukee Braves"
+
+STEP1=$(baseball_query "{\"lookup\": {\"name\": \"$AARON_NAME\", \"team\": \"$TEAM_A\"}}")
 echo "$STEP1" | jq '{outcome, total_matches, delivery_id: .delivery.delivery_id, grain: .delivery.grain}'
 
 DELIVERY_ID=$(echo "$STEP1" | jq -r '.delivery.delivery_id')
-uv run mycelium query --network-dir "$ROOT" --delivery-id "$DELIVERY_ID" | \
-  jq '{outcome, results: .results}'
+baseball_query "{\"delivery_id\": \"$DELIVERY_ID\"}" | jq '{outcome, results: .results}'
 ```
 
 **Pass:**
@@ -239,6 +241,8 @@ uv run mycelium query --network-dir "$ROOT" --delivery-id "$DELIVERY_ID" | \
 - Step 2: `outcome` = `found`; `results[0]` has `id`, `name`, `team` matching lookup.
 - **No** `create_on_deliver` on step 1 delivery scope.
 - Response JSON has **no** `entity_key` / `binding` legacy fields.
+
+**Optional smoke:** `uv run mycelium query --network-dir "$ROOT" --lookup-json '…'` — human-readable only; verify `lookup_resolved` in terminal output.
 
 ---
 
