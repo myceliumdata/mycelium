@@ -14,8 +14,9 @@
 | **Test 3** | Post slice 2 (`179e80d`) | **~8,100** estimated | **Unreliable** — run never finished; extrapolated at ~25% | Do not use for decisions |
 | **Test 5** | Post slice 4 (`c898036`+) | **~16,200** estimated (~4.5 h) | **Abandoned** — killed in progress; no `time -p` final | ~No gain vs baseline; slice 4 not the big win |
 | **Test 6** | Post incremental (`c5e5bce`+) | **1,202** (~20 min) | **Recorded** | ~10× vs baseline; still dominated by field-index rebuilds |
+| **Test 7** | Post alias skip rebuild (`f45b65c`+) | **555** (~9 min) | **Recorded** | **2.2×** vs test 6; **~23×** vs baseline; further bootstrap perf **deferred** (Paul, June 2026) |
 
-**Takeaway:** Lahman bootstrap is **not** “50k INSERTs.” Warehouse ingest is **~2 s**. The bind loop is ~58k identity operations with **O(n²)** costs until incremental specialist writes (test 6). Slice 4 (deferred entity flush) traded disk JSON rewrites for in-memory index rebuilds — **roughly a wash** while specialists still did full-table SQLite rewrites.
+**Takeaway:** Lahman bootstrap is **not** “50k INSERTs.” Warehouse ingest is **~2 s**. The bind loop is ~58k identity operations. Incremental specialist writes (test 6) and alias-only index skip (test 7) removed the worst quadratic costs; **~24k new-player `save_entity` rebuilds remain O(n²)** — acceptable for now; no more optimization slices queued.
 
 See [Lessons learned](#lessons-learned-posterity-june-2026) and [`docs/plans/storage-evolution-program.md`](../plans/storage-evolution-program.md) § Post-mortem.
 
@@ -50,7 +51,7 @@ Record **real**, **user**, **sys** from `time -p` output. Stderr progress (post 
 | Team grain bootstrap | ~241 distinct team labels | **&lt; 1 min** |
 | Player loop | **~57,627** `(playerID, name, team)` rows from Appearances | **Hours** (pre-incremental) |
 | — new players (first sight of `playerID`) | **~24,011** → `write_bind_fields` → 2 specialists | Full-table SQLite rewrite per bind (pre-`c5e5bce`) |
-| — alias rows (same `playerID`, new team) | **~33,616** → `add_bind_alias` only | No specialist write; **full in-memory index rebuild** per row when entity save deferred |
+| — alias rows (same `playerID`, new team) | **~33,616** → `add_bind_alias` only | No specialist write; **no field-index rebuild** post test 7 (`f45b65c`) |
 | Deferred entity flush | 1× per grain at handler end | **Seconds** |
 
 “50k records in seconds” applies only to **warehouse ingest**, not the bind loop.
@@ -111,7 +112,21 @@ Record **real**, **user**, **sys** from `time -p` output. Stderr progress (post 
 |-----|------|----------|----------|---------|-------|
 | **Test 6** | 2026-06-17 | **1,202.19** (~**20 min**) | 1,142.45 | 42.09 | Post incremental (`c5e5bce`+). `--root /tmp/mycelium-baseball-benchmark --yes --no-default` (wiped + refreshed). 57,627 player binds; **23,777** entities committed. Incremental specialists delivered step change; **not demo-fast** — profile shows `build_field_indexes` still ~97% of bind-loop CPU. Morning slice: alias-only skip rebuild. |
 
-**Follow-up perf (optional, post–test 6):** skip `_rebuild_field_indexes()` on alias-only `add_bind_alias` (bind_index changes, `entity.bind_values` unchanged).
+**Follow-up perf (optional, post–test 6):** skip `_rebuild_field_indexes()` on alias-only `add_bind_alias` — shipped test 7 (`f45b65c`).
+
+---
+
+## Timing test 7 — after alias-only field-index skip approved
+
+**When:** `2026-06-18-0900-bootstrap-perf-profile-driven` reviewed **Approved** and committed (`f45b65c`).
+
+**What changed:** `add_bind_alias` updates `bind_index` only during deferred bootstrap; skips full `build_field_indexes` scan when `entity.bind_values` unchanged. ~33k alias rows no longer trigger rebuild; ~24k new-player `save_entity` paths still rebuild once per row (remaining O(n²) CPU).
+
+| Run | Date | real (s) | user (s) | sys (s) | Notes |
+|-----|------|----------|----------|---------|-------|
+| **Test 7** | 2026-06-18 | **555.38** (~**9 min**) | 495.03 | 38.33 | Post alias skip (`f45b65c`). `--root /tmp/mycelium-baseball-benchmark --yes --no-default` (wiped + refreshed). 57,627 player binds; **23,777** entities committed. **2.16× faster** than test 6 (1,202 s → 555 s). **~22.7× faster** than baseline. Still not O(n); **Paul: defer further bootstrap optimization** — clarity over incremental index engineering. |
+
+**Gate:** Good enough for baseball example work; incremental field-index update for new-player path is backlog only if load time blocks demo.
 
 ---
 
@@ -123,7 +138,7 @@ Slice 2 moved specialists from JSON **files** to SQLite but kept **document sema
 
 ### 2. Slice 4 deferred flush ≠ loop cheap
 
-Deferred entity save removed **~58k rewrites** of growing `entities/player.json` (~17 MB at end). But each `save_entity` / `add_bind_alias` during deferral still calls `_rebuild_field_indexes()` — full scan of all entities in memory. ~58k iterations × growing entity count ≈ **O(n²) CPU** on the registry side. Alias rows (~34k) trigger rebuild even when only `bind_index` changes. **Net: comparable to baseline, not a step change.**
+Deferred entity save removed **~58k rewrites** of growing `entities/player.json` (~17 MB at end). Each `save_entity` / `add_bind_alias` during deferral called `_rebuild_field_indexes()` — full scan of all entities in memory. ~58k iterations × growing entity count ≈ **O(n²) CPU** on the registry side. **Fixed for aliases in test 7** (`f45b65c`); ~24k new-player rebuilds remain. Test 6 → test 7: **2.2×**; baseline → test 7: **~23×**.
 
 ### 3. Dominant costs (pre-incremental)
 
