@@ -124,11 +124,6 @@ def _rank_bind_field_fuzzy_suggestions(field: str, value: str) -> list[LookupSug
     return candidates[:SUGGESTION_MAX_COUNT]
 
 
-def _rank_employer_suggestions(employer: str) -> list[LookupSuggestion]:
-    """Backward-compatible alias for employer bind-field fuzzy match."""
-    return _rank_bind_field_fuzzy_suggestions("employer", employer)
-
-
 def resolve_status_for_target_lookup(lookup: dict[str, str]) -> EntityResolution:
     """Read-only MVR AND lookup for admin status (never creates or runs graph)."""
     normalized = normalized_lookup_values(lookup)

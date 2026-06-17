@@ -95,16 +95,6 @@ export function lookupFromSuggestion(
     }
   }
 
-  for (const field of bindFields) {
-    if (next[field]?.trim()) {
-      continue;
-    }
-    const raw = (item as unknown as Record<string, unknown>)[field];
-    if (raw != null && String(raw).trim()) {
-      next[field] = String(raw).trim();
-    }
-  }
-
   return next;
 }
 

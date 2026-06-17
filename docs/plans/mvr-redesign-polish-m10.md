@@ -48,11 +48,11 @@ Post-ship debt folded into **Program 2** — see [`next-chunk-prep.md`](next-chu
 
 | # | Source | Nit | Status |
 |---|--------|-----|--------|
-| P27 | vocabulary | `supervisor._identity_records_from_match` drops non-CRM bind keys | Open |
-| P28 | vocabulary | Message builders hardcode `employer` phrasing | Open |
-| P29 | vocabulary | `_rank_employer_suggestions` alias | Open |
-| P30 | vocabulary | admin-ui `LookupSuggestion` TS types | Open |
-| P31 | vocabulary | Smoke: identity-only `results[]` keys match grain MVR | Open |
+| P27 | vocabulary | `supervisor._identity_records_from_match` drops non-CRM bind keys | **Closed** — `responses._identity_records_from_match` |
+| P28 | vocabulary | Message builders hardcode `employer` phrasing | **Closed** — `_identity_message_label` |
+| P29 | vocabulary | `_rank_employer_suggestions` alias | **Closed** — removed |
+| P30 | vocabulary | admin-ui `LookupSuggestion` TS types | **Closed** — `suggested_lookup` only |
+| P31 | vocabulary | Smoke: identity-only `results[]` keys match grain MVR | **Closed** — `test_identity_records_from_match_preserves_mvr_bind_fields` |
 
 ---
 

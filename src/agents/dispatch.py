@@ -17,6 +17,8 @@ from agents.registry import get_agent_registry
 from agents.research_gate import is_research_gated, research_gate_allows
 from agents.metering_gate import write_entitlement_from_accepted_quote
 from agents.responses import (
+    _identity_message_label,
+    _identity_records_from_match,
     merge_requested_record,
     response_assembled,
     response_found,
@@ -44,7 +46,6 @@ from agents.target_metering import (
 from agents.target_resolve import issue_target_delivery, resolve_target_step1
 from agents.supervisor import (
     _collect_specialists_to_invoke,
-    _identity_records_from_match,
     _target_fields_for_agent,
 )
 from models.state import (
@@ -206,8 +207,9 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
         identity_records = _identity_records_from_match(matched)
         message = None
         if len(matched) == 1:
-            name = matched[0].get("name") or "record"
-            message = f"Found record for {name}."
+            message = (
+                f"Found record for {_identity_message_label(matched[0], query=query)}."
+            )
         else:
             message = f"Found {len(matched)} records for delivery."
         resp = response_found(
@@ -716,15 +718,11 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
         identity_records = _identity_records_from_match(matched)
         message = None
         if current.duplicate_bind and len(matched) == 1:
-            name = matched[0].get("name") or (query.id or "").strip() or str(query.lookup)
-            employer = matched[0].get("employer")
-            employer_phrase = f" at {employer}" if employer else ""
+            label = _identity_message_label(matched[0], query=query)
             if matched[0].get("_validation_state") == "validated":
-                message = f"Already bound record for {name}{employer_phrase}."
+                message = f"Already bound record for {label}."
             else:
-                message = (
-                    f"Already bound provisional record for {name}{employer_phrase}."
-                )
+                message = f"Already bound provisional record for {label}."
         resp = response_found(
             query,
             base_records=identity_records,

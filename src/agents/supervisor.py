@@ -25,21 +25,6 @@ def _coerce(state: MyceliumGraphState | dict[str, Any]) -> MyceliumGraphState:
     return MyceliumGraphState.model_validate(state)
 
 
-def _identity_records_from_match(matched: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Build public result dicts; ``id`` is the registry UUID."""
-    records: list[dict[str, Any]] = []
-    for rec in matched:
-        pid = rec.get("id", "")
-        records.append(
-            {
-                "id": pid,
-                "name": rec.get("name", ""),
-                "employer": rec.get("employer"),
-            },
-        )
-    return records
-
-
 def _short_circuit_context() -> dict[str, Any]:
     return planner_context(matched=[], ids=[], specialists_to_invoke=[])
 

@@ -49,8 +49,6 @@ export interface EntityMatchSummary {
 export interface LookupSuggestion {
   suggested_lookup: Record<string, string>;
   id?: string | null;
-  name?: string | null;
-  employer?: string | null;
   score: number;
   reason?: string;
 }

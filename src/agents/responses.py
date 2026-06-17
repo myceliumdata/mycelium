@@ -29,6 +29,56 @@ def _identity_summary_keys() -> tuple[str, ...]:
     return tuple(keys)
 
 
+def _mvr_bind_field_names() -> list[str]:
+    from network.mvr import load_mvr
+
+    return [
+        field.strip().lower()
+        for field in load_mvr().bind_fields
+        if field.strip()
+    ]
+
+
+def _identity_records_from_match(matched: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Build identity rows for response shaping (id + active MVR bind fields)."""
+    bind_fields = _mvr_bind_field_names()
+    records: list[dict[str, Any]] = []
+    for rec in matched:
+        out: dict[str, Any] = {"id": rec.get("id", "")}
+        for field in bind_fields:
+            if field in rec:
+                out[field] = rec[field]
+        records.append(out)
+    return records
+
+
+def _identity_message_label(
+    record: dict[str, Any],
+    *,
+    query: EntityQuery | None = None,
+) -> str:
+    """Human-readable identity label from MVR bind fields (e.g. 'Ada at Acme')."""
+    bind_fields = _mvr_bind_field_names()
+    if not bind_fields:
+        if query is not None:
+            return _query_target_label(query)
+        return str(record.get("id") or "record")
+
+    primary = bind_fields[0]
+    primary_value = record.get(primary)
+    if primary_value is None or not str(primary_value).strip():
+        if query is not None:
+            return _query_target_label(query)
+        return str(record.get("id") or "record")
+
+    label = str(primary_value).strip()
+    for field in bind_fields[1:]:
+        value = record.get(field)
+        if value is not None and str(value).strip():
+            label = f"{label} at {str(value).strip()}"
+    return label
+
+
 def _debug_extra_value(value: Any) -> str:
     """Format debug key=value segments (lists/dicts and strings use repr)."""
     return repr(value)
@@ -292,8 +342,9 @@ def build_query_message(
         }
 
     if len(records) == 1:
-        name = records[0].get("name") or _query_target_label(query)
-        parts: list[str] = [f"Found record for {name}."]
+        parts: list[str] = [
+            f"Found record for {_identity_message_label(records[0], query=query)}.",
+        ]
     else:
         parts = [f"Found {len(records)} records for {_query_target_label(query)!r}."]
 
@@ -413,8 +464,7 @@ def response_found(
     n = len(records)
     if message is None:
         if n == 1:
-            name = records[0].get("name") or _query_target_label(query)
-            message = f"Found record for {name}."
+            message = f"Found record for {_identity_message_label(records[0], query=query)}."
         else:
             message = f"Found {n} records for {_query_target_label(query)!r}."
     return _make_response(
@@ -683,20 +733,12 @@ def response_validation_failed(
     thread_id: str | None = None,
 ) -> QueryResponse:
     """Validation failed; entity stays provisional (outcome found per Q5b)."""
-    name = record.get("name") or _query_target_label(query)
-    employer = record.get("employer")
-    employer_phrase = f" at {employer}" if employer else ""
+    label = _identity_message_label(record, query=query)
     message = (
-        f"Found provisional record for {name}{employer_phrase}. "
+        f"Found provisional record for {label}. "
         f"Core validation failed: {summary}"
     )
-    results = [
-        {
-            "id": record.get("id", ""),
-            "name": name,
-            "employer": employer,
-        },
-    ]
+    results = _identity_records_from_match([record])
     return _make_response(
         results=results,
         message=message,
@@ -736,14 +778,7 @@ def response_research_gated(
             thread_id=thread_id,
         )
 
-    results = [
-        {
-            "id": rec.get("id", ""),
-            "name": rec.get("name", ""),
-            "employer": rec.get("employer"),
-        }
-        for rec in matched
-    ]
+    results = _identity_records_from_match(matched)
 
     provisional_count = sum(
         1 for rec in matched if rec.get("_validation_state") != "validated"
@@ -752,17 +787,15 @@ def response_research_gated(
 
     if total == 1:
         rec = matched[0]
-        name = rec.get("name") or _query_target_label(query)
-        employer = rec.get("employer")
-        employer_phrase = f" at {employer}" if employer else ""
+        label = _identity_message_label(rec, query=query)
         if rec.get("_validation_state") == "validated":
             message = (
-                f"Found record for {name}{employer_phrase}. "
+                f"Found record for {label}. "
                 f"{RESEARCH_GATE_MESSAGE}"
             )
         else:
             message = (
-                f"Found provisional record for {name}{employer_phrase}. "
+                f"Found provisional record for {label}. "
                 f"{RESEARCH_GATE_MESSAGE}"
             )
     else:

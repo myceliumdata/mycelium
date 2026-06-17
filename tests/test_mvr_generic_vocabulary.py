@@ -2,9 +2,37 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+CRM_METERING = json.loads(
+    (REPO_ROOT / "examples" / "networks" / "crm" / "network.json").read_text(
+        encoding="utf-8",
+    ),
+)["metering"]
+
+
+def _write_player_grain_manifest(root: Path) -> None:
+    manifest = {
+        "name": "player-net",
+        "mvr": {
+            "default_grain": "player",
+            "grains": {
+                "player": {
+                    "bind_fields": ["name", "team"],
+                    "description": "player grain",
+                },
+            },
+        },
+        "metering": dict(CRM_METERING),
+    }
+    (root / "network.json").write_text(
+        json.dumps(manifest, indent=2) + "\n",
+        encoding="utf-8",
+    )
 
 
 @pytest.mark.smoke
@@ -40,3 +68,57 @@ def test_bind_from_record_uses_mvr_fields(
     )
     assert bind == {"name": "Babe Ruth", "team": "New York Yankees"}
     assert "employer" not in bind
+
+
+@pytest.mark.smoke
+def test_identity_records_from_match_preserves_mvr_bind_fields(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agents.responses import _identity_records_from_match, shape_results
+    from network.paths import NetworkPaths, apply_network_paths
+
+    _write_player_grain_manifest(tmp_path)
+    paths = NetworkPaths.from_root(tmp_path)
+    apply_network_paths(paths)
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
+
+    matched = [
+        {
+            "id": "player-1",
+            "name": "Babe Ruth",
+            "team": "New York Yankees",
+            "_registry": True,
+            "_validation_state": "validated",
+        },
+    ]
+    identity_rows = _identity_records_from_match(matched)
+    shaped = shape_results(identity_rows, None)
+
+    assert shaped == [
+        {
+            "id": "player-1",
+            "name": "Babe Ruth",
+            "team": "New York Yankees",
+        },
+    ]
+    assert "employer" not in shaped[0]
+
+
+@pytest.mark.smoke
+def test_identity_message_label_uses_secondary_bind_field(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agents.responses import _identity_message_label
+    from network.paths import NetworkPaths, apply_network_paths
+
+    _write_player_grain_manifest(tmp_path)
+    paths = NetworkPaths.from_root(tmp_path)
+    apply_network_paths(paths)
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
+
+    label = _identity_message_label(
+        {"id": "player-1", "name": "Babe Ruth", "team": "New York Yankees"},
+    )
+    assert label == "Babe Ruth at New York Yankees"

@@ -238,10 +238,7 @@ export default function EntityDrilldown({
                 >
                   {formatSuggestedLookup(item)}
                 </button>{" "}
-                <span className="muted">
-                  score {item.score}
-                  {item.employer ? ` · ${item.employer}` : ""}
-                </span>
+                <span className="muted">score {item.score}</span>
               </li>
             ))}
           </ul>

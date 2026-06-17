@@ -718,10 +718,7 @@ export default function App() {
                           >
                             {formatSuggestedLookup(item)}
                           </button>{" "}
-                          <span className="muted">
-                            score {item.score}
-                            {item.employer ? ` · ${item.employer}` : ""}
-                          </span>
+                          <span className="muted">score {item.score}</span>
                         </li>
                       ))}
                     </ul>
