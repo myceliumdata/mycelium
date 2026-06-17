@@ -2,15 +2,18 @@
 
 **Program:** Baseball identity — [`docs/plans/baseball-example-program.md`](../../docs/plans/baseball-example-program.md)
 
-**Active (`next/`):**
+**Active (`next/`):** *empty*
 
-| Prompt | Scope |
-|--------|--------|
-| [`next/2026-06-18-0900-registry-source-keys-polish-nits.md`](next/2026-06-18-0900-registry-source-keys-polish-nits.md) | **LOW** — post-1900/2000/2100 polish + CI smoke P15 (P1–P15) |
+**Paul (June 2026):** **Test 8c** bootstrap timing — post-0800 `save_entity` source-key skip. Record `real` when run completes; expect ~555 s (test 7 ballpark).
 
-**Paul (June 2026):** Test 8 bootstrap timing (post-1900) — record `real` when run completes; large regression → consider polish P4.
+**Recently landed (local, ahead of `origin`):**
 
-**In progress / review:** none — 1800 default-seed and 2100 query-grain-router committed locally
+| Slice | Commit | Notes |
+|-------|--------|--------|
+| 0800 bootstrap perf | `ff52422` | `save_entity` skips source-key rebuild |
+| 0900 polish nits | `a546050` | Router/registry polish + MCP smoke P15 |
+
+**In progress / review:** none
 
 **Design locked (slice 3):** Fan-out + per-grain filter · 0-hit pipeline · LLM trigger A · outputs `chosen` / `chosen_grain` / `ambiguous` · 3c cross-grain suggest · optional `EntityQuery.grain` · `delivery.grain` · team queries use `name` key (docs)
 

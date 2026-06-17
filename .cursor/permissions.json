@@ -1,0 +1,6 @@
+{
+  "terminalAllowlist": [
+    "./bin/ci-local",
+    "bin/ci-local"
+  ]
+}
