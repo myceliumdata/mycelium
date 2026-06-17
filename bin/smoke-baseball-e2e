@@ -1,0 +1,473 @@
+#!/usr/bin/env python3
+"""Baseball end-to-end smoke: minimal Lahman fixture → bootstrap → player-grain queries.
+
+Uses a tiny in-memory CSV fixture (fake seed fetch) so the gate finishes in seconds,
+not the full ~9+ minute Lahman refresh.
+
+TODO(full): expand to parity with ``bin/smoke-crm-e2e``:
+  - ``--full``: real git seed fetch + full Lahman bootstrap (manual / timing gate only)
+  - team-grain queries (``{name: "Brooklyn Dodgers"}``) after query grain router (2100)
+  - lazy field-alias scenarios (Bronx Bombers, Dodgers multi-match) via mock expander
+  - optional warehouse stat / derivative queries when those paths exist
+See ``TODO.md`` → ``smoke-baseball-e2e`` full gate.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+_SRC_ROOT = REPO_ROOT / "src"
+_VENV_PYTHON = REPO_ROOT / ".venv" / "bin" / "python3"
+
+BASEBALL_PYTEST_FILES = (
+    "tests/test_lahman_seed_handler.py",
+    "tests/test_closed_identity_lazy_aliases.py",
+    "tests/test_example_network.py::test_refresh_baseball_fetches_seed_and_bootstraps",
+)
+
+EXPECTED_BOOTSTRAP_COUNT = 4
+SAMPLE_PLAYER_NAME = "Hank Aaron"
+SAMPLE_PLAYER_TEAM = "Brooklyn Dodgers"
+
+
+def _bootstrap() -> None:
+    os.environ.setdefault("LANGCHAIN_TRACING_V2", "false")
+    os.environ.setdefault("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
+    if _VENV_PYTHON.is_file():
+        try:
+            if Path(sys.executable).resolve() != _VENV_PYTHON.resolve():
+                os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON), *sys.argv])
+        except OSError:
+            pass
+    src = str(_SRC_ROOT)
+    if src not in sys.path:
+        sys.path.insert(0, src)
+
+
+_bootstrap()
+
+from agents.classification import reset_category_tree  # noqa: E402
+from agents.entity_registry import get_entity_registry, reset_entity_registry  # noqa: E402
+from agents.factory.agent_factory import reset_agent_factory  # noqa: E402
+from agents.registry import reset_agent_registry  # noqa: E402
+from graphs.core import reset_core_graph, run_query  # noqa: E402
+from models.state import EntityQuery  # noqa: E402
+from network.delivery import reset_delivery_store  # noqa: E402
+from network.example import refresh_example_network  # noqa: E402
+from network.paths import NetworkPaths, apply_network_paths  # noqa: E402
+from storage.core import reset_storage  # noqa: E402
+
+
+@dataclass
+class ScenarioResult:
+    name: str
+    passed: bool
+    detail: str
+    request: dict[str, Any] | None = None
+    response: dict[str, Any] | None = None
+
+
+def _write_minimal_lahman_fixture(seed_dir: Path) -> None:
+    seed_dir.mkdir(parents=True, exist_ok=True)
+    (seed_dir / "Teams.csv").write_text(
+        "yearID,lgID,teamID,franchID,name\n"
+        "1957,NL,BRO,LAD,Brooklyn Dodgers\n"
+        "1958,NL,LAN,LAD,Los Angeles Dodgers\n"
+        "2024,NL,MIL,MIL,Milwaukee Brewers\n",
+        encoding="utf-8",
+    )
+    (seed_dir / "People.csv").write_text(
+        "ID,playerID,nameFirst,nameLast\n"
+        "1,aaronha01,Hank,Aaron\n",
+        encoding="utf-8",
+    )
+    (seed_dir / "Appearances.csv").write_text(
+        "yearID,teamID,playerID\n"
+        "1957,BRO,aaronha01\n",
+        encoding="utf-8",
+    )
+
+
+def _reset_query_runtime() -> None:
+    for reset_fn in (
+        reset_storage,
+        reset_entity_registry,
+        reset_core_graph,
+        reset_category_tree,
+        reset_delivery_store,
+        reset_agent_registry,
+        reset_agent_factory,
+    ):
+        reset_fn()
+
+
+def _pub(response: Any) -> dict[str, Any]:
+    return response.public_dict()
+
+
+def _fail(name: str, detail: str, **payload: Any) -> ScenarioResult:
+    return ScenarioResult(
+        name=name,
+        passed=False,
+        detail=detail,
+        **payload,
+    )
+
+
+def _ok(
+    name: str,
+    *,
+    request: dict[str, Any] | None = None,
+    response: dict[str, Any] | None = None,
+) -> ScenarioResult:
+    return ScenarioResult(
+        name=name,
+        passed=True,
+        detail="ok",
+        request=request,
+        response=response,
+    )
+
+
+def _assert_player_identity_row(row: dict[str, Any]) -> str | None:
+    for key in ("id", "name", "team"):
+        if key not in row or not str(row.get(key) or "").strip():
+            return f"results[] missing non-empty {key!r}"
+    return None
+
+
+def _sample_player() -> dict[str, str]:
+    entity = next(iter(get_entity_registry().list_entities()))
+    return {
+        "id": entity.id,
+        "name": str(entity.bind_value("name") or ""),
+        "team": str(entity.bind_value("team") or ""),
+    }
+
+
+def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
+    """Refresh baseball with minimal fixture and run player-grain query scenarios."""
+    meta: dict[str, Any] = {}
+    results: list[ScenarioResult] = []
+
+    with tempfile.TemporaryDirectory(prefix="smoke-baseball-e2e-") as tmp:
+        fixture_csv = Path(tmp) / "lahman-fixture" / "lahman_1871-2025_csv"
+        _write_minimal_lahman_fixture(fixture_csv)
+        root = Path(tmp) / "baseball-live"
+
+        def fake_fetch(network_root: Path, *, progress=None) -> str:
+            dest = network_root / "seed" / "lahman_1871-2025_csv"
+            if dest.exists():
+                shutil.rmtree(dest)
+            shutil.copytree(fixture_csv, dest)
+            return "lahman-seed@v2025.1-minimal-smoke"
+
+        import network.example as example_module
+
+        original_fetch = example_module.fetch_example_seed
+        example_module.fetch_example_seed = fake_fetch
+        try:
+            refresh = refresh_example_network(
+                "baseball",
+                root=root,
+                register=False,
+                yes=True,
+            )
+        finally:
+            example_module.fetch_example_seed = original_fetch
+
+        apply_network_paths(NetworkPaths.from_root(root))
+        _reset_query_runtime()
+        reset_core_graph()
+
+        registry = get_entity_registry()
+        meta["network_root"] = str(root)
+        meta["seed_bootstrap_count"] = refresh.seed_bootstrap_count
+        meta["player_registry_entity_count"] = registry.entity_count()
+        meta["warehouse_sqlite"] = str(root / "warehouse" / "lahman.sqlite")
+
+        if refresh.seed_bootstrap_count != EXPECTED_BOOTSTRAP_COUNT:
+            results.append(
+                _fail(
+                    "seed_bootstrap",
+                    f"expected {EXPECTED_BOOTSTRAP_COUNT} bootstrap rows, "
+                    f"got {refresh.seed_bootstrap_count}",
+                ),
+            )
+            return results, meta
+
+        if registry.entity_count() != 1:
+            results.append(
+                _fail(
+                    "player_registry_count",
+                    f"expected 1 player on default grain, got {registry.entity_count()}",
+                ),
+            )
+            return results, meta
+
+        if not (root / "warehouse" / "lahman.sqlite").is_file():
+            results.append(
+                _fail("warehouse_sqlite", "expected warehouse/lahman.sqlite after refresh"),
+            )
+            return results, meta
+
+        if not (root / "entities" / "team.json").is_file():
+            results.append(_fail("team_store", "expected entities/team.json after refresh"))
+            return results, meta
+
+        sample = _sample_player()
+        meta["sample_player"] = sample
+        if sample["name"] != SAMPLE_PLAYER_NAME or sample["team"] != SAMPLE_PLAYER_TEAM:
+            results.append(
+                _fail(
+                    "sample_player",
+                    f"unexpected sample player: {sample!r}",
+                ),
+            )
+            return results, meta
+
+        player_entity = registry.lookup_by_bind_values(
+            {"name": SAMPLE_PLAYER_NAME, "team": SAMPLE_PLAYER_TEAM},
+        )
+        if (
+            player_entity is None
+            or player_entity.source_keys.get("lahman.playerID") != "aaronha01"
+        ):
+            results.append(
+                _fail(
+                    "source_key_index",
+                    "expected lahman.playerID=aaronha01 on sample player",
+                ),
+            )
+            return results, meta
+
+        results.append(_ok("seed_bootstrap"))
+
+        # Full MVR player lookup (default grain)
+        q1 = EntityQuery(
+            lookup={"name": sample["name"], "team": sample["team"]},
+        )
+        r1 = run_query(q1)
+        p1 = _pub(r1)
+        if r1.outcome != "lookup_resolved" or r1.total_matches != 1 or not r1.delivery:
+            results.append(
+                _fail(
+                    "player_full_lookup_exact",
+                    f"expected lookup_resolved with 1 match, got {r1.outcome!r} "
+                    f"total_matches={r1.total_matches}",
+                    request=q1.model_dump(exclude_none=True),
+                    response=p1,
+                ),
+            )
+        else:
+            results.append(
+                _ok(
+                    "player_full_lookup_exact",
+                    request=q1.model_dump(exclude_none=True),
+                    response=p1,
+                ),
+            )
+
+        # Step 2 identity-only deliver
+        if r1.delivery and r1.delivery.delivery_id:
+            q1b = EntityQuery(delivery_id=r1.delivery.delivery_id)
+            r1b = run_query(q1b)
+            p1b = _pub(r1b)
+            row_err = (
+                _assert_player_identity_row(r1b.results[0])
+                if r1b.results
+                else "expected one result row"
+            )
+            if r1b.outcome != "found" or row_err:
+                results.append(
+                    _fail(
+                        "player_deliver_identity",
+                        row_err or f"expected found, got {r1b.outcome!r}",
+                        request=q1b.model_dump(exclude_none=True),
+                        response=p1b,
+                    ),
+                )
+            elif r1b.results[0]["id"] != sample["id"]:
+                results.append(
+                    _fail(
+                        "player_deliver_identity",
+                        "result id does not match sample player",
+                        request=q1b.model_dump(exclude_none=True),
+                        response=p1b,
+                    ),
+                )
+            else:
+                results.append(
+                    _ok(
+                        "player_deliver_identity",
+                        request=q1b.model_dump(exclude_none=True),
+                        response=p1b,
+                    ),
+                )
+
+        # Closed grain: unknown player must not offer create_on_deliver
+        q2 = EntityQuery(
+            lookup={"name": "Nobody Here", "team": "Nowhere Nine"},
+        )
+        r2 = run_query(q2)
+        p2 = _pub(r2)
+        delivery = r2.delivery
+        if delivery is not None and delivery.create_on_deliver:
+            results.append(
+                _fail(
+                    "closed_player_not_create_pending",
+                    "closed player grain must not set create_on_deliver",
+                    request=q2.model_dump(exclude_none=True),
+                    response=p2,
+                ),
+            )
+        elif r2.outcome == "lookup_resolved" and r2.total_matches == 0 and delivery:
+            results.append(
+                _fail(
+                    "closed_player_not_create_pending",
+                    "expected not_found or lookup_suggested, not 0-hit create scope",
+                    request=q2.model_dump(exclude_none=True),
+                    response=p2,
+                ),
+            )
+        else:
+            results.append(
+                _ok(
+                    "closed_player_not_create_pending",
+                    request=q2.model_dump(exclude_none=True),
+                    response=p2,
+                ),
+            )
+
+    return results, meta
+
+
+def run_baseball_pytest() -> int:
+    cmd = [
+        "uv",
+        "run",
+        "pytest",
+        *BASEBALL_PYTEST_FILES,
+        "-m",
+        "smoke",
+        "-q",
+    ]
+    print("==> pytest baseball smoke integration", file=sys.stderr)
+    return subprocess.call(cmd, cwd=REPO_ROOT)
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="bin/smoke-baseball-e2e",
+        description=(
+            "Baseball end-to-end smoke gate (minimal fixture): fake seed fetch, "
+            "bootstrap team+player grains, player-grain two-step query scenarios. "
+            "Full Lahman refresh is intentionally not run here."
+        ),
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print JSON report only (scenarios + meta)",
+    )
+    parser.add_argument(
+        "--pytest-only",
+        action="store_true",
+        help="Skip inline scenarios; run pytest baseball smoke files only",
+    )
+    parser.add_argument(
+        "--with-pytest",
+        action="store_true",
+        help="Run inline scenarios then pytest baseball smoke files",
+    )
+    parser.add_argument(
+        "--full",
+        action="store_true",
+        help="NOT IMPLEMENTED — full Lahman zip refresh (see script TODO / TODO.md)",
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _build_parser().parse_args(argv)
+
+    if args.full:
+        print(
+            "error: --full not implemented yet (full Lahman refresh is ~9+ min). "
+            "See bin/smoke-baseball-e2e docstring and TODO.md.",
+            file=sys.stderr,
+        )
+        return 2
+
+    if args.pytest_only:
+        return run_baseball_pytest()
+
+    scenario_results, meta = run_baseball_scenarios()
+    failures = [item for item in scenario_results if not item.passed]
+
+    report = {
+        "meta": meta,
+        "scenarios": [
+            {
+                "name": item.name,
+                "passed": item.passed,
+                "detail": item.detail,
+                **(
+                    {"request": item.request, "response": item.response}
+                    if item.request is not None
+                    else {}
+                ),
+            }
+            for item in scenario_results
+        ],
+        "passed": len(failures) == 0,
+        "failure_count": len(failures),
+    }
+
+    if args.json:
+        print(json.dumps(report, indent=2))
+    else:
+        print("==> Baseball E2E scenarios (minimal fixture)")
+        print(f"  network: {meta.get('network_root', '(temp)')}")
+        print(f"  seed_bootstrap: {meta.get('seed_bootstrap_count')}")
+        print(f"  player_entities: {meta.get('player_registry_entity_count')}")
+        if meta.get("sample_player"):
+            player = meta["sample_player"]
+            print(f"  sample: {player['name']} ({player['team']})")
+        for item in scenario_results:
+            mark = "ok" if item.passed else "FAIL"
+            print(f"  [{mark}] {item.name}: {item.detail}")
+        if failures:
+            print("\nFailed scenarios:", file=sys.stderr)
+            for item in failures:
+                print(f"  - {item.name}: {item.detail}", file=sys.stderr)
+
+    if failures:
+        return 1
+
+    if args.with_pytest:
+        pytest_rc = run_baseball_pytest()
+        if pytest_rc != 0:
+            return pytest_rc
+
+    if not args.json:
+        suffix = " + pytest" if args.with_pytest else ""
+        print(
+            f"\nBaseball E2E smoke passed "
+            f"({len(scenario_results)} scenarios{suffix}).",
+        )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
