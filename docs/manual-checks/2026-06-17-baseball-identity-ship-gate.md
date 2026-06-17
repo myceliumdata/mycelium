@@ -54,19 +54,18 @@ Record **Test 8c** `real` in [`2026-06-17-storage-evolution-timing-gates.md`](20
 
 ## Helpers (copy once per shell)
 
+Run this **whole block** before Checks 1–7 (`ENTITIES_*` empty → `jq` fails with “Could not open file”).
+
 ```bash
 export ROOT="${ROOT:-/tmp/mycelium-baseball-benchmark}"
 export MYCELIUM_NETWORK_ROOT="$ROOT"
-# Derived paths for this network layout:
-eval "$(uv run python -c "
-from network.paths import NetworkPaths, apply_network_paths
-p = NetworkPaths.from_root(__import__('pathlib').Path('$ROOT'))
-apply_network_paths(p)
-for k, v in [('ENTITIES_PLAYER', p.entities_path.parent / 'player.json'),
-             ('ENTITIES_TEAM', p.entities_path.parent / 'team.json'),
-             ('WAREHOUSE', p.root / 'warehouse' / 'lahman.sqlite')]:
-    print(f'export {k}={v!r}')
-")"
+export WAREHOUSE="$ROOT/warehouse/lahman.sqlite"
+export ENTITIES_DIR="$ROOT/entities"
+# Post–test 6 bootstrap migrates to minisql_v1 (sqlite), not player.json:
+export ENTITIES_PLAYER_SQL="$ENTITIES_DIR/player.sqlite"
+export ENTITIES_TEAM_SQL="$ENTITIES_DIR/team.sqlite"
+
+cd /path/to/mycelium   # repo root — required for uv run python imports
 
 # Step-1/2 query helper (supports grain= for team checks)
 baseball_query() {
@@ -80,6 +79,28 @@ q = EntityQuery(**payload)
 r = run_query(q)
 print(json.dumps(r.public_dict(), indent=2))
 " "$1"
+}
+
+# Registry counts via framework (works for json or minisql_v1)
+baseball_registry_counts() {
+  uv run python -c "
+import json, os
+from pathlib import Path
+from network.paths import NetworkPaths, apply_network_paths
+from agents.entity_registry import get_entity_registry, reset_entity_registry
+root = Path(os.environ['ROOT'])
+apply_network_paths(NetworkPaths.from_root(root))
+reset_entity_registry()
+out = {}
+for grain in ('player', 'team'):
+    reg = get_entity_registry(grain=grain)
+    out[grain] = {
+        'entity_count': reg.entity_count(),
+        'bind_index_entries': len(reg._data.bind_index),
+        'source_key_index_entries': len(reg._data.source_key_index),
+    }
+print(json.dumps(out, indent=2))
+"
 }
 ```
 
@@ -102,30 +123,24 @@ print(json.dumps(r.public_dict(), indent=2))
 ```bash
 test -f "$ROOT/network.json"
 test -f "$WAREHOUSE"
-test -f "$ENTITIES_PLAYER"
-test -f "$ENTITIES_TEAM"
+test -f "$ENTITIES_PLAYER_SQL" -o -f "$ENTITIES_DIR/player.json"
+test -f "$ENTITIES_TEAM_SQL" -o -f "$ENTITIES_DIR/team.json"
 test -f "$ROOT/seed/lahman_1871-2025_csv/People.csv" \
   -o -f "$ROOT/seed/lahman_1871-2025_csv.zip"
 ```
 
 ```bash
-jq '{
-  player_entities: (.entities | length),
-  bind_index_entries: (.bind_index | length),
-  source_key_index_entries: (.source_key_index | length)
-}' "$ENTITIES_PLAYER"
-```
-
-```bash
-jq '{team_entities: (.entities | length)}' "$ENTITIES_TEAM"
+baseball_registry_counts
 ```
 
 **Pass:**
 
-- Warehouse + both entity stores exist.
-- Player entities **≈ 23,777** (± small drift across Lahman tags).
-- `source_key_index` non-empty on player store.
-- Team entities **≈ 241** distinct canonical team names (order-of-magnitude).
+- Warehouse + both entity stores exist (`entities/player.sqlite` + `entities/team.sqlite` after full bootstrap).
+- Player `entity_count` **≈ 23,500** (± drift; full Lahman v2025.1 ≈ **23,536**).
+- Player `source_key_index_entries` **≈ 23,500** (non-empty).
+- Player `bind_index_entries` **> entity_count** (multi-team aliases; ≈ **57k** bind rows).
+- Team `entity_count` **≈ 241**.
+- Bootstrap line `entities committed: 23777` = **players + teams** (not players alone).
 
 ---
 
@@ -250,11 +265,23 @@ uv run mycelium query --network-dir "$ROOT" \
 ## Check 7 — Registry public shape (required)
 
 ```bash
-jq '.entities | to_entries[0].value | keys' "$ENTITIES_PLAYER" | jq 'inside(["id","bind_values","source_keys","source","validation_state"])'
-jq '.entities | to_entries[0].value | {id, bind_values, source_keys}' "$ENTITIES_PLAYER" | head
+uv run python -c "
+import os
+from pathlib import Path
+from network.paths import NetworkPaths, apply_network_paths
+from agents.entity_registry import get_entity_registry, reset_entity_registry
+apply_network_paths(NetworkPaths.from_root(Path(os.environ['ROOT'])))
+reset_entity_registry()
+entity = next(iter(get_entity_registry(grain='player').list_entities()))
+keys = set(entity.model_dump().keys())
+required = {'id', 'bind_values', 'source_keys', 'source', 'validation_state'}
+assert required <= keys, keys
+assert 'name' not in keys or 'name' in entity.bind_values
+print('OK sample entity', entity.id, entity.bind_values, entity.source_keys)
+"
 ```
 
-**Pass:** entities use `bind_values` + `source_keys`; no top-level bare `name`/`team` outside `bind_values`.
+**Pass:** sample row has `bind_values` + `source_keys`; bind fields live under `bind_values`, not top-level.
 
 ---
 
