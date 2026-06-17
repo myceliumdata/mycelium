@@ -10,12 +10,12 @@
 
 | Slice | Commit | Notes |
 |-------|--------|--------|
-| 0800 bootstrap perf | `ff52422` | `save_entity` skips source-key rebuild |
-| 0900 polish nits | `a546050` | Router/registry polish + MCP smoke P15 |
+| 1000 bind_index fallback | `7ba6dfc` | Step-1 full MVR → `bind_index` for multi-team alias binds |
+| 1100 strict grain routing | `bc73c23` | Lookup keys infer grain; fan-out + `EntityQuery.grain` removed |
 
 **In progress / review:** none
 
-**Design locked (slice 3):** Fan-out + per-grain filter · 0-hit pipeline · LLM trigger A · outputs `chosen` / `chosen_grain` / `ambiguous` · 3c cross-grain suggest · optional `EntityQuery.grain` · `delivery.grain` · team queries use `name` key (docs)
+**Design locked (routing):** Disjoint bind fields per grain — baseball `{player, team}` → player, `{team}` → team; `infer_grain_from_lookup` (see [`docs/query-grain-router.md`](../../docs/query-grain-router.md)). `DeliveryScope.grain` on step 2. Closed grains: lazy field aliases on 0-hit. **Paul:** re-bootstrap benchmark root before ship gate (breaking MVR keys).
 
 **Git:** Local commits ahead of `origin`; no push until Paul asks.
 

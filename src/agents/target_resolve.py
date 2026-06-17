@@ -200,7 +200,7 @@ def _resolve_single_grain_step1(
     grain: str,
     alias_expander: AliasExpander | None = None,
 ) -> TargetResolveResult:
-    """Resolve step-1 on one grain (CRM default path and explicit grain override)."""
+    """Resolve step-1 on one grain (single-grain network or inferred grain)."""
     registry = get_entity_registry(grain=grain)
     closed_grain = is_closed_identity_grain(grain)
     entity_id = (query.id or "").strip()

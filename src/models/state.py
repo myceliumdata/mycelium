@@ -39,7 +39,7 @@ class LookupSuggestion(BaseModel):
             "Why this candidate was suggested: sequence_ratio (fuzzy primary bind "
             "field), bind_field_fuzzy_match (fuzzy non-primary bind field), "
             "same_bind_field_conflict (exact match on other bind fields, conflict "
-            "on one field), cross_grain_ambiguous (multi-grain disambiguation)."
+            "on one field)."
         ),
     )
     grain: str | None = Field(

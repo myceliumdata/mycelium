@@ -36,7 +36,9 @@ Not a full application — iterative starter: design, schemas, skeleton ingest/q
 | Registry grains | **Two:** **player** and **team** (fan-facing city+name — **not** Lahman `franchID` as primary) |
 | Registry `id` | **uuid4** assigned on load |
 | Lahman `playerID` / `teamID` | **Source metadata** — provenance and re-import; not MVR; not a parallel public `id` |
-| Player MVR (draft) | **Name + team** — team disambiguates homonyms |
+| Player MVR | **`player` + `team`** bind fields — team disambiguates homonyms |
+| Team MVR | **`team`** bind field — full canonical city+name label |
+| Step-1 routing | Lookup key set infers grain (no fan-out, no `EntityQuery.grain`) — [`query-grain-router.md`](../query-grain-router.md) |
 | Multi-team careers | `Aaron + Braves` and `Aaron + Red Sox` → **same** player uuid; any team the player played for is a valid lookup alias |
 | Design archives | Substantive sessions → `docs/plans/conversations/` |
 
@@ -47,8 +49,9 @@ Not a full application — iterative starter: design, schemas, skeleton ingest/q
 ### Player
 
 - **What:** A person in `People` and all parallel stat tables (`Batting`, `Pitching`, `Fielding`, `Appearances`, awards, …).
-- **MVR (draft):** human-meaningful **name + team** (field names and normalization TBD).
-- **Bind index (open):** cannot be one compound `name|team` key — index **each** `(name, team)` pair observed in Lahman → same uuid.
+- **MVR:** `bind_fields: ["player", "team"]` — display name plus team disambiguator.
+- **Step-1 lookup:** `{player, team}` (both keys required for full resolve; `{player}` alone → `lookup_incomplete`).
+- **Bind index:** index **each** `(player, team)` pair observed in Lahman → same uuid (`add_bind_alias`; step-1 consults `bind_index` on field-index miss).
 
 ### Team
 
@@ -56,7 +59,7 @@ Not a full application — iterative starter: design, schemas, skeleton ingest/q
 - **Franchise:** Lahman `TeamsFranchises` / `franchID` is **correct for research**, but only a small audience thinks that way. **Franchise specialist** + emergent linkage — client asks “aren’t those the same?” → offer re-aggregation by franchise.
 - **`Teams.csv` rows:** year-scoped **facts** for a fan team in a season (W/L, park, stats) — `yearID` remains query scope.
 - **Lahman `teamID` / `franchID`:** warehouse provenance — not MVR, not default organization for answers.
-- **Team MVR:** **full canonical name** (locked). Discovery via **network bootstrap specialists** + `guide.md` policy — **not** framework-hardcoded columns; see [`conversations/2026-06-16-canonical-names-bootstrap-specialists.md`](conversations/2026-06-16-canonical-names-bootstrap-specialists.md). Nickname-alone → incomplete / suggest.
+- **Team MVR:** `bind_fields: ["team"]` — full canonical city+name (locked). Step-1 lookup: `{team: "Brooklyn Dodgers"}` or nickname via field aliases (`{team: "Dodgers"}`). Discovery via bootstrap + `guide.md` — see [`conversations/2026-06-16-canonical-names-bootstrap-specialists.md`](conversations/2026-06-16-canonical-names-bootstrap-specialists.md).
 - **Example:** `franchID=LAD` spans Brooklyn Dodgers (≤1957, `BRO`) and LA Dodgers (1958+, `LAN`) — **one franchise in Lahman, two team identities in our default ontology.**
 
 ---
@@ -86,7 +89,7 @@ Not a full application — iterative starter: design, schemas, skeleton ingest/q
 
 ## Router / supervisor (draft)
 
-1. **Which grain?** player vs team
+1. **Which grain?** Inferred from lookup keys (`{player, team}` vs `{team}`) — not client override
 2. **Resolve** — MVR lookup or `id`
 3. **Operation** — read warehouse / join roster / derive
 4. **Specialists** — possibly several; merge (stats tables are parallel, none privileged)
@@ -154,9 +157,9 @@ flowchart TD
 | 2 | **Cold start / ingest handoff** | Protocol for “here is the data source; organize it” |
 | 3 | **Table → specialist routing** | Taxonomy / supervisor: pitching vs batting vs bio vs teams |
 | 4 | **Specialist autonomy** | What pitching specialist *does* with rows (schema, indexes, derived artifacts) |
-| 5 | **Registry population** | When/how People/Teams → uuid4 rows + multi-alias `(name, team)` index |
+| 5 | **Registry population** | When/how People/Teams → uuid4 rows + multi-alias `(player, team)` bind_index |
 | 6 | **Team MVR + franchise mapping** | Lahman `teamID` / moves; LLM aliases (`Yanks`) |
-| 7 | **Grain + scope in queries** | Player vs team identity; year/season as scope not MVR |
+| 7 | **Grain + scope in queries** | ✅ Lookup keys infer grain (1100); year/season as scope not MVR |
 | 8 | **Query protocol fit** | Two-step + `requested_attributes` vs warehouse SQL/derive ops |
 | 9 | **Derivation + provenance** | Recipe storage, lineage, agent retention (deferred) |
 | 10 | **LLM alias resolution** | Shorthand bind fields; local LLM assumption |
@@ -252,11 +255,11 @@ flowchart TB
 ```
 
 - **Roster:** no player list on `Teams` — membership via **Appearances** or any player fact table for that `yearID` + `teamID`.
-- **Player MVR bind index source:** derive `(nameFirst, nameLast, Teams.name)` from **Appearances** ⋈ **People** ⋈ **Teams** (all teams a player appeared for).
+- **Player MVR bind index source:** derive `(player display name, Teams.name)` → `{player, team}` binds from **Appearances** ⋈ **People** ⋈ **Teams** (all teams a player appeared for).
 
 ### Scale notes (design)
 
-- **751** homonym `(nameFirst, nameLast)` pairs in People — team in MVR is required for disambiguation.
+- **751** homonym `(nameFirst, nameLast)` pairs in People — `team` bind field on player grain is required for disambiguation.
 - **Hank Aaron** (`aaronha01`): 3 distinct `Teams.name` values from batting — all must alias to one player uuid.
 - **Negro leagues:** `lgID` can be 3 chars; included in 2025 release (readme §2.1).
 

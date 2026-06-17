@@ -600,11 +600,6 @@ def _lookup_suggested_message(
             "Near-miss registry bind field found. Retry with a corrected lookup map "
             "(suggestions[].suggested_lookup)."
         )
-    if "cross_grain_ambiguous" in reasons:
-        return (
-            "Multiple grains matched the lookup. Pick one candidate by "
-            "suggestions[].suggested_lookup or suggestions[].id."
-        )
     return (
         "Near-miss registry names found. Retry with suggestions[].suggested_lookup "
         "or suggestions[].id."
