@@ -12,8 +12,7 @@ from agents.specialists.fields import (
     is_versioned_field,
     validate_versioned_field,
 )
-
-_BIND_FIELDS = frozenset({"name", "employer"})
+from network.mvr import mvr_bind_field_set
 
 
 def _updated_at_from_entry(entry: Any) -> str | None:
@@ -142,11 +141,13 @@ def normalize_context_fields(
     row: dict[str, Any],
     *,
     category: str,
+    bind_fields: frozenset[str] | None = None,
 ) -> dict[str, Any]:
     """Normalize one entity's specialist storage row for research context."""
+    skip = bind_fields if bind_fields is not None else mvr_bind_field_set()
     out: dict[str, Any] = {}
     for field_name, entry in sorted(row.items()):
-        if field_name in _BIND_FIELDS:
+        if field_name in skip:
             continue
         out[field_name] = field_context_snapshot(
             entry,

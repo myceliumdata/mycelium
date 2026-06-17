@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from agents.attribute_write import bind_provisional, ensure_entity_bind
 from agents.classification import reset_category_tree
 from agents.context import reset_context_builder
 from agents.entity_registry import (
@@ -357,11 +358,12 @@ def test_ensure_bound_entity_allocates_uuid4(
     reset_category_tree()
     reset_entity_registry()
     registry = get_entity_registry()
-    entity, duplicate = registry.ensure_bound_entity(
+    entity, duplicate = ensure_entity_bind(
         "Test Person",
         "Acme",
         source="seed_bootstrap",
         validation_state="validated",
+        registry=registry,
     )
     assert duplicate is False
     uuid.UUID(entity.id)
@@ -382,13 +384,18 @@ def test_ensure_bound_entity_duplicate_preserves_source(
     reset_category_tree()
     reset_entity_registry()
     registry = get_entity_registry()
-    seed_row, _ = registry.ensure_bound_entity(
+    seed_row, _ = ensure_entity_bind(
         "Andrea Kalmans",
         "Example Co",
         source="seed_bootstrap",
         validation_state="validated",
+        registry=registry,
     )
-    bind_row, duplicate = registry.bind_provisional("Andrea Kalmans", "Example Co")
+    bind_row, duplicate = bind_provisional(
+        "Andrea Kalmans",
+        "Example Co",
+        registry=registry,
+    )
     assert duplicate is True
     assert bind_row.id == seed_row.id
     assert bind_row.source == "seed_bootstrap"

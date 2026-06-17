@@ -91,8 +91,8 @@ def test_partial_fuzzy_employer_lookup_suggested(
     assert response.delivery is None
     assert len(response.suggestions) >= 1
     assert response.suggestions[0].suggested_lookup == {"employer": "645 Ventures"}
-    assert response.suggestions[0].employer == "645 Ventures"
-    assert response.suggestions[0].reason == "employer_sequence_ratio"
+    assert response.suggestions[0].suggested_lookup.get("employer") == "645 Ventures"
+    assert response.suggestions[0].reason == "bind_field_fuzzy_match"
 
 
 @pytest.mark.smoke
@@ -105,8 +105,8 @@ def test_partial_fuzzy_employer_plural_typo_suggests_employer(
     assert response.total_matches == 0
     assert response.delivery is None
     assert response.suggestions[0].suggested_lookup == {"employer": "645 Ventures"}
-    assert response.suggestions[0].employer == "645 Ventures"
-    assert response.suggestions[0].reason == "employer_sequence_ratio"
+    assert response.suggestions[0].suggested_lookup.get("employer") == "645 Ventures"
+    assert response.suggestions[0].reason == "bind_field_fuzzy_match"
 
 
 @pytest.mark.smoke
@@ -124,7 +124,7 @@ def test_partial_fuzzy_employer_with_attrs_still_suggested(
     assert response.total_matches == 0
     assert response.delivery is None
     assert response.suggestions[0].suggested_lookup == {"employer": "645 Ventures"}
-    assert response.suggestions[0].employer == "645 Ventures"
+    assert response.suggestions[0].suggested_lookup.get("employer") == "645 Ventures"
 
 
 @pytest.mark.smoke
@@ -220,7 +220,7 @@ def test_full_mvr_wrong_employer_lookup_suggested(
     assert response.delivery is None
     assert len(response.suggestions) >= 1
     assert any(
-        item.reason == "same_name_different_employer"
+        item.reason == "same_bind_field_conflict"
         for item in response.suggestions
     )
     assert any(
@@ -320,7 +320,6 @@ def test_name_fuzzy_suggested_lookup_shape(
     payload = response.public_dict()
     assert payload["suggestions"][0]["suggested_lookup"] == {"name": "Andrea Kalmans"}
     assert payload["suggestions"][0].get("id")
-    assert payload["suggestions"][0].get("name")
 
 
 @pytest.mark.smoke
@@ -333,13 +332,13 @@ def test_employer_fuzzy_suggested_lookup_shape(
     payload = response.public_dict()
     suggestion = payload["suggestions"][0]
     assert suggestion["suggested_lookup"] == {"employer": "645 Ventures"}
-    assert suggestion["reason"] == "employer_sequence_ratio"
+    assert suggestion["reason"] == "bind_field_fuzzy_match"
     assert "id" not in suggestion
     assert "name" not in suggestion
 
 
 @pytest.mark.smoke
-def test_same_name_different_employer_suggested_lookup(
+def test_same_bind_field_conflict_suggested_lookup(
     crm_lookup_clarity_env: CoreStorage,
 ) -> None:
     _ = crm_lookup_clarity_env

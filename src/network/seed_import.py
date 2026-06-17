@@ -24,7 +24,7 @@ def import_seed_file(
     *,
     registry: EntityRegistry | None = None,
 ) -> int:
-    """Import seed people into ``entities.json`` via ``ensure_bound_entity``.
+    """Import seed people into entity store via ``ensure_entity_bind_fields``.
 
     Returns the number of rows processed, or ``0`` when ``seed_path`` is missing.
     Idempotent via registry ``bind_index``.

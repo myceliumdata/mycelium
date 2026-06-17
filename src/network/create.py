@@ -217,7 +217,7 @@ def _write_network_manifest(
                 "person": {
                     "bind_fields": ["name", "employer"],
                     "description": (
-                        "CRM people: display name plus current employer "
+                        "Illustrative person grain: display name plus current employer "
                         "before bind and research."
                     ),
                 },

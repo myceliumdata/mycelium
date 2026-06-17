@@ -93,13 +93,12 @@ def _resolve_owned_fields(state: MyceliumGraphState) -> list[str]:
 def _identity_from_context(ctx: dict[str, Any], entity_id: str | None) -> list[dict[str, Any]]:
     bind = ctx.get("bind")
     if entity_id and isinstance(bind, dict):
-        return [
-            {
-                "id": entity_id,
-                "name": bind.get("name", ""),
-                "employer": bind.get("employer"),
-            },
-        ]
+        bind_values = {
+            str(key): str(value)
+            for key, value in bind.items()
+            if value is not None and str(value).strip()
+        }
+        return [{"id": entity_id, "bind_values": bind_values}]
     return []
 
 
@@ -410,8 +409,7 @@ def _run_demographic_graph(state: MyceliumGraphState | dict[str, Any]) -> dict[s
         ir = identity_records[0]
         payload["identity_record"] = IdentityRecord(
             id=ir.get("id", ""),
-            name=ir.get("name", ""),
-            employer=ir.get("employer"),
+            bind_values=dict(ir.get("bind_values") or {}),
         )
     if current.invocation_thread_id is not None:
         payload["invocation_thread_id"] = current.invocation_thread_id

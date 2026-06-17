@@ -179,11 +179,27 @@ def ensure_entity_bind(
     actor_kind: str | None = None,
     registry: EntityRegistry | None = None,
 ) -> tuple[RegistryEntity, bool]:
-    """CRM-shaped bind helper — delegates to ``ensure_entity_bind_fields``."""
+    """Example-network bind helper — delegates to ``ensure_entity_bind_fields``."""
     return ensure_entity_bind_fields(
         {"name": name, "employer": employer},
         source=source,
         validation_state=validation_state,
         actor_kind=actor_kind,
+        registry=registry,
+    )
+
+
+def bind_provisional(
+    name: str,
+    employer: str,
+    *,
+    registry: EntityRegistry | None = None,
+) -> tuple[RegistryEntity, bool]:
+    """Create provisional entity or return existing row (duplicate bind)."""
+    return ensure_entity_bind(
+        name,
+        employer,
+        source="query_bind",
+        validation_state="provisional",
         registry=registry,
     )

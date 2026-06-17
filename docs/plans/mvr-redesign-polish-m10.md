@@ -44,6 +44,16 @@ Non-blocking nits from Grok review of MVR slices **M1–M9** were logged here **
 
 Post-ship debt folded into **Program 2** — see [`next-chunk-prep.md`](next-chunk-prep.md) (P12 payment smoke, P14 bind generalization, admin-ui e2e, P26 health ping). Architecture doc tense updated June 2026.
 
+### Post vocabulary slice (2026-06-18)
+
+| # | Source | Nit | Status |
+|---|--------|-----|--------|
+| P27 | vocabulary | `supervisor._identity_records_from_match` drops non-CRM bind keys | Open |
+| P28 | vocabulary | Message builders hardcode `employer` phrasing | Open |
+| P29 | vocabulary | `_rank_employer_suggestions` alias | Open |
+| P30 | vocabulary | admin-ui `LookupSuggestion` TS types | Open |
+| P31 | vocabulary | Smoke: identity-only `results[]` keys match grain MVR | Open |
+
 ---
 
 ## Exit criteria (M10)

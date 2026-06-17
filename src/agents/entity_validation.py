@@ -8,51 +8,45 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from agents.attribute_write import resolve_attribute_owner
+from agents.entity_registry import RegistryEntity
+
 ValidationStatus = Literal["pass", "fail", "pending"]
 
 
-def _validate_name(name: str) -> dict[str, Any]:
-    text = name.strip()
+def _validate_bind_string(field: str, value: str | None) -> dict[str, Any]:
+    text = (value or "").strip()
     if len(text) < 2:
         return {
-            "field": "name",
+            "field": field,
             "status": "fail",
-            "reason": "name must be at least 2 characters",
+            "reason": f"{field} must be at least 2 characters",
         }
     if text.isdigit():
         return {
-            "field": "name",
+            "field": field,
             "status": "fail",
-            "reason": "name cannot be all digits",
+            "reason": f"{field} cannot be all digits",
         }
-    return {"field": "name", "status": "pass"}
+    return {"field": field, "status": "pass"}
 
 
-def _validate_employer(employer: str | None) -> dict[str, Any]:
-    text = (employer or "").strip()
-    if len(text) < 2:
-        return {
-            "field": "employer",
-            "status": "fail",
-            "reason": "employer must be at least 2 characters",
-        }
-    return {"field": "employer", "status": "pass"}
+def run_mvr_validation(
+    entity: RegistryEntity,
+    *,
+    mvr: Any | None = None,
+) -> list[dict[str, Any]]:
+    """Run rule checks for each active MVR bind field; return validation_contrib rows."""
+    from network.mvr import load_mvr
 
-
-_MVR_VALIDATORS: tuple[tuple[str, str, Any], ...] = (
-    ("name", "demographic_specialist", _validate_name),
-    ("employer", "professional_specialist", _validate_employer),
-)
-
-
-def run_mvr_validation(name: str, employer: str | None) -> list[dict[str, Any]]:
-    """Run demographic + professional rule checks; return validation_contrib rows."""
+    policy = mvr if mvr is not None else load_mvr()
     contribs: list[dict[str, Any]] = []
-    for field, agent, validator in _MVR_VALIDATORS:
-        if field == "name":
-            result = validator(name)
-        else:
-            result = validator(employer)
+    for raw_field in policy.bind_fields:
+        field = raw_field.strip().lower()
+        if not field:
+            continue
+        result = _validate_bind_string(field, entity.bind_value(field))
+        _, agent = resolve_attribute_owner(field)
         contribs.append(
             {
                 "agent": agent,

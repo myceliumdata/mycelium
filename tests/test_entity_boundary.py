@@ -166,11 +166,14 @@ def test_build_context_resolves_bind_from_registry_by_id(
     reset_category_tree()
     reset_entity_registry()
     registry = get_entity_registry()
-    entity, _ = registry.ensure_bound_entity(
+    from agents.attribute_write import ensure_entity_bind
+
+    entity, _ = ensure_entity_bind(
         "Paul Murphy",
         "Acme Corp",
         source="query_bind",
         validation_state="validated",
+        registry=registry,
     )
 
     ctx = ContextBuilder().build_full_context([entity.id])

@@ -237,7 +237,7 @@ def test_mcp_employer_fuzzy_public_json_omits_person_fields(
     assert payload["outcome"] == "lookup_suggested"
     suggestion = payload["suggestions"][0]
     assert suggestion["suggested_lookup"] == {"employer": "645 Ventures"}
-    assert suggestion["reason"] == "employer_sequence_ratio"
+    assert suggestion["reason"] == "bind_field_fuzzy_match"
     assert "entity_key" not in suggestion
     assert "id" not in suggestion
     assert "name" not in suggestion

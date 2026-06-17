@@ -214,7 +214,7 @@ def test_framework_demographic_specialist_import_module_single_match(
     result = fn(state)
     assert result["specialist_contrib"]["id"] == "test-uuid"
     assert result.get("identity_record") is not None
-    assert result["identity_record"].name == "Jane"
+    assert result["identity_record"].bind_values.get("name") == "Jane"
 
 
 @pytest.mark.smoke

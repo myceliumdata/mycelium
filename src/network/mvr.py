@@ -10,7 +10,7 @@ from typing import Any
 from network.paths import NetworkPaths, resolve_network_root
 
 _DEFAULT_DESCRIPTION = (
-    "CRM people: display name plus current employer before bind and research."
+    "Minimum bind fields required before entity research (declared per grain in network.json)."
 )
 
 
@@ -243,3 +243,14 @@ def missing_mvr_bind_fields(
     required = [field.strip().lower() for field in policy.bind_fields if field.strip()]
     provided = set(normalized_lookup_values(lookup).keys())
     return [field for field in required if field not in provided]
+
+
+def mvr_bind_field_names(mvr: MvrPolicy | None = None) -> list[str]:
+    """Lower-case active MVR bind field names."""
+    policy = mvr if mvr is not None else load_mvr()
+    return [field.strip().lower() for field in policy.bind_fields if field.strip()]
+
+
+def mvr_bind_field_set(mvr: MvrPolicy | None = None) -> frozenset[str]:
+    """Frozen set of active MVR bind field names."""
+    return frozenset(mvr_bind_field_names(mvr))

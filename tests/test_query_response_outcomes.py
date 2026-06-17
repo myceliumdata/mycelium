@@ -31,7 +31,9 @@ def _assert_outcome(response: QueryResponse, expected: str) -> None:
             response_found,
             {
                 "query": EntityQuery(lookup={"name": "Ada", "employer": "Lab"}),
-                "identity_records": [IdentityRecord(id="p1", name="Ada", employer="Lab")],
+                "identity_records": [
+                    IdentityRecord(id="p1", bind_values={"name": "Ada", "employer": "Lab"}),
+                ],
             },
             "found",
         ),
@@ -63,7 +65,9 @@ def _assert_outcome(response: QueryResponse, expected: str) -> None:
                     lookup={"name": "Ada", "employer": "Lab"},
                     requested_attributes=["email"],
                 ),
-                "identity_records": [IdentityRecord(id="p1", name="Ada", employer="Lab")],
+                "identity_records": [
+                    IdentityRecord(id="p1", bind_values={"name": "Ada", "employer": "Lab"}),
+                ],
                 "attributes": ["email"],
             },
             "assembled",

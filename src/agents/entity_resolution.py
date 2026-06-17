@@ -51,8 +51,8 @@ def is_provisional_registry_match(record: dict[str, Any]) -> bool:
     )
 
 
-def _rank_suggestions(entity_key: str) -> list[LookupSuggestion]:
-    query_norm = normalize_name_for_comparison(entity_key)
+def _rank_name_suggestions(name_value: str) -> list[LookupSuggestion]:
+    query_norm = normalize_name_for_comparison(name_value)
     if not query_norm:
         return []
 
@@ -73,8 +73,6 @@ def _rank_suggestions(entity_key: str) -> list[LookupSuggestion]:
             lookup_suggestion(
                 suggested_lookup={"name": name},
                 id=entity.id,
-                name=name,
-                employer=entity.bind_value("employer"),
                 score=score,
                 reason="sequence_ratio",
             ),
@@ -84,38 +82,51 @@ def _rank_suggestions(entity_key: str) -> list[LookupSuggestion]:
     return candidates[:SUGGESTION_MAX_COUNT]
 
 
-def _rank_employer_suggestions(employer: str) -> list[LookupSuggestion]:
-    query_norm = normalize_field_index_value(employer)
+def _rank_suggestions(entity_key: str) -> list[LookupSuggestion]:
+    """Fuzzy name suggestions (primary bind field when present in MVR)."""
+    return _rank_name_suggestions(entity_key)
+
+
+def _rank_bind_field_fuzzy_suggestions(field: str, value: str) -> list[LookupSuggestion]:
+    field_key = field.strip().lower()
+    if field_key == "name":
+        return _rank_name_suggestions(value)
+
+    query_norm = normalize_field_index_value(value)
     if not query_norm:
         return []
 
     canonical_by_norm: dict[str, str] = {}
     for entity in get_entity_registry().list_entities():
-        raw_employer = entity.bind_value("employer")
-        if raw_employer is None or not str(raw_employer).strip():
+        raw_value = entity.bind_value(field_key)
+        if raw_value is None or not str(raw_value).strip():
             continue
-        canonical = str(raw_employer)
+        canonical = str(raw_value)
         candidate_norm = normalize_field_index_value(canonical)
         if not candidate_norm or candidate_norm in canonical_by_norm:
             continue
         canonical_by_norm[candidate_norm] = canonical
 
     candidates: list[LookupSuggestion] = []
-    for candidate_norm, canonical_employer in canonical_by_norm.items():
+    for candidate_norm, canonical_value in canonical_by_norm.items():
         score = SequenceMatcher(None, query_norm, candidate_norm).ratio()
         if score < SUGGESTION_MIN_SCORE:
             continue
         candidates.append(
             lookup_suggestion(
-                suggested_lookup={"employer": canonical_employer},
-                employer=canonical_employer,
+                suggested_lookup={field_key: canonical_value},
                 score=score,
-                reason="employer_sequence_ratio",
+                reason="bind_field_fuzzy_match",
             ),
         )
 
     candidates.sort(key=lambda item: item.score, reverse=True)
     return candidates[:SUGGESTION_MAX_COUNT]
+
+
+def _rank_employer_suggestions(employer: str) -> list[LookupSuggestion]:
+    """Backward-compatible alias for employer bind-field fuzzy match."""
+    return _rank_bind_field_fuzzy_suggestions("employer", employer)
 
 
 def resolve_status_for_target_lookup(lookup: dict[str, str]) -> EntityResolution:
@@ -130,8 +141,7 @@ def resolve_status_for_target_lookup(lookup: dict[str, str]) -> EntityResolution
     for entity_id in entity_ids:
         entity = registry.lookup_by_id(entity_id)
         if entity is not None:
-            matches.append(registry_entity_to_match(entity))
-
+            matches.append(registry_entity_to_match(entity, mvr=registry._mvr))
     if len(matches) == 1:
         return EntityResolution(kind="exact", matches=matches)
     if len(matches) >= 2:

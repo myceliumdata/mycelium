@@ -1,6 +1,6 @@
 """Ensure ``categories.json`` maps MVR bind fields for Program 2 unified writes.
 
-``CRM_MVR_FIELD_CATEGORY`` is a **bootstrap/merge reference only** for example
+``EXAMPLE_BIND_FIELD_CATEGORY_FALLBACK`` is a **bootstrap/merge reference only** for example
 networks and ``network create`` when LLM ontologies omit MVR mappings. Runtime
 bind-field ownership is always resolved from ``categories.json`` ``attribute_map``
 via ``resolve_attribute_owner`` — never from this hardcoded map.
@@ -16,7 +16,7 @@ from typing import Any
 from agents.classification.models import Category, CategoryTreeData
 from network.paths import NetworkPaths, framework_root
 
-CRM_MVR_FIELD_CATEGORY: dict[str, str] = {
+EXAMPLE_BIND_FIELD_CATEGORY_FALLBACK: dict[str, str] = {
     "name": "demographic",
     "employer": "professional",
     "team": "professional",
@@ -67,7 +67,7 @@ def categories_map_mvr_fields(
     attr_map = data.get("attribute_map") if isinstance(data, dict) else None
     if not isinstance(attr_map, dict):
         return False
-    needed = required_fields if required_fields is not None else set(CRM_MVR_FIELD_CATEGORY)
+    needed = required_fields if required_fields is not None else set(EXAMPLE_BIND_FIELD_CATEGORY_FALLBACK)
     return bool(needed) and all(attr_map.get(field) for field in needed)
 
 
@@ -121,12 +121,12 @@ def ensure_mvr_fields_in_category_tree(
 ) -> CategoryTreeData:
     """Merge manifest MVR bind fields into ontology ``attribute_map`` when absent."""
     updated = tree.model_copy(deep=True)
-    fields_to_map = bind_fields if bind_fields is not None else set(CRM_MVR_FIELD_CATEGORY)
+    fields_to_map = bind_fields if bind_fields is not None else set(EXAMPLE_BIND_FIELD_CATEGORY_FALLBACK)
     for field in sorted(fields_to_map):
         key = field.strip().lower()
         if not key or key in updated.attribute_map:
             continue
-        category_name = CRM_MVR_FIELD_CATEGORY.get(key, "professional")
+        category_name = EXAMPLE_BIND_FIELD_CATEGORY_FALLBACK.get(key, "professional")
         if category_name not in updated.categories:
             desc, agent = _MINIMAL_MVR_CATEGORIES[category_name]
             updated.categories[category_name] = Category(

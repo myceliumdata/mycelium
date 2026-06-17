@@ -41,7 +41,7 @@ def load_delivery_scope(delivery_id: str) -> DeliveryLoadResult:
         entity = registry.lookup_by_id(entity_id)
         if entity is None:
             return DeliveryLoadResult(kind="not_found")
-        matched.append(registry_entity_to_match(entity))
+        matched.append(registry_entity_to_match(entity, mvr=registry._mvr))
 
     if not matched:
         return DeliveryLoadResult(kind="not_found")

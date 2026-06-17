@@ -109,7 +109,9 @@ def test_bind_creates_specialist_versions_and_cache(attribute_write_env: CoreSto
     assert current_value(name_entry) == "Road Runner"
     assert current_value(employer_entry) == "Acme Corp"
 
-    assert registry.lookup_by_bind_key("Road Runner", "Acme Corp") is not None
+    assert registry.lookup_by_bind_values(
+        {"name": "Road Runner", "employer": "Acme Corp"},
+    ) is not None
     indexes = registry.field_indexes()
     assert entity.id in indexes["name"].get("road runner", [])
     assert entity.id in indexes["employer"].get("acme corp", [])
@@ -143,8 +145,12 @@ def test_replace_employer_updates_indexes(attribute_write_env: CoreStorage) -> N
     )
     assert old_key not in registry._data.bind_index
     assert registry._data.bind_index.get(new_key) == entity.id
-    assert registry.lookup_by_bind_key("Pat Example", "New Co") is not None
-    assert registry.lookup_by_bind_key("Pat Example", "Old Co") is None
+    assert registry.lookup_by_bind_values(
+        {"name": "Pat Example", "employer": "New Co"},
+    ) is not None
+    assert registry.lookup_by_bind_values(
+        {"name": "Pat Example", "employer": "Old Co"},
+    ) is None
 
 
 @pytest.mark.smoke
@@ -196,7 +202,9 @@ def test_import_seed_writes_specialist_versions(attribute_write_env: CoreStorage
     assert count > 0
 
     registry = get_entity_registry()
-    entity = registry.lookup_by_bind_key("Andrea Kalmans", "Lontra Ventures")
+    entity = registry.lookup_by_bind_values(
+        {"name": "Andrea Kalmans", "employer": "Lontra Ventures"},
+    )
     assert entity is not None
 
     name_entry = _specialist_field(entity.id, "demographic", "name")

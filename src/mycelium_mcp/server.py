@@ -131,7 +131,7 @@ def _neutral_json_schema(model: type[EntityQuery] | type[QueryResponse] | type[I
             "as null."
         )
     elif model is IdentityRecord:
-        schema.setdefault("description", "Registry identity record (id, name, employer).")
+        schema.setdefault("description", "Registry identity record (id + bind_values map).")
     return schema
 
 

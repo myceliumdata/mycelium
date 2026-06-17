@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+from agents.attribute_write import bind_provisional
 from agents.entity_registry import RegistryEntity, get_entity_registry, reset_entity_registry
 from registry_helpers import lookup_entities_by_name as lookup_entities_by_key
 from network_helpers import copy_crm_network_manifest, import_seed_for_test
@@ -414,7 +415,7 @@ def test_status_registry_entity_lookup(
     root = _ontology_root(tmp_path)
     _configure_root(monkeypatch, tmp_path, root)
     registry = get_entity_registry()
-    entity, _created = registry.bind_provisional("New Person", "Acme Labs")
+    entity, _created = bind_provisional("New Person", "Acme Labs", registry=registry)
     registry.promote_validated(entity.id)
     registry.record_research_attribution(
         entity.id,

@@ -7,8 +7,7 @@ from typing import Any
 from agents.entity_registry import get_entity_registry, registry_entity_to_match
 from agents.registry import get_agent_registry
 from agents.specialists.protocol import dispatch_read_category_slice
-
-BIND_FIELDS = frozenset({"name", "employer"})
+from network.mvr import load_mvr, mvr_bind_field_set
 
 
 def reset_context_builder() -> None:
@@ -20,17 +19,37 @@ def get_context_builder() -> "ContextBuilder":
     return ContextBuilder()
 
 
-def bind_from_record(record: dict[str, Any]) -> dict[str, str | None]:
-    """Read-only bind slice (name, employer) from a resolved entity row."""
-    return {
-        "name": str(record.get("name") or ""),
-        "employer": record.get("employer"),
-    }
+def bind_from_record(
+    record: dict[str, Any],
+    *,
+    bind_fields: list[str] | None = None,
+) -> dict[str, str | None]:
+    """Read-only bind slice from a resolved entity row (active MVR bind fields)."""
+    fields = bind_fields
+    if fields is None:
+        fields = list(load_mvr().bind_fields)
+    out: dict[str, str | None] = {}
+    for raw_field in fields:
+        key = raw_field.strip().lower()
+        if not key:
+            continue
+        raw = record.get(key)
+        if raw is None:
+            out[key] = None
+        else:
+            text = str(raw).strip()
+            out[key] = text if text else None
+    return out
 
 
-def strip_bind_fields(record: dict[str, Any]) -> dict[str, Any]:
-    """Return specialist storage fields only (ignore legacy name/employer on read)."""
-    return {key: value for key, value in record.items() if key not in BIND_FIELDS}
+def strip_bind_fields(
+    record: dict[str, Any],
+    *,
+    bind_fields: frozenset[str] | None = None,
+) -> dict[str, Any]:
+    """Return specialist storage fields only (ignore MVR bind keys on read)."""
+    skip = bind_fields if bind_fields is not None else mvr_bind_field_set()
+    return {key: value for key, value in record.items() if key not in skip}
 
 
 def planner_context(
@@ -69,13 +88,15 @@ class ContextBuilder:
         *,
         matched_records: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
+        mvr = load_mvr()
+        bind_fields = mvr_bind_field_set(mvr)
         resolved = self._resolve_identity_rows(ids, matched_records=matched_records)
         entity_id: str | None = None
         bind: dict[str, str | None] | None = None
         if len(resolved) == 1:
             row = resolved[0]
             entity_id = str(row.get("id") or "") or None
-            bind = bind_from_record(row)
+            bind = bind_from_record(row, bind_fields=list(mvr.bind_fields))
 
         specialist_part: dict[str, Any] = {}
         registry = get_agent_registry()
@@ -91,7 +112,7 @@ class ContextBuilder:
                     str(agent_name),
                     str(category),
                     ids,
-                    bind_fields=BIND_FIELDS,
+                    bind_fields=bind_fields,
                 )
                 if cat_slice:
                     specialist_part[str(category)] = cat_slice
@@ -117,5 +138,5 @@ class ContextBuilder:
         for entity_id in ids:
             entity = registry.lookup_by_id(entity_id)
             if entity is not None:
-                rows.append(registry_entity_to_match(entity))
+                rows.append(registry_entity_to_match(entity, mvr=registry._mvr))
         return rows

@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from agents.attribute_write import bind_provisional
 from agents.entity_registry import RegistryEntity, get_entity_registry, reset_entity_registry
 from network.bootstrap import run_network_bootstrap
 from network.metering_policy import load_metering_policy
@@ -171,7 +172,7 @@ def test_entity_store_uses_grain_path_only(
     reset_entity_registry()
     registry = get_entity_registry()
     assert registry.entity_count() == 0
-    registry.bind_provisional("Grace Hopper", "Navy")
+    bind_provisional("Grace Hopper", "Navy", registry=registry)
     assert grain_path.is_file()
     assert json.loads((tmp_path / "entities.json").read_text(encoding="utf-8"))["entities"] == {}
 

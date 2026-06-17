@@ -117,18 +117,17 @@ Pre–registry ingest (`enrich`, `validator`, `person_prep`) and the SQLite `peo
 
 ## Current Data Model (Phase 1 — Strictly Minimal Core)
 
-The core `IdentityRecord` record is deliberately tiny:
+The core `IdentityRecord` aligns with registry `bind_values`:
 
 ```python
 class IdentityRecord(BaseModel):
-    id: str
-    name: str
-    employer: str | None = None
+    id: str = ""
+    bind_values: dict[str, str] = Field(default_factory=dict)
 ```
 
 **Identity rules:**
-- Bootstrap seed provides `name`, `employer` only; runtime and public `results["id"]` use the stable UUID from `entities.json` (assigned on import via `ensure_bound_entity`).
-- `name` and `employer` are specialist-owned like any other attribute when requested (no privileged core filter).
+- Bootstrap seed rows supply values for the active grain's `mvr.bind_fields`; runtime and public `results["id"]` use the stable UUID from the entity store (assigned on import via `ensure_entity_bind_fields`).
+- MVR bind fields are specialist-owned like any other attribute when requested (no privileged core filter).
 - There is no `extra` field on `IdentityRecord`.
 
 ---
@@ -361,7 +360,7 @@ Core storage holds `id`, `name`, and `employer` on registry rows. Callers send a
 
 All external responses use the minimalist **`QueryResponse`** (`results`, `message`, `provenance`, `debug`, `trace_id`, `thread_id`):
 
-- **`results`** — One dict per match. Always includes `"id"` (stable UUID). With no `requested_attributes`: `id`, `name`, `employer`. With `requested_attributes`: `id` plus only those keys after specialist-first merge (specialist value wins; seed provisional while pending). No `person_id` field.
+- **`results`** — One dict per match. Always includes `"id"` (stable UUID). With no `requested_attributes`: `id` plus active MVR `bind_fields`. With `requested_attributes`: `id` plus only those keys after specialist-first merge (specialist value wins; seed provisional while pending). No `person_id` field.
 - **`message`** — Primary channel: found / not-found / per-attribute status. Visiting agents read natural-language sentences built from supervisor classifications: **researching** (in-scope, pending), **unavailable** (researched, no value), **out_of_scope** (`category == "unknown"` — never "researching" wording). Found attribute values appear only in `results`, not repeated in `message`. Multi-match uses a collective prefix (`Found N records for 'key'.`).
 - **`provenance`** — Optional structured version history. **`EntityQuery.provenance`** (request flag, default `false`) controls whether this block is populated; it is unrelated to the response field name. When `true` and the outcome delivers results (`assembled` / `found`) with requested extended attributes, `provenance.entities[]` lists each match `id` and per-attribute `current_version_id` + `versions[]` copied from specialist storage (bind fields `name` / `employer` omitted). Default flat `results[]` is unchanged. Metering may charge a `query_provenance` line when enabled. See [`attribute-provenance-program1.md`](plans/attribute-provenance-program1.md).
 - **`debug`** — Internal context (`lookup` / `delivery_id`, `requested_attributes`, outcome tags). Callers should not depend on it.

@@ -10,6 +10,7 @@ from typing import Any
 
 import pytest
 
+from agents.attribute_write import bind_provisional
 from agents.entity_registry import get_entity_registry, reset_entity_registry
 from agents.factory.agent_factory import get_agent_factory, reset_agent_factory
 from agents.classification import get_category_tree, reset_category_tree
@@ -192,7 +193,7 @@ def test_multi_match_step2_promotes_provisional_bind(
     _ = crm_create_on_deliver_env
     calls = _mock_email_research(monkeypatch)
     registry = get_entity_registry()
-    wrong_corp, _ = registry.bind_provisional("Andrea Kalmans", "Wrong Corp")
+    wrong_corp, _ = bind_provisional("Andrea Kalmans", "Wrong Corp", registry=registry)
 
     step1 = run_query(
         EntityQuery(

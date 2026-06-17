@@ -10,15 +10,10 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class IdentityRecord(BaseModel):
-    """Registry identity record (``id``, ``name``, ``employer``).
-
-    ``id`` is the stable UUID from ``entities.json`` (assigned on import).
-    ``name`` and ``employer`` may be overridden by specialists.
-    """
+    """Registry identity record aligned with ``RegistryEntity.bind_values``."""
 
     id: str = ""
-    name: str
-    employer: str | None = None
+    bind_values: dict[str, str] = Field(default_factory=dict)
 
     def core_dict(self) -> dict[str, Any]:
         return self.model_dump(exclude_none=True)
@@ -37,18 +32,14 @@ class LookupSuggestion(BaseModel):
         default=None,
         description="Stable registry UUID when suggestion targets a specific row.",
     )
-    name: str | None = Field(
-        default=None,
-        description="Registry person name when suggestion is name-level.",
-    )
-    employer: str | None = None
     score: float = Field(description="Similarity score 0.0–1.0 (sequence_ratio).")
     reason: str = Field(
         default="sequence_ratio",
         description=(
-            "Why this candidate was suggested: sequence_ratio (fuzzy name), "
-            "employer_sequence_ratio (fuzzy employer), "
-            "same_name_different_employer (exact name, different employer)."
+            "Why this candidate was suggested: sequence_ratio (fuzzy primary bind "
+            "field), bind_field_fuzzy_match (fuzzy non-primary bind field), "
+            "same_bind_field_conflict (exact match on other bind fields, conflict "
+            "on one field)."
         ),
     )
 
@@ -59,8 +50,6 @@ def lookup_suggestion(
     score: float,
     reason: str,
     id: str | None = None,
-    name: str | None = None,
-    employer: str | None = None,
 ) -> LookupSuggestion:
     """Build a suggestion with a consistent target-protocol retry map."""
     cleaned = {
@@ -74,8 +63,6 @@ def lookup_suggestion(
     return LookupSuggestion(
         suggested_lookup=cleaned,
         id=id,
-        name=name,
-        employer=employer,
         score=round(score, 4),
         reason=reason,
     )
@@ -169,7 +156,7 @@ class EntityQuery(BaseModel):
     requested_attributes: list[str] = Field(
         default_factory=list,
         description=(
-            "Attributes requested (including name, employer); classified and "
+            "Attributes requested (including MVR bind fields); classified and "
             "routed to specialist agents when present."
         ),
     )
@@ -192,7 +179,7 @@ class EntityQuery(BaseModel):
         default=False,
         description=(
             "Step 1 only. When true with full MVR lookup, issue create_on_deliver "
-            "even if same-name registry rows exist under different employers. "
+            "even if registry rows share bind fields under different values. "
             "Use only after reviewing lookup_suggested."
         ),
     )
@@ -256,7 +243,7 @@ class QueryResponse(BaseModel):
         description=(
             "Machine-readable query outcome on every response: lookup_resolved (step 1; "
             "total_matches + delivery_id), lookup_incomplete (partial lookup missing MVR "
-            "fields), lookup_suggested (near-miss or same-name different employer), "
+            "fields), lookup_suggested (near-miss or bind-field conflict), "
             "found (registry identity only), "
             "assembled (requested attributes merged), not_found, "
             "quote_required (metering: accept quote before research/delivery), "
@@ -289,8 +276,8 @@ class QueryResponse(BaseModel):
         default_factory=list,
         description=(
             "Structured retry hints when lookup did not resolve to a registry row. "
-            "Present when outcome is lookup_suggested (same name under different "
-            "employer or fuzzy near-miss). Retry step 1 with lookup merged from "
+            "Present when outcome is lookup_suggested (bind-field conflict or fuzzy "
+            "near-miss). Retry step 1 with lookup merged from "
             "suggestions[].suggested_lookup (or suggestions[].id when the suggestion "
             "targets one known row). Set confirm_new_entity only to intentionally "
             "create after reviewing. Omitted from public JSON when empty."
@@ -300,7 +287,7 @@ class QueryResponse(BaseModel):
         default_factory=list,
         description=(
             "Plain dicts per matched registry entity. Always includes id (stable UUID). "
-            "With no requested_attributes: id, name, employer. "
+            "With no requested_attributes: id plus active MVR bind fields. "
             "With requested_attributes: id plus only those keys after merge."
         ),
     )

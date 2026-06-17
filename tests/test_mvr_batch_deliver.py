@@ -10,6 +10,7 @@ from typing import Any
 
 import pytest
 
+from agents.attribute_write import bind_provisional
 from agents.classification import get_category_tree, reset_category_tree
 from agents.context import reset_context_builder
 from agents.entity_registry import get_entity_registry, reset_entity_registry
@@ -219,7 +220,7 @@ def test_multi_match_research_gate_returns_all_identity_rows(
     """Research-gated batch deliver returns every scope identity row (M8 shape)."""
     _ = crm_batch_deliver_env
     registry = get_entity_registry()
-    bad_row, _ = registry.bind_provisional("Andrea Kalmans", "A")
+    bad_row, _ = bind_provisional("Andrea Kalmans", "A", registry=registry)
 
     step1 = run_query(
         EntityQuery(

@@ -12,6 +12,7 @@ import pytest
 
 from agents.classification import reset_category_tree
 from agents.context import reset_context_builder
+from agents.attribute_write import bind_provisional
 from agents.entity_growth import parse_research_fields_updated
 from agents.entity_registry import get_entity_registry, reset_entity_registry
 from graphs.core import reset_core_graph
@@ -144,7 +145,7 @@ def test_attribution_uses_researched_fields_without_audit(
     monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(entities_path))
     reset_entity_registry()
     reg = get_entity_registry()
-    entity, _ = reg.bind_provisional("Paul Murphy", "Acme Corp")
+    entity, _ = bind_provisional("Paul Murphy", "Acme Corp", registry=reg)
     reg.promote_validated(entity.id)
 
     logs = apply_registry_research_attribution(

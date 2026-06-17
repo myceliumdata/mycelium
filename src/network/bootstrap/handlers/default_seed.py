@@ -1,4 +1,4 @@
-"""Default CRM ``seed.json`` bootstrap handler."""
+"""Default JSON seed bootstrap handler."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from agents.attribute_write import ensure_entity_bind_fields
 from network.bootstrap.context import BootstrapContext, BootstrapResult
 
 if TYPE_CHECKING:
@@ -13,8 +14,17 @@ if TYPE_CHECKING:
     from network.bootstrap.progress import BootstrapProgress
 
 
-def load_seed_people(seed_path: Path) -> list[dict[str, Any]]:
-    """Parse and validate ``seed.json`` ``people[]`` rows."""
+def load_seed_people(
+    seed_path: Path,
+    *,
+    bind_fields: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Parse and validate ``seed.json`` ``people[]`` rows for active grain MVR."""
+    if bind_fields is None:
+        from network.mvr import load_mvr
+
+        bind_fields = list(load_mvr(grain=resolve_seed_grain()).bind_fields)
+    required = [field.strip().lower() for field in bind_fields if field.strip()]
     try:
         payload = json.loads(seed_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -27,17 +37,17 @@ def load_seed_people(seed_path: Path) -> list[dict[str, Any]]:
     for index, row in enumerate(people):
         if not isinstance(row, dict):
             raise ValueError(f"Seed people[{index}] must be an object")
-        name = row.get("name")
-        if not isinstance(name, str) or not name.strip():
-            raise ValueError(f"Seed people[{index}] must include a non-empty 'name'")
-        employer = row.get("employer")
-        if employer is not None and not isinstance(employer, str):
-            raise ValueError(f"Seed people[{index}] 'employer' must be a string when present")
+        for field in required:
+            raw = row.get(field)
+            if raw is None or not str(raw).strip():
+                raise ValueError(
+                    f"Seed people[{index}] must include non-empty bind field {field!r}",
+                )
     return people
 
 
 def resolve_seed_grain() -> str:
-    """Choose the grain that receives CRM-shaped seed rows."""
+    """Choose the grain that receives default seed rows."""
     from network.mvr import default_mvr_grain, load_mvr_config
 
     config = load_mvr_config()
@@ -61,27 +71,27 @@ def import_seed_rows(
     if not seed_path.is_file():
         return 0
 
-    people = load_seed_people(seed_path)
     target_grain = grain or resolve_seed_grain()
     if registry is None:
         from agents.entity_registry import get_entity_registry
 
         registry = get_entity_registry(grain=target_grain)
 
+    mvr = registry._mvr
+    bind_fields = [f.strip().lower() for f in mvr.bind_fields if f.strip()]
+    people = load_seed_people(seed_path, bind_fields=list(mvr.bind_fields))
     total = len(people)
     for index, row in enumerate(people, start=1):
-        name = str(row.get("name") or "").strip()
-        employer = str(row.get("employer") or "").strip()
-        if not employer:
-            raise ValueError(
-                "Seed people rows must include all MVR bind fields "
-                f"(missing employer for {name!r})",
-            )
-        registry.ensure_bound_entity(
-            name,
-            employer,
+        bind_values = {
+            field: str(row[field]).strip()
+            for field in bind_fields
+            if field in row
+        }
+        ensure_entity_bind_fields(
+            bind_values,
             source="seed_bootstrap",
             validation_state="validated",
+            registry=registry,
         )
         if progress is not None:
             progress.processing(index, total)

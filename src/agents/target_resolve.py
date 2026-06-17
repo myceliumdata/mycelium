@@ -7,7 +7,10 @@ from typing import Any
 
 from agents.entity_registry import get_entity_registry
 from agents.field_index import normalize_field_index_value
-from agents.entity_resolution import _rank_employer_suggestions, _rank_suggestions
+from agents.entity_resolution import (
+    _rank_bind_field_fuzzy_suggestions,
+    _rank_suggestions,
+)
 from models.state import DeliveryPayload, EntityQuery, LookupSuggestion, lookup_suggestion
 from network.delivery import get_delivery_store, issue_delivery
 from network.mvr import (
@@ -29,53 +32,63 @@ class TargetResolveResult:
     suggestions: list[LookupSuggestion] = field(default_factory=list)
 
 
-def _same_name_different_employer_suggestions(
+def _same_bind_field_conflict_suggestions(
     lookup: dict[str, str],
 ) -> list[LookupSuggestion]:
     norm = normalized_lookup_values(lookup)
-    name = norm.get("name")
-    employer = norm.get("employer")
-    if not name or not employer:
+    mvr = load_mvr()
+    bind_fields = [f.strip().lower() for f in mvr.bind_fields if f.strip()]
+    if len(bind_fields) < 2 or not all(field in norm for field in bind_fields):
         return []
 
-    lookup_employer = normalize_field_index_value(employer)
     suggestions: list[LookupSuggestion] = []
-    for entity in get_entity_registry().lookup_by_field("name", name):
-        entity_employer = normalize_field_index_value(
-            entity.bind_value("employer") or "",
-        )
-        if entity_employer == lookup_employer:
-            continue
-        entity_name = entity.bind_value("name") or ""
-        entity_employer_value = entity.bind_value("employer")
-        suggested_lookup: dict[str, str] = {"name": entity_name}
-        if entity_employer_value:
-            suggested_lookup["employer"] = entity_employer_value
-        suggestions.append(
-            lookup_suggestion(
-                suggested_lookup=suggested_lookup,
-                id=entity.id,
-                name=entity_name,
-                employer=entity_employer_value,
-                score=1.0,
-                reason="same_name_different_employer",
-            ),
-        )
+    registry = get_entity_registry()
+
+    for conflict_field in bind_fields:
+        lookup_value = normalize_field_index_value(norm[conflict_field])
+        other_lookup = {
+            key: value for key, value in norm.items() if key != conflict_field
+        }
+        candidate_ids = registry.lookup_by_target_lookup(other_lookup)
+        for entity_id in candidate_ids:
+            entity = registry.lookup_by_id(entity_id)
+            if entity is None:
+                continue
+            entity_value = normalize_field_index_value(
+                entity.bind_value(conflict_field) or "",
+            )
+            if entity_value == lookup_value:
+                continue
+            suggested_lookup: dict[str, str] = {}
+            for bind_field in bind_fields:
+                raw = entity.bind_value(bind_field)
+                if raw is not None and str(raw).strip():
+                    suggested_lookup[bind_field] = str(raw).strip()
+            if not suggested_lookup:
+                continue
+            suggestions.append(
+                lookup_suggestion(
+                    suggested_lookup=suggested_lookup,
+                    id=entity.id,
+                    score=1.0,
+                    reason="same_bind_field_conflict",
+                ),
+            )
     return suggestions
 
 
 def _lookup_suggestions_for_full_mvr(
     lookup: dict[str, str],
 ) -> list[LookupSuggestion]:
-    same_name = _same_name_different_employer_suggestions(lookup)
-    if same_name:
-        return same_name
+    conflicts = _same_bind_field_conflict_suggestions(lookup)
+    if conflicts:
+        return conflicts
 
     norm = normalized_lookup_values(lookup)
     name_value = norm.get("name")
-    if not name_value:
-        return []
-    return _rank_suggestions(name_value)
+    if name_value:
+        return _rank_suggestions(name_value)
+    return []
 
 
 def resolve_target_step1(query: EntityQuery) -> TargetResolveResult:
@@ -108,20 +121,8 @@ def resolve_target_step1(query: EntityQuery) -> TargetResolveResult:
         mvr = load_mvr()
         if not is_full_mvr_lookup(query.lookup, mvr):
             norm = normalized_lookup_values(query.lookup)
-            name_value = norm.get("name")
-            if name_value:
-                suggestions = _rank_suggestions(name_value)
-                if suggestions:
-                    return TargetResolveResult(
-                        kind="lookup_suggested",
-                        entity_ids=[],
-                        lookup_snapshot=dict(query.lookup),
-                        suggestions=suggestions,
-                    )
-
-            employer_value = norm.get("employer")
-            if employer_value:
-                suggestions = _rank_employer_suggestions(employer_value)
+            for field, value in norm.items():
+                suggestions = _rank_bind_field_fuzzy_suggestions(field, value)
                 if suggestions:
                     return TargetResolveResult(
                         kind="lookup_suggested",

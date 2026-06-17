@@ -18,7 +18,15 @@ from models.state import (
     normalized_requested_attributes,
 )
 
-_IDENTITY_SUMMARY_KEYS = ("id", "name", "employer")
+def _identity_summary_keys() -> tuple[str, ...]:
+    from network.mvr import load_mvr
+
+    keys: list[str] = ["id"]
+    for field in load_mvr().bind_fields:
+        key = field.strip().lower()
+        if key:
+            keys.append(key)
+    return tuple(keys)
 
 
 def _debug_extra_value(value: Any) -> str:
@@ -120,7 +128,7 @@ def shape_results(
     if not normalized:
         shaped: list[dict[str, Any]] = []
         for rec in records:
-            out = {k: rec[k] for k in _IDENTITY_SUMMARY_KEYS if k in rec}
+            out = {k: rec[k] for k in _identity_summary_keys() if k in rec}
             if out.get("id"):
                 shaped.append(out)
         return shaped
@@ -531,15 +539,15 @@ def _lookup_suggested_message(
     suggestions: list[LookupSuggestion],
 ) -> str:
     reasons = {item.reason for item in suggestions}
-    if "same_name_different_employer" in reasons:
+    if "same_bind_field_conflict" in reasons:
         return (
-            "A registry row with the same name exists under a different employer. "
+            "A registry row matches other bind fields but conflicts on one field. "
             "Retry with suggestions[].suggested_lookup or suggestions[].id. Set "
             "confirm_new_entity=true only if you intend a new bind."
         )
-    if "employer_sequence_ratio" in reasons:
+    if "bind_field_fuzzy_match" in reasons:
         return (
-            "Near-miss registry employer found. Retry with a corrected lookup map "
+            "Near-miss registry bind field found. Retry with a corrected lookup map "
             "(suggestions[].suggested_lookup)."
         )
     return (

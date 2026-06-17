@@ -155,15 +155,26 @@ class EntitiesDocument(BaseModel):
     bind_index: dict[str, str] = Field(default_factory=dict)
 
 
-def registry_entity_to_match(entity: RegistryEntity) -> dict[str, Any]:
+def registry_entity_to_match(
+    entity: RegistryEntity,
+    *,
+    mvr: MvrPolicy | None = None,
+) -> dict[str, Any]:
     """Shape registry row for supervisor / response builders."""
-    return {
+    if mvr is None:
+        from network.mvr import load_mvr
+
+        mvr = load_mvr()
+    out: dict[str, Any] = {
         "id": entity.id,
-        "name": entity.bind_value("name"),
-        "employer": entity.bind_value("employer"),
         "_registry": True,
         "_validation_state": entity.validation_state,
     }
+    for field in mvr.bind_fields:
+        key = field.strip().lower()
+        if key:
+            out[key] = entity.bind_value(key)
+    return out
 
 
 class EntityRegistry:
@@ -305,10 +316,6 @@ class EntityRegistry:
             return None
         return self._data.entities.get(entity_id)
 
-    def lookup_by_bind_key(self, name: str, employer: str) -> RegistryEntity | None:
-        """CRM-shaped bind lookup — delegates to ``lookup_by_bind_values``."""
-        return self.lookup_by_bind_values({"name": name, "employer": employer})
-
     def lookup_by_id(self, entity_id: str) -> RegistryEntity | None:
         return self._data.entities.get(entity_id)
 
@@ -355,37 +362,6 @@ class EntityRegistry:
     def save_entity(self, entity: RegistryEntity) -> None:
         self._data.entities[entity.id] = entity
         self._save()
-
-    def ensure_bound_entity(
-        self,
-        name: str,
-        employer: str,
-        *,
-        source: str,
-        validation_state: str,
-    ) -> tuple[RegistryEntity, bool]:
-        """Return entity for bind key; allocate uuid4 + persist if missing.
-
-        The bool is True when an existing row was returned (duplicate bind).
-        On hit, id/source/validation_state are not changed.
-        """
-        from agents.attribute_write import ensure_entity_bind
-
-        return ensure_entity_bind(
-            name,
-            employer,
-            source=source,
-            validation_state=validation_state,
-        )
-
-    def bind_provisional(self, name: str, employer: str) -> tuple[RegistryEntity, bool]:
-        """Create provisional entity or return existing row (duplicate bind)."""
-        return self.ensure_bound_entity(
-            name,
-            employer,
-            source="query_bind",
-            validation_state="provisional",
-        )
 
     def promote_validated(self, entity_id: str) -> RegistryEntity:
         """Promote provisional entity and MVR field states to validated."""

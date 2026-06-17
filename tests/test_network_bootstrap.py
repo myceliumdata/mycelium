@@ -129,7 +129,7 @@ def test_import_seed_rows_missing_employer(tmp_path: Path) -> None:
     apply_network_paths(NetworkPaths.from_root(tmp_path))
     ensure_categories_for_mvr_bind(NetworkPaths.from_root(tmp_path))
     reset_entity_registry()
-    with pytest.raises(ValueError, match="missing employer"):
+    with pytest.raises(ValueError, match="bind field 'employer'"):
         import_seed_rows(seed)
 
 
