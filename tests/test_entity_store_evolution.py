@@ -237,6 +237,34 @@ def test_save_entity_rebuilds_field_indexes_for_lookup(
 
 
 @pytest.mark.smoke
+def test_set_source_keys_skips_full_index_rebuilds(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reg = _baseball_registry(tmp_path, monkeypatch, "player")
+    entity = RegistryEntity(
+        id="player-src-perf",
+        bind_values={"name": "Hank Aaron", "team": "Milwaukee Braves"},
+        source="test",
+        created_at="2026-06-17T12:00:00+00:00",
+    )
+    reg.register_entity(entity)
+    reg.assign_bind_index(entity.id, entity.bind_values)
+    reg.save_entity(entity)
+
+    with (
+        patch.object(reg, "_rebuild_field_indexes", autospec=True) as field_rebuild_mock,
+        patch.object(reg, "_rebuild_source_key_index", autospec=True) as source_rebuild_mock,
+    ):
+        reg.set_source_keys(entity.id, {"lahman.playerID": "aaronha01"})
+
+    field_rebuild_mock.assert_not_called()
+    source_rebuild_mock.assert_not_called()
+    assert reg.lookup_by_source_key("lahman.playerID", "aaronha01") is not None
+    assert reg.lookup_by_source_key("lahman.playerID", "aaronha01").id == entity.id
+
+
+@pytest.mark.smoke
 def test_lookup_by_source_key_round_trip(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

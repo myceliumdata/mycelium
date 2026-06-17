@@ -130,6 +130,24 @@ Record **real**, **user**, **sys** from `time -p` output. Stderr progress (post 
 
 ---
 
+## Timing test 8 — regression after `source_keys` (slice 1900)
+
+**When:** Post `ff8f4e0` (`2026-06-17-1900-registry-source-keys-alias-index`).
+
+**What changed:** Lahman handler calls `set_source_keys` on every new team (~241) and player (~24k). `set_source_keys` and `add_bind_alias` each invoked `_save()` with default full `_rebuild_source_key_index()` — O(n) scan per row on top of test 7's remaining ~24k `save_entity` field-index rebuilds. ~57k extra full source-key scans ≈ **5.3×** regression vs test 7.
+
+| Run | Date | real (s) | user (s) | sys (s) | Notes |
+|-----|------|----------|----------|---------|-------|
+| **Test 8 (regression)** | 2026-06-17 | **2,946.32** (~**49 min**) | 2,769.21 | 55.22 | Post `source_keys` (`ff8f4e0`). Same command/root as test 7. 57,627 player binds; **23,777** entities committed. |
+
+**Fix (uncommitted):** `set_source_keys` incrementally updates `source_key_index` and calls `_save(rebuild_field_indexes=False, rebuild_source_key_index=False)`; `add_bind_alias` skips source-key rebuild too. `commit_deferred_save` still does one full rebuild at grain flush.
+
+| Run | Date | real (s) | user (s) | sys (s) | Notes |
+|-----|------|----------|----------|---------|-------|
+| **Test 8b** | — | *pending Paul re-run* | — | — | After incremental `source_key_index` fix; expect ~test 7 ballpark (~9 min). |
+
+---
+
 ## Lessons learned (posterity — June 2026)
 
 ### 1. `minisql_v1` ≠ incremental (slice 2)
@@ -138,7 +156,7 @@ Slice 2 moved specialists from JSON **files** to SQLite but kept **document sema
 
 ### 2. Slice 4 deferred flush ≠ loop cheap
 
-Deferred entity save removed **~58k rewrites** of growing `entities/player.json` (~17 MB at end). Each `save_entity` / `add_bind_alias` during deferral called `_rebuild_field_indexes()` — full scan of all entities in memory. ~58k iterations × growing entity count ≈ **O(n²) CPU** on the registry side. **Fixed for aliases in test 7** (`f45b65c`); ~24k new-player rebuilds remain. Test 6 → test 7: **2.2×**; baseline → test 7: **~23×**.
+Deferred entity save removed **~58k rewrites** of growing `entities/player.json` (~17 MB at end). Each `save_entity` / `add_bind_alias` during deferral called `_rebuild_field_indexes()` — full scan of all entities in memory. ~58k iterations × growing entity count ≈ **O(n²) CPU** on the registry side. **Fixed for aliases in test 7** (`f45b65c`); ~24k new-player rebuilds remain. Test 6 → test 7: **2.2×**; baseline → test 7: **~23×**. **Slice 1900** reintroduced O(n²) via per-row `_rebuild_source_key_index()` on `set_source_keys` (~24k) and `add_bind_alias` (~33k) — test 8 regression; incremental source-key update restores test 7 profile.
 
 ### 3. Dominant costs (pre-incremental)
 

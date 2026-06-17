@@ -291,6 +291,19 @@ class EntityRegistry:
     def _rebuild_source_key_index(self) -> None:
         self._data.source_key_index = build_source_key_index(self._data.entities)
 
+    def _apply_source_keys_to_index(
+        self,
+        entity_id: str,
+        keys: dict[str, str],
+    ) -> None:
+        """Incrementally update persisted source_key_index for one entity."""
+        for raw_key, raw_value in keys.items():
+            key = raw_key.strip()
+            value = str(raw_value).strip()
+            if not key or not value:
+                continue
+            self._data.source_key_index[make_source_key_index_key(key, value)] = entity_id
+
     def _load(self) -> None:
         try:
             self._data = self._store.load()
@@ -301,14 +314,21 @@ class EntityRegistry:
         self._rebuild_source_key_index()
         self._rebuild_field_indexes()
 
-    def _save(self, *, rebuild_field_indexes: bool = True) -> None:
+    def _save(
+        self,
+        *,
+        rebuild_field_indexes: bool = True,
+        rebuild_source_key_index: bool = True,
+    ) -> None:
         if self._defer_flush():
-            self._rebuild_source_key_index()
+            if rebuild_source_key_index:
+                self._rebuild_source_key_index()
             if rebuild_field_indexes:
                 self._rebuild_field_indexes()
             return
         self._maybe_optimize_storage()
-        self._rebuild_source_key_index()
+        if rebuild_source_key_index:
+            self._rebuild_source_key_index()
         self._store.save(self._data)
         if rebuild_field_indexes:
             self._rebuild_field_indexes()
@@ -375,9 +395,16 @@ class EntityRegistry:
         for raw_key, raw_value in keys.items():
             key = raw_key.strip()
             value = str(raw_value).strip()
-            if key and value:
-                entity.source_keys[key] = value
-        self._save()
+            if not key or not value:
+                continue
+            old_value = entity.source_keys.get(key)
+            if old_value is not None and str(old_value).strip() != value:
+                old_composite = make_source_key_index_key(key, str(old_value))
+                if self._data.source_key_index.get(old_composite) == entity_id:
+                    self._data.source_key_index.pop(old_composite, None)
+            entity.source_keys[key] = value
+        self._apply_source_keys_to_index(entity_id, keys)
+        self._save(rebuild_field_indexes=False, rebuild_source_key_index=False)
         return entity
 
     def add_field_alias(
@@ -433,7 +460,7 @@ class EntityRegistry:
             self._bind_fields(),
         )
         self.assign_bind_index(entity_id, full)
-        self._save(rebuild_field_indexes=False)
+        self._save(rebuild_field_indexes=False, rebuild_source_key_index=False)
 
     def pop_bind_index(self, bind_values: dict[str, str]) -> None:
         bind_fields = self._bind_fields()
