@@ -14,7 +14,7 @@
 
 ## What this gate proves
 
-- Full Lahman refresh completes at acceptable wall time (**Test 8c** ~test 7 ballpark).
+- Full Lahman refresh completes at acceptable wall time (**Test 8c:** **1,150 s** ~19 min — not test 7 ballpark but ship-acceptable per timing gate).
 - Bootstrap commits **~23,777** player + team identity rows with `source_keys` and warehouse.
 - **Player grain** (default): step-1 resolve + step-2 deliver **identity only** (`name`, `team`, `id`).
 - **Team grain**: resolve + deliver with explicit `grain=team` (city+name canonical labels).
