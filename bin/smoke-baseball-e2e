@@ -6,7 +6,7 @@ not the full ~9+ minute Lahman refresh.
 
 TODO(full): expand to parity with ``bin/smoke-crm-e2e``:
   - ``--full``: real git seed fetch + full Lahman bootstrap (manual / timing gate only)
-  - team-grain queries (``{name: "Brooklyn Dodgers"}`` with ``grain=team``) — inline in this script
+  - team-grain queries (``{team: "Brooklyn Dodgers"}``) — inline in this script
   - lazy field-alias scenarios (Bronx Bombers, Dodgers multi-match) via mock expander
   - optional warehouse stat / derivative queries when those paths exist
 See ``TODO.md`` → ``smoke-baseball-e2e`` full gate.
@@ -32,6 +32,7 @@ _VENV_PYTHON = REPO_ROOT / ".venv" / "bin" / "python3"
 BASEBALL_PYTEST_FILES = (
     "tests/test_lahman_seed_handler.py",
     "tests/test_closed_identity_lazy_aliases.py",
+    "tests/test_strict_grain_routing.py",
     "tests/test_example_network.py::test_refresh_baseball_fetches_seed_and_bootstraps",
 )
 
@@ -140,7 +141,7 @@ def _ok(
 
 
 def _assert_player_identity_row(row: dict[str, Any]) -> str | None:
-    for key in ("id", "name", "team"):
+    for key in ("id", "player", "team"):
         if key not in row or not str(row.get(key) or "").strip():
             return f"results[] missing non-empty {key!r}"
     return None
@@ -150,7 +151,7 @@ def _sample_player() -> dict[str, str]:
     entity = next(iter(get_entity_registry().list_entities()))
     return {
         "id": entity.id,
-        "name": str(entity.bind_value("name") or ""),
+        "player": str(entity.bind_value("player") or ""),
         "team": str(entity.bind_value("team") or ""),
     }
 
@@ -227,7 +228,7 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
 
         sample = _sample_player()
         meta["sample_player"] = sample
-        if sample["name"] != SAMPLE_PLAYER_NAME or sample["team"] != SAMPLE_PLAYER_TEAM:
+        if sample["player"] != SAMPLE_PLAYER_NAME or sample["team"] != SAMPLE_PLAYER_TEAM:
             results.append(
                 _fail(
                     "sample_player",
@@ -237,7 +238,7 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
             return results, meta
 
         player_entity = registry.lookup_by_bind_values(
-            {"name": SAMPLE_PLAYER_NAME, "team": SAMPLE_PLAYER_TEAM},
+            {"player": SAMPLE_PLAYER_NAME, "team": SAMPLE_PLAYER_TEAM},
         )
         if (
             player_entity is None
@@ -255,7 +256,7 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
 
         # Full MVR player lookup (default grain)
         q1 = EntityQuery(
-            lookup={"name": sample["name"], "team": sample["team"]},
+            lookup={"player": sample["player"], "team": sample["team"]},
         )
         r1 = run_query(q1)
         p1 = _pub(r1)
@@ -317,7 +318,7 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
 
         # Closed grain: unknown player must not offer create_on_deliver
         q2 = EntityQuery(
-            lookup={"name": "Nobody Here", "team": "Nowhere Nine"},
+            lookup={"player": "Nobody Here", "team": "Nowhere Nine"},
         )
         r2 = run_query(q2)
         p2 = _pub(r2)
@@ -351,8 +352,7 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
 
         # Team grain: step-1 lookup with explicit grain override
         q_team = EntityQuery(
-            lookup={"name": "Brooklyn Dodgers"},
-            grain="team",
+            lookup={"team": "Brooklyn Dodgers"},
         )
         r_team = run_query(q_team)
         p_team = _pub(r_team)
@@ -388,7 +388,7 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
                         response=p_team_deliver,
                     ),
                 )
-            elif r_team_deliver.results[0].get("name") != "Brooklyn Dodgers":
+            elif r_team_deliver.results[0].get("team") != "Brooklyn Dodgers":
                 results.append(
                     _fail(
                         "team_grain_deliver_identity",
@@ -500,7 +500,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  player_entities: {meta.get('player_registry_entity_count')}")
         if meta.get("sample_player"):
             player = meta["sample_player"]
-            print(f"  sample: {player['name']} ({player['team']})")
+            print(f"  sample: {player['player']} ({player['team']})")
         for item in scenario_results:
             mark = "ok" if item.passed else "FAIL"
             print(f"  [{mark}] {item.name}: {item.detail}")

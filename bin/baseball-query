@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+"""Run EntityQuery JSON on the active network; print jq-safe public JSON.
+
+Usage (ship gate / manual checks):
+
+  export ROOT=/tmp/mycelium-baseball-benchmark
+  export MYCELIUM_NETWORK_ROOT="$ROOT"
+
+  ./bin/baseball-query '{"lookup": {"player": "Hank Aaron", "team": "Milwaukee Braves"}}'
+  ./bin/baseball-query '{"lookup": {"team": "Brooklyn Dodgers"}}'
+  ./bin/baseball-query '{"delivery_id": "d_…"}'
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+_SRC_ROOT = REPO_ROOT / "src"
+_VENV_PYTHON = REPO_ROOT / ".venv" / "bin" / "python3"
+
+
+def _bootstrap() -> None:
+    os.environ.setdefault("LANGCHAIN_TRACING_V2", "false")
+    os.environ.setdefault("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
+    if _VENV_PYTHON.is_file():
+        try:
+            if Path(sys.executable).resolve() != _VENV_PYTHON.resolve():
+                os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON), *sys.argv])
+        except OSError:
+            pass
+    src = str(_SRC_ROOT)
+    if src not in sys.path:
+        sys.path.insert(0, src)
+
+
+def main() -> int:
+    if len(sys.argv) != 2:
+        print(__doc__.strip(), file=sys.stderr)
+        return 2
+    _bootstrap()
+    from graphs.core import reset_core_graph, run_query
+    from models.state import EntityQuery
+
+    payload = json.loads(sys.argv[1])
+    reset_core_graph()
+    response = run_query(EntityQuery(**payload))
+    print(json.dumps(response.public_dict(), indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

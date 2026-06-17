@@ -54,7 +54,7 @@ class LahmanSeedHandler:
 
         for team_name, team_id, franch_id in distinct_team_label_rows(warehouse_path):
             entity, duplicate = ensure_entity_bind_fields(
-                {"name": team_name},
+                {"team": team_name},
                 source="seed_bootstrap",
                 validation_state="validated",
                 registry=team_registry,
@@ -63,7 +63,7 @@ class LahmanSeedHandler:
             if franch_id:
                 source_keys[LAHMAN_FRANCH_ID] = franch_id
             if duplicate:
-                existing = team_registry.lookup_by_bind_values({"name": team_name})
+                existing = team_registry.lookup_by_bind_values({"team": team_name})
                 if existing is not None:
                     team_registry.set_source_keys(existing.id, source_keys)
                 continue
@@ -74,7 +74,7 @@ class LahmanSeedHandler:
         for index, (player_id, display_name, team_label) in enumerate(player_rows, start=1):
             if progress is not None:
                 progress.processing(index, total_players, detail="player binds")
-            bind_values = {"name": display_name, "team": team_label}
+            bind_values = {"player": display_name, "team": team_label}
             existing_by_source = player_registry.lookup_by_source_key(
                 LAHMAN_PLAYER_ID,
                 player_id,

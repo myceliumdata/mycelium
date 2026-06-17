@@ -146,7 +146,7 @@ def test_baseball_manifest_parses_two_grains(tmp_path: Path) -> None:
     config = load_mvr_config(paths=paths)
     assert config.default_grain == "player"
     assert list_mvr_grains(paths=paths) == ["player", "team"]
-    assert load_mvr(paths=paths, grain="team").bind_fields == ["name"]
+    assert load_mvr(paths=paths, grain="team").bind_fields == ["team"]
 
 
 @pytest.mark.smoke

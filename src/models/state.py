@@ -189,13 +189,6 @@ class EntityQuery(BaseModel):
             "Use only after reviewing lookup_suggested."
         ),
     )
-    grain: str | None = Field(
-        default=None,
-        description=(
-            "Step 1 only. Optional MVR grain override; skips multi-grain fan-out "
-            "and disambiguation when set."
-        ),
-    )
 
     @model_validator(mode="after")
     def _validate_target_protocol_step(self) -> EntityQuery:
@@ -203,8 +196,6 @@ class EntityQuery(BaseModel):
         if delivery_id:
             if self.confirm_new_entity:
                 raise ValueError("confirm_new_entity is step 1 only")
-            if self.grain:
-                raise ValueError("grain is step 1 only")
             if self.lookup:
                 raise ValueError("step 2 accepts only delivery_id")
             if (self.id or "").strip():

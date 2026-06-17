@@ -93,7 +93,7 @@ def test_lahman_seed_handler_commits_teams_and_players(tmp_path: Path) -> None:
     team_path = entity_store_path(paths, "team")
     player_path = entity_store_path(paths, "player")
     team_names = {
-        e["bind_values"]["name"]
+        e["bind_values"]["team"]
         for e in json.loads(team_path.read_text(encoding="utf-8"))["entities"].values()
     }
     assert team_names == {
@@ -104,7 +104,7 @@ def test_lahman_seed_handler_commits_teams_and_players(tmp_path: Path) -> None:
     player_payload = json.loads(player_path.read_text(encoding="utf-8"))
     assert len(player_payload["entities"]) == 1
     player = next(iter(player_payload["entities"].values()))
-    assert player["bind_values"]["name"] == "Hank Aaron"
+    assert player["bind_values"]["player"] == "Hank Aaron"
     assert player["bind_values"]["team"] == "Brooklyn Dodgers"
     assert player["source_keys"]["lahman.playerID"] == "aaronha01"
     assert (paths.root / "warehouse" / "lahman.sqlite").is_file()
@@ -123,10 +123,10 @@ def test_lahman_seed_handler_multi_team_same_player_id(tmp_path: Path) -> None:
     assert player_registry.entity_count() == 1
 
     brooklyn = player_registry.lookup_by_bind_values(
-        {"name": "Hank Aaron", "team": "Brooklyn Dodgers"},
+        {"player": "Hank Aaron", "team": "Brooklyn Dodgers"},
     )
     los_angeles = player_registry.lookup_by_bind_values(
-        {"name": "Hank Aaron", "team": "Los Angeles Dodgers"},
+        {"player": "Hank Aaron", "team": "Los Angeles Dodgers"},
     )
     assert brooklyn is not None
     assert los_angeles is not None
@@ -134,10 +134,10 @@ def test_lahman_seed_handler_multi_team_same_player_id(tmp_path: Path) -> None:
     assert brooklyn.source_keys["lahman.playerID"] == "aaronha01"
 
     brooklyn_target = player_registry.lookup_by_target_lookup(
-        {"name": "Hank Aaron", "team": "Brooklyn Dodgers"},
+        {"player": "Hank Aaron", "team": "Brooklyn Dodgers"},
     )
     los_angeles_target = player_registry.lookup_by_target_lookup(
-        {"name": "Hank Aaron", "team": "Los Angeles Dodgers"},
+        {"player": "Hank Aaron", "team": "Los Angeles Dodgers"},
     )
     assert brooklyn_target == [brooklyn.id]
     assert los_angeles_target == [los_angeles.id]

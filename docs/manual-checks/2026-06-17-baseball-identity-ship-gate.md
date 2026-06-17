@@ -17,7 +17,7 @@
 - Full Lahman refresh completes at acceptable wall time (**Test 8c:** **1,150 s** ~19 min — not test 7 ballpark but ship-acceptable per timing gate).
 - Bootstrap commits **~23,777** player + team identity rows with `source_keys` and warehouse.
 - **Player grain** (default): step-1 resolve + step-2 deliver **identity only** (`name`, `team`, `id`).
-- **Team grain**: resolve + deliver with explicit `grain=team` (city+name canonical labels).
+- **Team grain**: resolve + deliver via `{team: "…"}` lookup keys (no `grain` override).
 - **Closed identity**: unknown binds do not offer `create_on_deliver` / `create_pending`.
 - **Multi-team careers**: same `lahman.playerID` → same uuid across different `(name, team)` bind keys.
 - Automated smoke gates stay green on the benchmark root.
@@ -27,7 +27,7 @@
 - Career stats, batting/pitching attrs, roster lists, franchise aggregation.
 - Baseball-specific `categories.json` or specialist research.
 - `requested_attributes: ["email"]` or any CRM-style deliver (CRM categories are a stub).
-- CLI `--grain` flag (not shipped; use helper below or MCP JSON).
+- `EntityQuery.grain` on step 1 (removed slice 1100; use lookup key shape).
 
 ---
 
@@ -67,7 +67,7 @@ export ENTITIES_TEAM_SQL="$ENTITIES_DIR/team.sqlite"
 
 cd /path/to/mycelium   # repo root — required for uv run python imports
 
-# Step-1/2 query helper (supports grain= for team checks)
+# Step-1/2 query helper (lookup keys route grain — see docs/query-grain-router.md)
 baseball_query() {
   uv run python -c "
 import json, sys
@@ -205,8 +205,8 @@ name = 'Hank Aaron'
 reg = get_entity_registry(grain='player')
 e1 = reg.lookup_by_source_key('lahman.playerID', 'aaronha01')
 assert e1, 'missing player by source key'
-e2 = reg.lookup_by_bind_values({'name': name, 'team': teams[0]})
-e3 = reg.lookup_by_bind_values({'name': name, 'team': teams[1]})
+e2 = reg.lookup_by_bind_values({'player': name, 'team': teams[0]})
+e3 = reg.lookup_by_bind_values({'player': name, 'team': teams[1]})
 assert e2 and e3, f'missing bind lookups for {teams}'
 assert e1.id == e2.id == e3.id, f'id mismatch: {e1.id} {e2.id} {e3.id}'
 assert e1.source_keys.get('lahman.playerID') == 'aaronha01'
@@ -228,7 +228,7 @@ Use `baseball_query` from Helpers (or vars from Check 2):
 export AARON_NAME="Hank Aaron"
 export TEAM_A="Milwaukee Braves"
 
-STEP1=$(baseball_query "{\"lookup\": {\"name\": \"$AARON_NAME\", \"team\": \"$TEAM_A\"}}")
+STEP1=$(baseball_query "{\"lookup\": {\"player\": \"$AARON_NAME\", \"team\": \"$TEAM_A\"}}")
 echo "$STEP1" | jq '{outcome, total_matches, delivery_id: .delivery.delivery_id, grain: .delivery.grain}'
 
 DELIVERY_ID=$(echo "$STEP1" | jq -r '.delivery.delivery_id')
@@ -238,18 +238,18 @@ baseball_query "{\"delivery_id\": \"$DELIVERY_ID\"}" | jq '{outcome, results: .r
 **Pass:**
 
 - Step 1: `outcome` = `lookup_resolved`, `total_matches` = 1, `delivery.delivery_id` present.
-- Step 2: `outcome` = `found`; `results[0]` has `id`, `name`, `team` matching lookup.
+- Step 2: `outcome` = `found`; `results[0]` has `id`, `player`, `team` matching lookup.
 - **No** `create_on_deliver` on step 1 delivery scope.
 - Response JSON has **no** `entity_key` / `binding` legacy fields.
 
-**After slice `2026-06-18-1000` (bind_index fallback):** repeat with a second team from Check 2 (e.g. Milwaukee Braves if distinct from `TEAM_A`):
+**After slice `2026-06-18-1000` + `1100`:** Paul must **re-bootstrap** after merge. Then repeat with a second team from Check 2 (e.g. Milwaukee Braves):
 
 ```bash
-baseball_query "{\"lookup\": {\"name\": \"$AARON_NAME\", \"team\": \"Milwaukee Braves\"}, \"grain\": \"player\"}" | \
+./bin/baseball-query '{"lookup": {"player": "Hank Aaron", "team": "Milwaukee Braves"}}' | \
   jq '{outcome, total_matches, delivery_id: .delivery.delivery_id}'
 ```
 
-**Pass:** `lookup_resolved`, `total_matches` = 1 (alias bind via `bind_index`; no data reload required).
+**Pass:** `lookup_resolved`, `total_matches` = 1 (alias bind via `bind_index`).
 
 **Optional smoke:** `uv run mycelium query --network-dir "$ROOT" --lookup-json '…'` — human-readable only; verify `lookup_resolved` in terminal output.
 
@@ -262,7 +262,7 @@ Pick a team name that exists (from SQL or registry):
 ```bash
 TEAM_NAME="Brooklyn Dodgers"   # or another row from: sqlite3 "$WAREHOUSE" "SELECT DISTINCT name FROM Teams LIMIT 5;"
 
-baseball_query "{\"lookup\": {\"name\": \"$TEAM_NAME\"}, \"grain\": \"team\"}" | \
+baseball_query "{\"lookup\": {\"team\": \"$TEAM_NAME\"}}" | \
   jq '{outcome, total_matches, delivery_id: .delivery.delivery_id, grain: .delivery.grain}'
 ```
 
@@ -276,15 +276,14 @@ baseball_query "{\"delivery_id\": \"$DELIVERY_ID\"}" | \
 **Pass:**
 
 - Step 1: `lookup_resolved`, 1 match, `delivery.grain` = `team`.
-- Step 2: `found`; `results[0].name` = canonical team string.
+- Step 2: `found`; `results[0].team` = canonical team string.
 
 ---
 
 ## Check 6 — Closed identity (required)
 
 ```bash
-uv run mycelium query --network-dir "$ROOT" \
-  --lookup-json '{"name":"Nobody Here","team":"Nowhere Nine"}' | \
+baseball_query '{"lookup": {"player": "Nobody Here", "team": "Nowhere Nine"}}' | \
   jq '{outcome, total_matches, create_on_deliver: .delivery.create_on_deliver}'
 ```
 
@@ -323,7 +322,7 @@ print('OK sample entity', entity.id, entity.bind_values, entity.source_keys)
 Name-only lookup on player default grain (may fan-out or suggest):
 
 ```bash
-baseball_query '{"lookup": {"name": "Hank Aaron"}}' | \
+baseball_query '{"lookup": {"player": "Hank Aaron"}}' | \
   jq '{outcome, total_matches, suggestion_reasons}'
 ```
 
@@ -337,7 +336,7 @@ Only if you want to validate lazy alias expansion on full data:
 
 ```bash
 export OPENAI_API_KEY=…   # required for real expansion
-baseball_query '{"lookup": {"name": "Dodgers"}, "grain": "team"}' | \
+baseball_query '{"lookup": {"team": "Dodgers"}}' | \
   jq '{outcome, total_matches}'
 ```
 

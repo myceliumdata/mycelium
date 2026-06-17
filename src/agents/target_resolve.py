@@ -11,19 +11,19 @@ from agents.bind_alias_expansion import (
     expand_field_aliases,
     load_network_guide_text,
 )
-from agents.grain_disambiguation import GrainDisambiguator
 from agents.entity_registry import EntityRegistry, get_entity_registry
 from agents.field_index import normalize_field_index_value
 from agents.entity_resolution import (
     _rank_bind_field_fuzzy_suggestions,
-    _rank_suggestions,
 )
 from models.state import DeliveryPayload, EntityQuery, LookupSuggestion, lookup_suggestion
 from network.delivery import get_delivery_store, issue_delivery
 from network.mvr import (
     default_mvr_grain,
+    infer_grain_from_lookup,
     is_closed_identity_grain,
     is_full_mvr_lookup,
+    list_mvr_grains,
     load_mvr,
     load_mvr_config,
     missing_mvr_bind_fields,
@@ -103,9 +103,16 @@ def _lookup_suggestions_for_full_mvr(
         return conflicts
 
     norm = normalized_lookup_values(lookup)
-    name_value = norm.get("name")
-    if name_value:
-        return _rank_suggestions(name_value)
+    mvr = load_mvr(grain=resolved_grain)
+    for bind_field in mvr.bind_fields:
+        key = bind_field.strip().lower()
+        if not key:
+            continue
+        value = norm.get(key)
+        if value:
+            suggestions = _rank_bind_field_fuzzy_suggestions(key, value, grain=resolved_grain)
+            if suggestions:
+                return suggestions
     return []
 
 
@@ -226,7 +233,7 @@ def _resolve_single_grain_step1(
         if not is_full_mvr_lookup(query.lookup, mvr):
             norm = normalized_lookup_values(query.lookup)
             for field, value in norm.items():
-                suggestions = _rank_bind_field_fuzzy_suggestions(field, value)
+                suggestions = _rank_bind_field_fuzzy_suggestions(field, value, grain=grain)
                 if suggestions:
                     return TargetResolveResult(
                         kind="lookup_suggested",
@@ -289,27 +296,41 @@ def _resolve_single_grain_step1(
     return TargetResolveResult(kind="not_found", entity_ids=[], lookup_snapshot={})
 
 
+def resolve_id_all_grains(entity_id: str) -> TargetResolveResult:
+    """Search all grains for a uuid (no LLM)."""
+    matching_grains: list[str] = []
+    for grain in list_mvr_grains():
+        registry = get_entity_registry(grain=grain)
+        if registry.lookup_by_id(entity_id) is not None:
+            matching_grains.append(grain)
+    if not matching_grains:
+        return TargetResolveResult(
+            kind="not_found",
+            entity_ids=[],
+            lookup_snapshot={"id": entity_id},
+        )
+    if len(matching_grains) > 1:
+        return TargetResolveResult(
+            kind="not_found",
+            entity_ids=[],
+            lookup_snapshot={"id": entity_id},
+        )
+    grain = matching_grains[0]
+    return TargetResolveResult(
+        kind="resolved",
+        entity_ids=[entity_id],
+        lookup_snapshot={"id": entity_id},
+        grain=grain,
+    )
+
+
 def resolve_target_step1(
     query: EntityQuery,
     *,
-    grain: str | None = None,
     alias_expander: AliasExpander | None = None,
-    disambiguator: GrainDisambiguator | None = None,
 ) -> TargetResolveResult:
     """Resolve step-1 target query by id or lookup AND (read-only)."""
     config = load_mvr_config()
-    explicit_grain = (query.grain or "").strip() or grain
-    if explicit_grain:
-        if explicit_grain not in config.grains:
-            known = ", ".join(sorted(config.grains.keys()))
-            raise ValueError(
-                f"Unknown MVR grain {explicit_grain!r}; declared grains: {known}",
-            )
-        return _resolve_single_grain_step1(
-            query,
-            grain=explicit_grain,
-            alias_expander=alias_expander,
-        )
 
     if len(config.grains) == 1:
         return _resolve_single_grain_step1(
@@ -318,18 +339,33 @@ def resolve_target_step1(
             alias_expander=alias_expander,
         )
 
-    from agents.query_grain_router import resolve_id_all_grains, resolve_lookup_multi_grain
-
     entity_id = (query.id or "").strip()
     if entity_id:
         return resolve_id_all_grains(entity_id)
 
     if query.lookup:
-        return resolve_lookup_multi_grain(
-            query,
-            alias_expander=alias_expander,
-            disambiguator=disambiguator,
-        )
+        inference = infer_grain_from_lookup(query.lookup, config=config)
+        if inference.kind == "resolved_grain" and inference.grain:
+            return _resolve_single_grain_step1(
+                query,
+                grain=inference.grain,
+                alias_expander=alias_expander,
+            )
+        if inference.kind == "lookup_incomplete":
+            return TargetResolveResult(
+                kind="lookup_incomplete",
+                entity_ids=[],
+                lookup_snapshot=dict(query.lookup),
+                required_fields=list(inference.required_fields),
+                grain=inference.grain,
+            )
+        if inference.kind == "ambiguous":
+            return TargetResolveResult(
+                kind="lookup_incomplete",
+                entity_ids=[],
+                lookup_snapshot=dict(query.lookup),
+                required_fields=[],
+            )
 
     return TargetResolveResult(kind="not_found", entity_ids=[], lookup_snapshot={})
 

@@ -235,7 +235,7 @@ def test_baseball_player_alias_bind_step1_lookup_resolved(
     player = get_entity_registry(grain="player")
     entity = RegistryEntity(
         id="player-aaron",
-        bind_values={"name": "Hank Aaron", "team": "Brooklyn Dodgers"},
+        bind_values={"player": "Hank Aaron", "team": "Brooklyn Dodgers"},
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
@@ -244,13 +244,12 @@ def test_baseball_player_alias_bind_step1_lookup_resolved(
     player.save_entity(entity)
     player.add_bind_alias(
         entity.id,
-        {"name": "Hank Aaron", "team": "Los Angeles Dodgers"},
+        {"player": "Hank Aaron", "team": "Los Angeles Dodgers"},
     )
 
     response = run_query(
         EntityQuery(
-            lookup={"name": "Hank Aaron", "team": "Los Angeles Dodgers"},
-            grain="player",
+            lookup={"player": "Hank Aaron", "team": "Los Angeles Dodgers"},
         ),
     )
     assert response.outcome == "lookup_resolved"

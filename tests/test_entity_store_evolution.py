@@ -102,7 +102,7 @@ def test_entity_minisql_v1_json_backup(
     reg = _baseball_registry(tmp_path, monkeypatch, "player")
     first = RegistryEntity(
         id="player-1",
-        bind_values={"name": "Mike Trout", "team": "Angels"},
+        bind_values={"player": "Mike Trout", "team": "Angels"},
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
@@ -113,7 +113,7 @@ def test_entity_minisql_v1_json_backup(
 
     second = RegistryEntity(
         id="player-2",
-        bind_values={"name": "Shohei Ohtani", "team": "Dodgers"},
+        bind_values={"player": "Shohei Ohtani", "team": "Dodgers"},
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
@@ -139,7 +139,7 @@ def test_entity_minisql_v1_migration_lookup_and_bind(
     reg = _baseball_registry(tmp_path, monkeypatch, "team")
     entity = RegistryEntity(
         id="team-1",
-        bind_values={"name": "New York Yankees"},
+        bind_values={"team": "New York Yankees"},
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
@@ -148,7 +148,7 @@ def test_entity_minisql_v1_migration_lookup_and_bind(
     reg.save_entity(entity)
 
     assert reg._store.current_strategy() == "minisql_v1"
-    found = reg.lookup_by_bind_values({"name": "New York Yankees"})
+    found = reg.lookup_by_bind_values({"team": "New York Yankees"})
     assert found is not None
     assert found.id == "team-1"
     assert reg._data.bind_index
@@ -187,7 +187,7 @@ def test_add_bind_alias_skips_field_index_rebuild(
     reg = _baseball_registry(tmp_path, monkeypatch, "player")
     entity = RegistryEntity(
         id="player-alias",
-        bind_values={"name": "Hank Aaron", "team": "Brooklyn Dodgers"},
+        bind_values={"player": "Hank Aaron", "team": "Brooklyn Dodgers"},
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
@@ -198,12 +198,12 @@ def test_add_bind_alias_skips_field_index_rebuild(
     with patch.object(reg, "_rebuild_field_indexes", autospec=True) as rebuild_mock:
         reg.add_bind_alias(
             entity.id,
-            {"name": "Hank Aaron", "team": "Los Angeles Dodgers"},
+            {"player": "Hank Aaron", "team": "Los Angeles Dodgers"},
         )
 
     rebuild_mock.assert_not_called()
     alias_hit = reg.lookup_by_bind_values(
-        {"name": "Hank Aaron", "team": "Los Angeles Dodgers"},
+        {"player": "Hank Aaron", "team": "Los Angeles Dodgers"},
     )
     assert alias_hit is not None
     assert alias_hit.id == entity.id
@@ -217,7 +217,7 @@ def test_lookup_by_target_lookup_bind_index_fallback_for_alias_bind(
     reg = _baseball_registry(tmp_path, monkeypatch, "player")
     entity = RegistryEntity(
         id="player-alias",
-        bind_values={"name": "Hank Aaron", "team": "Brooklyn Dodgers"},
+        bind_values={"player": "Hank Aaron", "team": "Brooklyn Dodgers"},
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
@@ -226,14 +226,14 @@ def test_lookup_by_target_lookup_bind_index_fallback_for_alias_bind(
     reg.save_entity(entity)
     reg.add_bind_alias(
         entity.id,
-        {"name": "Hank Aaron", "team": "Los Angeles Dodgers"},
+        {"player": "Hank Aaron", "team": "Los Angeles Dodgers"},
     )
 
     primary_hits = reg.lookup_by_target_lookup(
-        {"name": "Hank Aaron", "team": "Brooklyn Dodgers"},
+        {"player": "Hank Aaron", "team": "Brooklyn Dodgers"},
     )
     alias_hits = reg.lookup_by_target_lookup(
-        {"name": "Hank Aaron", "team": "Los Angeles Dodgers"},
+        {"player": "Hank Aaron", "team": "Los Angeles Dodgers"},
     )
     partial_hits = reg.lookup_by_target_lookup({"team": "Los Angeles Dodgers"})
 
@@ -250,7 +250,7 @@ def test_save_entity_rebuilds_field_indexes_for_lookup(
     reg = _baseball_registry(tmp_path, monkeypatch, "player")
     entity = RegistryEntity(
         id="player-new",
-        bind_values={"name": "Babe Ruth", "team": "New York Yankees"},
+        bind_values={"player": "Babe Ruth", "team": "New York Yankees"},
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
@@ -265,7 +265,7 @@ def test_save_entity_rebuilds_field_indexes_for_lookup(
         reg.save_entity(entity)
 
     rebuild_mock.assert_called_once()
-    matches = reg.lookup_by_field("name", "Babe Ruth")
+    matches = reg.lookup_by_field("player", "Babe Ruth")
     assert len(matches) == 1
     assert matches[0].id == "player-new"
 
@@ -278,7 +278,7 @@ def test_save_entity_skips_source_key_index_rebuild(
     reg = _baseball_registry(tmp_path, monkeypatch, "player")
     entity = RegistryEntity(
         id="player-bind-only",
-        bind_values={"name": "Hank Aaron", "team": "Milwaukee Braves"},
+        bind_values={"player": "Hank Aaron", "team": "Milwaukee Braves"},
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
@@ -307,7 +307,7 @@ def test_set_source_keys_skips_full_index_rebuilds(
     reg = _baseball_registry(tmp_path, monkeypatch, "player")
     entity = RegistryEntity(
         id="player-src-perf",
-        bind_values={"name": "Hank Aaron", "team": "Milwaukee Braves"},
+        bind_values={"player": "Hank Aaron", "team": "Milwaukee Braves"},
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
@@ -335,7 +335,7 @@ def test_lookup_by_source_key_round_trip(
     reg = _baseball_registry(tmp_path, monkeypatch, "player")
     entity = RegistryEntity(
         id="player-src",
-        bind_values={"name": "Hank Aaron", "team": "Milwaukee Braves"},
+        bind_values={"player": "Hank Aaron", "team": "Milwaukee Braves"},
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
@@ -359,13 +359,13 @@ def test_add_field_alias_allows_multi_entity_lookup(
     reg = _baseball_registry(tmp_path, monkeypatch, "team")
     brooklyn = RegistryEntity(
         id="team-brooklyn",
-        bind_values={"name": "Brooklyn Dodgers"},
+        bind_values={"team": "Brooklyn Dodgers"},
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
     los_angeles = RegistryEntity(
         id="team-la",
-        bind_values={"name": "Los Angeles Dodgers"},
+        bind_values={"team": "Los Angeles Dodgers"},
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
@@ -375,10 +375,10 @@ def test_add_field_alias_allows_multi_entity_lookup(
     reg.register_entity(los_angeles)
     reg.assign_bind_index(los_angeles.id, los_angeles.bind_values)
     reg.save_entity(los_angeles)
-    reg.add_field_alias(brooklyn.id, "name", "Dodgers")
-    reg.add_field_alias(los_angeles.id, "name", "Dodgers")
+    reg.add_field_alias(brooklyn.id, "team", "Dodgers")
+    reg.add_field_alias(los_angeles.id, "team", "Dodgers")
 
-    matched_ids = reg.lookup_by_target_lookup({"name": "Dodgers"})
+    matched_ids = reg.lookup_by_target_lookup({"team": "Dodgers"})
     assert sorted(matched_ids) == ["team-brooklyn", "team-la"]
 
 
@@ -390,15 +390,15 @@ def test_registry_entity_to_match_omits_internal_registry_fields(
     reg = _baseball_registry(tmp_path, monkeypatch, "player")
     entity = RegistryEntity(
         id="player-1",
-        bind_values={"name": "Hank Aaron", "team": "Milwaukee Braves"},
+        bind_values={"player": "Hank Aaron", "team": "Milwaukee Braves"},
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
         source_keys={"lahman.playerID": "aaronha01"},
-        field_aliases={"name": ["Hammerin' Hank"]},
+        field_aliases={"player": ["Hammerin' Hank"]},
     )
     reg.register_entity(entity)
     match = registry_entity_to_match(entity, mvr=reg._mvr)
     assert "source_keys" not in match
     assert "field_aliases" not in match
     assert match["id"] == "player-1"
-    assert match["name"] == "Hank Aaron"
+    assert match["player"] == "Hank Aaron"

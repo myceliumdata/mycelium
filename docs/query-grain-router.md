@@ -1,100 +1,45 @@
-# Query grain router
+# Lookup-key grain routing
 
-Multi-grain networks (e.g. baseball `team` + `player`) fan out step-1 lookups per declared MVR grain, disambiguate when multiple grains hit, and persist the resolved grain on delivery scopes for step 2.
+Multi-grain networks route step-1 lookups by **lookup key shape** — not fan-out, not `EntityQuery.grain`, not a disambiguation LLM. Each grain declares disjoint `bind_fields` in `network.json`; the client sends keys that match exactly one grain.
 
-See also [architecture.md](architecture.md) § Target protocol and [seed-bootstrap.md](seed-bootstrap.md) § open vs closed identity.
+See also [architecture.md](architecture.md) § Target protocol and [seed-bootstrap.md](seed-bootstrap.md) § bind alias vs field alias.
 
-## Fan-out filtering
+## Baseball contract (locked)
 
-For each declared grain `g`, the router builds:
+| Lookup keys | Grain | Meaning |
+|-------------|-------|---------|
+| `player` + `team` | `player` | Person on a roster |
+| `team` only | `team` | Fan-facing franchise label |
+| `player` only | — | `lookup_incomplete` (`required_fields: ["team"]`) |
+| Other / unknown keys | — | `not_found` or `lookup_incomplete` |
 
-```text
-filtered = {k: v for k, v in lookup.items() if k in g.bind_fields}
-```
+Manifest (`examples/networks/baseball/network.json`):
 
+- `player` grain: `bind_fields: ["player", "team"]`
+- `team` grain: `bind_fields: ["team"]`
 
-| Lookup               | Team grain (`name`)       | Player grain (`name`, `team`) |
-| -------------------- | ------------------------- | ----------------------------- |
-| `{name: y, team: x}` | `{name: y}`               | `{name: y, team: x}`          |
-| `{team: x}` only     | **skip** (empty filtered) | `{team: x}`                   |
-| `{name: y}`          | `{name: y}`               | `{name: y}`                   |
+## Framework behavior
 
+`infer_grain_from_lookup()` in `network/mvr.py`:
 
-**Agent note:** team-grain queries use the **name** bind field (canonical city+name). The key **team** applies to the **player** grain only as a disambiguator — not as the team entity’s primary key.
+1. Normalize lookup keys via `normalized_lookup_values`.
+2. Find grains whose `bind_fields` set **equals** the lookup key set exactly.
+3. **One match** → `_resolve_single_grain_step1` on that grain.
+4. **Zero matches** → `lookup_incomplete` when keys are a strict subset of one grain's bind fields; else `not_found`.
+5. **Two+ matches** → should not occur with disjoint field names.
 
-## Step-1 flow (lookup)
-
-```mermaid
-flowchart TD
-  A[EntityQuery lookup] --> B{grain override?}
-  B -->|yes| C[Single-grain resolve]
-  B -->|no| D{Single grain network?}
-  D -->|yes| C
-  D -->|no| E[Fan-out per grain]
-  E --> F{Any hits?}
-  F -->|yes| G{One grain with hits?}
-  G -->|yes| H[lookup_resolved]
-  G -->|no| I[Disambiguation LLM trigger A]
-  I --> J{chosen / chosen_grain / ambiguous}
-  F -->|no| K[Closed-grain lazy alias expansion]
-  K --> L[Re-fan-out]
-  L --> M{Hits?}
-  M -->|yes| G
-  M -->|no| N[suggest or not_found — never create_pending on closed]
-```
-
-
-
-## 0-hit pipeline (closed grains)
-
-1. Fan-out → all grains skipped or all return `[]`.
-2. Lazy field alias expansion (slice 2) on each **closed** grain with non-empty `filtered`.
-3. Re-fan-out the same lookup.
-4. Still 0 → `lookup_suggested` or `not_found`; **never** `create_pending` on closed grains.
-
-## Disambiguation LLM (trigger A)
-
-Invoke **only when ≥2 grains** each have **≥1 hit**.
-
-
-| Example                | Team hits | Player hits | LLM?                            |
-| ---------------------- | --------- | ----------- | ------------------------------- |
-| `{name: "Dodgers"}`    | 2         | 0           | **No** — single grain with hits |
-| `{name: "Washington"}` | 1+        | 1+          | **Yes**                         |
-
-
-Structured outcomes (mutually exclusive):
-
-
-| Outcome                         | Action                                                      |
-| ------------------------------- | ----------------------------------------------------------- |
-| `chosen` + `{grain, entity_id}` | Resolve single entity on that grain                         |
-| `chosen_grain`                  | Use all hits on that grain (1 → resolved, 2+ → multi-match) |
-| `ambiguous`                     | Cross-grain `lookup_suggested` (3c)                         |
-
-
-Env: `OPENAI_API_KEY` for production; `MYCELIUM_GRAIN_DISAMBIGUATION_MODEL` (default `gpt-4o-mini`). Tests inject a mock disambiguator.
-
-## Cross-grain ambiguous (3c)
-
-When the LLM returns `ambiguous` (e.g. one team + one player for the same string), step 1 returns **lookup_suggested** with candidates tagged with **grain**, `id`, and `suggested_lookup`. No mixed-grain `delivery_id` in v1 — the client sends a new step 1 with optional `grain` override.
-
-Within one grain, multi-match delivery is unchanged (single `grain`, multiple `entity_ids`).
-
-## `id`-only step 1
-
-Search **all grains** for the uuid when `grain` is omitted:
-
-- 0 matches → `not_found`
-- 1 match → resolve with that grain on delivery
-- 2+ grains contain the same id → `not_found` (data error)
-
-No LLM.
-
-## Optional `EntityQuery.grain`
-
-When set on step 1: skip fan-out and disambiguation; run single-grain resolve (closed identity + lazy aliases on that grain only). Useful for tests, MCP, and power users.
+`id`-only step 1 still uses `resolve_id_all_grains` (search all stores; no LLM).
 
 ## Delivery scope
 
-`DeliveryScope.grain` is set at issue time from the resolved grain. Step 2 loads the matching registry and MVR via `scope.grain`.
+`DeliveryScope.grain` is set at issue time from the inferred grain. Step 2 loads the matching registry via `scope.grain`.
+
+## Removed (slice 1100)
+
+- Multi-grain fan-out (`query_grain_router.py`)
+- Grain-disambiguation LLM (`grain_disambiguation.py`)
+- `EntityQuery.grain` step-1 override
+
+## Bind-index fallback (slice 1000)
+
+Full MVR lookup on a grain consults `bind_index` when field-index AND misses (multi-team player aliases). See [seed-bootstrap.md](seed-bootstrap.md).

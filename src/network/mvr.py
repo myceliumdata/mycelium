@@ -283,3 +283,81 @@ def is_closed_identity_grain(
     if grain_policy is None:
         return False
     return grain_policy.identity_mode == "closed"
+
+
+@dataclass(frozen=True)
+class GrainInferenceResult:
+    """Result of inferring MVR grain from step-1 lookup key shape."""
+
+    kind: str
+    grain: str | None = None
+    required_fields: tuple[str, ...] = ()
+    message: str | None = None
+
+
+def _all_declared_bind_fields(config: NetworkMvrConfig | None = None) -> set[str]:
+    cfg = config or load_mvr_config()
+    fields: set[str] = set()
+    for grain_policy in cfg.grains.values():
+        fields.update(field.strip().lower() for field in grain_policy.bind_fields if field.strip())
+    return fields
+
+
+def infer_grain_from_lookup(
+    lookup: dict[str, str],
+    *,
+    config: NetworkMvrConfig | None = None,
+) -> GrainInferenceResult:
+    """Infer exactly one MVR grain from lookup keys (disjoint bind field names).
+
+    A grain matches when normalized lookup keys equal that grain's bind_fields set
+    exactly. Partial subsets yield lookup_incomplete; unknown keys yield not_found.
+    """
+    cfg = config or load_mvr_config()
+    norm = normalized_lookup_values(lookup)
+    if not norm:
+        return GrainInferenceResult(kind="not_found")
+
+    provided = set(norm.keys())
+    all_fields = _all_declared_bind_fields(cfg)
+    if not provided.issubset(all_fields):
+        return GrainInferenceResult(kind="not_found")
+
+    exact_matches: list[str] = []
+    for grain_name in sorted(cfg.grains.keys()):
+        required = {
+            field.strip().lower()
+            for field in cfg.grains[grain_name].bind_fields
+            if field.strip()
+        }
+        if required == provided:
+            exact_matches.append(grain_name)
+
+    if len(exact_matches) == 1:
+        return GrainInferenceResult(kind="resolved_grain", grain=exact_matches[0])
+    if len(exact_matches) > 1:
+        return GrainInferenceResult(
+            kind="ambiguous",
+            message="ambiguous lookup keys for multiple grains",
+        )
+
+    incomplete: list[tuple[str, list[str]]] = []
+    for grain_name in sorted(cfg.grains.keys()):
+        required = {
+            field.strip().lower()
+            for field in cfg.grains[grain_name].bind_fields
+            if field.strip()
+        }
+        if provided and provided < required:
+            missing = sorted(required - provided)
+            incomplete.append((grain_name, missing))
+
+    if incomplete:
+        grain_name, missing = min(incomplete, key=lambda item: len(item[1]))
+        return GrainInferenceResult(
+            kind="lookup_incomplete",
+            grain=grain_name,
+            required_fields=tuple(missing),
+        )
+
+    return GrainInferenceResult(kind="not_found")
