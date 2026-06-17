@@ -93,7 +93,7 @@ Two alias mechanisms — do not conflate:
 
 | Mechanism | API | Index | Use |
 |-----------|-----|-------|-----|
-| **Bind alias** | `add_bind_alias` | `bind_index` only | Alternate **full** MVR bind tuple for one entity (player on multiple teams) |
+| **Bind alias** | `add_bind_alias` | `bind_index` only | Alternate **full** MVR bind tuple for one entity (player on multiple teams). Step-1 full MVR lookup consults `bind_index` when field-index AND misses. |
 | **Field alias** | `add_field_alias` | field index only | Shared nickname on one bind field; **multiple entities** allowed (`"Dodgers"` → Brooklyn + LA) |
 
 Field aliases live in `field_aliases` on the entity row and are merged into per-field inverted indexes at load/save. Lazy nickname expansion at query time is a separate slice.

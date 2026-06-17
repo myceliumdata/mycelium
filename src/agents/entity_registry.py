@@ -337,14 +337,27 @@ class EntityRegistry:
         self._load()
 
     def lookup_by_target_lookup(self, lookup: dict[str, str]) -> list[str]:
-        """AND-match registry rows by MVR bind fields (exact normalized index)."""
-        from agents.field_index import intersect_lookup
+        """AND-match registry rows by MVR bind fields (exact normalized field index).
 
-        return intersect_lookup(
+        Field indexes support partial lookups and primary-bind AND matches. When the
+        field-index intersection is empty and the lookup is a full MVR for this grain,
+        fall back to ``bind_index`` via ``lookup_by_bind_values`` (bootstrap bind aliases).
+        """
+        from agents.field_index import intersect_lookup
+        from network.mvr import is_full_mvr_lookup, normalized_lookup_values
+
+        hits = intersect_lookup(
             self._field_indexes,
             lookup,
             self._mvr.bind_fields,
         )
+        if hits:
+            return hits
+        if is_full_mvr_lookup(lookup, self._mvr):
+            entity = self.lookup_by_bind_values(normalized_lookup_values(lookup))
+            if entity is not None:
+                return [entity.id]
+        return []
 
     def field_indexes(self) -> dict[str, dict[str, list[str]]]:
         """Snapshot of in-memory per-field inverted indexes (tests/diagnostics)."""

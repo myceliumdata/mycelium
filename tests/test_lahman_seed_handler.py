@@ -133,6 +133,16 @@ def test_lahman_seed_handler_multi_team_same_player_id(tmp_path: Path) -> None:
     assert brooklyn.id == los_angeles.id
     assert brooklyn.source_keys["lahman.playerID"] == "aaronha01"
 
+    brooklyn_target = player_registry.lookup_by_target_lookup(
+        {"name": "Hank Aaron", "team": "Brooklyn Dodgers"},
+    )
+    los_angeles_target = player_registry.lookup_by_target_lookup(
+        {"name": "Hank Aaron", "team": "Los Angeles Dodgers"},
+    )
+    assert brooklyn_target == [brooklyn.id]
+    assert los_angeles_target == [los_angeles.id]
+    assert brooklyn_target == los_angeles_target
+
     player_path = entity_store_path(paths, "player")
     payload = json.loads(player_path.read_text(encoding="utf-8"))
     assert len(payload["bind_index"]) == 2

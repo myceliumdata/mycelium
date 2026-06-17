@@ -8,20 +8,26 @@ from pathlib import Path
 
 import pytest
 
-from agents.entity_registry import get_entity_registry, reset_entity_registry
+from agents.entity_registry import (
+    RegistryEntity,
+    get_entity_registry,
+    reset_entity_registry,
+)
 from agents.field_index import intersect_lookup, normalize_field_index_value
 from agents.classification import get_category_tree, reset_category_tree
 from agents.context import reset_context_builder
 from graphs.core import reset_core_graph, run_query
 from models.state import EntityQuery
 from network.delivery import get_delivery_store, reset_delivery_store
-from network_helpers import import_seed_for_test
+from network.paths import NetworkPaths
+from network_helpers import apply_network_paths_monkeypatch, import_seed_for_test
 from storage.core import CoreStorage, get_storage, reset_storage
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SAMPLE_CATEGORIES = REPO_ROOT / "docs" / "examples" / "sample-categories.json"
 EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
 EXAMPLE_CRM_SEED = EXAMPLE_CRM / "seed.json"
+BASEBALL_MANIFEST = REPO_ROOT / "examples" / "networks" / "baseball" / "network.json"
 
 
 @pytest.fixture
@@ -208,3 +214,49 @@ def test_existing_match_step1_json_omits_create_on_deliver(
     payload = response.public_dict()
     assert "create_on_deliver" not in payload.get("delivery", {})
     assert "registry match" in response.message
+
+
+@pytest.mark.smoke
+def test_baseball_player_alias_bind_step1_lookup_resolved(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import shutil
+
+    root = tmp_path / "baseball"
+    root.mkdir()
+    shutil.copy(BASEBALL_MANIFEST, root / "network.json")
+    paths = NetworkPaths.from_root(root)
+    apply_network_paths_monkeypatch(paths, monkeypatch)
+    reset_entity_registry()
+    reset_core_graph()
+    reset_delivery_store()
+
+    player = get_entity_registry(grain="player")
+    entity = RegistryEntity(
+        id="player-aaron",
+        bind_values={"name": "Hank Aaron", "team": "Brooklyn Dodgers"},
+        source="test",
+        created_at="2026-06-17T12:00:00+00:00",
+    )
+    player.register_entity(entity)
+    player.assign_bind_index(entity.id, entity.bind_values)
+    player.save_entity(entity)
+    player.add_bind_alias(
+        entity.id,
+        {"name": "Hank Aaron", "team": "Los Angeles Dodgers"},
+    )
+
+    response = run_query(
+        EntityQuery(
+            lookup={"name": "Hank Aaron", "team": "Los Angeles Dodgers"},
+            grain="player",
+        ),
+    )
+    assert response.outcome == "lookup_resolved"
+    assert response.total_matches == 1
+    assert response.delivery is not None
+    stored = get_delivery_store().get(response.delivery.delivery_id)
+    assert stored is not None
+    assert stored.entity_ids == [entity.id]
+    assert stored.grain == "player"

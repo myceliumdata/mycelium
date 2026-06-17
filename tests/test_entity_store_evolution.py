@@ -210,6 +210,39 @@ def test_add_bind_alias_skips_field_index_rebuild(
 
 
 @pytest.mark.smoke
+def test_lookup_by_target_lookup_bind_index_fallback_for_alias_bind(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reg = _baseball_registry(tmp_path, monkeypatch, "player")
+    entity = RegistryEntity(
+        id="player-alias",
+        bind_values={"name": "Hank Aaron", "team": "Brooklyn Dodgers"},
+        source="test",
+        created_at="2026-06-17T12:00:00+00:00",
+    )
+    reg.register_entity(entity)
+    reg.assign_bind_index(entity.id, entity.bind_values)
+    reg.save_entity(entity)
+    reg.add_bind_alias(
+        entity.id,
+        {"name": "Hank Aaron", "team": "Los Angeles Dodgers"},
+    )
+
+    primary_hits = reg.lookup_by_target_lookup(
+        {"name": "Hank Aaron", "team": "Brooklyn Dodgers"},
+    )
+    alias_hits = reg.lookup_by_target_lookup(
+        {"name": "Hank Aaron", "team": "Los Angeles Dodgers"},
+    )
+    partial_hits = reg.lookup_by_target_lookup({"team": "Los Angeles Dodgers"})
+
+    assert primary_hits == [entity.id]
+    assert alias_hits == [entity.id]
+    assert partial_hits == []
+
+
+@pytest.mark.smoke
 def test_save_entity_rebuilds_field_indexes_for_lookup(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

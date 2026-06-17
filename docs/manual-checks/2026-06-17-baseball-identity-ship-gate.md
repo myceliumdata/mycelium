@@ -242,6 +242,15 @@ baseball_query "{\"delivery_id\": \"$DELIVERY_ID\"}" | jq '{outcome, results: .r
 - **No** `create_on_deliver` on step 1 delivery scope.
 - Response JSON has **no** `entity_key` / `binding` legacy fields.
 
+**After slice `2026-06-18-1000` (bind_index fallback):** repeat with a second team from Check 2 (e.g. Milwaukee Braves if distinct from `TEAM_A`):
+
+```bash
+baseball_query "{\"lookup\": {\"name\": \"$AARON_NAME\", \"team\": \"Milwaukee Braves\"}, \"grain\": \"player\"}" | \
+  jq '{outcome, total_matches, delivery_id: .delivery.delivery_id}'
+```
+
+**Pass:** `lookup_resolved`, `total_matches` = 1 (alias bind via `bind_index`; no data reload required).
+
 **Optional smoke:** `uv run mycelium query --network-dir "$ROOT" --lookup-json '…'` — human-readable only; verify `lookup_resolved` in terminal output.
 
 ---
