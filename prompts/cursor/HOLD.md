@@ -2,7 +2,11 @@
 
 **Program:** Storage evolution (specialist → entity) — [`docs/plans/storage-evolution-program.md`](../../docs/plans/storage-evolution-program.md)
 
-**Active (`next/`):** *(empty — bootstrap perf deferred; no optimization slice queued)*
+**Active (`next/`):**
+
+| Prompt | Scope |
+|--------|--------|
+| [`next/2026-06-18-1400-framework-mvr-generic-vocabulary.md`](next/2026-06-18-1400-framework-mvr-generic-vocabulary.md) | **READY** — remove CRM field hardcoding; MVR-generic IdentityRecord, validation, context (before baseball playerID work) |
 
 **Last approved:** [`done/2026-06-18-0900-bootstrap-perf-profile-driven/`](done/2026-06-18-0900-bootstrap-perf-profile-driven/) — **Approved** (commit below)
 
