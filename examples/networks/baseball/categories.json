@@ -1,0 +1,122 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-06-19T00:00:00+00:00",
+  "model_used": "committed-pack-v1",
+  "ontology_pack": "baseball",
+  "categories": {
+    "player_identity": {
+      "description": "Player registry bind fields (display name and debut-season disambiguator).",
+      "assigned_agent": "player_identity_specialist",
+      "examples": ["player", "debut_team", "debut_year"]
+    },
+    "team_identity": {
+      "description": "Fan-facing team registry bind field (full canonical city+name label).",
+      "assigned_agent": "team_identity_specialist",
+      "examples": ["team"]
+    },
+    "bio": {
+      "description": "Player biographical facts from Lahman People (and supplemental web research later).",
+      "assigned_agent": "bio_specialist",
+      "examples": [
+        "birth_date",
+        "birth_city",
+        "birth_country",
+        "death_date",
+        "height",
+        "weight",
+        "bats",
+        "throws",
+        "debut",
+        "final_game"
+      ]
+    },
+    "batting": {
+      "description": "Player batting statistics and career batting derivatives (Lahman Batting).",
+      "assigned_agent": "batting_specialist",
+      "examples": [
+        "career_hr",
+        "career_rbi",
+        "career_hits",
+        "career_avg",
+        "career_sb",
+        "home_runs",
+        "rbi",
+        "batting_average",
+        "at_bats",
+        "games"
+      ]
+    },
+    "pitching": {
+      "description": "Player pitching statistics and career pitching derivatives (Lahman Pitching).",
+      "assigned_agent": "pitching_specialist",
+      "examples": [
+        "career_wins",
+        "career_losses",
+        "career_era",
+        "career_strikeouts",
+        "career_saves",
+        "wins",
+        "era",
+        "strikeouts",
+        "walks",
+        "games_pitched"
+      ]
+    },
+    "team_season": {
+      "description": "Year-scoped team facts (Lahman Teams): standings, park, attendance.",
+      "assigned_agent": "team_season_specialist",
+      "examples": [
+        "season_wins",
+        "season_losses",
+        "finish_rank",
+        "park",
+        "attendance",
+        "runs_scored",
+        "runs_allowed"
+      ]
+    }
+  },
+  "attribute_map": {
+    "player": "player_identity",
+    "debut_team": "player_identity",
+    "debut_year": "player_identity",
+    "team": "team_identity",
+    "birth_date": "bio",
+    "birth_city": "bio",
+    "birth_country": "bio",
+    "death_date": "bio",
+    "height": "bio",
+    "weight": "bio",
+    "bats": "bio",
+    "throws": "bio",
+    "debut": "bio",
+    "final_game": "bio",
+    "career_hr": "batting",
+    "career_rbi": "batting",
+    "career_hits": "batting",
+    "career_avg": "batting",
+    "career_sb": "batting",
+    "home_runs": "batting",
+    "rbi": "batting",
+    "batting_average": "batting",
+    "at_bats": "batting",
+    "games": "batting",
+    "career_wins": "pitching",
+    "career_losses": "pitching",
+    "career_era": "pitching",
+    "career_strikeouts": "pitching",
+    "career_saves": "pitching",
+    "wins": "pitching",
+    "era": "pitching",
+    "strikeouts": "pitching",
+    "walks": "pitching",
+    "games_pitched": "pitching",
+    "season_wins": "team_season",
+    "season_losses": "team_season",
+    "finish_rank": "team_season",
+    "park": "team_season",
+    "attendance": "team_season",
+    "runs_scored": "team_season",
+    "runs_allowed": "team_season"
+  }
+}

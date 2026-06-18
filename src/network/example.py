@@ -13,6 +13,7 @@ from network.paths import NetworkPaths, framework_root
 from network.registry import load_network_registry, register_network
 from network.seed_fetch import fetch_example_seed, git_seed_summary, load_git_seed_source
 from network.bootstrap.progress import make_bootstrap_progress
+from network.pack_ontology import install_pack_ontology_from_example
 from network.seed_import import bootstrap_seed_at_paths, count_seed_rows
 
 _SKIP_NAMES = frozenset(
@@ -186,6 +187,7 @@ def refresh_example_network(
                 "run a full refresh first (omit --sync-only).",
             )
         copied = copy_example_network(name, live_root)
+        install_pack_ontology_from_example(name, NetworkPaths.from_root(live_root))
         registered = False
         registry_name = None
         if register:
@@ -234,6 +236,7 @@ def refresh_example_network(
         wiped = True
     live_root.mkdir(parents=True, exist_ok=True)
     copied = copy_example_network(name, live_root)
+    install_pack_ontology_from_example(name, NetworkPaths.from_root(live_root))
 
     progress = make_bootstrap_progress()
     seed_fetch_summary: str | None = None

@@ -28,6 +28,20 @@ Refresh copies `network.json`, `bootstrap_handlers/`, and `guide.md`, then:
 
 Default live root: `~/mycelium-networks/baseball` (registered in `networks.json`).
 
+## Step-1 lookup (operators)
+
+Identity resolve uses the **framework** fuzzy matcher (same as CRM), then baseball-specific **lazy LLM aliases** on `bootstrap_only` team/player types. See [`docs/plans/fuzzy-lookup-policy.md`](../../../docs/plans/fuzzy-lookup-policy.md) § For operators.
+
+| You typed | Typical outcome |
+|-----------|-----------------|
+| Typo (`Tie Cobb`) | `lookup_suggested` → retry with `Ty Cobb` |
+| Exact (`Ty Cobb`, `Boston Red Sox`) | `lookup_resolved` |
+| Prefix that matches first token of canonical name | `lookup_suggested` (if applicable) |
+| Nickname (`Dodgers`, `Bronx Bombers`) — needs `OPENAI_API_KEY` on first hit | `lookup_resolved` (may multi-match); writes `field_aliases` |
+| Mashup / unknown (`Washington Red Sox`, `XYZZY`) | `not_found` |
+
+Nicknames are defined in [`guide.md`](guide.md) for the LLM; fuzzy handles typos only. No query-time entity creation.
+
 Long Lahman bootstraps print **phase progress on stderr** (`Retrieving data…`, `Processing records (x/y)…`, `Cleaning up…`). Set `MYCELIUM_BOOTSTRAP_PROGRESS=0` to silence; progress defaults to on when stderr is a TTY.
 
 ## Bootstrap (pack handler)
@@ -65,7 +79,22 @@ Each committed row stores Lahman IDs in **`source_keys`** (`lahman.playerID`, `l
 
 **Re-bootstrap required** after slice 1800 — old `player`+`team` entity stores are incompatible with debut bind shape.
 
-The baseball example copies CRM sample `categories.json` until a baseball ontology exists. Bind field `team` maps to the `professional` category (same as CRM `employer`).
+## Committed ontology (M1a)
+
+Refresh installs `examples/networks/baseball/categories.json` into the live root (`ontology_pack: baseball`). Bind fields and Lahman-shaped attributes route to baseball specialists — not CRM `professional_specialist`.
+
+| Category | Specialist | Examples |
+|----------|------------|----------|
+| `player_identity` | `player_identity_specialist` | `player`, `debut_team`, `debut_year` |
+| `team_identity` | `team_identity_specialist` | `team` |
+| `bio` | `bio_specialist` | `birth_date`, `height`, `bats`, … |
+| `batting` | `batting_specialist` | `career_hr`, `home_runs`, `rbi`, … |
+| `pitching` | `pitching_specialist` | `career_wins`, `era`, `strikeouts`, … |
+| `team_season` | `team_season_specialist` | `season_wins`, `park`, `attendance`, … |
+
+Specialists are **framework stubs** until M1b (warehouse reads + computation provenance). Step-2 routing is live; attribute values may be empty/pending.
+
+Existing live roots: run `./bin/refresh-example-network baseball --sync-only` to pick up ontology without re-running Lahman bootstrap.
 
 **Attribution:** Lahman data is copyright SABR / Sean Lahman (CC BY-SA 3.0). See the [lahman-seed](https://github.com/myceliumdata/lahman-seed) repository.
 

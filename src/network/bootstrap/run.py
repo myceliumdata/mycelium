@@ -7,6 +7,7 @@ from network.bootstrap.context import BootstrapContext, BootstrapResult
 from network.bootstrap.handlers.resolve import resolve_handler
 from network.bootstrap.progress import BootstrapProgress, make_bootstrap_progress
 from network.category_mvr_bootstrap import ensure_categories_for_mvr_bind
+from network.pack_ontology import maybe_install_pack_ontology
 from network.paths import NetworkPaths, apply_network_paths
 
 
@@ -27,6 +28,7 @@ def run_network_bootstrap(
 ) -> BootstrapResult:
     """Formal network bootstrap phase: paths, categories, registry reset, handler."""
     apply_network_paths(paths)
+    maybe_install_pack_ontology(paths)
     ensure_categories_for_mvr_bind(paths)
     reset_entity_registry()
     reporter = progress if progress is not None else make_bootstrap_progress()

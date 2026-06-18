@@ -23,6 +23,7 @@ class CategoryTreeData(BaseModel):
     version: str = "1.0"
     last_updated: datetime
     model_used: str = ""  # e.g. "gpt-4o-mini" (set on last LLM refresh)
+    ontology_pack: str | None = None  # committed example-pack id when set
     categories: dict[str, Category]  # category_name -> Category (name is the key)
     attribute_map: dict[str, str]  # normalized_attribute (lower) -> category_name (the fast lookup index)
 

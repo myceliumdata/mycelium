@@ -34,6 +34,7 @@ BASEBALL_PYTEST_FILES = (
     "tests/test_closed_identity_lazy_aliases.py",
     "tests/test_strict_record_type_routing.py",
     "tests/test_example_network.py::test_refresh_baseball_fetches_seed_and_bootstraps",
+    "tests/test_baseball_pack_ontology.py",
 )
 
 EXPECTED_BOOTSTRAP_COUNT = 4
@@ -331,6 +332,50 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
                         "player_deliver_identity",
                         request=q1b.model_dump(exclude_none=True),
                         response=p1b,
+                    ),
+                )
+
+        # Step 2: career_hr routes to batting_specialist (values may be pending)
+        q_hr = EntityQuery(
+            lookup={
+                "player": sample["player"],
+                "debut_team": sample["debut_team"],
+                "debut_year": sample["debut_year"],
+            },
+            requested_attributes=["career_hr"],
+        )
+        r_hr1 = run_query(q_hr)
+        p_hr1 = _pub(r_hr1)
+        if r_hr1.outcome != "lookup_resolved" or not r_hr1.delivery:
+            results.append(
+                _fail(
+                    "career_hr_step1",
+                    f"expected lookup_resolved, got {r_hr1.outcome!r}",
+                    request=q_hr.model_dump(exclude_none=True),
+                    response=p_hr1,
+                ),
+            )
+        else:
+            q_hr2 = EntityQuery(delivery_id=r_hr1.delivery.delivery_id)
+            r_hr2 = run_query(q_hr2)
+            p_hr2 = _pub(r_hr2)
+            debug_blob = r_hr2.debug or ""
+            routed = "batting_specialist" in debug_blob
+            if not routed:
+                results.append(
+                    _fail(
+                        "career_hr_routes_batting_specialist",
+                        f"expected batting_specialist routing in debug; got {debug_blob!r}",
+                        request=q_hr2.model_dump(exclude_none=True),
+                        response=p_hr2,
+                    ),
+                )
+            else:
+                results.append(
+                    _ok(
+                        "career_hr_routes_batting_specialist",
+                        request=q_hr2.model_dump(exclude_none=True),
+                        response=p_hr2,
                     ),
                 )
 

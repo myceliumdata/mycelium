@@ -74,10 +74,13 @@ def categories_map_mvr_fields(
 def ensure_categories_for_mvr_bind(paths: NetworkPaths) -> None:
     """Ensure MVR bind fields are mapped; copy sample or merge into existing tree."""
     from agents.classification import get_category_tree, reset_category_tree
+    from network.pack_ontology import is_pack_ontology
 
     required_fields = _required_bind_fields(paths)
     paths.categories_path.parent.mkdir(parents=True, exist_ok=True)
-    if not categories_map_mvr_fields(paths.categories_path, required_fields):
+    if is_pack_ontology(paths.categories_path):
+        _merge_required_bind_fields(paths, required_fields)
+    elif not categories_map_mvr_fields(paths.categories_path, required_fields):
         if paths.categories_path.is_file():
             try:
                 raw = json.loads(paths.categories_path.read_text(encoding="utf-8"))
