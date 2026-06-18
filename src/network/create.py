@@ -153,13 +153,13 @@ def _write_guide(paths: NetworkPaths, *, title: str, creation_prompt: str) -> No
 
 
 def _unlink_entity_stores(paths: NetworkPaths) -> None:
-    """Remove declared per-grain entity store files."""
+    """Remove declared per-record-type entity store files."""
     from network.mvr import load_mvr_config
 
     paths.entities_path.unlink(missing_ok=True)
     config = load_mvr_config(paths=paths)
-    for grain in config.grains.values():
-        (paths.root / grain.entities_file).unlink(missing_ok=True)
+    for record_type in config.record_types.values():
+        (paths.root / record_type.entities_file).unlink(missing_ok=True)
 
 
 def _crm_metering_block() -> dict[str, Any]:
@@ -209,12 +209,13 @@ def _write_network_manifest(
             "handler": "DefaultSeedHandler",
         },
         "mvr": {
-            "default_grain": "person",
-            "grains": {
+            "default_record_type": "person",
+            "record_types": {
                 "person": {
                     "bind_fields": ["name", "employer"],
+                    "new_records": "query_allowed",
                     "description": (
-                        "Illustrative person grain: display name plus current employer "
+                        "Illustrative person record type: display name plus current employer "
                         "before bind and research."
                     ),
                 },

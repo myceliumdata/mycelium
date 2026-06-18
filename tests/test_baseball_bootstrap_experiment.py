@@ -25,8 +25,8 @@ def lahman_fixture_dir(tmp_path: Path) -> Path:
         encoding="utf-8",
     )
     (csv_dir / "People.csv").write_text(
-        "ID,playerID,nameFirst,nameLast\n"
-        "1,aaronha01,Hank,Aaron\n",
+        "ID,playerID,nameFirst,nameLast,debut\n"
+        "1,aaronha01,Hank,Aaron,\n",
         encoding="utf-8",
     )
     return csv_dir

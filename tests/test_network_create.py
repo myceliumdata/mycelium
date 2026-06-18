@@ -228,7 +228,7 @@ def test_create_network_happy_path_writes_artifacts(
         "module": "network.bootstrap.handlers.default_seed",
         "handler": "DefaultSeedHandler",
     }
-    assert manifest["mvr"]["default_grain"] == "person"
+    assert manifest["mvr"]["default_record_type"] == "person"
     assert manifest["metering"]["enabled"] is False
 
     entries = load_network_registry()

@@ -11,17 +11,17 @@
     "registries": ["team", "player"]
   },
   "mvr": {
-    "default_grain": "player",
-    "grains": {
+    "default_record_type": "player",
+    "record_types": {
       "player": {
-        "bind_fields": ["player", "team"],
-        "description": "Player identity: display name plus team disambiguator (draft).",
-        "identity_mode": "closed"
+        "bind_fields": ["player", "debut_team", "debut_year"],
+        "description": "MLB player identity (Lahman catalog; operator-extended via bootstrap).",
+        "new_records": "bootstrap_only"
       },
       "team": {
         "bind_fields": ["team"],
-        "description": "Fan-facing team: full canonical city+name (draft).",
-        "identity_mode": "closed"
+        "description": "Fan-facing team identity (Lahman catalog; operator-extended via bootstrap).",
+        "new_records": "bootstrap_only"
       }
     }
   },

@@ -58,21 +58,21 @@ from models.state import (
 )
 from network.delivery import DeliveryScope, get_delivery_store
 from network.metering_policy import load_metering_policy
-from network.mvr import default_mvr_grain
+from network.mvr import default_record_type
 
 
-def _state_with_resolve_grain(
+def _state_with_resolve_record_type(
     current: MyceliumGraphState,
-    grain: str | None,
+    record_type: str | None,
     result: dict[str, Any],
 ) -> dict[str, Any]:
-    """Attach resolved MVR grain to graph context for downstream registry access."""
-    if not grain:
+    """Attach resolved MVR record type to graph context for downstream registry access."""
+    if not record_type:
         return result
     ctx = dict(current.context) if isinstance(current.context, dict) else {}
     meta_raw = ctx.get("_meta")
     meta = dict(meta_raw) if isinstance(meta_raw, dict) else {}
-    meta["resolve_grain"] = grain
+    meta["resolve_record_type"] = record_type
     ctx["_meta"] = meta
     result["context"] = ctx
     return result
@@ -170,7 +170,7 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
                 "audit_log": ["target_resolve: deliver not_found (scope hydration failed)."],
             }
 
-        resolve_grain = scope.grain or default_mvr_grain()
+        resolve_record_type = scope.record_type or default_record_type()
         policy = load_metering_policy()
         metering_state: dict[str, Any] = {}
         if step2_should_quote(policy):
@@ -207,7 +207,7 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
             }
             if len(matched) == 1:
                 result["current_id"] = matched[0].get("id")
-            return _state_with_resolve_grain(current, resolve_grain, result)
+            return _state_with_resolve_record_type(current, resolve_record_type, result)
 
         if any(is_provisional_registry_match(rec) for rec in matched):
             result = {
@@ -221,9 +221,12 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
             }
             if len(matched) == 1:
                 result["current_id"] = matched[0].get("id")
-            return _state_with_resolve_grain(current, resolve_grain, result)
+            return _state_with_resolve_record_type(current, resolve_record_type, result)
 
-        identity_records = _identity_records_from_match(matched)
+        identity_records = _identity_records_from_match(
+            matched,
+            record_type=resolve_record_type,
+        )
         message = None
         if len(matched) == 1:
             message = (
@@ -292,7 +295,7 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
         query,
         resolved.entity_ids,
         create_on_deliver=resolved.create_on_deliver,
-        grain=resolved.grain,
+        record_type=resolved.record_type,
     )
     total = len(resolved.entity_ids)
     scope = get_delivery_store().get(delivery.delivery_id)
@@ -350,7 +353,7 @@ def validate_entity_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str
         }
 
     registry = get_entity_registry(
-        grain=_meta(current).get("resolve_grain") or default_mvr_grain(),
+        record_type=_meta(current).get("resolve_record_type") or default_record_type(),
     )
     updated_matches: list[dict[str, Any]] = []
     all_contribs: list[dict[str, Any]] = []
@@ -653,11 +656,16 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
         else {}
     )
     meta = _meta(current)
+    resolve_record_type = meta.get("resolve_record_type") or default_record_type()
     contributions = meta.get("contributions") or []
     matched = current.matched_records or []
 
     if current.metering_payment_required and current.pending_quote:
-        identity_records = _identity_records_from_match(matched) if matched else []
+        identity_records = (
+            _identity_records_from_match(matched, record_type=resolve_record_type)
+            if matched
+            else []
+        )
         return {
             "response": response_payment_required(
                 query,
@@ -669,7 +677,11 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
         }
 
     if current.pending_quote:
-        identity_records = _identity_records_from_match(matched) if matched else []
+        identity_records = (
+            _identity_records_from_match(matched, record_type=resolve_record_type)
+            if matched
+            else []
+        )
         return {
             "response": response_quote_required(
                 query,
@@ -714,7 +726,10 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
         return {
             "response": response_found(
                 query,
-                base_records=_identity_records_from_match(matched),
+                base_records=_identity_records_from_match(
+                    matched,
+                    record_type=resolve_record_type,
+                ),
                 message="Core record validated.",
                 **id_kwargs,
             ),
@@ -737,7 +752,10 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
     requested = graph_requested_attributes(current)
 
     if not requested:
-        identity_records = _identity_records_from_match(matched)
+        identity_records = _identity_records_from_match(
+            matched,
+            record_type=resolve_record_type,
+        )
         message = None
         if current.duplicate_bind and len(matched) == 1:
             label = _identity_message_label(matched[0], query=query)

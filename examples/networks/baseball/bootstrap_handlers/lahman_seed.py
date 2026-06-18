@@ -5,7 +5,7 @@ from __future__ import annotations
 from agents.attribute_write import ensure_entity_bind_fields
 from agents.entity_registry import get_entity_registry
 from bootstrap_handlers.lahman_common import (
-    distinct_player_team_rows,
+    distinct_player_debut_rows,
     distinct_team_label_rows,
     ingest_warehouse,
     resolve_lahman_csv_dir,
@@ -19,7 +19,7 @@ LAHMAN_FRANCH_ID = "lahman.franchID"
 
 
 class LahmanSeedHandler:
-    """Ingest Lahman CSV seed, warehouse, and commit team + player entity grains."""
+    """Ingest Lahman CSV seed, warehouse, and commit team + player record types."""
 
     def run(self, ctx: BootstrapContext) -> BootstrapResult:
         seed_ref = resolve_network_seed(ctx.paths.root)
@@ -44,13 +44,12 @@ class LahmanSeedHandler:
         if progress is not None:
             progress.retrieving("building warehouse")
         ingest_counts = ingest_warehouse(csv_dir, warehouse_path)
-        player_rows = distinct_player_team_rows(warehouse_path)
+        player_rows = distinct_player_debut_rows(warehouse_path)
 
-        team_registry = get_entity_registry(grain="team")
-        player_registry = get_entity_registry(grain="player")
+        team_registry = get_entity_registry(record_type="team")
+        player_registry = get_entity_registry(record_type="player")
         teams_committed = 0
         players_committed = 0
-        bind_collisions: list[str] = []
 
         for team_name, team_id, franch_id in distinct_team_label_rows(warehouse_path):
             entity, duplicate = ensure_entity_bind_fields(
@@ -71,27 +70,22 @@ class LahmanSeedHandler:
             teams_committed += 1
 
         total_players = len(player_rows)
-        for index, (player_id, display_name, team_label) in enumerate(player_rows, start=1):
+        for index, (player_id, display_name, debut_year, debut_team) in enumerate(
+            player_rows,
+            start=1,
+        ):
             if progress is not None:
                 progress.processing(index, total_players, detail="player binds")
-            bind_values = {"player": display_name, "team": team_label}
+            bind_values = {
+                "player": display_name,
+                "debut_team": debut_team,
+                "debut_year": debut_year,
+            }
             existing_by_source = player_registry.lookup_by_source_key(
                 LAHMAN_PLAYER_ID,
                 player_id,
             )
             if existing_by_source is not None:
-                mapped_id = existing_by_source.id
-                existing = player_registry.lookup_by_bind_values(bind_values)
-                if existing is not None and existing.id == mapped_id:
-                    continue
-                if existing is not None and existing.id != mapped_id:
-                    bind_collisions.append(
-                        "skipped alias "
-                        f"{bind_values!r} for playerID {player_id!r}: "
-                        f"already bound to a different player",
-                    )
-                    continue
-                player_registry.add_bind_alias(mapped_id, bind_values)
                 continue
 
             entity, duplicate = ensure_entity_bind_fields(
@@ -117,9 +111,8 @@ class LahmanSeedHandler:
             entities_committed=teams_committed + players_committed,
             sources_processed=sources,
             handler_id="lahman_seed",
-            entities_by_grain={
+            entities_by_record_type={
                 "team": teams_committed,
                 "player": players_committed,
             },
-            errors=bind_collisions,
         )

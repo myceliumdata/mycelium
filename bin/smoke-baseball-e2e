@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Baseball end-to-end smoke: minimal Lahman fixture → bootstrap → player-grain queries.
+"""Baseball end-to-end smoke: minimal Lahman fixture → bootstrap → player record-type queries.
 
 Uses a tiny in-memory CSV fixture (fake seed fetch) so the gate finishes in seconds,
 not the full ~9+ minute Lahman refresh.
 
 TODO(full): expand to parity with ``bin/smoke-crm-e2e``:
   - ``--full``: real git seed fetch + full Lahman bootstrap (manual / timing gate only)
-  - team-grain queries (``{team: "Brooklyn Dodgers"}``) — inline in this script
+  - team record-type queries (``{team: "Brooklyn Dodgers"}``) — inline in this script
   - lazy field-alias scenarios (Bronx Bombers, Dodgers multi-match) via mock expander
   - optional warehouse stat / derivative queries when those paths exist
 See ``TODO.md`` → ``smoke-baseball-e2e`` full gate.
@@ -32,18 +32,23 @@ _VENV_PYTHON = REPO_ROOT / ".venv" / "bin" / "python3"
 BASEBALL_PYTEST_FILES = (
     "tests/test_lahman_seed_handler.py",
     "tests/test_closed_identity_lazy_aliases.py",
-    "tests/test_strict_grain_routing.py",
+    "tests/test_strict_record_type_routing.py",
     "tests/test_example_network.py::test_refresh_baseball_fetches_seed_and_bootstraps",
 )
 
 EXPECTED_BOOTSTRAP_COUNT = 4
 SAMPLE_PLAYER_NAME = "Hank Aaron"
-SAMPLE_PLAYER_TEAM = "Brooklyn Dodgers"
+SAMPLE_PLAYER_DEBUT_TEAM = "Brooklyn Dodgers"
+SAMPLE_PLAYER_DEBUT_YEAR = "1957"
 
 
 def _bootstrap() -> None:
     os.environ.setdefault("LANGCHAIN_TRACING_V2", "false")
     os.environ.setdefault("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
+    if not os.getenv("MYCELIUM_NETWORK_ROOT", "").strip():
+        os.environ["MYCELIUM_NETWORK_ROOT"] = str(
+            REPO_ROOT / "examples" / "networks" / "baseball",
+        )
     if _VENV_PYTHON.is_file():
         try:
             if Path(sys.executable).resolve() != _VENV_PYTHON.resolve():
@@ -88,8 +93,8 @@ def _write_minimal_lahman_fixture(seed_dir: Path) -> None:
         encoding="utf-8",
     )
     (seed_dir / "People.csv").write_text(
-        "ID,playerID,nameFirst,nameLast\n"
-        "1,aaronha01,Hank,Aaron\n",
+        "ID,playerID,nameFirst,nameLast,debut\n"
+        "1,aaronha01,Hank,Aaron,\n",
         encoding="utf-8",
     )
     (seed_dir / "Appearances.csv").write_text(
@@ -141,7 +146,7 @@ def _ok(
 
 
 def _assert_player_identity_row(row: dict[str, Any]) -> str | None:
-    for key in ("id", "player", "team"):
+    for key in ("id", "player", "debut_team", "debut_year"):
         if key not in row or not str(row.get(key) or "").strip():
             return f"results[] missing non-empty {key!r}"
     return None
@@ -152,12 +157,13 @@ def _sample_player() -> dict[str, str]:
     return {
         "id": entity.id,
         "player": str(entity.bind_value("player") or ""),
-        "team": str(entity.bind_value("team") or ""),
+        "debut_team": str(entity.bind_value("debut_team") or ""),
+        "debut_year": str(entity.bind_value("debut_year") or ""),
     }
 
 
 def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
-    """Refresh baseball with minimal fixture and run player-grain query scenarios."""
+    """Refresh baseball with minimal fixture and run player record-type query scenarios."""
     meta: dict[str, Any] = {}
     results: list[ScenarioResult] = []
 
@@ -211,7 +217,7 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
             results.append(
                 _fail(
                     "player_registry_count",
-                    f"expected 1 player on default grain, got {registry.entity_count()}",
+                    f"expected 1 player on default record type, got {registry.entity_count()}",
                 ),
             )
             return results, meta
@@ -228,7 +234,11 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
 
         sample = _sample_player()
         meta["sample_player"] = sample
-        if sample["player"] != SAMPLE_PLAYER_NAME or sample["team"] != SAMPLE_PLAYER_TEAM:
+        if (
+            sample["player"] != SAMPLE_PLAYER_NAME
+            or sample["debut_team"] != SAMPLE_PLAYER_DEBUT_TEAM
+            or sample["debut_year"] != SAMPLE_PLAYER_DEBUT_YEAR
+        ):
             results.append(
                 _fail(
                     "sample_player",
@@ -238,7 +248,11 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
             return results, meta
 
         player_entity = registry.lookup_by_bind_values(
-            {"player": SAMPLE_PLAYER_NAME, "team": SAMPLE_PLAYER_TEAM},
+            {
+                "player": SAMPLE_PLAYER_NAME,
+                "debut_team": SAMPLE_PLAYER_DEBUT_TEAM,
+                "debut_year": SAMPLE_PLAYER_DEBUT_YEAR,
+            },
         )
         if (
             player_entity is None
@@ -254,9 +268,13 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
 
         results.append(_ok("seed_bootstrap"))
 
-        # Full MVR player lookup (default grain)
+        # Full MVR player lookup (default record type)
         q1 = EntityQuery(
-            lookup={"player": sample["player"], "team": sample["team"]},
+            lookup={
+                "player": sample["player"],
+                "debut_team": sample["debut_team"],
+                "debut_year": sample["debut_year"],
+            },
         )
         r1 = run_query(q1)
         p1 = _pub(r1)
@@ -316,9 +334,13 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
                     ),
                 )
 
-        # Closed grain: unknown player must not offer create_on_deliver
+        # Bootstrap-only player: unknown name must not offer create_on_deliver
         q2 = EntityQuery(
-            lookup={"player": "Nobody Here", "team": "Nowhere Nine"},
+            lookup={
+                "player": "Nobody Here",
+                "debut_team": "Nowhere Nine",
+                "debut_year": "2099",
+            },
         )
         r2 = run_query(q2)
         p2 = _pub(r2)
@@ -327,7 +349,7 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
             results.append(
                 _fail(
                     "closed_player_not_create_pending",
-                    "closed player grain must not set create_on_deliver",
+                    "bootstrap-only player record type must not set create_on_deliver",
                     request=q2.model_dump(exclude_none=True),
                     response=p2,
                 ),
@@ -350,7 +372,7 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
                 ),
             )
 
-        # Team grain: step-1 lookup with explicit grain override
+        # Team record type: step-1 lookup
         q_team = EntityQuery(
             lookup={"team": "Brooklyn Dodgers"},
         )
@@ -359,7 +381,7 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
         if r_team.outcome != "lookup_resolved" or r_team.total_matches != 1:
             results.append(
                 _fail(
-                    "team_grain_lookup_exact",
+                    "team_record_type_lookup_exact",
                     f"expected lookup_resolved with 1 team, got {r_team.outcome!r} "
                     f"total_matches={r_team.total_matches}",
                     request=q_team.model_dump(exclude_none=True),
@@ -369,7 +391,7 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
         else:
             results.append(
                 _ok(
-                    "team_grain_lookup_exact",
+                    "team_record_type_lookup_exact",
                     request=q_team.model_dump(exclude_none=True),
                     response=p_team,
                 ),
@@ -382,7 +404,7 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
             if r_team_deliver.outcome != "found" or not r_team_deliver.results:
                 results.append(
                     _fail(
-                        "team_grain_deliver_identity",
+                        "team_record_type_deliver_identity",
                         f"expected found, got {r_team_deliver.outcome!r}",
                         request=q_team_deliver.model_dump(exclude_none=True),
                         response=p_team_deliver,
@@ -391,7 +413,7 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
             elif r_team_deliver.results[0].get("team") != "Brooklyn Dodgers":
                 results.append(
                     _fail(
-                        "team_grain_deliver_identity",
+                        "team_record_type_deliver_identity",
                         f"unexpected team name: {r_team_deliver.results[0]!r}",
                         request=q_team_deliver.model_dump(exclude_none=True),
                         response=p_team_deliver,
@@ -400,7 +422,7 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
             else:
                 results.append(
                     _ok(
-                        "team_grain_deliver_identity",
+                        "team_record_type_deliver_identity",
                         request=q_team_deliver.model_dump(exclude_none=True),
                         response=p_team_deliver,
                     ),
@@ -428,7 +450,7 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="bin/smoke-baseball-e2e",
         description=(
             "Baseball end-to-end smoke gate (minimal fixture): fake seed fetch, "
-            "bootstrap team+player grains, player- and team-grain two-step query scenarios. "
+            "bootstrap team+player record types, player- and team-type two-step query scenarios. "
             "Full Lahman refresh is intentionally not run here."
         ),
     )
@@ -500,7 +522,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  player_entities: {meta.get('player_registry_entity_count')}")
         if meta.get("sample_player"):
             player = meta["sample_player"]
-            print(f"  sample: {player['player']} ({player['team']})")
+            print(
+                f"  sample: {player['player']} "
+                f"({player['debut_team']}, {player['debut_year']})",
+            )
         for item in scenario_results:
             mark = "ok" if item.passed else "FAIL"
             print(f"  [{mark}] {item.name}: {item.detail}")

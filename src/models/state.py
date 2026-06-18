@@ -42,9 +42,9 @@ class LookupSuggestion(BaseModel):
             "on one field)."
         ),
     )
-    grain: str | None = Field(
+    record_type: str | None = Field(
         default=None,
-        description="MVR grain when suggestion targets a specific registry store.",
+        description="MVR record type when suggestion targets a specific registry store.",
     )
 
 
@@ -54,7 +54,7 @@ def lookup_suggestion(
     score: float,
     reason: str,
     id: str | None = None,
-    grain: str | None = None,
+    record_type: str | None = None,
 ) -> LookupSuggestion:
     """Build a suggestion with a consistent target-protocol retry map."""
     cleaned = {
@@ -70,7 +70,7 @@ def lookup_suggestion(
         id=id,
         score=round(score, 4),
         reason=reason,
-        grain=grain,
+        record_type=record_type,
     )
 
 

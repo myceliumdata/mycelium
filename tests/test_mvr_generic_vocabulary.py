@@ -15,15 +15,16 @@ CRM_METERING = json.loads(
 )["metering"]
 
 
-def _write_player_grain_manifest(root: Path) -> None:
+def _write_player_record_type_manifest(root: Path) -> None:
     manifest = {
         "name": "player-net",
         "mvr": {
-            "default_grain": "player",
-            "grains": {
+            "default_record_type": "player",
+            "record_types": {
                 "player": {
                     "bind_fields": ["name", "team"],
-                    "description": "player grain",
+                    "description": "player record type",
+                    "new_records": "query_allowed",
                 },
             },
         },
@@ -78,7 +79,7 @@ def test_identity_records_from_match_preserves_mvr_bind_fields(
     from agents.responses import _identity_records_from_match, shape_results
     from network.paths import NetworkPaths, apply_network_paths
 
-    _write_player_grain_manifest(tmp_path)
+    _write_player_record_type_manifest(tmp_path)
     paths = NetworkPaths.from_root(tmp_path)
     apply_network_paths(paths)
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
@@ -113,7 +114,7 @@ def test_identity_message_label_uses_secondary_bind_field(
     from agents.responses import _identity_message_label
     from network.paths import NetworkPaths, apply_network_paths
 
-    _write_player_grain_manifest(tmp_path)
+    _write_player_record_type_manifest(tmp_path)
     paths = NetworkPaths.from_root(tmp_path)
     apply_network_paths(paths)
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))

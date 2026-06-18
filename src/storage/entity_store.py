@@ -1,4 +1,4 @@
-"""Per-grain entity store persistence (JSON or minisql_v1)."""
+"""Per-record-type entity store persistence (JSON or minisql_v1)."""
 
 from __future__ import annotations
 
@@ -18,12 +18,12 @@ class EntityStore:
 
     def __init__(
         self,
-        grain: str,
+        record_type: str,
         json_path: Path,
         strategy_path: Path,
         sqlite_path: Path,
     ) -> None:
-        self.grain = grain
+        self.record_type = record_type
         self.json_path = json_path
         self.strategy_path = strategy_path
         self.sqlite_path = sqlite_path
@@ -35,15 +35,17 @@ class EntityStore:
             strategy = {
                 "strategy": "entities_document_v1",
                 "version": "1.0",
-                "grain": self.grain,
+                "record_type": self.record_type,
                 "notes": (
-                    "Per-grain entity registry document with bind_index. "
+                    "Per-record-type entity registry document with bind_index. "
                     "Migrates to minisql_v1 at optimize_storage threshold."
                 ),
                 "last_migrated": None,
                 "upgrade_path": {
                     "entities_document_v1": {
-                        "description": "Single JSON document per grain with entities + bind_index.",
+                        "description": (
+                            "Single JSON document per record type with entities + bind_index."
+                        ),
                         "next_candidates": ["minisql_v1"],
                     },
                 },
@@ -119,7 +121,7 @@ class EntityStore:
             migrate_entities_document_v1_json(
                 self.json_path,
                 self.sqlite_path,
-                grain=self.grain,
+                record_type=self.record_type,
             )
             backup_path = self.json_path.parent / f"{self.json_path.stem}.json.pre-minisql-v1"
             if self.json_path.is_file():
@@ -133,5 +135,5 @@ class EntityStore:
             return
         raise NotImplementedError(
             f"Entity storage migration from {current} to {target} not implemented "
-            f"for grain {self.grain!r}.",
+            f"for record type {self.record_type!r}.",
         )

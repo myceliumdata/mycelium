@@ -1,4 +1,4 @@
-"""Runtime entity registry (per-grain entity stores) for provisional binds."""
+"""Runtime entity registry (per-record-type entity stores) for provisional binds."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ def bootstrap_deferred_save(
     *,
     before_commit: Callable[[], None] | None = None,
 ) -> Iterator[None]:
-    """Defer entity store flushes for all grains during network bootstrap."""
+    """Defer entity store flushes for all record types during network bootstrap."""
     global _bootstrap_deferred_depth
     _bootstrap_deferred_depth += 1
     try:
@@ -52,17 +52,17 @@ def bootstrap_deferred_save(
                 registry.commit_deferred_save()
 
 
-def _resolve_registry_paths(grain: str) -> tuple[Path, str]:
-    from network.mvr import default_mvr_grain
+def _resolve_registry_paths(record_type: str) -> tuple[Path, str]:
+    from network.mvr import default_record_type
     from network.paths import entity_store_path
 
-    resolved_grain = grain or default_mvr_grain()
+    resolved_record_type = record_type or default_record_type()
     explicit = os.getenv("MYCELIUM_ENTITIES_PATH", "").strip()
-    if explicit and resolved_grain == default_mvr_grain():
+    if explicit and resolved_record_type == default_record_type():
         path = Path(explicit).expanduser().resolve()
-        return path, resolved_grain
+        return path, resolved_record_type
     paths = _paths_for_runtime()
-    return entity_store_path(paths, resolved_grain), resolved_grain
+    return entity_store_path(paths, resolved_record_type), resolved_record_type
 
 
 def require_full_bind_values(
@@ -205,31 +205,31 @@ def registry_entity_to_match(
 
 
 class EntityRegistry:
-    """Load/save per-grain entity store with atomic writes."""
+    """Load/save per-record-type entity store with atomic writes."""
 
     def __init__(
         self,
         path: Path | None = None,
         *,
-        grain: str | None = None,
+        record_type: str | None = None,
         mvr: MvrPolicy | None = None,
         read_path: Path | None = None,
     ) -> None:
         from network.mvr import load_mvr
 
         if path is not None:
-            self.grain = grain or "person"
-            self._mvr = mvr or load_mvr(grain=self.grain)
+            self.record_type = record_type or "person"
+            self._mvr = mvr or load_mvr(record_type=self.record_type)
             self.path = path
         else:
-            store_path, self.grain = _resolve_registry_paths(grain or "")
-            self._mvr = mvr or load_mvr(grain=self.grain)
+            store_path, self.record_type = _resolve_registry_paths(record_type or "")
+            self._mvr = mvr or load_mvr(record_type=self.record_type)
             self.path = store_path
         if read_path is not None:
             self.path = read_path
         strategy_path, sqlite_path = _store_paths(self.path)
         self._store = EntityStore(
-            self.grain,
+            self.record_type,
             self.path,
             strategy_path,
             sqlite_path,
@@ -340,7 +340,7 @@ class EntityRegistry:
         """AND-match registry rows by MVR bind fields (exact normalized field index).
 
         Field indexes support partial lookups and primary-bind AND matches. When the
-        field-index intersection is empty and the lookup is a full MVR for this grain,
+        field-index intersection is empty and the lookup is a full MVR for this record type,
         fall back to ``bind_index`` via ``lookup_by_bind_values`` (bootstrap bind aliases).
         """
         from agents.field_index import intersect_lookup
@@ -524,22 +524,22 @@ class EntityRegistry:
         return entity
 
 
-def get_entity_registry(*, grain: str | None = None) -> EntityRegistry:
-    from network.mvr import default_mvr_grain
+def get_entity_registry(*, record_type: str | None = None) -> EntityRegistry:
+    from network.mvr import default_record_type
 
-    resolved_grain = grain or default_mvr_grain()
-    cached = _registry.get(resolved_grain)
+    resolved_record_type = record_type or default_record_type()
+    cached = _registry.get(resolved_record_type)
     if cached is not None:
         return cached
-    registry = EntityRegistry(grain=resolved_grain)
-    _registry[resolved_grain] = registry
+    registry = EntityRegistry(record_type=resolved_record_type)
+    _registry[resolved_record_type] = registry
     return registry
 
 
-def reset_entity_registry(*, grain: str | None = None) -> None:
+def reset_entity_registry(*, record_type: str | None = None) -> None:
     global _bootstrap_deferred_depth
-    if grain is None:
+    if record_type is None:
         _registry.clear()
         _bootstrap_deferred_depth = 0
         return
-    _registry.pop(grain, None)
+    _registry.pop(record_type, None)

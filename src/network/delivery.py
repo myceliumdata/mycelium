@@ -26,9 +26,9 @@ class DeliveryScope(BaseModel):
     lookup: dict[str, Any] = Field(default_factory=dict)
     requested_attributes: list[str] = Field(default_factory=list)
     provenance: bool = False
-    grain: str | None = Field(
+    record_type: str | None = Field(
         default=None,
-        description="MVR grain for entity_ids (multi-grain networks).",
+        description="MVR record type for entity_ids (multi-record-type networks).",
     )
     create_on_deliver: bool = Field(
         default=False,
@@ -70,7 +70,7 @@ def issue_delivery(
     requested_attributes: list[str] | None = None,
     provenance: bool = False,
     create_on_deliver: bool = False,
-    grain: str | None = None,
+    record_type: str | None = None,
     now: datetime | None = None,
 ) -> DeliveryScope:
     """Create a new delivery scope with ``d_`` id and configured TTL."""
@@ -85,7 +85,7 @@ def issue_delivery(
         requested_attributes=list(requested_attributes or []),
         provenance=bool(provenance),
         create_on_deliver=bool(create_on_deliver),
-        grain=grain,
+        record_type=record_type,
     )
 
 

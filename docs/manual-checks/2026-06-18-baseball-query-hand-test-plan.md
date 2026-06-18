@@ -1,16 +1,18 @@
 # Baseball query — hand test plan (CLI + MCP)
 
-**Status:** ✅ Hand plan **CLEAR** (Paul, 2026-06-18). Parent ship gate **CLEAR (WIP)**. Use on a full Lahman root (post slice 1100 `player`/`team` bind keys).
+**Status:** ✅ Hand plan **CLEAR** (Paul, 2026-06-18). Parent ship gate **CLEAR (WIP)**. Use on a full Lahman root (post slice 1800 `player`/`debut_team`/`debut_year` bind keys).
 
 **Purpose:** Copy-paste queries you run by hand. Same JSON works in `./bin/baseball-query` and MCP `query_entity`. Grok/CI already run automated tests — this doc is for **you**.
 
-**Routing contract:** [`docs/query-grain-router.md`](../query-grain-router.md)
+**Routing contract:** [`docs/query-record-type-router.md`](../query-record-type-router.md)
 
-| Lookup keys | Grain | Typical step-1 outcome |
-|-------------|-------|------------------------|
-| `{player, team}` | player | `lookup_resolved` (1) or `lookup_suggested` / `not_found` |
+| Lookup keys | Record type | Typical step-1 outcome |
+|-------------|-------------|------------------------|
+| `{player, debut_team, debut_year}` | player | `lookup_resolved` (1) |
+| `{player, debut_team}` | player (partial) | `lookup_resolved` or multi-match |
+| `{player}` only | player (partial) | known name → `lookup_resolved`; unknown → `not_found` |
 | `{team}` | team | `lookup_resolved` (1 or multi) or `not_found` |
-| `{player}` only | player (partial) | known name → `lookup_resolved`; unknown → `lookup_incomplete` (`team`) |
+| `{player, team}` (legacy) | — | `not_found` |
 | `{name, …}` (old keys) | — | `not_found` |
 
 ---
@@ -201,7 +203,7 @@ After Q01, `AARON_ID` is set. Proves step-1 `id` resolve → fresh `delivery_id`
 
 ## B — Player grain (incomplete / negative)
 
-### Q05 — Player only (no team) — unknown name
+### Q05 — Player only — unknown name
 
 ```json
 {"lookup": {"player": "Nobody Here"}}
@@ -209,8 +211,7 @@ After Q01, `AARON_ID` is set. Proves step-1 `id` resolve → fresh `delivery_id`
 
 | Expect |
 |--------|
-| `outcome` = `lookup_incomplete` |
-| `required_fields` includes `team` |
+| `outcome` = `not_found` (bootstrap-only player type) |
 | `delivery` null |
 | `total_matches` = `0` |
 
@@ -443,7 +444,7 @@ MCP `health_check` (or equivalent ping tool your server exposes).
 |----|-------------|-----------------------------|
 | Q01 | `{player, team}` Atlanta | `lookup_resolved` → `found` |
 | Q02 | `{player, team}` Milwaukee Braves | `lookup_resolved`, same uuid |
-| Q05 | `{player}` unknown | `lookup_incomplete` |
+| Q05 | `{player}` unknown | `not_found` |
 | Q17 | `{player}` known unique | `lookup_resolved` |
 | Q06 | unknown bind | `not_found` / `lookup_suggested`, no create |
 | Q08 | `{team}` Brooklyn | `lookup_resolved` → `found` |

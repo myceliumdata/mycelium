@@ -54,9 +54,9 @@ def is_provisional_registry_match(record: dict[str, Any]) -> bool:
 def _rank_name_suggestions(
     name_value: str,
     *,
-    grain: str | None = None,
+    record_type: str | None = None,
 ) -> list[LookupSuggestion]:
-    from network.mvr import default_mvr_grain
+    from network.mvr import default_record_type
 
     query_norm = normalize_name_for_comparison(name_value)
     if not query_norm:
@@ -64,8 +64,8 @@ def _rank_name_suggestions(
 
     query_first = _first_token(query_norm)
     candidates: list[LookupSuggestion] = []
-    resolved_grain = grain or default_mvr_grain()
-    registry = get_entity_registry(grain=resolved_grain)
+    resolved_record_type = record_type or default_record_type()
+    registry = get_entity_registry(record_type=resolved_record_type)
 
     for entity in registry.list_entities():
         name = entity.bind_value("name") or ""
@@ -90,29 +90,29 @@ def _rank_name_suggestions(
     return candidates[:SUGGESTION_MAX_COUNT]
 
 
-def _rank_suggestions(entity_key: str, *, grain: str | None = None) -> list[LookupSuggestion]:
+def _rank_suggestions(entity_key: str, *, record_type: str | None = None) -> list[LookupSuggestion]:
     """Fuzzy name suggestions (primary bind field when present in MVR)."""
-    return _rank_name_suggestions(entity_key, grain=grain)
+    return _rank_name_suggestions(entity_key, record_type=record_type)
 
 
 def _rank_bind_field_fuzzy_suggestions(
     field: str,
     value: str,
     *,
-    grain: str | None = None,
+    record_type: str | None = None,
 ) -> list[LookupSuggestion]:
     field_key = field.strip().lower()
     if field_key == "name":
-        return _rank_name_suggestions(value, grain=grain)
+        return _rank_name_suggestions(value, record_type=record_type)
 
-    from network.mvr import default_mvr_grain
+    from network.mvr import default_record_type
 
     query_norm = normalize_field_index_value(value)
     if not query_norm:
         return []
 
-    resolved_grain = grain or default_mvr_grain()
-    registry = get_entity_registry(grain=resolved_grain)
+    resolved_record_type = record_type or default_record_type()
+    registry = get_entity_registry(record_type=resolved_record_type)
     canonical_by_norm: dict[str, str] = {}
     for entity in registry.list_entities():
         raw_value = entity.bind_value(field_key)

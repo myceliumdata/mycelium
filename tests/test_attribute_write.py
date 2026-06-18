@@ -161,11 +161,12 @@ def test_unmapped_mvr_field_raises(attribute_write_env: CoreStorage) -> None:
     network_path = Path(os.environ["MYCELIUM_NETWORK_ROOT"]) / "network.json"
     data = json.loads(network_path.read_text(encoding="utf-8"))
     data["mvr"] = {
-        "default_grain": "person",
-        "grains": {
+        "default_record_type": "person",
+        "record_types": {
             "person": {
                 "bind_fields": ["name", "employer", "nickname"],
                 "description": "test",
+                "new_records": "query_allowed",
             },
         },
     }
@@ -303,11 +304,12 @@ def test_bind_provisional_from_scope_collects_all_mvr_bind_fields(
     network_path = Path(os.environ["MYCELIUM_NETWORK_ROOT"]) / "network.json"
     data = json.loads(network_path.read_text(encoding="utf-8"))
     data["mvr"] = {
-        "default_grain": "person",
-        "grains": {
+        "default_record_type": "person",
+        "record_types": {
             "person": {
                 "bind_fields": ["name", "employer", "account_id"],
                 "description": "test",
+                "new_records": "query_allowed",
             },
         },
     }

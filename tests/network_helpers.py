@@ -26,7 +26,7 @@ NETWORK_PATH_ENV_KEYS = (
 
 
 def copy_crm_network_manifest(root: Path) -> Path:
-    """Copy committed CRM ``network.json`` (full ``mvr.grains`` + ``metering``)."""
+    """Copy committed CRM ``network.json`` (full ``mvr.record_types`` + ``metering``)."""
     root.mkdir(parents=True, exist_ok=True)
     dest = root / "network.json"
     shutil.copy(CRM_NETWORK_MANIFEST, dest)
@@ -50,7 +50,7 @@ def write_metering_network_json(
 
 
 def crm_person_entities_path(root: Path) -> Path:
-    """Canonical default-grain entity store path for CRM manifests."""
+    """Canonical default-record-type entity store path for CRM manifests."""
     return root / "entities" / "person.json"
 
 

@@ -1,4 +1,4 @@
-"""Unit tests for multi-grain MVR config and per-grain entity stores."""
+"""Unit tests for multi-record-type MVR config and per-type entity stores."""
 
 from __future__ import annotations
 
@@ -13,8 +13,8 @@ from agents.entity_registry import RegistryEntity, get_entity_registry, reset_en
 from network.bootstrap import run_network_bootstrap
 from network.metering_policy import load_metering_policy
 from network.mvr import (
-    default_mvr_grain,
-    list_mvr_grains,
+    default_record_type,
+    list_record_types,
     load_mvr,
     load_mvr_config,
 )
@@ -37,11 +37,12 @@ def _minimal_person_manifest(**overrides: object) -> dict:
     manifest = {
         "name": "test-net",
         "mvr": {
-            "default_grain": "person",
-            "grains": {
+            "default_record_type": "person",
+            "record_types": {
                 "person": {
                     "bind_fields": ["name", "employer"],
                     "description": "CRM people",
+                    "new_records": "query_allowed",
                 },
             },
         },
@@ -70,12 +71,105 @@ def test_flat_bind_fields_rejected(tmp_path: Path) -> None:
 
 
 @pytest.mark.smoke
-def test_explicit_crm_grains_parse(tmp_path: Path) -> None:
+def test_legacy_grains_key_rejected(tmp_path: Path) -> None:
+    _write_manifest(
+        tmp_path,
+        {
+            "name": "legacy-grains",
+            "mvr": {
+                "default_record_type": "person",
+                "grains": {
+                    "person": {
+                        "bind_fields": ["name", "employer"],
+                        "new_records": "query_allowed",
+                    },
+                },
+            },
+            "metering": dict(CRM_METERING),
+        },
+    )
+    paths = _provisional_paths(tmp_path.resolve())
+    with pytest.raises(ValueError, match="legacy mvr.grains"):
+        load_mvr_config(paths=paths)
+
+
+@pytest.mark.smoke
+def test_legacy_default_grain_key_rejected(tmp_path: Path) -> None:
+    _write_manifest(
+        tmp_path,
+        {
+            "name": "legacy-default-grain",
+            "mvr": {
+                "default_grain": "person",
+                "record_types": {
+                    "person": {
+                        "bind_fields": ["name", "employer"],
+                        "new_records": "query_allowed",
+                    },
+                },
+            },
+            "metering": dict(CRM_METERING),
+        },
+    )
+    paths = _provisional_paths(tmp_path.resolve())
+    with pytest.raises(ValueError, match="legacy mvr.default_grain"):
+        load_mvr_config(paths=paths)
+
+
+@pytest.mark.smoke
+def test_legacy_identity_mode_rejected(tmp_path: Path) -> None:
+    _write_manifest(
+        tmp_path,
+        {
+            "name": "legacy-identity-mode",
+            "mvr": {
+                "default_record_type": "person",
+                "record_types": {
+                    "person": {
+                        "bind_fields": ["name", "employer"],
+                        "identity_mode": "closed",
+                        "new_records": "query_allowed",
+                    },
+                },
+            },
+            "metering": dict(CRM_METERING),
+        },
+    )
+    paths = _provisional_paths(tmp_path.resolve())
+    with pytest.raises(ValueError, match="legacy identity_mode"):
+        load_mvr_config(paths=paths)
+
+
+@pytest.mark.smoke
+def test_missing_new_records_rejected(tmp_path: Path) -> None:
+    _write_manifest(
+        tmp_path,
+        {
+            "name": "missing-new-records",
+            "mvr": {
+                "default_record_type": "person",
+                "record_types": {
+                    "person": {
+                        "bind_fields": ["name", "employer"],
+                        "description": "person only",
+                    },
+                },
+            },
+            "metering": dict(CRM_METERING),
+        },
+    )
+    paths = _provisional_paths(tmp_path.resolve())
+    with pytest.raises(ValueError, match="requires new_records"):
+        load_mvr_config(paths=paths)
+
+
+@pytest.mark.smoke
+def test_explicit_crm_record_types_parse(tmp_path: Path) -> None:
     shutil.copy(CRM_MANIFEST, tmp_path / "network.json")
     paths = NetworkPaths.from_root(tmp_path)
     config = load_mvr_config(paths=paths)
-    assert config.default_grain == "person"
-    assert list_mvr_grains(paths=paths) == ["person"]
+    assert config.default_record_type == "person"
+    assert list_record_types(paths=paths) == ["person"]
     assert entity_store_path(paths, "person") == tmp_path / "entities" / "person.json"
     assert paths.entities_path == tmp_path / "entities" / "person.json"
 
@@ -106,16 +200,17 @@ def test_missing_metering_raises(tmp_path: Path) -> None:
 
 
 @pytest.mark.smoke
-def test_single_grain_requires_default_grain(tmp_path: Path) -> None:
+def test_single_record_type_requires_default_record_type(tmp_path: Path) -> None:
     _write_manifest(
         tmp_path,
         {
-            "name": "one-grain",
+            "name": "one-record-type",
             "mvr": {
-                "grains": {
+                "record_types": {
                     "person": {
                         "bind_fields": ["name", "employer"],
                         "description": "person only",
+                        "new_records": "query_allowed",
                     },
                 },
             },
@@ -123,42 +218,42 @@ def test_single_grain_requires_default_grain(tmp_path: Path) -> None:
         },
     )
     paths = _provisional_paths(tmp_path.resolve())
-    with pytest.raises(ValueError, match="missing required mvr.default_grain"):
+    with pytest.raises(ValueError, match="missing required mvr.default_record_type"):
         load_mvr_config(paths=paths)
 
 
 @pytest.mark.smoke
-def test_baseball_manifest_requires_default_grain_for_two_grains(
+def test_baseball_manifest_requires_default_record_type_for_two_types(
     tmp_path: Path,
 ) -> None:
     manifest = json.loads(BASEBALL_MANIFEST.read_text(encoding="utf-8"))
-    manifest["mvr"].pop("default_grain")
+    manifest["mvr"].pop("default_record_type")
     _write_manifest(tmp_path, manifest)
     paths = _provisional_paths(tmp_path.resolve())
-    with pytest.raises(ValueError, match="missing required mvr.default_grain"):
+    with pytest.raises(ValueError, match="missing required mvr.default_record_type"):
         load_mvr_config(paths=paths)
 
 
 @pytest.mark.smoke
-def test_baseball_manifest_parses_two_grains(tmp_path: Path) -> None:
+def test_baseball_manifest_parses_two_record_types(tmp_path: Path) -> None:
     shutil.copy(BASEBALL_MANIFEST, tmp_path / "network.json")
     paths = NetworkPaths.from_root(tmp_path)
     config = load_mvr_config(paths=paths)
-    assert config.default_grain == "player"
-    assert list_mvr_grains(paths=paths) == ["player", "team"]
-    assert load_mvr(paths=paths, grain="team").bind_fields == ["team"]
+    assert config.default_record_type == "player"
+    assert list_record_types(paths=paths) == ["player", "team"]
+    assert load_mvr(paths=paths, record_type="team").bind_fields == ["team"]
 
 
 @pytest.mark.smoke
-def test_unknown_grain_raises(tmp_path: Path) -> None:
+def test_unknown_record_type_raises(tmp_path: Path) -> None:
     shutil.copy(CRM_MANIFEST, tmp_path / "network.json")
     paths = NetworkPaths.from_root(tmp_path)
-    with pytest.raises(ValueError, match="Unknown MVR grain"):
-        load_mvr(paths=paths, grain="team")
+    with pytest.raises(ValueError, match="Unknown MVR record type"):
+        load_mvr(paths=paths, record_type="team")
 
 
 @pytest.mark.smoke
-def test_entity_store_uses_grain_path_only(
+def test_entity_store_uses_record_type_path_only(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -166,33 +261,35 @@ def test_entity_store_uses_grain_path_only(
     legacy_payload = json.dumps({"version": "1.0", "entities": {}, "bind_index": {}})
     (tmp_path / "entities.json").write_text(legacy_payload, encoding="utf-8")
     paths = NetworkPaths.from_root(tmp_path)
-    grain_path = entity_store_path(paths, "person")
+    record_type_path = entity_store_path(paths, "person")
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
     monkeypatch.delenv("MYCELIUM_ENTITIES_PATH", raising=False)
     reset_entity_registry()
     registry = get_entity_registry()
     assert registry.entity_count() == 0
     bind_provisional("Grace Hopper", "Navy", registry=registry)
-    assert grain_path.is_file()
+    assert record_type_path.is_file()
     assert json.loads((tmp_path / "entities.json").read_text(encoding="utf-8"))["entities"] == {}
 
 
 @pytest.mark.smoke
-def test_per_grain_registry_isolation(tmp_path: Path) -> None:
+def test_per_record_type_registry_isolation(tmp_path: Path) -> None:
     _write_manifest(
         tmp_path,
         {
             "name": "multi",
             "mvr": {
-                "default_grain": "player",
-                "grains": {
+                "default_record_type": "player",
+                "record_types": {
                     "player": {
                         "bind_fields": ["name", "team"],
-                        "description": "player grain",
+                        "description": "player record type",
+                        "new_records": "query_allowed",
                     },
                     "team": {
                         "bind_fields": ["name"],
-                        "description": "team grain",
+                        "description": "team record type",
+                        "new_records": "query_allowed",
                     },
                 },
             },
@@ -203,8 +300,8 @@ def test_per_grain_registry_isolation(tmp_path: Path) -> None:
     apply_network_paths(paths)
     reset_entity_registry()
 
-    player = get_entity_registry(grain="player")
-    team = get_entity_registry(grain="team")
+    player = get_entity_registry(record_type="player")
+    team = get_entity_registry(record_type="team")
     player_entity = RegistryEntity(
         id="player-1",
         bind_values={"name": "Babe Ruth", "team": "NYY"},
@@ -234,16 +331,16 @@ def test_per_grain_registry_isolation(tmp_path: Path) -> None:
 
 
 @pytest.mark.smoke
-def test_reset_entity_registry_clears_all_grains(tmp_path: Path) -> None:
+def test_reset_entity_registry_clears_all_record_types(tmp_path: Path) -> None:
     shutil.copy(BASEBALL_MANIFEST, tmp_path / "network.json")
     paths = NetworkPaths.from_root(tmp_path)
     apply_network_paths(paths)
     reset_entity_registry()
-    get_entity_registry(grain="player")
-    get_entity_registry(grain="team")
+    get_entity_registry(record_type="player")
+    get_entity_registry(record_type="team")
     reset_entity_registry()
-    assert get_entity_registry(grain="player").entity_count() == 0
-    assert get_entity_registry(grain="team").entity_count() == 0
+    assert get_entity_registry(record_type="player").entity_count() == 0
+    assert get_entity_registry(record_type="team").entity_count() == 0
 
 
 @pytest.mark.smoke
@@ -256,6 +353,6 @@ def test_baseball_bootstrap_commits_zero_rows(tmp_path: Path) -> None:
     result = run_network_bootstrap(paths)
     assert result.handler_id == "lahman_seed"
     assert result.entities_committed == 0
-    assert get_entity_registry(grain="player").entity_count() == 0
-    assert get_entity_registry(grain="team").entity_count() == 0
-    assert default_mvr_grain(paths=paths) == "player"
+    assert get_entity_registry(record_type="player").entity_count() == 0
+    assert get_entity_registry(record_type="team").entity_count() == 0
+    assert default_record_type(paths=paths) == "player"

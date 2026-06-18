@@ -30,6 +30,10 @@ CRM_PYTEST_FILES = (
 def _bootstrap() -> None:
     os.environ.setdefault("LANGCHAIN_TRACING_V2", "false")
     os.environ.setdefault("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
+    if not os.getenv("MYCELIUM_NETWORK_ROOT", "").strip():
+        os.environ["MYCELIUM_NETWORK_ROOT"] = str(
+            REPO_ROOT / "examples" / "networks" / "crm",
+        )
     if _VENV_PYTHON.is_file():
         try:
             if Path(sys.executable).resolve() != _VENV_PYTHON.resolve():

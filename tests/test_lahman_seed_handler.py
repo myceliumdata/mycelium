@@ -27,8 +27,8 @@ def _write_minimal_lahman_fixture(seed_dir: Path) -> None:
         encoding="utf-8",
     )
     (seed_dir / "People.csv").write_text(
-        "ID,playerID,nameFirst,nameLast\n"
-        "1,aaronha01,Hank,Aaron\n",
+        "ID,playerID,nameFirst,nameLast,debut\n"
+        "1,aaronha01,Hank,Aaron,\n",
         encoding="utf-8",
     )
     (seed_dir / "Appearances.csv").write_text(
@@ -47,8 +47,8 @@ def _write_multi_team_fixture(seed_dir: Path) -> None:
         encoding="utf-8",
     )
     (seed_dir / "People.csv").write_text(
-        "ID,playerID,nameFirst,nameLast\n"
-        "1,aaronha01,Hank,Aaron\n",
+        "ID,playerID,nameFirst,nameLast,debut\n"
+        "1,aaronha01,Hank,Aaron,\n",
         encoding="utf-8",
     )
     (seed_dir / "Appearances.csv").write_text(
@@ -88,7 +88,7 @@ def test_lahman_seed_handler_commits_teams_and_players(tmp_path: Path) -> None:
     result = run_network_bootstrap(paths)
     assert result.handler_id == "lahman_seed"
     assert result.entities_committed == 4
-    assert result.entities_by_grain == {"team": 3, "player": 1}
+    assert result.entities_by_record_type == {"team": 3, "player": 1}
 
     team_path = entity_store_path(paths, "team")
     player_path = entity_store_path(paths, "player")
@@ -105,7 +105,8 @@ def test_lahman_seed_handler_commits_teams_and_players(tmp_path: Path) -> None:
     assert len(player_payload["entities"]) == 1
     player = next(iter(player_payload["entities"].values()))
     assert player["bind_values"]["player"] == "Hank Aaron"
-    assert player["bind_values"]["team"] == "Brooklyn Dodgers"
+    assert player["bind_values"]["debut_team"] == "Brooklyn Dodgers"
+    assert player["bind_values"]["debut_year"] == "1957"
     assert player["source_keys"]["lahman.playerID"] == "aaronha01"
     assert (paths.root / "warehouse" / "lahman.sqlite").is_file()
 
@@ -116,35 +117,33 @@ def test_lahman_seed_handler_multi_team_same_player_id(tmp_path: Path) -> None:
     apply_network_paths(paths)
     result = run_network_bootstrap(paths)
     assert result.handler_id == "lahman_seed"
-    assert result.entities_by_grain == {"team": 2, "player": 1}
+    assert result.entities_by_record_type == {"team": 2, "player": 1}
 
     reset_entity_registry()
-    player_registry = get_entity_registry(grain="player")
+    player_registry = get_entity_registry(record_type="player")
     assert player_registry.entity_count() == 1
 
-    brooklyn = player_registry.lookup_by_bind_values(
-        {"player": "Hank Aaron", "team": "Brooklyn Dodgers"},
+    player = player_registry.lookup_by_bind_values(
+        {
+            "player": "Hank Aaron",
+            "debut_team": "Brooklyn Dodgers",
+            "debut_year": "1957",
+        },
     )
-    los_angeles = player_registry.lookup_by_bind_values(
-        {"player": "Hank Aaron", "team": "Los Angeles Dodgers"},
-    )
-    assert brooklyn is not None
-    assert los_angeles is not None
-    assert brooklyn.id == los_angeles.id
-    assert brooklyn.source_keys["lahman.playerID"] == "aaronha01"
+    assert player is not None
+    assert player.source_keys["lahman.playerID"] == "aaronha01"
 
-    brooklyn_target = player_registry.lookup_by_target_lookup(
-        {"player": "Hank Aaron", "team": "Brooklyn Dodgers"},
+    la_lookup = player_registry.lookup_by_bind_values(
+        {
+            "player": "Hank Aaron",
+            "debut_team": "Los Angeles Dodgers",
+            "debut_year": "1958",
+        },
     )
-    los_angeles_target = player_registry.lookup_by_target_lookup(
-        {"player": "Hank Aaron", "team": "Los Angeles Dodgers"},
-    )
-    assert brooklyn_target == [brooklyn.id]
-    assert los_angeles_target == [los_angeles.id]
-    assert brooklyn_target == los_angeles_target
+    assert la_lookup is None
 
     player_path = entity_store_path(paths, "player")
     payload = json.loads(player_path.read_text(encoding="utf-8"))
-    assert len(payload["bind_index"]) == 2
+    assert len(payload["bind_index"]) == 1
     entity_ids = set(payload["bind_index"].values())
     assert len(entity_ids) == 1

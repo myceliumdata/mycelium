@@ -573,9 +573,9 @@ _POLICY_QUERY_PROVENANCE = (
 _POLICY_MVR_REDESIGN_TARGET = (
     "Target query protocol (MVR redesign M9+): Step 1 — send id OR "
     "lookup (AND within map); optional requested_attributes, provenance, "
-    "confirm_new_entity on step 1. Multi-grain networks infer grain from "
-    "lookup key shape (see docs/query-grain-router.md). Baseball: "
-    "{player, team} for player grain; {team} for team grain. "
+    "confirm_new_entity on step 1. Multi-record-type networks infer record type from "
+    "lookup key shape (see docs/query-record-type-router.md). Baseball: "
+    "{player, debut_team, debut_year} for player record type; {team} for team record type. "
     "Partial lookup searches the registry; "
     "lookup_incomplete returns required_fields for missing MVR bind keys when "
     "no near-miss bind-field matches; partial name or employer 0-hit may return "

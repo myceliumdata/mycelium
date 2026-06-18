@@ -1,4 +1,4 @@
-"""Smoke tests for closed-world identity grains and lazy field alias expansion."""
+"""Smoke tests for bootstrap-only record types and lazy field alias expansion."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import pytest
 from agents.entity_registry import RegistryEntity, get_entity_registry, reset_entity_registry
 from agents.target_resolve import resolve_target_step1
 from models.state import EntityQuery
-from network.mvr import is_closed_identity_grain
+from network.mvr import is_bootstrap_only_record_type
 from network.paths import NetworkPaths, apply_network_paths
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -28,7 +28,7 @@ def _prepare_baseball_team_registry(tmp_path: Path) -> NetworkPaths:
     apply_network_paths(paths)
     reset_entity_registry()
 
-    team = get_entity_registry(grain="team")
+    team = get_entity_registry(record_type="team")
     yankees = RegistryEntity(
         id="team-yankees",
         bind_values={"team": "New York Yankees"},
@@ -55,13 +55,13 @@ def _prepare_baseball_team_registry(tmp_path: Path) -> NetworkPaths:
 
 
 def _mock_team_alias_expander(
-    grain: str,
+    record_type: str,
     field: str,
     query_value: str,
     registry,
     guide_text: str | None,
 ) -> list[str]:
-    _ = grain, field, guide_text
+    _ = record_type, field, guide_text
     if query_value == "Bronx Bombers":
         entity = registry.lookup_by_bind_values({"team": "New York Yankees"})
         return [entity.id] if entity is not None else []
@@ -71,12 +71,12 @@ def _mock_team_alias_expander(
 
 
 @pytest.mark.smoke
-def test_baseball_manifest_declares_closed_grains(tmp_path: Path) -> None:
+def test_baseball_manifest_declares_bootstrap_only_record_types(tmp_path: Path) -> None:
     shutil.copy(BASEBALL_MANIFEST, tmp_path / "network.json")
     paths = NetworkPaths.from_root(tmp_path)
-    assert is_closed_identity_grain("team", paths=paths)
-    assert is_closed_identity_grain("player", paths=paths)
-    assert not is_closed_identity_grain("person", paths=paths)
+    assert is_bootstrap_only_record_type("team", paths=paths)
+    assert is_bootstrap_only_record_type("player", paths=paths)
+    assert not is_bootstrap_only_record_type("person", paths=paths)
 
 
 @pytest.mark.smoke
@@ -90,7 +90,7 @@ def test_closed_team_bronx_bombers_resolves_via_mock_expander(tmp_path: Path) ->
     assert result.entity_ids == ["team-yankees"]
     assert result.create_on_deliver is False
 
-    team = get_entity_registry(grain="team")
+    team = get_entity_registry(record_type="team")
     assert team.lookup_by_target_lookup({"team": "Bronx Bombers"}) == ["team-yankees"]
 
 
@@ -118,7 +118,7 @@ def test_closed_team_unknown_nickname_not_create_pending(tmp_path: Path) -> None
 
 
 @pytest.mark.smoke
-def test_crm_open_grain_still_create_pending(
+def test_crm_query_allowed_record_type_still_create_pending(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

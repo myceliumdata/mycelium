@@ -134,29 +134,31 @@ def test_import_seed_rows_missing_employer(tmp_path: Path) -> None:
 
 
 @pytest.mark.smoke
-def test_bootstrap_seed_grain_overrides_default_grain(tmp_path: Path) -> None:
+def test_bootstrap_seed_record_type_overrides_default_record_type(tmp_path: Path) -> None:
     root = tmp_path / "net"
     root.mkdir(parents=True, exist_ok=True)
     crm_metering = json.loads(CRM_MANIFEST.read_text(encoding="utf-8"))["metering"]
     manifest = {
-        "name": "dual-grain",
+        "name": "dual-record-type",
         "mvr": {
-            "default_grain": "company",
-            "grains": {
+            "default_record_type": "company",
+            "record_types": {
                 "person": {
                     "bind_fields": ["name", "employer"],
                     "description": "People",
+                    "new_records": "query_allowed",
                 },
                 "company": {
                     "bind_fields": ["name"],
                     "description": "Companies",
+                    "new_records": "query_allowed",
                 },
             },
         },
         "metering": dict(crm_metering),
         "bootstrap": {
             **FRAMEWORK_BOOTSTRAP,
-            "seed_grain": "person",
+            "seed_record_type": "person",
         },
     }
     (root / "network.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
@@ -166,20 +168,20 @@ def test_bootstrap_seed_grain_overrides_default_grain(tmp_path: Path) -> None:
     ensure_categories_for_mvr_bind(paths)
     reset_entity_registry()
     result = run_network_bootstrap(paths)
-    assert result.entities_by_grain == {"person": 15}
+    assert result.entities_by_record_type == {"person": 15}
 
 
 @pytest.mark.smoke
-def test_bootstrap_seed_grain_rejects_unknown_grain(tmp_path: Path) -> None:
+def test_bootstrap_seed_record_type_rejects_unknown_record_type(tmp_path: Path) -> None:
     root = tmp_path / "net"
     root.mkdir(parents=True, exist_ok=True)
     manifest = json.loads(CRM_MANIFEST.read_text(encoding="utf-8"))
     manifest["bootstrap"] = {
         **FRAMEWORK_BOOTSTRAP,
-        "seed_grain": "missing_grain",
+        "seed_record_type": "missing_record_type",
     }
     (root / "network.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-    with pytest.raises(ValueError, match="bootstrap.seed_grain"):
+    with pytest.raises(ValueError, match="bootstrap.seed_record_type"):
         run_network_bootstrap(NetworkPaths.from_root(root))
 
 

@@ -16,7 +16,7 @@ uv sync
 Refresh copies `network.json`, `bootstrap_handlers/`, and `guide.md`, then:
 
 1. **Fetches** Lahman CSVs from [`myceliumdata/lahman-seed`](https://github.com/myceliumdata/lahman-seed) (`seed.source.json` pins tag `v2025.1`)
-2. **Bootstraps** via `LahmanSeedHandler`: warehouse ingest + team/player entity grains
+2. **Bootstraps** via `LahmanSeedHandler`: warehouse ingest + team/player record types
 
 Default live root: `~/mycelium-networks/baseball` (registered in `networks.json`).
 
@@ -49,12 +49,13 @@ After fetch, bootstrap:
 
 1. Ingests CSVs → `<network_root>/warehouse/lahman.sqlite`
 2. Commits distinct `Teams.name` labels → `entities/team.json` (`bind_fields: ["team"]`)
-3. Commits player rows from Appearances (one uuid per Lahman `playerID`, multiple bind keys for multi-team aliases) → `entities/player.json` (`bind_fields: ["player", "team"]`)
+3. Commits one player row per Lahman `playerID` with debut bind → `entities/player.json` (`bind_fields: ["player", "debut_team", "debut_year"]`)
 
 Each committed row stores Lahman IDs in **`source_keys`** (`lahman.playerID`, `lahman.teamID`, optional `lahman.franchID`) for warehouse joins; public entity `id` stays uuid4.
 
-- **Bind aliases** (`add_bind_alias`) — bootstrap-time alternate full player `(player, team)` tuples for one `playerID` (multi-team careers).
-- **Field aliases** (`add_field_alias`) — field-index nicknames on one bind field; multiple entities may share one alias (`"Dodgers"` → Brooklyn + LA). Bootstrap may seed some; **closed-grain query-time** expansion (`bind_alias_expansion`) can add more lazily without changing canonical bind values.
+- **Field aliases** (`add_field_alias`) — field-index nicknames on one bind field; multiple entities may share one alias (`"Dodgers"` → Brooklyn + LA). Bootstrap may seed some; **bootstrap-only query-time** expansion (`bind_alias_expansion`) can add more lazily without changing canonical bind values.
+
+**Re-bootstrap required** after slice 1800 — old `player`+`team` entity stores are incompatible with debut bind shape.
 
 The baseball example copies CRM sample `categories.json` until a baseball ontology exists. Bind field `team` maps to the `professional` category (same as CRM `employer`).
 

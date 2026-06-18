@@ -5,14 +5,15 @@
   "bootstrap": {
     "module": "network.bootstrap.handlers.default_seed",
     "handler": "DefaultSeedHandler",
-    "seed_grain": "person"
+    "seed_record_type": "person"
   },
   "mvr": {
-    "default_grain": "person",
-    "grains": {
+    "default_record_type": "person",
+    "record_types": {
       "person": {
         "bind_fields": ["name", "employer"],
-        "description": "CRM people: display name plus current employer before bind and research."
+        "description": "CRM people: display name plus current employer before bind and research.",
+        "new_records": "query_allowed"
       }
     }
   },

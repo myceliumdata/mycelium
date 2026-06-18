@@ -1,4 +1,4 @@
-"""Lazy field alias expansion for closed-world identity grains."""
+"""Lazy field alias expansion for bootstrap-only record types."""
 
 from __future__ import annotations
 
@@ -63,13 +63,13 @@ def _canonical_field_values(
 
 def _build_alias_expansion_prompt(
     *,
-    grain: str,
+    record_type: str,
     field: str,
     query_value: str,
     guide_text: str | None,
     canonical_rows: list[tuple[str, str]],
 ) -> str:
-    mvr = load_mvr(grain=grain)
+    mvr = load_mvr(record_type=record_type)
     canonical_lines = "\n".join(
         f"- id={entity_id!r} {field}={value!r}"
         for entity_id, value in canonical_rows
@@ -79,8 +79,8 @@ def _build_alias_expansion_prompt(
         "You map nickname or shorthand bind-field values to existing registry entities.\n"
         "Return entity ids that should receive the query value as a field alias.\n"
         "Do not invent new entities. Shared ambiguous nicknames may map to multiple ids.\n\n"
-        f"Grain: {grain}\n"
-        f"Grain description: {mvr.description}\n"
+        f"Record type: {record_type}\n"
+        f"Record type description: {mvr.description}\n"
         f"Bind field: {field}\n"
         f"Query value: {query_value!r}\n\n"
         f"Network guide:\n{guide_block}\n\n"
@@ -89,7 +89,7 @@ def _build_alias_expansion_prompt(
 
 
 def _llm_expand_field_aliases(
-    grain: str,
+    record_type: str,
     field: str,
     query_value: str,
     registry: EntityRegistry,
@@ -103,7 +103,7 @@ def _llm_expand_field_aliases(
         return []
 
     prompt = _build_alias_expansion_prompt(
-        grain=grain,
+        record_type=record_type,
         field=field,
         query_value=query_value,
         guide_text=guide_text,
@@ -127,7 +127,7 @@ def _llm_expand_field_aliases(
 
 
 def expand_field_aliases(
-    grain: str,
+    record_type: str,
     field: str,
     query_value: str,
     *,
@@ -143,10 +143,10 @@ def expand_field_aliases(
 
     resolved_guide = guide_text if guide_text is not None else load_network_guide_text()
     if expander is not None:
-        target_ids = expander(grain, field_key, text, registry, resolved_guide)
+        target_ids = expander(record_type, field_key, text, registry, resolved_guide)
     else:
         target_ids = _llm_expand_field_aliases(
-            grain,
+            record_type,
             field_key,
             text,
             registry,

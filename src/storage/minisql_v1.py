@@ -430,10 +430,10 @@ def migrate_entities_document_v1_json(
     json_path: Path,
     sqlite_path: Path,
     *,
-    grain: str,
+    record_type: str,
 ) -> None:
     """Copy entities JSON document into minisql_v1 SQLite."""
-    _ = grain
+    _ = record_type
     if json_path.is_file():
         payload = json.loads(json_path.read_text(encoding="utf-8"))
         if not isinstance(payload, dict):

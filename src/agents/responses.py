@@ -39,9 +39,20 @@ def _mvr_bind_field_names() -> list[str]:
     ]
 
 
-def _identity_records_from_match(matched: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _identity_records_from_match(
+    matched: list[dict[str, Any]],
+    *,
+    record_type: str | None = None,
+) -> list[dict[str, Any]]:
     """Build identity rows for response shaping (id + active MVR bind fields)."""
-    bind_fields = _mvr_bind_field_names()
+    from network.mvr import default_record_type, load_mvr
+
+    resolved_record_type = record_type or default_record_type()
+    bind_fields = [
+        field.strip().lower()
+        for field in load_mvr(record_type=resolved_record_type).bind_fields
+        if field.strip()
+    ]
     records: list[dict[str, Any]] = []
     for rec in matched:
         out: dict[str, Any] = {"id": rec.get("id", "")}
@@ -169,6 +180,15 @@ def merge_requested_record(
     return merged, provisional, unavailable
 
 
+def _all_declared_bind_field_names() -> frozenset[str]:
+    from network.mvr import load_mvr, load_mvr_config, mvr_bind_field_names
+
+    fields: set[str] = set()
+    for name in load_mvr_config().record_types:
+        fields.update(mvr_bind_field_names(load_mvr(record_type=name)))
+    return frozenset(fields)
+
+
 def shape_results(
     records: list[dict[str, Any]],
     requested: list[str] | None,
@@ -179,6 +199,12 @@ def shape_results(
         shaped: list[dict[str, Any]] = []
         for rec in records:
             out = {k: rec[k] for k in _identity_summary_keys() if k in rec}
+            allowed_extra = _all_declared_bind_field_names()
+            for key, value in rec.items():
+                if key.startswith("_") or key in out or key not in allowed_extra:
+                    continue
+                if value not in (None, ""):
+                    out[key] = value
             if out.get("id"):
                 shaped.append(out)
         return shaped

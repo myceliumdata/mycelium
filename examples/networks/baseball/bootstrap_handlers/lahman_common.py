@@ -128,6 +128,63 @@ def distinct_team_labels(warehouse_path: Path) -> list[str]:
     return [label for label, _, _ in distinct_team_label_rows(warehouse_path)]
 
 
+def distinct_player_debut_rows(
+    warehouse_path: Path,
+) -> list[tuple[str, str, str, str]]:
+    """Return stable ``(playerID, display_name, debut_year, debut_team)`` per player."""
+    conn = sqlite3.connect(warehouse_path)
+    try:
+        try:
+            conn.execute('SELECT 1 FROM "People" LIMIT 1')
+        except sqlite3.OperationalError:
+            return []
+        rows = conn.execute(
+            '''
+            WITH player_display AS (
+                SELECT
+                    TRIM(p."playerID") AS player_id,
+                    TRIM(p."nameFirst") || ' ' || TRIM(p."nameLast") AS display_name,
+                    CASE
+                        WHEN TRIM(COALESCE(p."debut", "")) != ""
+                            THEN SUBSTR(TRIM(p."debut"), 1, 4)
+                        ELSE (
+                            SELECT CAST(MIN(CAST(a."yearID" AS INTEGER)) AS TEXT)
+                            FROM "Appearances" a
+                            WHERE a."playerID" = p."playerID"
+                        )
+                    END AS debut_year
+                FROM "People" p
+                WHERE TRIM(COALESCE(p."playerID", "")) != ""
+                  AND TRIM(COALESCE(p."nameFirst", "")) != ""
+                  AND TRIM(COALESCE(p."nameLast", "")) != ""
+            )
+            SELECT
+                pd.player_id,
+                pd.display_name,
+                pd.debut_year,
+                MIN(TRIM(t."name")) AS debut_team
+            FROM player_display pd
+            JOIN "Appearances" a
+              ON a."playerID" = pd.player_id
+             AND CAST(a."yearID" AS TEXT) = pd.debut_year
+            JOIN "Teams" t
+              ON t."yearID" = a."yearID"
+             AND t."teamID" = a."teamID"
+            WHERE TRIM(COALESCE(t."name", "")) != ""
+              AND pd.debut_year IS NOT NULL
+              AND TRIM(pd.debut_year) != ""
+            GROUP BY pd.player_id, pd.display_name, pd.debut_year
+            ORDER BY pd.player_id
+            ''',
+        ).fetchall()
+        return [
+            (str(player_id), str(name), str(year), str(team))
+            for player_id, name, year, team in rows
+        ]
+    finally:
+        conn.close()
+
+
 def distinct_player_team_rows(warehouse_path: Path) -> list[tuple[str, str, str]]:
     """Return stable ``(playerID, display_name, team_label)`` rows from Appearances."""
     conn = sqlite3.connect(warehouse_path)

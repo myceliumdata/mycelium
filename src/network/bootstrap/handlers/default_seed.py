@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from agents.attribute_write import ensure_entity_bind_fields
-from network.bootstrap.config import resolve_bootstrap_grain
+from network.bootstrap.config import resolve_bootstrap_record_type
 from network.bootstrap.context import BootstrapContext, BootstrapResult
 
 if TYPE_CHECKING:
@@ -22,17 +22,19 @@ def load_seed_rows(
     *,
     bind_fields: list[str] | None = None,
     paths: NetworkPaths | None = None,
-    grain: str | None = None,
+    record_type: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Parse and validate ``seed.json`` ``rows[]`` for the bootstrap grain MVR."""
+    """Parse and validate ``seed.json`` ``rows[]`` for the bootstrap record type MVR."""
     if bind_fields is None:
         from network.mvr import load_mvr
 
-        if grain is None:
+        if record_type is None:
             if paths is None:
-                raise ValueError("load_seed_rows requires paths or grain when bind_fields omitted")
-            grain = resolve_bootstrap_grain(paths)
-        bind_fields = list(load_mvr(grain=grain, paths=paths).bind_fields)
+                raise ValueError(
+                    "load_seed_rows requires paths or record_type when bind_fields omitted",
+                )
+            record_type = resolve_bootstrap_record_type(paths)
+        bind_fields = list(load_mvr(record_type=record_type, paths=paths).bind_fields)
     required = [field.strip().lower() for field in bind_fields if field.strip()]
     try:
         payload = json.loads(seed_path.read_text(encoding="utf-8"))
@@ -59,11 +61,11 @@ def import_seed_rows(
     seed_path: Path,
     *,
     registry: EntityRegistry | None = None,
-    grain: str | None = None,
+    record_type: str | None = None,
     paths: NetworkPaths | None = None,
     progress: BootstrapProgress | None = None,
 ) -> int:
-    """Import seed rows into the bootstrap grain entity store.
+    """Import seed rows into the bootstrap record type entity store.
 
     Returns the number of rows processed, or ``0`` when ``seed_path`` is missing.
     Idempotent via registry ``bind_index``.
@@ -71,7 +73,7 @@ def import_seed_rows(
     if not seed_path.is_file():
         return 0
 
-    if grain is None:
+    if record_type is None:
         if paths is None:
             from network.paths import NetworkPaths
 
@@ -81,20 +83,20 @@ def import_seed_rows(
             elif (seed_path.parent / "network.json").is_file():
                 paths = NetworkPaths.from_root(seed_path.parent)
             else:
-                raise ValueError("import_seed_rows requires paths or grain")
-        grain = resolve_bootstrap_grain(paths)
+                raise ValueError("import_seed_rows requires paths or record_type")
+        record_type = resolve_bootstrap_record_type(paths)
 
     if registry is None:
         from agents.entity_registry import get_entity_registry
 
-        registry = get_entity_registry(grain=grain)
+        registry = get_entity_registry(record_type=record_type)
 
     mvr = registry._mvr
     bind_fields = [field.strip().lower() for field in mvr.bind_fields if field.strip()]
     rows = load_seed_rows(
         seed_path,
         bind_fields=list(mvr.bind_fields),
-        grain=grain,
+        record_type=record_type,
         paths=paths,
     )
     total = len(rows)
@@ -126,10 +128,10 @@ class DefaultSeedHandler:
                 sources_processed=[],
                 handler_id="default_seed",
             )
-        grain = resolve_bootstrap_grain(ctx.paths)
+        record_type = resolve_bootstrap_record_type(ctx.paths)
         count = import_seed_rows(
             seed_path,
-            grain=grain,
+            record_type=record_type,
             paths=ctx.paths,
             progress=ctx.progress,
         )
@@ -137,5 +139,5 @@ class DefaultSeedHandler:
             entities_committed=count,
             sources_processed=[str(seed_path.name)],
             handler_id="default_seed",
-            entities_by_grain={grain: count},
+            entities_by_record_type={record_type: count},
         )

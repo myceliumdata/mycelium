@@ -32,7 +32,7 @@ Example: **`baseball`**. A module under `<network_root>/bootstrap_handlers/` imp
 |-------|----------|---------|
 | `module` | yes | Python module path (framework `network.*` or pack `bootstrap_handlers.*`) |
 | `handler` | yes | Handler class name |
-| `seed_grain` | no | Entity grain for `DefaultSeedHandler` rows; must exist in `mvr.grains`. When omitted, uses `mvr.default_grain`. |
+| `seed_record_type` | no | Record type for `DefaultSeedHandler` rows; must exist in `mvr.record_types`. When omitted, uses `mvr.default_record_type`. |
 
 Example (CRM):
 
@@ -40,7 +40,7 @@ Example (CRM):
 "bootstrap": {
   "module": "network.bootstrap.handlers.default_seed",
   "handler": "DefaultSeedHandler",
-  "seed_grain": "person"
+  "seed_record_type": "person"
 }
 ```
 
@@ -52,10 +52,10 @@ Example (CRM):
 
 Full bind-field validation runs at import when the network manifest is applied (`load_seed_rows`). `network create --seed` performs structural validation only (`rows[]` of objects).
 
-## Grain selection
+## Record type selection
 
-1. `bootstrap.seed_grain` when set in `network.json`
-2. Else `mvr.default_grain`
+1. `bootstrap.seed_record_type` when set in `network.json`
+2. Else `mvr.default_record_type`
 
 There is no hardcoded `"person"` preference in the framework.
 
@@ -64,7 +64,7 @@ There is no hardcoded `"person"` preference in the framework.
 Handlers implement `run(ctx: BootstrapContext) -> BootstrapResult`:
 
 - **`BootstrapContext`** — `paths`, optional `guide_text`, optional `progress`
-- **`BootstrapResult`** — `entities_committed`, `sources_processed`, `handler_id`, optional `entities_by_grain`
+- **`BootstrapResult`** — `entities_committed`, `sources_processed`, `handler_id`, optional `entities_by_record_type`
 
 Orchestration: `network.bootstrap.run_network_bootstrap(paths)`.
 
@@ -80,7 +80,7 @@ Orchestration: `network.bootstrap.run_network_bootstrap(paths)`.
 
 - `network.seed_import.load_seed_rows` — parse + validate `rows[]` against grain MVR
 - `network.seed_import.import_seed_file` — import via bootstrap grain resolution
-- `network.bootstrap.config.resolve_bootstrap_grain` — grain from manifest
+- `network.bootstrap.config.resolve_bootstrap_record_type` — record type from manifest
 
 ## Source keys and field aliases (registry)
 
@@ -100,13 +100,13 @@ Field aliases live in `field_aliases` on the entity row and are merged into per-
 
 Query-time `add_field_alias` (via `bind_alias_expansion`) persists aliases but does not yet record actor/provenance metadata — intentional v1 omission; bootstrap rows use `source="seed_bootstrap"`.
 
-## Open vs closed identity (`identity_mode`)
+## `new_records` policy
 
-Per-grain setting in `network.json` → `mvr.grains.<grain>.identity_mode`:
+Per-record-type setting in `network.json` → `mvr.record_types.<name>.new_records` (required):
 
-| Mode | Behavior |
-|------|----------|
-| `open` (default) | Full MVR 0-hit may return `create_pending` (CRM) |
-| `closed` | No query-time entity creation; 0-hit runs lazy field alias expansion (`agents.bind_alias_expansion`) then retry lookup, suggest, or not_found |
+| Value | Behavior |
+|-------|----------|
+| `query_allowed` | Full MVR 0-hit may return `create_pending` (CRM). Partial 0-hit → `lookup_incomplete`. |
+| `bootstrap_only` | No query-time entity creation. Partial 0-hit → `not_found` after alias expansion; full 0-hit → suggest/not_found. |
 
-Baseball `team` and `player` grains use `closed`. See `examples/networks/baseball/guide.md`.
+Baseball `team` and `player` record types use `bootstrap_only`. See `examples/networks/baseball/guide.md` and [query-record-type-router.md](query-record-type-router.md).

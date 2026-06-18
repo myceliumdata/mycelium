@@ -38,7 +38,7 @@ Not a full application — iterative starter: design, schemas, skeleton ingest/q
 | Lahman `playerID` / `teamID` | **Source metadata** — provenance and re-import; not MVR; not a parallel public `id` |
 | Player MVR | **`player` + `team`** bind fields — team disambiguates homonyms |
 | Team MVR | **`team`** bind field — full canonical city+name label |
-| Step-1 routing | Lookup key set infers grain (no fan-out, no `EntityQuery.grain`) — [`query-grain-router.md`](../query-grain-router.md) |
+| Step-1 routing | Lookup key set infers record type (no fan-out) — [`query-record-type-router.md`](../query-record-type-router.md) |
 | Multi-team careers | `Aaron + Braves` and `Aaron + Red Sox` → **same** player uuid; any team the player played for is a valid lookup alias |
 | Design archives | Substantive sessions → `docs/plans/conversations/` |
 
@@ -72,7 +72,7 @@ Not a full application — iterative starter: design, schemas, skeleton ingest/q
 | **`id`** | uuid4 — client shortcut after resolve (`step 1` with `id`) |
 | **Source keys** | Namespaced Lahman IDs on `RegistryEntity.source_keys` + persisted `source_key_index` — bootstrap dedup and warehouse joins only (not default `results[]`) |
 | **Field aliases** | Optional per-field nicknames in `field_aliases` — field index only; shared ambiguous values across entities (e.g. `"Dodgers"` on two team rows). Lazy expansion on closed-grain 0-hit via `bind_alias_expansion` (LLM when configured). |
-| **`identity_mode`** | Per grain in manifest: `open` (CRM default, allows `create_pending`) vs `closed` (baseball team/player — alias expansion + retry, never create) |
+| **`new_records`** | Per record type in manifest: `query_allowed` (CRM — allows `create_pending`) vs `bootstrap_only` (baseball team/player — alias expansion + retry, never create) |
 
 ---
 

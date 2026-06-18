@@ -27,8 +27,8 @@ def _write_minimal_lahman_fixture(seed_dir: Path) -> None:
         encoding="utf-8",
     )
     (seed_dir / "People.csv").write_text(
-        "ID,playerID,nameFirst,nameLast\n"
-        "1,aaronha01,Hank,Aaron\n",
+        "ID,playerID,nameFirst,nameLast,debut\n"
+        "1,aaronha01,Hank,Aaron,\n",
         encoding="utf-8",
     )
     (seed_dir / "Appearances.csv").write_text(

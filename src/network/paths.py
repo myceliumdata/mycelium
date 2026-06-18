@@ -127,25 +127,25 @@ def _provisional_paths(root: Path) -> NetworkPaths:
 
 
 def _default_entity_store_path(root: Path) -> Path:
-    """Default-grain entity store path from ``network.json``."""
+    """Default record-type entity store path from ``network.json``."""
     provisional = _provisional_paths(root)
-    from network.mvr import default_mvr_grain
+    from network.mvr import default_record_type
 
-    grain = default_mvr_grain(paths=provisional)
-    return entity_store_path(provisional, grain)
+    record_type = default_record_type(paths=provisional)
+    return entity_store_path(provisional, record_type)
 
 
-def entity_store_path(paths: NetworkPaths, grain: str) -> Path:
-    """Canonical entity store path for a grain (read and write)."""
+def entity_store_path(paths: NetworkPaths, record_type: str) -> Path:
+    """Canonical entity store path for a record type (read and write)."""
     from network.mvr import load_mvr_config
 
     config = load_mvr_config(paths=paths)
-    if grain not in config.grains:
-        known = ", ".join(sorted(config.grains.keys()))
+    if record_type not in config.record_types:
+        known = ", ".join(sorted(config.record_types.keys()))
         raise ValueError(
-            f"Unknown MVR grain {grain!r}; declared grains: {known}",
+            f"Unknown MVR record type {record_type!r}; declared record types: {known}",
         )
-    return paths.root / config.grains[grain].entities_file
+    return paths.root / config.record_types[record_type].entities_file
 
 
 _RUNTIME_ENV_FIELDS: dict[str, str] = {

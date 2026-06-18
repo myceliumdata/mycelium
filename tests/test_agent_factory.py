@@ -17,9 +17,13 @@ def _setup_factory_env(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> tuple[Path, Path, Path]:
+    from network_helpers import copy_crm_network_manifest
+
     reg_path = tmp_path / "reg.json"
     specialists_dir = tmp_path / "specialists"
     data_dir = tmp_path / "agent_data"
+    copy_crm_network_manifest(tmp_path)
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
     monkeypatch.setenv("MYCELIUM_AGENT_REGISTRY_PATH", str(reg_path))
     monkeypatch.setenv("MYCELIUM_SPECIALISTS_DIR", str(specialists_dir))
     monkeypatch.setenv("MYCELIUM_AGENT_DATA_DIR", str(data_dir))

@@ -105,9 +105,9 @@ def _neutral_json_schema(model: type[EntityQuery] | type[QueryResponse] | type[I
         schema["description"] = (
             "Target two-step protocol: step 1 — id or lookup (AND), optional "
             "requested_attributes, provenance, confirm_new_entity (after "
-            "lookup_suggested). Multi-grain networks infer grain from lookup "
-            "key shape (disjoint bind_fields per grain). Baseball: "
-            "{player, team} → player grain; {team} → team grain. "
+            "lookup_suggested). Multi-record-type networks infer record type from lookup "
+            "key shape (disjoint bind_fields per record type). Baseball: "
+            "{player, team} → player record type; {team} → team record type. "
             "Step 2 — delivery_id plus optional quote_id. "
             "Public clients must not send entity_key or binding (removed M9)."
         )
@@ -126,7 +126,7 @@ def _neutral_json_schema(model: type[EntityQuery] | type[QueryResponse] | type[I
             "lookup_incomplete, lookup_suggested, quote_required, found, assembled, …), "
             "total_matches and delivery (step-1 only, when applicable), suggestions "
             "(same-name or fuzzy near-miss retries; merge suggestions[].suggested_lookup "
-            "into step-1 lookup; suggestions may include grain when tagged), "
+            "into step-1 lookup; suggestions may include record_type when tagged), "
             "required_fields (missing MVR bind fields on lookup_incomplete), results "
             "(attribute values), message (status "
             "narrative), provenance (version history when request provenance=true and "

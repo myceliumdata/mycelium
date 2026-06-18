@@ -46,8 +46,8 @@ def _required_bind_fields(paths: NetworkPaths) -> set[str]:
 
     config = load_mvr_config(paths=paths)
     fields: set[str] = set()
-    for grain in config.grains.values():
-        for field in grain.bind_fields:
+    for record_type in config.record_types.values():
+        for field in record_type.bind_fields:
             key = field.strip().lower()
             if key:
                 fields.add(key)

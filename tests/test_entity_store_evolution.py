@@ -38,19 +38,19 @@ def _person_registry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> EntityR
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
     monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(tmp_path / "entities" / "person.json"))
     reset_entity_registry()
-    return get_entity_registry(grain="person")
+    return get_entity_registry(record_type="person")
 
 
 def _baseball_registry(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    grain: str,
+    record_type: str,
 ) -> EntityRegistry:
     _copy_manifest(tmp_path, BASEBALL_MANIFEST)
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(tmp_path))
     monkeypatch.delenv("MYCELIUM_ENTITIES_PATH", raising=False)
     reset_entity_registry()
-    return get_entity_registry(grain=grain)
+    return get_entity_registry(record_type=record_type)
 
 
 def _make_entity(entity_id: str, name: str, employer: str) -> RegistryEntity:
@@ -102,7 +102,11 @@ def test_entity_minisql_v1_json_backup(
     reg = _baseball_registry(tmp_path, monkeypatch, "player")
     first = RegistryEntity(
         id="player-1",
-        bind_values={"player": "Mike Trout", "team": "Angels"},
+        bind_values={
+            "player": "Mike Trout",
+            "debut_team": "Los Angeles Angels",
+            "debut_year": "2011",
+        },
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
@@ -113,7 +117,11 @@ def test_entity_minisql_v1_json_backup(
 
     second = RegistryEntity(
         id="player-2",
-        bind_values={"player": "Shohei Ohtani", "team": "Dodgers"},
+        bind_values={
+            "player": "Shohei Ohtani",
+            "debut_team": "Los Angeles Dodgers",
+            "debut_year": "2024",
+        },
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
@@ -172,8 +180,8 @@ def test_optimize_storage_skips_when_already_minisql(
         json.dumps({"strategy": "minisql_v1", "last_migrated": "2026-06-17T00:00:00+00:00"}),
         encoding="utf-8",
     )
-    mvr = load_mvr(grain="player")
-    reg = EntityRegistry(path=json_path, grain="player", mvr=mvr)
+    mvr = load_mvr(record_type="player")
+    reg = EntityRegistry(path=json_path, record_type="player", mvr=mvr)
     with patch.object(reg, "entity_count") as count_mock:
         assert reg.optimize_storage() is False
         count_mock.assert_not_called()
@@ -187,7 +195,11 @@ def test_add_bind_alias_skips_field_index_rebuild(
     reg = _baseball_registry(tmp_path, monkeypatch, "player")
     entity = RegistryEntity(
         id="player-alias",
-        bind_values={"player": "Hank Aaron", "team": "Brooklyn Dodgers"},
+        bind_values={
+            "player": "Hank Aaron",
+            "debut_team": "Brooklyn Dodgers",
+            "debut_year": "1957",
+        },
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
@@ -198,12 +210,16 @@ def test_add_bind_alias_skips_field_index_rebuild(
     with patch.object(reg, "_rebuild_field_indexes", autospec=True) as rebuild_mock:
         reg.add_bind_alias(
             entity.id,
-            {"player": "Hank Aaron", "team": "Los Angeles Dodgers"},
+            {
+                "player": "Hank Aaron",
+                "debut_team": "Los Angeles Dodgers",
+                "debut_year": "1958",
+            },
         )
 
     rebuild_mock.assert_not_called()
     alias_hit = reg.lookup_by_bind_values(
-        {"player": "Hank Aaron", "team": "Los Angeles Dodgers"},
+        {"player": "Hank Aaron", "debut_team": "Los Angeles Dodgers", "debut_year": "1958"},
     )
     assert alias_hit is not None
     assert alias_hit.id == entity.id
@@ -217,7 +233,11 @@ def test_lookup_by_target_lookup_bind_index_fallback_for_alias_bind(
     reg = _baseball_registry(tmp_path, monkeypatch, "player")
     entity = RegistryEntity(
         id="player-alias",
-        bind_values={"player": "Hank Aaron", "team": "Brooklyn Dodgers"},
+        bind_values={
+            "player": "Hank Aaron",
+            "debut_team": "Brooklyn Dodgers",
+            "debut_year": "1957",
+        },
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
@@ -226,16 +246,16 @@ def test_lookup_by_target_lookup_bind_index_fallback_for_alias_bind(
     reg.save_entity(entity)
     reg.add_bind_alias(
         entity.id,
-        {"player": "Hank Aaron", "team": "Los Angeles Dodgers"},
+        {"player": "Hank Aaron", "debut_team": "Los Angeles Dodgers", "debut_year": "1958"},
     )
 
     primary_hits = reg.lookup_by_target_lookup(
-        {"player": "Hank Aaron", "team": "Brooklyn Dodgers"},
+        {"player": "Hank Aaron", "debut_team": "Brooklyn Dodgers", "debut_year": "1957"},
     )
     alias_hits = reg.lookup_by_target_lookup(
-        {"player": "Hank Aaron", "team": "Los Angeles Dodgers"},
+        {"player": "Hank Aaron", "debut_team": "Los Angeles Dodgers", "debut_year": "1958"},
     )
-    partial_hits = reg.lookup_by_target_lookup({"team": "Los Angeles Dodgers"})
+    partial_hits = reg.lookup_by_target_lookup({"debut_team": "Los Angeles Dodgers"})
 
     assert primary_hits == [entity.id]
     assert alias_hits == [entity.id]
@@ -250,7 +270,11 @@ def test_save_entity_rebuilds_field_indexes_for_lookup(
     reg = _baseball_registry(tmp_path, monkeypatch, "player")
     entity = RegistryEntity(
         id="player-new",
-        bind_values={"player": "Babe Ruth", "team": "New York Yankees"},
+        bind_values={
+            "player": "Babe Ruth",
+            "debut_team": "Boston Red Sox",
+            "debut_year": "1914",
+        },
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
@@ -278,7 +302,11 @@ def test_save_entity_skips_source_key_index_rebuild(
     reg = _baseball_registry(tmp_path, monkeypatch, "player")
     entity = RegistryEntity(
         id="player-bind-only",
-        bind_values={"player": "Hank Aaron", "team": "Milwaukee Braves"},
+        bind_values={
+            "player": "Hank Aaron",
+            "debut_team": "Milwaukee Braves",
+            "debut_year": "1954",
+        },
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
@@ -307,7 +335,11 @@ def test_set_source_keys_skips_full_index_rebuilds(
     reg = _baseball_registry(tmp_path, monkeypatch, "player")
     entity = RegistryEntity(
         id="player-src-perf",
-        bind_values={"player": "Hank Aaron", "team": "Milwaukee Braves"},
+        bind_values={
+            "player": "Hank Aaron",
+            "debut_team": "Milwaukee Braves",
+            "debut_year": "1954",
+        },
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
@@ -335,7 +367,11 @@ def test_lookup_by_source_key_round_trip(
     reg = _baseball_registry(tmp_path, monkeypatch, "player")
     entity = RegistryEntity(
         id="player-src",
-        bind_values={"player": "Hank Aaron", "team": "Milwaukee Braves"},
+        bind_values={
+            "player": "Hank Aaron",
+            "debut_team": "Milwaukee Braves",
+            "debut_year": "1954",
+        },
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
@@ -390,7 +426,11 @@ def test_registry_entity_to_match_omits_internal_registry_fields(
     reg = _baseball_registry(tmp_path, monkeypatch, "player")
     entity = RegistryEntity(
         id="player-1",
-        bind_values={"player": "Hank Aaron", "team": "Milwaukee Braves"},
+        bind_values={
+            "player": "Hank Aaron",
+            "debut_team": "Milwaukee Braves",
+            "debut_year": "1954",
+        },
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
         source_keys={"lahman.playerID": "aaronha01"},

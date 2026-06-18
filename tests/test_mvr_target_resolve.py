@@ -232,10 +232,14 @@ def test_baseball_player_alias_bind_step1_lookup_resolved(
     reset_core_graph()
     reset_delivery_store()
 
-    player = get_entity_registry(grain="player")
+    player = get_entity_registry(record_type="player")
     entity = RegistryEntity(
         id="player-aaron",
-        bind_values={"player": "Hank Aaron", "team": "Brooklyn Dodgers"},
+        bind_values={
+            "player": "Hank Aaron",
+            "debut_team": "Brooklyn Dodgers",
+            "debut_year": "1957",
+        },
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
@@ -244,12 +248,20 @@ def test_baseball_player_alias_bind_step1_lookup_resolved(
     player.save_entity(entity)
     player.add_bind_alias(
         entity.id,
-        {"player": "Hank Aaron", "team": "Los Angeles Dodgers"},
+        {
+            "player": "Hank Aaron",
+            "debut_team": "Los Angeles Dodgers",
+            "debut_year": "1958",
+        },
     )
 
     response = run_query(
         EntityQuery(
-            lookup={"player": "Hank Aaron", "team": "Los Angeles Dodgers"},
+            lookup={
+                "player": "Hank Aaron",
+                "debut_team": "Los Angeles Dodgers",
+                "debut_year": "1958",
+            },
         ),
     )
     assert response.outcome == "lookup_resolved"
@@ -258,4 +270,4 @@ def test_baseball_player_alias_bind_step1_lookup_resolved(
     stored = get_delivery_store().get(response.delivery.delivery_id)
     assert stored is not None
     assert stored.entity_ids == [entity.id]
-    assert stored.grain == "player"
+    assert stored.record_type == "player"

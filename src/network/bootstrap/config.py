@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-from network.mvr import default_mvr_grain, load_mvr_config
+from network.mvr import default_record_type, load_mvr_config
 from network.paths import NetworkPaths
 
 _EXAMPLE_BOOTSTRAP = (
@@ -20,7 +20,7 @@ class BootstrapConfig:
 
     module: str
     class_name: str
-    seed_grain: str | None = None
+    seed_record_type: str | None = None
 
 
 def load_bootstrap_config(paths: NetworkPaths) -> BootstrapConfig:
@@ -62,26 +62,38 @@ def load_bootstrap_config(paths: NetworkPaths) -> BootstrapConfig:
             "(handler class name, e.g. DefaultSeedHandler)",
         )
 
-    seed_grain: str | None = None
-    seed_grain_raw = bootstrap.get("seed_grain")
-    if seed_grain_raw is not None:
-        if not isinstance(seed_grain_raw, str) or not seed_grain_raw.strip():
-            raise ValueError("network.json bootstrap.seed_grain must be a non-empty string")
-        seed_grain = seed_grain_raw.strip()
-        grains = load_mvr_config(paths=paths).grains
-        if seed_grain not in grains:
-            known = ", ".join(sorted(grains.keys()))
+    if bootstrap.get("seed_grain") is not None:
+        raise ValueError(
+            f"{manifest_path}: legacy bootstrap.seed_grain is not supported; "
+            "use bootstrap.seed_record_type",
+        )
+
+    seed_record_type: str | None = None
+    seed_record_type_raw = bootstrap.get("seed_record_type")
+    if seed_record_type_raw is not None:
+        if not isinstance(seed_record_type_raw, str) or not seed_record_type_raw.strip():
             raise ValueError(
-                f"network.json bootstrap.seed_grain {seed_grain!r} is not declared "
-                f"in mvr.grains ({known})",
+                "network.json bootstrap.seed_record_type must be a non-empty string",
+            )
+        seed_record_type = seed_record_type_raw.strip()
+        record_types = load_mvr_config(paths=paths).record_types
+        if seed_record_type not in record_types:
+            known = ", ".join(sorted(record_types.keys()))
+            raise ValueError(
+                f"network.json bootstrap.seed_record_type {seed_record_type!r} is not declared "
+                f"in mvr.record_types ({known})",
             )
 
-    return BootstrapConfig(module=module, class_name=class_name, seed_grain=seed_grain)
+    return BootstrapConfig(
+        module=module,
+        class_name=class_name,
+        seed_record_type=seed_record_type,
+    )
 
 
-def resolve_bootstrap_grain(paths: NetworkPaths) -> str:
-    """Return the entity grain that receives ``DefaultSeedHandler`` rows."""
+def resolve_bootstrap_record_type(paths: NetworkPaths) -> str:
+    """Return the entity record type that receives ``DefaultSeedHandler`` rows."""
     bootstrap = load_bootstrap_config(paths)
-    if bootstrap.seed_grain:
-        return bootstrap.seed_grain
-    return default_mvr_grain(paths=paths)
+    if bootstrap.seed_record_type:
+        return bootstrap.seed_record_type
+    return default_record_type(paths=paths)

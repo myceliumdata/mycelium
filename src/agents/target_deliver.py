@@ -12,7 +12,7 @@ from agents.entity_registry import (
 )
 from models.state import normalized_requested_attributes
 from network.delivery import DeliveryScope, get_delivery_store
-from network.mvr import default_mvr_grain, load_mvr, normalized_lookup_values
+from network.mvr import default_record_type, load_mvr, normalized_lookup_values
 
 
 @dataclass(frozen=True)
@@ -35,8 +35,8 @@ def load_delivery_scope(delivery_id: str) -> DeliveryLoadResult:
             matched_records=[],
         )
 
-    grain = scope.grain or default_mvr_grain()
-    registry = get_entity_registry(grain=grain)
+    record_type = scope.record_type or default_record_type()
+    registry = get_entity_registry(record_type=record_type)
     matched: list[dict[str, Any]] = []
     for entity_id in scope.entity_ids:
         entity = registry.lookup_by_id(entity_id)
@@ -60,7 +60,7 @@ def bind_provisional_from_scope(scope: DeliveryScope) -> RegistryEntity:
     from network.category_mvr_bootstrap import ensure_categories_for_mvr_bind
     from network.paths import NetworkPaths, resolve_network_root
 
-    grain = scope.grain or default_mvr_grain()
+    record_type = scope.record_type or default_record_type()
     ensure_categories_for_mvr_bind(NetworkPaths.from_root(resolve_network_root()))
 
     lookup = normalized_lookup_values(
@@ -68,7 +68,7 @@ def bind_provisional_from_scope(scope: DeliveryScope) -> RegistryEntity:
     )
     bind_fields = {
         field.strip().lower(): lookup[field.strip().lower()]
-        for field in load_mvr(grain=grain).bind_fields
+        for field in load_mvr(record_type=record_type).bind_fields
         if field.strip() and field.strip().lower() in lookup
     }
     entity, _duplicate = ensure_entity_bind_fields(
@@ -76,7 +76,7 @@ def bind_provisional_from_scope(scope: DeliveryScope) -> RegistryEntity:
         source="query_bind",
         validation_state="provisional",
         actor_kind="bind",
-        registry=get_entity_registry(grain=grain),
+        registry=get_entity_registry(record_type=record_type),
     )
     return entity
 
@@ -91,8 +91,8 @@ def hydrate_matches_for_deliver(
     scope = loaded.scope
     if scope.create_on_deliver and not scope.entity_ids:
         entity = bind_provisional_from_scope(scope)
-        grain = scope.grain or default_mvr_grain()
-        registry = get_entity_registry(grain=grain)
+        record_type = scope.record_type or default_record_type()
+        registry = get_entity_registry(record_type=record_type)
         matched = [registry_entity_to_match(entity, mvr=registry._mvr)]
         return scope, matched, "bind_provisional"
 
