@@ -80,12 +80,13 @@ def _mock_team_alias_expander(
     registry,
     guide_text: str | None,
 ) -> list[str]:
-    _ = record_type, field, guide_text
+    _ = record_type, field, registry, guide_text
     if query_value == "Bronx Bombers":
-        entity = registry.lookup_by_bind_values({"team": "New York Yankees"})
-        return [entity.id] if entity is not None else []
+        return ["New York Yankees"]
     if query_value == "Dodgers":
-        return ["team-brooklyn", "team-la"]
+        return ["Brooklyn Dodgers", "Los Angeles Dodgers"]
+    if query_value == "The Miracle Mets":
+        return ["New York Mets"]
     return []
 
 

@@ -47,7 +47,31 @@ def _prepare_baseball_team_registry(tmp_path: Path) -> NetworkPaths:
         source="test",
         created_at="2026-06-17T12:00:00+00:00",
     )
-    for entity in (yankees, brooklyn, los_angeles):
+    boston = RegistryEntity(
+        id="team-bos",
+        bind_values={"team": "Boston Red Sox"},
+        source="test",
+        created_at="2026-06-17T12:00:00+00:00",
+    )
+    cleveland = RegistryEntity(
+        id="team-cle",
+        bind_values={"team": "Cleveland Red Sox"},
+        source="test",
+        created_at="2026-06-17T12:00:00+00:00",
+    )
+    nationals = RegistryEntity(
+        id="team-was",
+        bind_values={"team": "Washington Nationals"},
+        source="test",
+        created_at="2026-06-17T12:00:00+00:00",
+    )
+    mets = RegistryEntity(
+        id="team-nym",
+        bind_values={"team": "New York Mets"},
+        source="test",
+        created_at="2026-06-17T12:00:00+00:00",
+    )
+    for entity in (yankees, brooklyn, los_angeles, boston, cleveland, nationals, mets):
         team.register_entity(entity)
         team.assign_bind_index(entity.id, entity.bind_values)
         team.save_entity(entity)
@@ -61,12 +85,13 @@ def _mock_team_alias_expander(
     registry,
     guide_text: str | None,
 ) -> list[str]:
-    _ = record_type, field, guide_text
+    _ = record_type, field, registry, guide_text
     if query_value == "Bronx Bombers":
-        entity = registry.lookup_by_bind_values({"team": "New York Yankees"})
-        return [entity.id] if entity is not None else []
+        return ["New York Yankees"]
     if query_value == "Dodgers":
-        return ["team-brooklyn", "team-la"]
+        return ["Brooklyn Dodgers", "Los Angeles Dodgers"]
+    if query_value == "The Miracle Mets":
+        return ["New York Mets"]
     return []
 
 
@@ -115,6 +140,47 @@ def test_closed_team_unknown_nickname_not_create_pending(tmp_path: Path) -> None
     assert result.kind != "create_pending"
     assert result.create_on_deliver is False
     assert result.kind in {"not_found", "lookup_suggested"}
+
+
+@pytest.mark.smoke
+def test_closed_team_mashup_writes_no_aliases(tmp_path: Path) -> None:
+    _prepare_baseball_team_registry(tmp_path)
+    result = resolve_target_step1(
+        EntityQuery(lookup={"team": "Washington Red Sox"}),
+        alias_expander=_mock_team_alias_expander,
+    )
+    assert result.kind == "not_found"
+    team = get_entity_registry(record_type="team")
+    for entity_id in ("team-cle", "team-was"):
+        entity = team.lookup_by_id(entity_id)
+        assert entity is not None
+        assert "Washington Red Sox" not in (entity.field_aliases.get("team") or [])
+
+
+@pytest.mark.smoke
+def test_closed_team_boston_red_sox_exact_without_expander(tmp_path: Path) -> None:
+    _prepare_baseball_team_registry(tmp_path)
+
+    def _fail_if_called(*_args, **_kwargs) -> list[str]:
+        pytest.fail("alias expander must not run on exact canonical bind hit")
+
+    result = resolve_target_step1(
+        EntityQuery(lookup={"team": "Boston Red Sox"}),
+        alias_expander=_fail_if_called,
+    )
+    assert result.kind == "resolved"
+    assert result.entity_ids == ["team-bos"]
+
+
+@pytest.mark.smoke
+def test_closed_team_miracle_mets_resolves_via_mock_expander(tmp_path: Path) -> None:
+    _prepare_baseball_team_registry(tmp_path)
+    result = resolve_target_step1(
+        EntityQuery(lookup={"team": "The Miracle Mets"}),
+        alias_expander=_mock_team_alias_expander,
+    )
+    assert result.kind == "resolved"
+    assert result.entity_ids == ["team-nym"]
 
 
 @pytest.mark.smoke

@@ -23,6 +23,7 @@ class AliasExpansionResult:
     aliases_written: int
 
 
+# Injectable expander returns canonical bind-field strings (not entity ids).
 AliasExpander = Callable[
     [str, str, str, EntityRegistry, str | None],
     list[str],
@@ -30,7 +31,7 @@ AliasExpander = Callable[
 
 
 class _FieldAliasProposal(BaseModel):
-    entity_ids: list[str] = Field(default_factory=list)
+    canonical_values: list[str] = Field(default_factory=list)
 
 
 def load_network_guide_text() -> str | None:
@@ -48,17 +49,44 @@ def _canonical_field_values(
     field: str,
     *,
     cap: int = _CANONICAL_VALUE_CAP,
-) -> list[tuple[str, str]]:
+) -> list[str]:
     field_key = field.strip().lower()
-    rows: list[tuple[str, str]] = []
+    values: list[str] = []
+    seen: set[str] = set()
     for entity in registry.list_entities():
         raw = entity.bind_value(field_key)
         if raw is None or not str(raw).strip():
             continue
-        rows.append((entity.id, str(raw).strip()))
-        if len(rows) >= cap:
+        value = str(raw).strip()
+        if value in seen:
+            continue
+        seen.add(value)
+        values.append(value)
+        if len(values) >= cap:
             break
-    return rows
+    return values
+
+
+def _canonical_values_to_entity_ids(
+    registry: EntityRegistry,
+    field_key: str,
+    canonical_values: list[str],
+) -> list[str]:
+    """Map canonical bind strings to registry entity ids (unknown values dropped)."""
+    entity_ids: list[str] = []
+    seen: set[str] = set()
+    for raw in canonical_values:
+        value = str(raw).strip()
+        if not value:
+            continue
+        entity = registry.lookup_by_bind_values({field_key: value})
+        if entity is None:
+            continue
+        if entity.id in seen:
+            continue
+        seen.add(entity.id)
+        entity_ids.append(entity.id)
+    return entity_ids
 
 
 def _build_alias_expansion_prompt(
@@ -67,18 +95,26 @@ def _build_alias_expansion_prompt(
     field: str,
     query_value: str,
     guide_text: str | None,
-    canonical_rows: list[tuple[str, str]],
+    canonical_values: list[str],
 ) -> str:
     mvr = load_mvr(record_type=record_type)
     canonical_lines = "\n".join(
-        f"- id={entity_id!r} {field}={value!r}"
-        for entity_id, value in canonical_rows
+        f"- {field}={value!r}" for value in canonical_values
     )
     guide_block = guide_text.strip() if guide_text else "(no guide.md provided)"
     return (
-        "You map nickname or shorthand bind-field values to existing registry entities.\n"
-        "Return entity ids that should receive the query value as a field alias.\n"
-        "Do not invent new entities. Shared ambiguous nicknames may map to multiple ids.\n\n"
+        "You resolve whether a query is a real nickname, shorthand, or historical "
+        "label for one or more rows in the canonical list below.\n"
+        "Return exact canonical bind-field strings from the list (character-for-character "
+        "match to a listed value). Do not invent teams or values. Do not return entity "
+        "ids. Do not combine unrelated fragments from different rows (e.g. city from "
+        "one team + nickname from another). Mashups, typo-combos, and unrecognized "
+        "strings → return an empty list.\n\n"
+        "Examples (illustrative):\n"
+        "- Dodgers → Brooklyn Dodgers, Los Angeles Dodgers\n"
+        "- Bronx Bombers → New York Yankees\n"
+        "- The Miracle Mets → New York Mets\n"
+        "- Washington Red Sox → (empty — mashup, not a real nickname)\n\n"
         f"Record type: {record_type}\n"
         f"Record type description: {mvr.description}\n"
         f"Bind field: {field}\n"
@@ -88,7 +124,7 @@ def _build_alias_expansion_prompt(
     )
 
 
-def _llm_expand_field_aliases(
+def _llm_propose_canonical_values(
     record_type: str,
     field: str,
     query_value: str,
@@ -98,8 +134,8 @@ def _llm_expand_field_aliases(
     if not os.getenv("OPENAI_API_KEY", "").strip():
         return []
 
-    canonical_rows = _canonical_field_values(registry, field)
-    if not canonical_rows:
+    canonical_values = _canonical_field_values(registry, field)
+    if not canonical_values:
         return []
 
     prompt = _build_alias_expansion_prompt(
@@ -107,7 +143,7 @@ def _llm_expand_field_aliases(
         field=field,
         query_value=query_value,
         guide_text=guide_text,
-        canonical_rows=canonical_rows,
+        canonical_values=canonical_values,
     )
 
     from langchain_openai import ChatOpenAI
@@ -118,11 +154,11 @@ def _llm_expand_field_aliases(
     if not isinstance(result, _FieldAliasProposal):
         return []
 
-    known_ids = {entity_id for entity_id, _ in canonical_rows}
+    allowed = set(canonical_values)
     return [
-        entity_id
-        for entity_id in result.entity_ids
-        if entity_id in known_ids and registry.lookup_by_id(entity_id) is not None
+        str(value).strip()
+        for value in result.canonical_values
+        if str(value).strip() in allowed
     ]
 
 
@@ -143,15 +179,17 @@ def expand_field_aliases(
 
     resolved_guide = guide_text if guide_text is not None else load_network_guide_text()
     if expander is not None:
-        target_ids = expander(record_type, field_key, text, registry, resolved_guide)
+        canonical_values = expander(record_type, field_key, text, registry, resolved_guide)
     else:
-        target_ids = _llm_expand_field_aliases(
+        canonical_values = _llm_propose_canonical_values(
             record_type,
             field_key,
             text,
             registry,
             resolved_guide,
         )
+
+    target_ids = _canonical_values_to_entity_ids(registry, field_key, canonical_values)
 
     written = 0
     unique_ids: list[str] = []
