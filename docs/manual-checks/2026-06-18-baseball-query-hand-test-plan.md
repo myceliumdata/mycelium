@@ -55,29 +55,47 @@ Each test lists **check these fields** — not the full JSON blob. Use `jq` snip
 | `outcome` | Primary pass/fail |
 | `total_matches` | Step 1 match count |
 | `delivery.delivery_id` | Present on successful step 1 resolve |
-| `delivery.grain` | `player` or `team` (on delivery scope; may be absent in minimal public dict — check step 2 `results` shape) |
+| `delivery.record_type` | `player` or `team` (on delivery scope; may be absent in minimal public dict — check step 2 `results` shape) |
 | `required_fields` | On `lookup_incomplete` |
 | `suggestions` | On `lookup_suggested` — non-empty array |
 | `results` | Step 2 only — identity rows |
 
 Step-1 success pattern: `outcome` = `lookup_resolved`, `total_matches` ≥ 1, `delivery.delivery_id` starts with `d_`, `results` = `[]`.
 
-Step-2 success pattern: `outcome` = `found`, `results[0]` has `id`, `player`+`team` **or** `team` only.
+Step-2 success pattern: `outcome` = `found`, `results[0]` has `id`, `player`+`debut_team`+`debut_year` **or** `team` only.
+
+**Discover Aaron debut bind** (run once per root; full Lahman typically Milwaukee Braves / 1954):
+
+```bash
+export DEBUT_JSON=$(uv run python -c "
+import json, os
+from pathlib import Path
+from network.paths import NetworkPaths, apply_network_paths
+from agents.entity_registry import get_entity_registry, reset_entity_registry
+root = Path(os.environ['ROOT'])
+apply_network_paths(NetworkPaths.from_root(root))
+reset_entity_registry()
+e = get_entity_registry(record_type='player').lookup_by_source_key('lahman.playerID', 'aaronha01')
+assert e, 'missing aaronha01 — re-bootstrap post slice 1800'
+print(json.dumps(e.bind_values))
+")
+echo "$DEBUT_JSON"
+```
 
 ---
 
-## A — Player grain (happy path)
+## A — Player record type (happy path)
 
-### Q01 — Aaron, primary team (Atlanta Braves)
+### Q01 — Aaron, full debut bind
 
-**Step 1**
+**Step 1** — use `DEBUT_JSON` from setup (example shape):
 
 ```json
-{"lookup": {"player": "Hank Aaron", "team": "Atlanta Braves"}}
+{"lookup": {"player": "Hank Aaron", "debut_team": "Milwaukee Braves", "debut_year": "1954"}}
 ```
 
 ```bash
-./bin/baseball-query '{"lookup": {"player": "Hank Aaron", "team": "Atlanta Braves"}}' | \
+./bin/baseball-query "{\"lookup\": $DEBUT_JSON}" | \
   jq '{outcome, total_matches, delivery_id: .delivery.delivery_id}'
 ```
 
@@ -91,61 +109,43 @@ Step-2 success pattern: `outcome` = `found`, `results[0]` has `id`, `player`+`te
 
 ```bash
 ./bin/baseball-query '{"delivery_id": "PASTE_D_ID"}' | \
-  jq '{outcome, id: .results[0].id, player: .results[0].player, team: .results[0].team}'
+  jq '{outcome, id: .results[0].id, player: .results[0].player, debut_team: .results[0].debut_team, debut_year: .results[0].debut_year}'
 ```
 
 | Expect step 2 |
 |---------------|
 | `outcome` = `found` |
 | `player` = `Hank Aaron` |
-| `team` = `Atlanta Braves` (canonical primary bind) |
+| `debut_team` / `debut_year` match `DEBUT_JSON` |
 | `id` = stable uuid → set `AARON_ID` |
 
-**MCP:** `query_entity('{"lookup": {"player": "Hank Aaron", "team": "Atlanta Braves"}}')` then step 2 JSON.
+**MCP:** `query_entity('{"lookup": …}')` with the same debut bind, then step 2 JSON.
 
 ---
 
-### Q02 — Aaron, alias team (Milwaukee Braves) — bind_index
-
-Proves slice 1000: Milwaukee is not primary `bind_values` but is in `bind_index`.
-
-**Step 1**
+### Q02 — Aaron, partial debut (missing year)
 
 ```json
-{"lookup": {"player": "Hank Aaron", "team": "Milwaukee Braves"}}
+{"lookup": {"player": "Hank Aaron", "debut_team": "Milwaukee Braves"}}
 ```
 
 | Expect step 1 |
 |---------------|
-| `outcome` = `lookup_resolved` |
-| `total_matches` = `1` |
-
-**Step 2**
-
-| Expect step 2 |
-|---------------|
-| `outcome` = `found` |
-| `id` = **same** as `AARON_ID` |
-| `player` = `Hank Aaron` |
-| `team` = `Atlanta Braves` in `results[0].team` (canonical row; lookup used alias bind) |
-
-**UX note (open design):** Step 1 used Milwaukee Braves; step 2 returns **primary** `bind_values.team` (Atlanta), not the team from the lookup. Registry-correct (same uuid), but **feels wrong** (“I asked for Milwaukee”). Backlog: echo lookup team, `matched_bind`, or scope for specialists — TBD.
+| `outcome` = `lookup_resolved` or `lookup_incomplete` (partial bind) |
+| Record which on your root |
 
 ---
 
-### Q03 — Aaron, another alias (Milwaukee Brewers)
-
-If Lahman bootstrap committed this bind for `aaronha01`:
+### Q03 — Aaron, wrong debut year (negative)
 
 ```json
-{"lookup": {"player": "Hank Aaron", "team": "Milwaukee Brewers"}}
+{"lookup": {"player": "Hank Aaron", "debut_team": "Milwaukee Braves", "debut_year": "2099"}}
 ```
 
 | Expect |
 |--------|
-| Same as Q02: one uuid, `lookup_resolved` |
-
-If `not_found`: note in log — bind may be missing on your root (not a routing failure).
+| `not_found` |
+| `total_matches` = `0` |
 
 ---
 
@@ -159,7 +159,7 @@ Run Q01 step 1, then step 2 twice with the same `delivery_id` (before expiry).
 
 ---
 
-### Q16 — UUID round-trip (player grain)
+### Q16 — UUID round-trip (player record type)
 
 After Q01, `AARON_ID` is set. Proves step-1 `id` resolve → fresh `delivery_id` → step-2 deliver. **Step 2 never accepts a raw uuid** — only `delivery_id`.
 
@@ -185,7 +185,7 @@ After Q01, `AARON_ID` is set. Proves step-1 `id` resolve → fresh `delivery_id`
 
 ```bash
 ./bin/baseball-query '{"delivery_id": "PASTE_D_ID"}' | \
-  jq '{outcome, id: .results[0].id, player: .results[0].player, team: .results[0].team}'
+  jq '{outcome, id: .results[0].id, player: .results[0].player, debut_team: .results[0].debut_team, debut_year: .results[0].debut_year}'
 ```
 
 | Expect step 2 |
@@ -193,7 +193,7 @@ After Q01, `AARON_ID` is set. Proves step-1 `id` resolve → fresh `delivery_id`
 | `outcome` = `found` |
 | `id` = **same** as `AARON_ID` |
 | `player` = `Hank Aaron` |
-| `team` = `Atlanta Braves` (canonical primary bind — not “all career teams”) |
+| debut fields match Q01 / `DEBUT_JSON` |
 
 **Negative:** `{"delivery_id": "<uuid>"}` (uuid where `delivery_id` belongs) → `not_found` or validation error — not a valid step-2 payload.
 
@@ -201,7 +201,7 @@ After Q01, `AARON_ID` is set. Proves step-1 `id` resolve → fresh `delivery_id`
 
 ---
 
-## B — Player grain (incomplete / negative)
+## B — Player record type (incomplete / negative)
 
 ### Q05 — Player only — unknown name
 
@@ -228,16 +228,16 @@ After Q01, `AARON_ID` is set. Proves step-1 `id` resolve → fresh `delivery_id`
 | `outcome` = `lookup_resolved` |
 | `total_matches` = `1` |
 | `delivery.delivery_id` present |
-| Same uuid as Q01 when full `{player, team}` bind exists |
+| Same uuid as Q01 when Aaron is a unique field-index hit |
 
 Use any player with a unique `player` field index hit on your benchmark root (e.g. Hank Aaron, Ty Cobb).
 
 ---
 
-### Q06 — Unknown player + team (closed grain)
+### Q06 — Unknown full debut bind (`bootstrap_only`)
 
 ```json
-{"lookup": {"player": "Nobody Here", "team": "Nowhere Nine"}}
+{"lookup": {"player": "Nobody Here", "debut_team": "Nowhere Nine", "debut_year": "2099"}}
 ```
 
 | Expect |
@@ -248,12 +248,12 @@ Use any player with a unique `player` field index hit on your benchmark root (e.
 
 ---
 
-### Q07 — Wrong homonym without team (if you have duplicate names)
+### Q07 — Homonym with partial bind (if you have duplicate names)
 
-Pick a common name from Lahman without team — or use a known homonym pair from warehouse SQL.
+Pick a common name from Lahman — or use a known homonym pair from warehouse SQL.
 
 ```json
-{"lookup": {"player": "John Smith", "team": "Boston Red Sox"}}
+{"lookup": {"player": "John Smith", "debut_team": "Boston Red Sox"}}
 ```
 
 | Expect |
@@ -263,7 +263,7 @@ Pick a common name from Lahman without team — or use a known homonym pair from
 
 ---
 
-## C — Team grain (happy path)
+## C — Team record type (happy path)
 
 ### Q08 — Canonical team (Brooklyn Dodgers)
 
@@ -282,7 +282,7 @@ Pick a common name from Lahman without team — or use a known homonym pair from
 |---------------|
 | `outcome` = `found` |
 | `results[0].team` = `Brooklyn Dodgers` |
-| No `player` field (team grain identity) |
+| No `player` field (team record type identity) |
 
 ---
 
@@ -322,7 +322,7 @@ These should **fail cleanly** after 1100 — not return three random teams.
 ### Q11 — Old player keys (`name` not `player`)
 
 ```json
-{"lookup": {"name": "Hank Aaron", "team": "Atlanta Braves"}}
+{"lookup": {"name": "Hank Aaron", "debut_team": "Milwaukee Braves", "debut_year": "1954"}}
 ```
 
 | Expect |
@@ -332,9 +332,9 @@ These should **fail cleanly** after 1100 — not return three random teams.
 
 ---
 
-### Q12 — Old keys + Milwaukee (pre-1100 failure mode)
+### Q12 — Legacy `{name, team}` keys
 
-Uses legacy key **`name`**, not `player`. Do not confuse with **Q02** (`player` + Milwaukee), which should resolve.
+Uses legacy keys **`name`** and **`team`**, not debut bind fields.
 
 ```json
 {"lookup": {"name": "Hank Aaron", "team": "Milwaukee Braves"}}
@@ -342,21 +342,19 @@ Uses legacy key **`name`**, not `player`. Do not confuse with **Q02** (`player` 
 
 | Expect |
 |--------|
-| `not_found` — **not** `lookup_resolved` with 3 team entities |
-
-If you get `lookup_resolved` + Hank Aaron / Atlanta, you likely ran **Q02** (`player` key) by mistake.
+| `not_found` — pre-1800 `{player, team}` routing is gone |
 
 ---
 
-### Q13 — Removed `grain` override (must error at parse)
+### Q13 — Removed step-1 record type override (must error at parse)
 
 ```json
-{"lookup": {"player": "Hank Aaron", "team": "Atlanta Braves"}, "grain": "player"}
+{"lookup": {"player": "Hank Aaron", "debut_team": "Milwaukee Braves", "debut_year": "1954"}, "record_type": "player"}
 ```
 
 | Expect |
 |--------|
-| CLI/MCP: **validation error** — unknown field `grain` on `EntityQuery` |
+| CLI/MCP: **validation error** — unknown field `record_type` on `EntityQuery` (routing is lookup-key only) |
 
 ---
 
@@ -368,13 +366,13 @@ If you get `lookup_resolved` + Hank Aaron / Atlanta, you likely ran **Q02** (`pl
 
 | Expect |
 |--------|
-| `not_found` (key `name` not in any grain bind_fields) |
+| `not_found` (key `name` not in any record type bind_fields) |
 
 ---
 
 ## E — Team nicknames (optional — needs alias data or OPENAI_API_KEY)
 
-Run only if you want lazy field-alias behavior on closed team grain.
+Run only if you want lazy field-alias behavior on `bootstrap_only` team record type.
 
 ### Q15 — Nickname `Dodgers` (0-hit → expansion or suggest)
 
@@ -410,8 +408,8 @@ Call MCP tool `describe_network` (no args).
 
 | Expect |
 |--------|
-| Parseable JSON; mentions baseball grains |
-| Text describes `{player, team}` vs `{team}` routing |
+| Parseable JSON; mentions baseball record types |
+| Text describes `{player, debut_team, debut_year}` vs `{team}` routing |
 | `guide.md` content or summary present |
 
 ---
@@ -429,7 +427,7 @@ MCP `health_check` (or equivalent ping tool your server exposes).
 ### M03 — MCP thread_id
 
 ```json
-{"lookup": {"player": "Hank Aaron", "team": "Atlanta Braves"}, "thread_id": "hand-test-1"}
+{"lookup": {"player": "Hank Aaron", "debut_team": "Milwaukee Braves", "debut_year": "1954"}, "thread_id": "hand-test-1"}
 ```
 
 | Expect |
@@ -442,16 +440,17 @@ MCP `health_check` (or equivalent ping tool your server exposes).
 
 | ID | Query shape | Expected `outcome` (step 1) |
 |----|-------------|-----------------------------|
-| Q01 | `{player, team}` Atlanta | `lookup_resolved` → `found` |
-| Q02 | `{player, team}` Milwaukee Braves | `lookup_resolved`, same uuid |
+| Q01 | full debut bind | `lookup_resolved` → `found` |
+| Q02 | `{player, debut_team}` partial | `lookup_resolved` or `lookup_incomplete` |
+| Q03 | wrong debut year | `not_found` |
 | Q05 | `{player}` unknown | `not_found` |
 | Q17 | `{player}` known unique | `lookup_resolved` |
-| Q06 | unknown bind | `not_found` / `lookup_suggested`, no create |
+| Q06 | unknown full bind | `not_found` / `lookup_suggested`, no create |
 | Q08 | `{team}` Brooklyn | `lookup_resolved` → `found` |
 | Q10 | `{id}` team uuid | `lookup_resolved` → `found` |
-| Q11 | `{name, team}` old | `not_found` |
-| Q12 | `{name, team}` Milwaukee old | `not_found` |
-| Q13 | `grain` field | parse error |
+| Q11 | `{name, …}` old keys | `not_found` |
+| Q12 | `{name, team}` legacy | `not_found` |
+| Q13 | `record_type` field | parse error |
 | Q14 | `{name}` team old | `not_found` |
 | Q16 | `{id}` player uuid (`AARON_ID`) | `lookup_resolved` → `found`, same uuid |
 
@@ -459,7 +458,7 @@ MCP `health_check` (or equivalent ping tool your server exposes).
 
 ## H — Career teams (out of query protocol)
 
-**Not a ship-gate pass/fail row.** The two-step identity API returns **one** canonical player row per deliver (`team` = primary bind in `bind_values`, e.g. Atlanta Braves). It does **not** list every team a player appeared for. No `requested_attributes` path for roster or career-team lists in identity scope.
+**Not a ship-gate pass/fail row.** The two-step identity API returns **one** canonical player row per deliver (debut bind in `bind_values`). It does **not** list every team a player appeared for. No `requested_attributes` path for roster or career-team lists in identity scope.
 
 Use these when you need “what teams did Hank Aaron play on?”:
 
@@ -480,11 +479,9 @@ ORDER BY team_label;
 "
 ```
 
-On full Lahman you should see **three** fan-facing names (e.g. Indianapolis Clowns, Milwaukee Braves, Milwaukee Brewers) — distinct from the single `team` on step-2 deliver.
+On full Lahman you should see **three** fan-facing names (e.g. Indianapolis Clowns, Milwaukee Braves, Milwaukee Brewers) — distinct from the single debut bind on step-2 deliver.
 
-### H2 — Registry `bind_index` scan (bootstrap aliases)
-
-Lists every `(player, team)` bind key committed for Aaron’s uuid (should align with warehouse teams bootstrap indexed):
+### H2 — Registry debut bind (one per player)
 
 ```bash
 uv run python -c "
@@ -496,22 +493,21 @@ from agents.entity_registry import get_entity_registry, reset_entity_registry
 root = Path(os.environ['ROOT'])
 apply_network_paths(NetworkPaths.from_root(root))
 reset_entity_registry()
-reg = get_entity_registry(grain='player')
+reg = get_entity_registry(record_type='player')
 e = reg.lookup_by_source_key('lahman.playerID', 'aaronha01')
 assert e, 'missing aaronha01'
 alias_keys = sorted(k for k, eid in reg._data.bind_index.items() if eid == e.id)
 print('uuid', e.id)
 print('bind_index keys for entity', len(alias_keys))
-print('sample keys', alias_keys[:5])
-print('primary bind team', e.bind_values.get('team'))
+print('debut bind', e.bind_values)
 "
 ```
 
-**Expect:** `bind_index keys for entity` ≥ number of distinct teams from H1 (normalized `player|team` strings — use H1 for readable labels); `primary bind team` matches Q01/Q16 step-2 `results[0].team`.
+**Expect:** exactly **one** `bind_index` key for Aaron; `debut_team` / `debut_year` match Q01.
 
-### H3 — Per-team lookups (proof, not enumeration)
+### H3 — Legacy `{player, team}` lookups (negative)
 
-`{"lookup": {"player": "Hank Aaron", "team": "<each team from H1>"}}` should each `lookup_resolved` to the **same** uuid (Q02/Q03 pattern). That proves a team was a valid bind alias; it does **not** discover unknown teams without trying every franchise name.
+`{"lookup": {"player": "Hank Aaron", "team": "<each team from H1>"}}` should **`not_found`** post slice 1800 — career teams are not player bind fields.
 
 ---
 
@@ -533,8 +529,8 @@ alias bq2='./bin/baseball-query "$1" | jq "{outcome, results: .results}"'
 
 | Topic | Status |
 |-------|--------|
-| **Alias lookup → canonical team on deliver** (Q02) | Step 1 accepts `{player, team: Milwaukee}`; step 2 `results[0].team` is **primary** bind (e.g. Atlanta). Same uuid — correct for registry — but **odd UX**. Decide before specialist assembly: surface `lookup` echo, `matched_bind`, or scope team for downstream reads. |
-| **Q12 vs Q02** | Q12 uses `{name, …}` → `not_found`. Q02 uses `{player, team: Milwaukee}` → resolve + canonical Atlanta on deliver. |
+| **Debut bind only** | Player identity is one debut tuple per `playerID`; warehouse lists career teams (H1). |
+| **Q12 vs Q01** | Q12 uses legacy `{name, team}` → `not_found`. Q01 uses debut bind keys. |
 | **Q15 + `.env`** | `baseball-query` loads repo `.env`; Q15 needs `OPENAI_API_KEY` there. |
 | **Provenance on attrs** | `provenance=true` works; baseball bio/stats lineage is CRM research today — re-examine with warehouse specialists ([`TODO.md`](../../TODO.md)). |
 

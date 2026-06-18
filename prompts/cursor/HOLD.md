@@ -10,20 +10,21 @@
 
 | Slice | Commit | Notes |
 |-------|--------|--------|
-| 1000 bind_index fallback | `7ba6dfc` | Step-1 full MVR → `bind_index` for multi-team alias binds |
-| 1100 strict grain routing | `bc73c23` | Lookup keys infer grain; fan-out + `EntityQuery.grain` removed |
-| 1200 partial player lookup | `286811e` | `{player}` only delegates to single-grain resolver (CRM parity) |
+| 1000 bind_index fallback | `7ba6dfc` | Step-1 full MVR → `bind_index` when field index misses (superseded for baseball by 1800 debut bind) |
+| 1100 strict record-type routing | `bc73c23` | Lookup keys infer record type; fan-out + `EntityQuery.grain` removed |
+| 1200 partial player lookup | `286811e` | `{player}` only delegates to single-record-type resolver (CRM parity) |
+| 1800 record_type + debut bind | `8ccd389` | `mvr.record_types`, `new_records`; baseball `player`+`debut_team`+`debut_year` |
 
 **In progress / review:** none
 
 **Manual gate findings (Paul, June 2026):**
 
-- **Canonical team on deliver:** alias team in lookup (e.g. Milwaukee) → step 2 shows primary bind team (Atlanta). Registry-correct, UX TBD.
+- **Player identity:** one debut bind per `lahman.playerID` at bootstrap (slice 1800); career teams live in warehouse, not `bind_index`.
 - **Q15:** `baseball-query` loads repo `.env` for lazy alias LLM (`OPENAI_API_KEY`).
 - **Provenance:** works mechanically; baseball attrs today are CRM research lineage — re-examine with ontology ([`TODO.md`](../../TODO.md)).
 - **MCP:** four servers via `uv run --directory …`; baseball `health_check` ping_query degraded expected.
 
-**Design locked (routing):** Disjoint bind fields per grain — baseball `{player, team}` → player, `{team}` → team; partial `{player}` tries field index then incomplete (slice 1200, CRM parity). See [`docs/query-grain-router.md`](../../docs/query-grain-router.md). **Paul:** re-bootstrap only if root still has pre-1100 `{name, team}` keys.
+**Design locked (routing):** Disjoint bind fields per record type — baseball `{player, debut_team, debut_year}` → player, `{team}` → team; partial `{player}` resolves on field index or `not_found` when `bootstrap_only` (slice 1200/1800). See [`docs/query-record-type-router.md`](../../docs/query-record-type-router.md). **Paul:** re-bootstrap full Lahman roots after slice 1800 (old `player`+`team` entity stores incompatible).
 
 **Git:** Local commits ahead of `origin`; no push until Paul asks.
 

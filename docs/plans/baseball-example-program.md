@@ -1,6 +1,6 @@
 # Baseball example — program design (`baseball` network)
 
-**Status:** **Work in progress** (June 2026) — `LahmanSeedHandler` + warehouse shipped; query grain selection, derivatives, and bootstrap performance **not** done. Safe to refresh for development; not demo-ready on `origin`.  
+**Status:** **Work in progress** (June 2026) — `LahmanSeedHandler` + warehouse shipped; record-type routing + debut player bind shipped (slice 1800); derivatives and bootstrap performance **not** done. Safe to refresh for development; not demo-ready on `origin`.  
 **Ur artifact:** [`mycelium_lahman_design_prompt.md`](mycelium_lahman_design_prompt.md) — original Grok design brief; preserved, not maintained as source of truth  
 **Conversations:** [`conversations/2026-06-14-data-factory-origin.md`](conversations/2026-06-14-data-factory-origin.md), [`conversations/2026-06-15-baseball-example-design.md`](conversations/2026-06-15-baseball-example-design.md)  
 **Roadmap:** [`TODO.md`](../../TODO.md) → `baseball` example
@@ -11,7 +11,7 @@
 
 Second committed example network beside CRM: **Lahman baseball** under the name **`baseball`**, in a **single network**. Demonstrate:
 
-1. Multi-grain networks (player + team) on the **generic** framework — CRM vocabulary excision shipped June 2026; remaining work is baseball ontology, `playerID` bridge, stat query path, derivatives
+1. Multi-record-type networks (player + team) on the **generic** framework — CRM vocabulary excision + `record_type`/`new_records` shipped June 2026; remaining work is baseball ontology, `playerID` bridge, stat query path, derivatives
 2. **Agent-managed data factory** — warehouse ingest, derivations, provenance, evolving organization (see origin conversation)
 
 Not a full application — iterative starter: design, schemas, skeleton ingest/query paths, example queries.
@@ -33,29 +33,30 @@ Not a full application — iterative starter: design, schemas, skeleton ingest/q
 |-------|----------|
 | Network name | `baseball` |
 | Topology | **One network** (not multiple networks) |
-| Registry grains | **Two:** **player** and **team** (fan-facing city+name — **not** Lahman `franchID` as primary) |
+| Registry record types | **Two:** **player** and **team** (fan-facing city+name — **not** Lahman `franchID` as primary) |
 | Registry `id` | **uuid4** assigned on load |
 | Lahman `playerID` / `teamID` | **Source metadata** — provenance and re-import; not MVR; not a parallel public `id` |
-| Player MVR | **`player` + `team`** bind fields — team disambiguates homonyms |
+| Player MVR | **`player` + `debut_team` + `debut_year`** — one primary bind per `lahman.playerID` at bootstrap (earliest debut season) |
 | Team MVR | **`team`** bind field — full canonical city+name label |
+| `new_records` | **`bootstrap_only`** for both player and team — no query-time entity creation |
 | Step-1 routing | Lookup key set infers record type (no fan-out) — [`query-record-type-router.md`](../query-record-type-router.md) |
-| Multi-team careers | `Aaron + Braves` and `Aaron + Red Sox` → **same** player uuid; any team the player played for is a valid lookup alias |
+| Multi-team careers | Same `lahman.playerID` → **one** player uuid; career teams are warehouse facts, not extra player `bind_index` keys |
 | Design archives | Substantive sessions → `docs/plans/conversations/` |
 
 ---
 
-## Registry grains
+## Registry record types
 
 ### Player
 
 - **What:** A person in `People` and all parallel stat tables (`Batting`, `Pitching`, `Fielding`, `Appearances`, awards, …).
-- **MVR:** `bind_fields: ["player", "team"]` — display name plus team disambiguator.
-- **Step-1 lookup:** `{player, team}` (both keys required for full resolve; `{player}` alone → `lookup_incomplete`).
-- **Bind index:** index **each** `(player, team)` pair observed in Lahman → same uuid (`add_bind_alias`; step-1 consults `bind_index` on field-index miss).
+- **MVR:** `bind_fields: ["player", "debut_team", "debut_year"]` — display name plus debut-season disambiguator.
+- **Step-1 lookup:** `{player, debut_team, debut_year}` for full resolve; `{player}` alone resolves when the name hits the field index (unique or homonym multi-match); unknown names → `not_found` (`bootstrap_only`).
+- **Bind index:** **one** debut bind per `lahman.playerID` at bootstrap (`distinct_player_debut_rows`); no appearance-driven alias loop.
 
 ### Team
 
-- **What (Paul, June 2026):** **Fan-facing team identity** — how people actually talk: **city + name** (e.g. **Brooklyn Dodgers** vs **Los Angeles Dodgers** = **two** teams). Not Lahman `franchID` as the primary registry grain — see [`conversations/2026-06-16-team-vs-franchise-grain.md`](conversations/2026-06-16-team-vs-franchise-grain.md).
+- **What (Paul, June 2026):** **Fan-facing team identity** — how people actually talk: **city + name** (e.g. **Brooklyn Dodgers** vs **Los Angeles Dodgers** = **two** teams). Not Lahman `franchID` as the primary registry record type — see [`conversations/2026-06-16-team-vs-franchise-grain.md`](conversations/2026-06-16-team-vs-franchise-grain.md).
 - **Franchise:** Lahman `TeamsFranchises` / `franchID` is **correct for research**, but only a small audience thinks that way. **Franchise specialist** + emergent linkage — client asks “aren’t those the same?” → offer re-aggregation by franchise.
 - **`Teams.csv` rows:** year-scoped **facts** for a fan team in a season (W/L, park, stats) — `yearID` remains query scope.
 - **Lahman `teamID` / `franchID`:** warehouse provenance — not MVR, not default organization for answers.
@@ -64,14 +65,14 @@ Not a full application — iterative starter: design, schemas, skeleton ingest/q
 
 ---
 
-## Identity layers (all grains)
+## Identity layers (all record types)
 
 | Layer | Role |
 |-------|------|
 | **MVR** | Lookup / create — human-meaningful bind fields |
 | **`id`** | uuid4 — client shortcut after resolve (`step 1` with `id`) |
 | **Source keys** | Namespaced Lahman IDs on `RegistryEntity.source_keys` + persisted `source_key_index` — bootstrap dedup and warehouse joins only (not default `results[]`) |
-| **Field aliases** | Optional per-field nicknames in `field_aliases` — field index only; shared ambiguous values across entities (e.g. `"Dodgers"` on two team rows). Lazy expansion on closed-grain 0-hit via `bind_alias_expansion` (LLM when configured). |
+| **Field aliases** | Optional per-field nicknames in `field_aliases` — field index only; shared ambiguous values across entities (e.g. `"Dodgers"` on two team rows). Lazy expansion on `bootstrap_only` 0-hit via `bind_alias_expansion` (LLM when configured). |
 | **`new_records`** | Per record type in manifest: `query_allowed` (CRM — allows `create_pending`) vs `bootstrap_only` (baseball team/player — alias expansion + retry, never create) |
 
 ---
@@ -83,13 +84,13 @@ Not a full application — iterative starter: design, schemas, skeleton ingest/q
 3. **Provenance / lineage** — derived values link to base rows + computation reference + metadata
 4. **Agent-managed retention (deferred)** — cache vs one-shot vs time series (e.g. franchise lifetime BA); economics later
 
-**Storage direction (draft):** SQLite or DuckDB for base + derived + provenance; `entities.json` registries per grain (framework extension TBD).
+**Storage direction (draft):** SQLite or DuckDB for base + derived + provenance; `entities.json` registries per record type (framework extension TBD).
 
 ---
 
 ## Router / supervisor (draft)
 
-1. **Which grain?** Inferred from lookup keys (`{player, team}` vs `{team}`) — not client override
+1. **Which record type?** Inferred from lookup keys (`{player, debut_team, debut_year}` vs `{team}`) — not client override
 2. **Resolve** — MVR lookup or `id`
 3. **Operation** — read warehouse / join roster / derive
 4. **Specialists** — possibly several; merge (stats tables are parallel, none privileged)
@@ -118,7 +119,7 @@ Not a full application — iterative starter: design, schemas, skeleton ingest/q
 - Model returns canonical bind-field value(s) → retry step-1 with `suggested_lookup` (same outcome contract as fuzzy typos).
 - **Assume local LLMs eventually** — cost acceptable for this path; avoid hardcoding domain alias maps in Python.
 
-**Not the same as** multi-team player bind (Aaron + Braves / Aaron + Red Sox → same uuid): that is **indexing known Lahman pairs** after canonical resolution, not nickname expansion.
+**Not the same as** player debut bind (one uuid per `lahman.playerID`): career teams are warehouse joins, not extra player `bind_index` keys.
 
 **Explicit non-goal (for now):** prefix indexes, per-network alias tables in repo — unless LLM path proves insufficient.
 
@@ -157,16 +158,16 @@ flowchart TD
 | 2 | **Cold start / ingest handoff** | Protocol for “here is the data source; organize it” |
 | 3 | **Table → specialist routing** | Taxonomy / supervisor: pitching vs batting vs bio vs teams |
 | 4 | **Specialist autonomy** | What pitching specialist *does* with rows (schema, indexes, derived artifacts) |
-| 5 | **Registry population** | When/how People/Teams → uuid4 rows + multi-alias `(player, team)` bind_index |
+| 5 | **Registry population** | ✅ People → uuid4 rows + one debut bind per `playerID`; Teams → fan-facing labels |
 | 6 | **Team MVR + franchise mapping** | Lahman `teamID` / moves; LLM aliases (`Yanks`) |
-| 7 | **Grain + scope in queries** | ✅ Lookup keys infer grain (1100); year/season as scope not MVR |
+| 7 | **Record type + scope in queries** | ✅ Lookup keys infer record type (1100/1800); year/season as scope not MVR |
 | 8 | **Query protocol fit** | Two-step + `requested_attributes` vs warehouse SQL/derive ops |
 | 9 | **Derivation + provenance** | Recipe storage, lineage, agent retention (deferred) |
 | 10 | **LLM alias resolution** | Shorthand bind fields; local LLM assumption |
 | 11 | **Seed hosting** | ~40MB zip; no Box bot fetch |
 | 12 | **Lahman schema pass** | ✅ § Lahman schema (2026-06-16) |
 | 13 | **Re-import / annual refresh** | Lahman updates vs uuid stability |
-| 14 | **Cross-grain queries** | e.g. team roster + player career — multi-specialist merge |
+| 14 | **Cross-record-type queries** | e.g. team roster + player career — multi-specialist merge |
 | 15 | **Bulk storage** | Warehouse yes; JSON `storage.json` volume — separate track |
 
 ---
@@ -232,15 +233,15 @@ flowchart TD
 
 ```mermaid
 flowchart TB
-  subgraph player_hub [Player grain]
+  subgraph player_hub [Player record type]
     People[People.playerID]
   end
 
-  subgraph team_hub [Team grain - fan identity]
+  subgraph team_hub [Team record type - fan identity]
     Tfan[City + name e.g. Brooklyn Dodgers]
   end
 
-  subgraph emergent [Emergent - not default grain]
+  subgraph emergent [Emergent - not default record type]
     TF[Franchise specialist franchID]
   end
 
@@ -255,12 +256,12 @@ flowchart TB
 ```
 
 - **Roster:** no player list on `Teams` — membership via **Appearances** or any player fact table for that `yearID` + `teamID`.
-- **Player MVR bind index source:** derive `(player display name, Teams.name)` → `{player, team}` binds from **Appearances** ⋈ **People** ⋈ **Teams** (all teams a player appeared for).
+- **Player MVR bind source:** `distinct_player_debut_rows` — earliest debut season per `playerID` from **People** / **Appearances** ⋈ **Teams** (one bind per catalog row).
 
 ### Scale notes (design)
 
-- **751** homonym `(nameFirst, nameLast)` pairs in People — `team` bind field on player grain is required for disambiguation.
-- **Hank Aaron** (`aaronha01`): 3 distinct `Teams.name` values from batting — all must alias to one player uuid.
+- **751** homonym `(nameFirst, nameLast)` pairs in People — `debut_team` + `debut_year` disambiguate at bootstrap (0 collision groups on full Lahman v2025.1).
+- **Hank Aaron** (`aaronha01`): one debut bind (e.g. Milwaukee Braves / 1954); career teams remain in warehouse Appearances.
 - **Negro leagues:** `lgID` can be 3 chars; included in 2025 release (readme §2.1).
 
 ---
@@ -288,11 +289,11 @@ See `examples/networks/baseball/README.md`.
 | 0 | ~~Unzip Lahman; ER/schema note~~ ✅ done |
 | 0b | ~~Formal bootstrap phase (CRM seed)~~ ✅ done — extend for baseball warehouse |
 | 1 | `examples/networks/baseball/` skeleton + `network.json` + hosting story |
-| 2 | Baseball bootstrap handler: warehouse ingest + team/player registry via bootstrap contract — **v1 `LahmanSeedHandler` shipped** (`bootstrap_handlers/lahman_seed.py`; playerID dedup + multi-team bind aliases) |
-| 3 | Player registry load + multi-alias index |
+| 2 | Baseball bootstrap handler: warehouse ingest + team/player registry via bootstrap contract — **v1 `LahmanSeedHandler` shipped** (`bootstrap_handlers/lahman_seed.py`; one debut bind per `playerID`) |
+| 3 | Player registry load + debut bind index — ✅ shipped (1800) |
 | 4 | Team registry + MVR (may merge with 2) |
 | 5 | One end-to-end query (resolve player → simple derived stat) |
 
 ---
 
-*Updated: 2026-06-16 — Lahman schema pass; fan-facing team grain locked; CRM bootstrap module shipped.*
+*Updated: 2026-06-18 — record_type vocabulary; player debut bind locked (slice 1800).*

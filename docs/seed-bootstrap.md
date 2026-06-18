@@ -20,11 +20,11 @@ Example: **`crm`**. Framework handler reads `<network_root>/seed.json`:
 }
 ```
 
-Each row supplies values for the **bootstrap grain**'s `mvr.bind_fields`. The framework assigns uuid4 ids on import (`source=seed_bootstrap`, `validation_state=validated`). Idempotent via `bind_index`.
+Each row supplies values for the **bootstrap record type**'s `mvr.bind_fields`. The framework assigns uuid4 ids on import (`source=seed_bootstrap`, `validation_state=validated`). Idempotent via `bind_index`.
 
 ### Custom pack handler
 
-Example: **`baseball`**. A module under `<network_root>/bootstrap_handlers/` implements `BootstrapHandler.run(ctx)` — warehouse ingest, multi-grain commits, external seed sources, etc. **Not** a subclass of `DefaultSeedHandler`; shares only the manifest + protocol.
+Example: **`baseball`**. A module under `<network_root>/bootstrap_handlers/` implements `BootstrapHandler.run(ctx)` — warehouse ingest, multi-record-type commits, external seed sources, etc. **Not** a subclass of `DefaultSeedHandler`; shares only the manifest + protocol.
 
 ## Manifest (`network.json` → `bootstrap`)
 
@@ -47,7 +47,7 @@ Example (CRM):
 ## `seed.json` format (`rows[]`)
 
 - Top-level object with **`rows`** array (not `people`).
-- Each element is an object; keys are MVR bind field names for the bootstrap grain.
+- Each element is an object; keys are MVR bind field names for the bootstrap record type.
 - No `id` in the file — stable ids are assigned on import.
 
 Full bind-field validation runs at import when the network manifest is applied (`load_seed_rows`). `network create --seed` performs structural validation only (`rows[]` of objects).
@@ -78,8 +78,8 @@ Orchestration: `network.bootstrap.run_network_bootstrap(paths)`.
 
 ## Related APIs
 
-- `network.seed_import.load_seed_rows` — parse + validate `rows[]` against grain MVR
-- `network.seed_import.import_seed_file` — import via bootstrap grain resolution
+- `network.seed_import.load_seed_rows` — parse + validate `rows[]` against record-type MVR
+- `network.seed_import.import_seed_file` — import via bootstrap record-type resolution
 - `network.bootstrap.config.resolve_bootstrap_record_type` — record type from manifest
 
 ## Source keys and field aliases (registry)
@@ -93,7 +93,7 @@ Two alias mechanisms — do not conflate:
 
 | Mechanism | API | Index | Use |
 |-----------|-----|-------|-----|
-| **Bind alias** | `add_bind_alias` | `bind_index` only | Alternate **full** MVR bind tuple for one entity (player on multiple teams). Step-1 full MVR lookup consults `bind_index` when field-index AND misses. |
+| **Bind alias** | `add_bind_alias` | `bind_index` only | Alternate **full** MVR bind tuple for one entity (e.g. CRM nickname variants). Step-1 full MVR lookup consults `bind_index` when field-index AND misses. Baseball player bootstrap commits **one** debut bind per `lahman.playerID` (no appearance-driven alias loop). |
 | **Field alias** | `add_field_alias` | field index only | Shared nickname on one bind field; **multiple entities** allowed (`"Dodgers"` → Brooklyn + LA) |
 
 Field aliases live in `field_aliases` on the entity row and are merged into per-field inverted indexes at load/save. Lazy nickname expansion at query time is a separate slice.

@@ -126,7 +126,7 @@ class IdentityRecord(BaseModel):
 ```
 
 **Identity rules:**
-- Bootstrap seed rows supply values for the active grain's `mvr.bind_fields`; runtime and public `results["id"]` use the stable UUID from the entity store (assigned on import via `ensure_entity_bind_fields`).
+- Bootstrap seed rows supply values for the active record type's `mvr.bind_fields`; runtime and public `results["id"]` use the stable UUID from the entity store (assigned on import via `ensure_entity_bind_fields`).
 - MVR bind fields are specialist-owned like any other attribute when requested (no privileged core filter).
 - There is no `extra` field on `IdentityRecord`.
 
@@ -151,7 +151,7 @@ Phase 1 adds a **Classification Engine** (cached lookup in `src/agents/classific
 
 ## Storage (current)
 
-- **Entities (queries):** per-grain stores at `<network_root>/entities/<grain>.json` via `EntityRegistry` (public API unchanged). **`EntityStore`** (`src/storage/entity_store.py`) handles persistence: default **`entities_document_v1`** JSON, optional **`minisql_v1`** SQLite at `entities/<grain>.sqlite` when `entity_count()` crosses threshold (env `MYCELIUM_ENTITY_OPTIMIZE_STORAGE_THRESHOLD`, default 50). JSON backup: `entities/<grain>.json.pre-minisql-v1`. Network bootstrap defers entity flushes (`bootstrap_deferred_save`) — one disk write per grain at handler end. **Deferred:** moving registry ownership to an identity agent per grain after the full baseball example ships.
+- **Entities (queries):** per-record-type stores at `<network_root>/entities/<record_type>.json` via `EntityRegistry` (public API unchanged). **`EntityStore`** (`src/storage/entity_store.py`) handles persistence: default **`entities_document_v1`** JSON, optional **`minisql_v1`** SQLite at `entities/<record_type>.sqlite` when `entity_count()` crosses threshold (env `MYCELIUM_ENTITY_OPTIMIZE_STORAGE_THRESHOLD`, default 50). JSON backup: `entities/<record_type>.json.pre-minisql-v1`. Network bootstrap defers entity flushes (`bootstrap_deferred_save`) — one disk write per record type at handler end. **Deferred:** moving registry ownership to an identity agent per record type after the full baseball example ships.
 - **Specialists (opaque):** per-category data under `<network_root>/agents/<category>/`, owned and laid out by specialist code (`SpecialistStorage` in `src/agents/specialists/base.py` — **specialists package only**). Internally, CRM specialists use **`versioned_provenance_v1`** (`versions[]` + `current_version_id`). Framework code **must not** read or write those files directly; it dispatches through `agents.specialists.protocol` (tag `specialist_isolation`, June 2026).
 - **Framework write path:** `agents/attribute_write.py` resolves taxonomy owners, calls specialist dispatch (`write_fields` / multi-category bind), then syncs `entities.json` cache and indexes from returned current values. Seed import, create-on-deliver, and research persist use the same dispatch boundary.
 - **Framework read path:** context, provenance, admin status, and `tools/research` consume **normalized snapshots** from dispatch (`FieldSnapshot`, `FieldContextSnapshot` in `src/agents/specialists/snapshots.py`) — not raw `versions[]` layout. See § Specialist I/O protocol below.
@@ -187,9 +187,9 @@ Early CRM specialists subclass **`SpecialistAgent`** (`src/agents/specialists/ag
 
 **Storage migration policy (June 2026):** Base `SpecialistAgent.optimize_storage()` returns `True` when `current_strategy()` is `versioned_provenance_v1` and `record_count()` ≥ threshold (default **50**, env `MYCELIUM_OPTIMIZE_STORAGE_THRESHOLD`). Each category’s `AGENT` evaluates independently. Subclasses may override `optimize_storage_threshold()` or `optimize_storage()` (e.g. opt-out). Crossing threshold calls `migrate_to("minisql_v1")` before writes.
 
-**`minisql_v1` storage (June 2026):** Shared module `src/storage/minisql_v1.py` backs both specialist category stores (`<agents>/<category>/storage.sqlite`) and per-grain entity stores (`entities/<grain>.sqlite` via `EntityStore`). When a specialist crosses threshold, `SpecialistStorage.migrate_to("minisql_v1")` copies `storage.json` into SQLite, renames JSON to `storage.json.pre-minisql-v1`, and updates `storage_strategy.json`.
+**`minisql_v1` storage (June 2026):** Shared module `src/storage/minisql_v1.py` backs both specialist category stores (`<agents>/<category>/storage.sqlite`) and per-record-type entity stores (`entities/<record_type>.sqlite` via `EntityStore`). When a specialist crosses threshold, `SpecialistStorage.migrate_to("minisql_v1")` copies `storage.json` into SQLite, renames JSON to `storage.json.pre-minisql-v1`, and updates `storage_strategy.json`.
 
-**Specialist hot path (incremental, June 2026):** `write_fields` / `read_fields` on `minisql_v1` use **per-entity** `load_entity` + `save_entity` — one `entity_id` per bind, not a full-table rewrite. Each upsert runs `DELETE FROM field_records WHERE entity_id = ?` then re-inserts **every field row currently in that entity's in-memory record** (typically 1–2 bind fields at bootstrap; more after research). That is **entity-scoped** replace, not single-`(entity_id, field_name)` patch: cost per write is O(fields on that entity), not O(all entities in the category). Bulk `load()` / `save()` / `save_payload` (full table replace) remain for migration, tests, and `analyze_storage`. Entity registry bulk flush semantics are unchanged (deferred bootstrap save; `save_entities_document` still replaces the full document per grain when not deferred). Protocol snapshots and CRM behavior under threshold are unchanged.
+**Specialist hot path (incremental, June 2026):** `write_fields` / `read_fields` on `minisql_v1` use **per-entity** `load_entity` + `save_entity` — one `entity_id` per bind, not a full-table rewrite. Each upsert runs `DELETE FROM field_records WHERE entity_id = ?` then re-inserts **every field row currently in that entity's in-memory record** (typically 1–2 bind fields at bootstrap; more after research). That is **entity-scoped** replace, not single-`(entity_id, field_name)` patch: cost per write is O(fields on that entity), not O(all entities in the category). Bulk `load()` / `save()` / `save_payload` (full table replace) remain for migration, tests, and `analyze_storage`. Entity registry bulk flush semantics are unchanged (deferred bootstrap save; `save_entities_document` still replaces the full document per record type when not deferred). Protocol snapshots and CRM behavior under threshold are unchanged.
 
 ---
 
@@ -212,7 +212,7 @@ Users download the **framework** (this repo: `src/`, `bin/`, docs, tests) and ru
   guide.md              # network policy prose (bootstrap context + MCP describe_network)
   seed.json             # optional bootstrap fixture (DefaultSeedHandler reads at refresh/create)
   bootstrap_handlers/   # optional network-pack bootstrap modules (copied from examples)
-  entities/             # per-grain runtime stores (e.g. person.json)
+  entities/             # per-record-type runtime stores (e.g. person.json)
   categories.json       # skeleton ontology at create; runtime (see docs/examples/sample-categories.json)
   agent_registry.json
   deliveries.json       # runtime — step-1 delivery scopes (TTL; MYCELIUM_DELIVERIES_PATH)
@@ -344,7 +344,7 @@ One inverted index per MVR field on `entities.json` (normalized value → `[uuid
 
 ## Public query flow (current runtime)
 
-Registry rows hold `id` and `bind_values` keyed by active-grain `mvr.bind_fields` (CRM example: `name`, `employer`; baseball player grain: `name`, `team`). Public `results[]` flatten those bind keys alongside `id`. Callers send a query-only **`EntityQuery`** using the [target two-step protocol](#mvr-redesign-target-protocol). The graph state always includes `MyceliumGraphState.query`; LangSmith trace input therefore always shows a `query` section even for internal-only operations.
+Registry rows hold `id` and `bind_values` keyed by active record type `mvr.bind_fields` (CRM example: `name`, `employer`; baseball player record type: `player`, `debut_team`, `debut_year`). Public `results[]` flatten those bind keys alongside `id`. Callers send a query-only **`EntityQuery`** using the [target two-step protocol](#mvr-redesign-target-protocol). The graph state always includes `MyceliumGraphState.query`; LangSmith trace input therefore always shows a `query` section even for internal-only operations.
 
 ### Flow summary
 

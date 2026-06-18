@@ -9,7 +9,7 @@
 - **Example network** remains WIP per [`examples/networks/baseball/README.md`](../../examples/networks/baseball/README.md) — Lahman bootstrap + identity only.
 - **CRM stub `categories.json`** — attribute requests route to CRM specialists (e.g. `professional_specialist` web research), not Lahman warehouse reads.
 - **Provenance** — API works (`provenance=true` on step 1 → versioned attrs in step 2), but lineage today reflects **research sources** (URLs, confidence), not Lahman row refs. **Re-examine** when baseball ontology + warehouse specialists land ([`TODO.md`](../../TODO.md)).
-- **Canonical team on deliver** — alias lookup team (e.g. Milwaukee) → step 2 shows primary bind (Atlanta); registry-correct, UX TBD.
+- **Post-1800 player bind** — debut bind only; career teams are warehouse facts, not extra `bind_index` keys. Re-bootstrap required after merge.
 - **MCP `health_check`** — `ping_query` may show `degraded` on baseball (hardcoded CRM ping); storage/graph ok.
 
 **Program:** [`docs/plans/baseball-example-program.md`](../plans/baseball-example-program.md) — slices through 2100 + 0800/0900 polish; **slice #5 (derived stat query) explicitly out of scope.**
@@ -24,10 +24,10 @@
 
 - Full Lahman refresh completes at acceptable wall time (**Test 8c:** **1,150 s** ~19 min — not test 7 ballpark but ship-acceptable per timing gate).
 - Bootstrap commits **~23,777** player + team identity rows with `source_keys` and warehouse.
-- **Player grain** (default): step-1 resolve + step-2 deliver **identity only** (`name`, `team`, `id`).
-- **Team grain**: resolve + deliver via `{team: "…"}` lookup keys (no `grain` override).
-- **Closed identity**: unknown binds do not offer `create_on_deliver` / `create_pending`.
-- **Multi-team careers**: same `lahman.playerID` → same uuid across different `(name, team)` bind keys.
+- **Player record type** (default): step-1 resolve + step-2 deliver **identity only** (`player`, `debut_team`, `debut_year`, `id`).
+- **Team record type**: resolve + deliver via `{team: "…"}` lookup keys (no `record_type` override).
+- **Closed identity** (`bootstrap_only`): unknown binds do not offer `create_on_deliver` / `create_pending`.
+- **One bind per catalog row**: same `lahman.playerID` → one uuid with a single debut bind at bootstrap (post slice 1800).
 - Automated smoke gates stay green on the benchmark root.
 
 ## Explicit non-goals (do not fail the gate on these)
@@ -35,7 +35,7 @@
 - Career stats, batting/pitching attrs, roster lists, franchise aggregation.
 - Baseball-specific `categories.json` or specialist research.
 - `requested_attributes: ["email"]` or any CRM-style deliver (CRM categories are a stub).
-- `EntityQuery.grain` on step 1 (removed slice 1100; use lookup key shape).
+- `EntityQuery.grain` / `EntityQuery.record_type` on step 1 (removed slice 1100; use lookup key shape).
 
 ---
 
@@ -75,7 +75,7 @@ export ENTITIES_TEAM_SQL="$ENTITIES_DIR/team.sqlite"
 
 cd /path/to/mycelium   # repo root — required for uv run python imports
 
-# Step-1/2 query helper (lookup keys route grain — see docs/query-grain-router.md)
+# Step-1/2 query helper (lookup keys route record type — see docs/query-record-type-router.md)
 baseball_query() {
   uv run python -c "
 import json, sys
@@ -100,9 +100,9 @@ root = Path(os.environ['ROOT'])
 apply_network_paths(NetworkPaths.from_root(root))
 reset_entity_registry()
 out = {}
-for grain in ('player', 'team'):
-    reg = get_entity_registry(grain=grain)
-    out[grain] = {
+for record_type in ('player', 'team'):
+    reg = get_entity_registry(record_type=record_type)
+    out[record_type] = {
         'entity_count': reg.entity_count(),
         'bind_index_entries': len(reg._data.bind_index),
         'source_key_index_entries': len(reg._data.source_key_index),
@@ -146,7 +146,7 @@ baseball_registry_counts
 - Warehouse + both entity stores exist (`entities/player.sqlite` + `entities/team.sqlite` after full bootstrap).
 - Player `entity_count` **≈ 23,500** (± drift; full Lahman v2025.1 ≈ **23,536**).
 - Player `source_key_index_entries` **≈ 23,500** (non-empty).
-- Player `bind_index_entries` **> entity_count** (multi-team aliases; ≈ **57k** bind rows).
+- Player `bind_index_entries` **≈ entity_count** (one debut bind per `playerID` post slice 1800).
 - Team `entity_count` **≈ 241**.
 - Bootstrap line `entities committed: 23777` = **players + teams** (not players alone).
 
@@ -168,26 +168,17 @@ LIMIT 10;
 "
 ```
 
-Pick **two** distinct `team_label` values from output; set shell vars (**required before Checks 3–4**):
-
-```bash
-AARON_NAME="Hank Aaron"
-TEAM_A="Milwaukee Braves"    # replace from SQL
-TEAM_B="Atlanta Braves"      # replace from SQL — must differ from TEAM_A
-echo "Aaron: $AARON_NAME | $TEAM_A | $TEAM_B"   # must not be empty
-```
-
-**Pass:** at least **two** team labels for `aaronha01` on full Lahman (multi-team career).
+**Pass:** at least **two** distinct team labels for `aaronha01` on full Lahman (multi-team **career** in warehouse — identity still uses one debut bind).
 
 ---
 
-## Check 3 — `source_keys` + bind aliases (required)
+## Check 3 — `source_keys` + debut bind (required)
 
-Self-contained (no shell vars) — discovers two Aaron teams from warehouse:
+Self-contained — verifies one debut bind per `aaronha01`:
 
 ```bash
 uv run python -c "
-import os, sqlite3
+import os
 from pathlib import Path
 from network.paths import NetworkPaths, apply_network_paths
 from agents.entity_registry import get_entity_registry, reset_entity_registry
@@ -195,34 +186,24 @@ from agents.entity_registry import get_entity_registry, reset_entity_registry
 root = Path(os.environ['ROOT'])
 apply_network_paths(NetworkPaths.from_root(root))
 reset_entity_registry()
-wh = root / 'warehouse' / 'lahman.sqlite'
-teams = [
-    row[0]
-    for row in sqlite3.connect(wh).execute('''
-        SELECT DISTINCT t.name
-        FROM Appearances a
-        JOIN Teams t ON a.teamID = t.teamID AND a.yearID = t.yearID
-        JOIN People p ON a.playerID = p.playerID
-        WHERE p.playerID = ?
-        ORDER BY t.name
-        LIMIT 2
-    ''', ('aaronha01',))
-]
-assert len(teams) == 2, teams
-name = 'Hank Aaron'
-reg = get_entity_registry(grain='player')
+reg = get_entity_registry(record_type='player')
 e1 = reg.lookup_by_source_key('lahman.playerID', 'aaronha01')
 assert e1, 'missing player by source key'
-e2 = reg.lookup_by_bind_values({'player': name, 'team': teams[0]})
-e3 = reg.lookup_by_bind_values({'player': name, 'team': teams[1]})
-assert e2 and e3, f'missing bind lookups for {teams}'
-assert e1.id == e2.id == e3.id, f'id mismatch: {e1.id} {e2.id} {e3.id}'
+bind = e1.bind_values
+assert {'player', 'debut_team', 'debut_year'} <= set(bind.keys()), bind
+e2 = reg.lookup_by_bind_values(bind)
+assert e2 and e2.id == e1.id, (e1.id, e2)
+wrong = dict(bind)
+wrong['debut_year'] = '9999'
+assert reg.lookup_by_bind_values(wrong) is None
+alias_keys = [k for k, eid in reg._data.bind_index.items() if eid == e1.id]
+assert len(alias_keys) == 1, alias_keys
 assert e1.source_keys.get('lahman.playerID') == 'aaronha01'
-print('OK same uuid', e1.id, 'teams', teams, 'bind_index', len(reg._data.bind_index))
+print('OK debut bind', bind, 'uuid', e1.id)
 "
 ```
 
-**Pass:** one uuid for Aaron; two+ bind_index keys; `lahman.playerID` on entity row.
+**Pass:** one uuid for Aaron; exactly one `bind_index` key for that entity; debut bind resolves; wrong year misses.
 
 ---
 
@@ -230,14 +211,24 @@ print('OK same uuid', e1.id, 'teams', teams, 'bind_index', len(reg._data.bind_in
 
 **Do not pipe `mycelium query` into `jq`** — the CLI prints Rich-styled JSON (ANSI), not raw JSON.
 
-Use `baseball_query` from Helpers (or vars from Check 2):
+Discover Aaron's debut bind from the registry, then run two-step query:
 
 ```bash
-export AARON_NAME="Hank Aaron"
-export TEAM_A="Milwaukee Braves"
+DEBUT_JSON=$(uv run python -c "
+import json, os
+from pathlib import Path
+from network.paths import NetworkPaths, apply_network_paths
+from agents.entity_registry import get_entity_registry, reset_entity_registry
+root = Path(os.environ['ROOT'])
+apply_network_paths(NetworkPaths.from_root(root))
+reset_entity_registry()
+e = get_entity_registry(record_type='player').lookup_by_source_key('lahman.playerID', 'aaronha01')
+assert e, 'missing aaronha01'
+print(json.dumps(e.bind_values))
+")
 
-STEP1=$(baseball_query "{\"lookup\": {\"player\": \"$AARON_NAME\", \"team\": \"$TEAM_A\"}}")
-echo "$STEP1" | jq '{outcome, total_matches, delivery_id: .delivery.delivery_id, grain: .delivery.grain}'
+STEP1=$(baseball_query "{\"lookup\": $DEBUT_JSON}")
+echo "$STEP1" | jq '{outcome, total_matches, delivery_id: .delivery.delivery_id, record_type: .delivery.record_type}'
 
 DELIVERY_ID=$(echo "$STEP1" | jq -r '.delivery.delivery_id')
 baseball_query "{\"delivery_id\": \"$DELIVERY_ID\"}" | jq '{outcome, results: .results}'
@@ -246,24 +237,24 @@ baseball_query "{\"delivery_id\": \"$DELIVERY_ID\"}" | jq '{outcome, results: .r
 **Pass:**
 
 - Step 1: `outcome` = `lookup_resolved`, `total_matches` = 1, `delivery.delivery_id` present.
-- Step 2: `outcome` = `found`; `results[0]` has `id`, `player`, `team` matching lookup.
+- Step 2: `outcome` = `found`; `results[0]` has `id`, `player`, `debut_team`, `debut_year` matching the debut bind.
 - **No** `create_on_deliver` on step 1 delivery scope.
 - Response JSON has **no** `entity_key` / `binding` legacy fields.
 
-**After slice `2026-06-18-1000` + `1100`:** Paul must **re-bootstrap** after merge. Then repeat with a second team from Check 2 (e.g. Milwaukee Braves):
+**Legacy `{player, team}` lookup** must `not_found`:
 
 ```bash
 ./bin/baseball-query '{"lookup": {"player": "Hank Aaron", "team": "Milwaukee Braves"}}' | \
-  jq '{outcome, total_matches, delivery_id: .delivery.delivery_id}'
+  jq '{outcome, total_matches}'
 ```
 
-**Pass:** `lookup_resolved`, `total_matches` = 1 (alias bind via `bind_index`).
+**Pass:** `not_found` (team is not a player bind field post slice 1800).
 
 **Optional smoke:** `uv run mycelium query --network-dir "$ROOT" --lookup-json '…'` — human-readable only; verify `lookup_resolved` in terminal output.
 
 ---
 
-## Check 5 — Team grain resolve + deliver (required)
+## Check 5 — Team record type resolve + deliver (required)
 
 Pick a team name that exists (from SQL or registry):
 
@@ -271,7 +262,7 @@ Pick a team name that exists (from SQL or registry):
 TEAM_NAME="Brooklyn Dodgers"   # or another row from: sqlite3 "$WAREHOUSE" "SELECT DISTINCT name FROM Teams LIMIT 5;"
 
 baseball_query "{\"lookup\": {\"team\": \"$TEAM_NAME\"}}" | \
-  jq '{outcome, total_matches, delivery_id: .delivery.delivery_id, grain: .delivery.grain}'
+  jq '{outcome, total_matches, delivery_id: .delivery.delivery_id, record_type: .delivery.record_type}'
 ```
 
 Copy `delivery_id`, then:
@@ -283,7 +274,7 @@ baseball_query "{\"delivery_id\": \"$DELIVERY_ID\"}" | \
 
 **Pass:**
 
-- Step 1: `lookup_resolved`, 1 match, `delivery.grain` = `team`.
+- Step 1: `lookup_resolved`, 1 match, `delivery.record_type` = `team` (when present on delivery scope).
 - Step 2: `found`; `results[0].team` = canonical team string.
 
 ---
@@ -291,7 +282,7 @@ baseball_query "{\"delivery_id\": \"$DELIVERY_ID\"}" | \
 ## Check 6 — Closed identity (required)
 
 ```bash
-baseball_query '{"lookup": {"player": "Nobody Here", "team": "Nowhere Nine"}}' | \
+baseball_query '{"lookup": {"player": "Nobody Here", "debut_team": "Nowhere Nine", "debut_year": "2099"}}' | \
   jq '{outcome, total_matches, create_on_deliver: .delivery.create_on_deliver}'
 ```
 
@@ -312,7 +303,7 @@ from network.paths import NetworkPaths, apply_network_paths
 from agents.entity_registry import get_entity_registry, reset_entity_registry
 apply_network_paths(NetworkPaths.from_root(Path(os.environ['ROOT'])))
 reset_entity_registry()
-entity = next(iter(get_entity_registry(grain='player').list_entities()))
+entity = next(iter(get_entity_registry(record_type='player').list_entities()))
 keys = set(entity.model_dump().keys())
 required = {'id', 'bind_values', 'source_keys', 'source', 'validation_state'}
 assert required <= keys, keys
@@ -325,9 +316,9 @@ print('OK sample entity', entity.id, entity.bind_values, entity.source_keys)
 
 ---
 
-## Check 8 — Multi-grain partial lookup (optional)
+## Check 8 — Partial player lookup (optional)
 
-Name-only lookup on player default grain (may fan-out or suggest):
+Name-only lookup on default player record type:
 
 ```bash
 baseball_query '{"lookup": {"player": "Hank Aaron"}}' | \
@@ -348,7 +339,7 @@ baseball_query '{"lookup": {"team": "Dodgers"}}' | \
   jq '{outcome, total_matches}'
 ```
 
-**Pass (optional):** `lookup_resolved` with `total_matches` ≥ 2 (Brooklyn + LA), or `lookup_suggested` with grain-tagged candidates. **Skip** if no API key — not blocking ship.
+**Pass (optional):** `lookup_resolved` with `total_matches` ≥ 2 (Brooklyn + LA), or `lookup_suggested` with record-type-tagged candidates. **Skip** if no API key — not blocking ship.
 
 ---
 
@@ -356,10 +347,14 @@ baseball_query '{"lookup": {"team": "Dodgers"}}' | \
 
 ```bash
 uv run mycelium network status --network-dir "$ROOT" --json | \
-  jq '{network_name, registry_entity_count, grains: .mvr_grains, ontology_present}'
+  jq '{network_name, registry_entity_count, ontology_present}'
 ```
 
-**Pass:** baseball network; entity count > 0; grains include `player` and `team`. CRM-copy ontology present is **expected** (not blocking).
+```bash
+jq '.mvr.record_types | keys' "$ROOT/network.json"
+```
+
+**Pass:** baseball network; entity count > 0; `network.json` record types include `player` and `team`. CRM-copy ontology present is **expected** (not blocking).
 
 ---
 

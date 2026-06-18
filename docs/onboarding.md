@@ -7,7 +7,7 @@
 ## 1. What Mycelium is (today)
 
 - **Framework repo** (this project): LangGraph supervisor + specialist agents, query-only CLI/MCP, entity registry.
-- **Networks**: isolated directories you choose (`network_root`). Each holds per-grain entity stores under `entities/<grain>.json` (default query grain for CRM: `person`), ontology, specialist storage, checkpoints.
+- **Networks**: isolated directories you choose (`network_root`). Each holds per-record-type entity stores under `entities/<record_type>.json` (default query record type for CRM: `person`), ontology, specialist storage, checkpoints.
 - **Public API**: `query` / `query_entity` only. Callers do **not** submit ingest payloads.
 
 ---
@@ -16,9 +16,9 @@
 
 | Term | Meaning |
 |------|---------|
-| **`entities/<grain>.json`** | Canonical identity store per MVR grain at runtime (UUID, `bind_values`, generic `bind_index`, validation state). CRM queries use the **`person`** grain by default. Requires explicit `mvr.grains` and `mvr.default_grain` in `network.json`. MVR bind values are cached here; canonical history is in specialist `versions[]` (Program 2). |
+| **`entities/<record_type>.json`** | Canonical identity store per MVR record type at runtime (UUID, `bind_values`, generic `bind_index`, validation state). CRM queries use the **`person`** record type by default. Requires explicit `mvr.record_types` and `mvr.default_record_type` in `network.json`. MVR bind values are cached here; canonical history is in specialist `versions[]` (Program 2). |
 | **`seed.json`** | Optional **bootstrap fixture** — `rows[]` read by the declared bootstrap handler (CRM: `DefaultSeedHandler`) at `refresh-example-network` or `network create --seed` only. Not read on query. See [seed-bootstrap.md](seed-bootstrap.md). |
-| **`network.json` → `bootstrap`** | Required bootstrap handler declaration: **`module`**, **`handler`**, optional **`seed_grain`**. Framework modules (`network.*`) ship with the repo; pack modules live under `<network_root>/bootstrap_handlers/`. See [architecture.md](architecture.md) § Seed bootstrap and [seed-bootstrap.md](seed-bootstrap.md). |
+| **`network.json` → `bootstrap`** | Required bootstrap handler declaration: **`module`**, **`handler`**, optional **`seed_record_type`**. Framework modules (`network.*`) ship with the repo; pack modules live under `<network_root>/bootstrap_handlers/`. See [architecture.md](architecture.md) § Seed bootstrap and [seed-bootstrap.md](seed-bootstrap.md). |
 | **`IdentityRecord`** | Graph/MCP model for a matched registry row: `id` + `bind_values` keyed by active MVR bind fields (renamed from `SeedRecord`, June 2026). |
 | **`network create`** | Scaffold ontology + register name. `--seed` is optional; empty registry + first-query bind is valid (`empty-crm`). |
 | **Slice plans** | Point-in-time specs in `docs/plans/`. May describe removed code — check **Active backlogs** in [`plans/README.md`](plans/README.md). |
