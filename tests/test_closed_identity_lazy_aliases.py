@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from agents.bind_alias_expansion import _alias_expansion_example_lines
+from agents.bind_alias_expansion import _build_alias_expansion_prompt
 from agents.entity_registry import RegistryEntity, get_entity_registry, reset_entity_registry
 from agents.target_resolve import resolve_target_step1
 from models.state import EntityQuery
@@ -97,14 +97,26 @@ def _mock_team_alias_expander(
 
 
 @pytest.mark.smoke
-def test_alias_expansion_example_lines_vary_by_record_type() -> None:
-    team_examples = "\n".join(_alias_expansion_example_lines("team", "team"))
-    player_examples = "\n".join(_alias_expansion_example_lines("player", "player"))
-    assert "Dodgers" in team_examples
-    assert "Washington Red Sox" in team_examples
-    assert "Dodgers" not in player_examples
-    assert "Say Hey Kid" in player_examples
-    assert _alias_expansion_example_lines("person", "name") == []
+def test_alias_expansion_prompt_generic_uses_guide_not_hardcoded_examples(
+    tmp_path: Path,
+) -> None:
+    shutil.copy(BASEBALL_MANIFEST, tmp_path / "network.json")
+    paths = NetworkPaths.from_root(tmp_path)
+    apply_network_paths(paths)
+
+    guide = "Domain nicknames: Dodgers → Brooklyn Dodgers and Los Angeles Dodgers."
+    prompt = _build_alias_expansion_prompt(
+        record_type="team",
+        field="team",
+        query_value="Dodgers",
+        guide_text=guide,
+        canonical_values=["Brooklyn Dodgers", "Los Angeles Dodgers"],
+    )
+    assert "Examples (illustrative)" not in prompt
+    assert "Bronx Bombers" not in prompt
+    assert "Washington Red Sox →" not in prompt
+    assert guide in prompt
+    assert "network guide" in prompt.lower()
 
 
 @pytest.mark.smoke

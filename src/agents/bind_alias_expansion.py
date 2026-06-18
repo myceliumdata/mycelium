@@ -95,31 +95,6 @@ def _canonical_values_to_entity_ids(
     return entity_ids
 
 
-def _alias_expansion_example_lines(record_type: str, field: str) -> list[str]:
-    """Record-type-specific illustrative examples; empty when guide.md should suffice."""
-    rt = record_type.strip().lower()
-    fk = field.strip().lower()
-    if rt == "team" and fk == "team":
-        return [
-            "- Dodgers → Brooklyn Dodgers, Los Angeles Dodgers",
-            "- Bronx Bombers → New York Yankees",
-            "- The Miracle Mets → New York Mets",
-            "- Washington Red Sox → (empty — mashup, not a real nickname)",
-        ]
-    if rt == "player" and fk == "player":
-        return [
-            "- The Say Hey Kid → Willie Mays (when listed)",
-            "- Hammerin' Hank → Hank Aaron (when listed)",
-            "- Washington Aaron → (empty — mashup, not a real nickname)",
-        ]
-    if rt == "player" and fk == "debut_team":
-        return [
-            "- Braves → Milwaukee Braves, Atlanta Braves (when both listed)",
-            "- Washington Red Sox → (empty — mashup, not a real nickname)",
-        ]
-    return []
-
-
 def _build_alias_expansion_prompt(
     *,
     record_type: str,
@@ -133,19 +108,15 @@ def _build_alias_expansion_prompt(
         f"- {field}={value!r}" for value in canonical_values
     )
     guide_block = guide_text.strip() if guide_text else "(no guide.md provided)"
-    example_lines = _alias_expansion_example_lines(record_type, field)
-    examples_block = ""
-    if example_lines:
-        examples_block = "Examples (illustrative):\n" + "\n".join(example_lines) + "\n\n"
     return (
         "You resolve whether a query is a real nickname, shorthand, or historical "
         "label for one or more rows in the canonical list below.\n"
         "Return exact canonical bind-field strings from the list (character-for-character "
         "match to a listed value). Do not invent entities or values. Do not return entity "
-        "ids. Do not combine unrelated fragments from different rows (e.g. city from "
-        "one row + nickname from another). Mashups, typo-combos, and unrecognized "
-        "strings → return an empty list.\n\n"
-        f"{examples_block}"
+        "ids. Do not combine unrelated fragments from different rows. Mashups, "
+        "typo-combos, and unrecognized strings → return an empty list.\n"
+        "Use the network guide for domain-specific nickname patterns and negative "
+        "examples.\n\n"
         f"Record type: {record_type}\n"
         f"Record type description: {mvr.description}\n"
         f"Bind field: {field}\n"
