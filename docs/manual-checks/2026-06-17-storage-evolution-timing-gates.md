@@ -15,8 +15,10 @@
 | **Test 5** | Post slice 4 (`c898036`+) | **~16,200** estimated (~4.5 h) | **Abandoned** — killed in progress; no `time -p` final | ~No gain vs baseline; slice 4 not the big win |
 | **Test 6** | Post incremental (`c5e5bce`+) | **1,202** (~20 min) | **Recorded** | ~10× vs baseline; still dominated by field-index rebuilds |
 | **Test 7** | Post alias skip rebuild (`f45b65c`+) | **555** (~9 min) | **Recorded** | **2.2×** vs test 6; **~23×** vs baseline; further bootstrap perf **deferred** (Paul, June 2026) |
+| **Test 8c** | Post source-key skip (`ff52422`+) | **1,150** (~19 min) | **Recorded** | Pre-1800: 57,627 appearance binds; **23,777** entities |
+| **Test 9** | Post debut bind (`8ccd389`+, slice 1800) | **1,539** (~**26 min**) | **Recorded** (Paul, 2026-06-18) | **23,596** player binds; **23,837** entities; `~/mycelium-networks/baseball` |
 
-**Takeaway:** Lahman bootstrap is **not** “50k INSERTs.” Warehouse ingest is **~2 s**. The bind loop is ~58k identity operations. Incremental specialist writes (test 6) and alias-only index skip (test 7) removed the worst quadratic costs; **~24k new-player `save_entity` rebuilds remain O(n²)** — acceptable for now; no more optimization slices queued.
+**Takeaway:** Lahman bootstrap is **not** “50k INSERTs.” Warehouse ingest is **~2 s** on a fast local root (CSV load + debut SQL can sit longer under “Retrieving data…”). Post slice 1800 the progress counter matches **~24k debut binds** (one per `playerID`), not ~58k appearance rows. Incremental specialist writes (test 6) and alias-only index skip (test 7) removed the worst costs; **~24k new-player `save_entity` field-index rebuilds remain O(n²)** — test 9 confirms that path still dominates (~26 min). Next perf slice: incremental field-index update during deferred bootstrap (backlog from test 7).
 
 See [Lessons learned](#lessons-learned-posterity-june-2026) and [`docs/plans/storage-evolution-program.md`](../plans/storage-evolution-program.md) § Post-mortem.
 
@@ -49,9 +51,10 @@ Record **real**, **user**, **sys** from `time -p` output. Stderr progress (post 
 |-------|--------|-------------------------|
 | Git seed fetch + CSV → `lahman.sqlite` | ~128k appearance rows ingested | **~2–3 s** |
 | Team grain bootstrap | ~241 distinct team labels | **&lt; 1 min** |
-| Player loop | **~57,627** `(playerID, name, team)` rows from Appearances | **Hours** (pre-incremental) |
-| — new players (first sight of `playerID`) | **~24,011** → `write_bind_fields` → 2 specialists | Full-table SQLite rewrite per bind (pre-`c5e5bce`) |
-| — alias rows (same `playerID`, new team) | **~33,616** → `add_bind_alias` only | No specialist write; **no field-index rebuild** post test 7 (`f45b65c`) |
+| Player loop (pre-1800) | **~57,627** appearance `(player, team)` iterations | Dominated pre-incremental runs |
+| Player loop (post-1800) | **~23,596** debut binds (one per `playerID`) | Progress counter = entities committed |
+| — new players | **~23,596** → `ensure_entity_bind_fields` → specialists | **~24k** `save_entity` + full `_rebuild_field_indexes` each row (O(n²) CPU) |
+| — alias rows (pre-1800 only) | **~33,616** → `add_bind_alias` | Removed in slice 1800; was cheap post test 7 |
 | Deferred entity flush | 1× per grain at handler end | **Seconds** |
 
 “50k records in seconds” applies only to **warehouse ingest**, not the bind loop.
@@ -153,6 +156,22 @@ Record **real**, **user**, **sys** from `time -p` output. Stderr progress (post 
 | **Test 8c** | 2026-06-17 | **1,150.39** (~**19 min**) | 1,088.76 | 38.27 | Post `ff52422` (`0800` save_entity skip). Same command/root. 57,627 player binds; **23,777** entities committed. **1.22× faster** than test 8b (1,399 s). Still **2.07× slower** than test 7 (555 s). |
 
 **Test 8c gate:** Source-key rebuild path fixed; remaining gap vs test 7 is **~24k `save_entity` field-index rebuilds** (known O(n²), deferred June 2026). **~19 min acceptable** for identity ship; further bootstrap perf is backlog unless demo blocks.
+
+---
+
+## Timing test 9 — after debut bind (slice 1800)
+
+**When:** Post `8ccd389` (`2026-06-18-1800-baseball-mvr-record-types-debut-bind`).
+
+**What changed:** `LahmanSeedHandler` commits **one** debut bind per `lahman.playerID` (`distinct_player_debut_rows`); no appearance-driven `add_bind_alias` loop. Progress total drops from ~57k to ~24k; entities committed unchanged (~24k players + ~241 teams).
+
+| Run | Date | real (s) | user (s) | sys (s) | Notes |
+|-----|------|----------|----------|---------|-------|
+| **Test 9** | 2026-06-18 | **1,538.88** (~**25 min 39 s**) | 1,460.77 | 54.36 | `./bin/refresh-example-network baseball --yes`. Wiped `~/mycelium-networks/baseball`. Progress **23,596/23,596** player binds; **23,837** entities committed. Phases: `lahman-seed@v2025.1` fetch → `building warehouse` (includes debut SQL + teams, no sub-progress) → player binds → cleanup. |
+
+**vs test 8c:** **1.34× slower** (1,539 s vs 1,150 s) despite **2.4× fewer** loop iterations — confirms alias rows were not the bottleneck after test 7; **~24k field-index rebuilds** still dominate. **vs test 7:** **2.77× slower** (source_keys + 3-field bind vs 2-field pre-1900 era).
+
+**Gate:** Identity + routing testable at ~26 min; demo-scale refresh still needs incremental field-index slice.
 
 ---
 
