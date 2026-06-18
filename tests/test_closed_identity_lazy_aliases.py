@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from agents.bind_alias_expansion import _alias_expansion_example_lines
 from agents.entity_registry import RegistryEntity, get_entity_registry, reset_entity_registry
 from agents.target_resolve import resolve_target_step1
 from models.state import EntityQuery
@@ -93,6 +94,17 @@ def _mock_team_alias_expander(
     if query_value == "The Miracle Mets":
         return ["New York Mets"]
     return []
+
+
+@pytest.mark.smoke
+def test_alias_expansion_example_lines_vary_by_record_type() -> None:
+    team_examples = "\n".join(_alias_expansion_example_lines("team", "team"))
+    player_examples = "\n".join(_alias_expansion_example_lines("player", "player"))
+    assert "Dodgers" in team_examples
+    assert "Washington Red Sox" in team_examples
+    assert "Dodgers" not in player_examples
+    assert "Say Hey Kid" in player_examples
+    assert _alias_expansion_example_lines("person", "name") == []
 
 
 @pytest.mark.smoke

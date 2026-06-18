@@ -31,7 +31,13 @@ AliasExpander = Callable[
 
 
 class _FieldAliasProposal(BaseModel):
-    canonical_values: list[str] = Field(default_factory=list)
+    canonical_values: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Exact canonical bind-field strings from the provided list that match "
+            "the query nickname or shorthand. Empty when the query is not a real alias."
+        ),
+    )
 
 
 def load_network_guide_text() -> str | None:
@@ -89,6 +95,31 @@ def _canonical_values_to_entity_ids(
     return entity_ids
 
 
+def _alias_expansion_example_lines(record_type: str, field: str) -> list[str]:
+    """Record-type-specific illustrative examples; empty when guide.md should suffice."""
+    rt = record_type.strip().lower()
+    fk = field.strip().lower()
+    if rt == "team" and fk == "team":
+        return [
+            "- Dodgers → Brooklyn Dodgers, Los Angeles Dodgers",
+            "- Bronx Bombers → New York Yankees",
+            "- The Miracle Mets → New York Mets",
+            "- Washington Red Sox → (empty — mashup, not a real nickname)",
+        ]
+    if rt == "player" and fk == "player":
+        return [
+            "- The Say Hey Kid → Willie Mays (when listed)",
+            "- Hammerin' Hank → Hank Aaron (when listed)",
+            "- Washington Aaron → (empty — mashup, not a real nickname)",
+        ]
+    if rt == "player" and fk == "debut_team":
+        return [
+            "- Braves → Milwaukee Braves, Atlanta Braves (when both listed)",
+            "- Washington Red Sox → (empty — mashup, not a real nickname)",
+        ]
+    return []
+
+
 def _build_alias_expansion_prompt(
     *,
     record_type: str,
@@ -102,19 +133,19 @@ def _build_alias_expansion_prompt(
         f"- {field}={value!r}" for value in canonical_values
     )
     guide_block = guide_text.strip() if guide_text else "(no guide.md provided)"
+    example_lines = _alias_expansion_example_lines(record_type, field)
+    examples_block = ""
+    if example_lines:
+        examples_block = "Examples (illustrative):\n" + "\n".join(example_lines) + "\n\n"
     return (
         "You resolve whether a query is a real nickname, shorthand, or historical "
         "label for one or more rows in the canonical list below.\n"
         "Return exact canonical bind-field strings from the list (character-for-character "
-        "match to a listed value). Do not invent teams or values. Do not return entity "
+        "match to a listed value). Do not invent entities or values. Do not return entity "
         "ids. Do not combine unrelated fragments from different rows (e.g. city from "
-        "one team + nickname from another). Mashups, typo-combos, and unrecognized "
+        "one row + nickname from another). Mashups, typo-combos, and unrecognized "
         "strings → return an empty list.\n\n"
-        "Examples (illustrative):\n"
-        "- Dodgers → Brooklyn Dodgers, Los Angeles Dodgers\n"
-        "- Bronx Bombers → New York Yankees\n"
-        "- The Miracle Mets → New York Mets\n"
-        "- Washington Red Sox → (empty — mashup, not a real nickname)\n\n"
+        f"{examples_block}"
         f"Record type: {record_type}\n"
         f"Record type description: {mvr.description}\n"
         f"Bind field: {field}\n"
