@@ -1,6 +1,6 @@
 # Baseball query — hand test plan (CLI + MCP)
 
-**Status:** Use after **re-bootstrap** on a full Lahman root (post slice 1100 `player`/`team` bind keys).
+**Status:** ✅ Hand plan **CLEAR** (Paul, 2026-06-18). Parent ship gate **CLEAR (WIP)**. Use on a full Lahman root (post slice 1100 `player`/`team` bind keys).
 
 **Purpose:** Copy-paste queries you run by hand. Same JSON works in `./bin/baseball-query` and MCP `query_entity`. Grok/CI already run automated tests — this doc is for **you**.
 
@@ -535,9 +535,10 @@ alias bq2='./bin/baseball-query "$1" | jq "{outcome, results: .results}"'
 | **Alias lookup → canonical team on deliver** (Q02) | Step 1 accepts `{player, team: Milwaukee}`; step 2 `results[0].team` is **primary** bind (e.g. Atlanta). Same uuid — correct for registry — but **odd UX**. Decide before specialist assembly: surface `lookup` echo, `matched_bind`, or scope team for downstream reads. |
 | **Q12 vs Q02** | Q12 uses `{name, …}` → `not_found`. Q02 uses `{player, team: Milwaukee}` → resolve + canonical Atlanta on deliver. |
 | **Q15 + `.env`** | `baseball-query` loads repo `.env`; Q15 needs `OPENAI_API_KEY` there. |
+| **Provenance on attrs** | `provenance=true` works; baseball bio/stats lineage is CRM research today — re-examine with warehouse specialists ([`TODO.md`](../../TODO.md)). |
 
 - **Do not** pipe `uv run mycelium query` into `jq` — Rich ANSI output breaks JSON parsing. Use `./bin/baseball-query` or MCP.
 - **CRM** is out of scope; run `./bin/smoke-crm-e2e` separately if needed.
 - Parent ship gate (timing, SQL, registry counts): [`2026-06-17-baseball-identity-ship-gate.md`](2026-06-17-baseball-identity-ship-gate.md)
 - **Career teams:** use **H1** or **H2** — not the public query protocol (see § H).
-- After all **G** rows pass on your re-bootstrapped root, mark ship gate query sections **CLEAR** and continue checks 1–3 / 7 if not already done.
+- Ship gate query sections **CLEAR** (2026-06-18). Checks 1–3 / 7 on ship gate doc: confirm separately if not already logged.

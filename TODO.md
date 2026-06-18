@@ -82,6 +82,7 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 - [ ] **Data attribution (product — USP)** — MCP/`describe_network` surfacing, staleness/re-research policy beyond Slice 8 basics.
 - [ ] **Derivative data — token-efficiency examples (USP)** — Once specialists materialize **derivative** attrs (warehouse joins, aggregates, rate stats, etc.), ship **worked examples** that quantify **lower client token cost** when retrieving the derivative via Mycelium vs. fetching/reasoning over all **source** rows the specialist used to build it. Deliverables TBD: side-by-side MCP/query transcripts or scripts (token counts), `examples/networks/` demo query pack, website narrative. Natural first host: **baseball** Lahman derivations ([`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md)). Depends on specialist-owned derivative storage + query path to read it.
 - [ ] **MCP `health_check` — generic per-network ping** — Today `ping_query` hardcodes CRM `_HEALTH_PING_LOOKUP` (`name` + `employer`); **baseball** (and any non-CRM network) reports `degraded` even when storage/graph are ok. Replace with grain-aware step-1/2 ping from active `mvr.grains` + a known row per example network (manifest, `guide.md`, or small fixture map). Goal: `ping_query: ok` on CRM and baseball without CRM strings in `src/mycelium_mcp/server.py`.
+- [ ] **Baseball provenance — re-examine** — Identity ship (2026-06-18) proved `provenance=true` returns versioned attrs (research URLs, confidence). For baseball, provenance must eventually cite **warehouse lineage** (`lahman.playerID`, table/row) for stats/bio, with optional supplemental research clearly labeled — not CRM `professional_specialist` web pulls posing as domain data. Design when baseball ontology + stat/bio specialists ship.
 - [ ] **Seed export (`export-growth-seed`)** — Validated `entities.json` → `seed.json` fragment.
 - [ ] **Seed vs grown entity linking** — Network-type-specific merge/override rules.
 
@@ -106,4 +107,4 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ---
 
-Last updated: 2026-06-18 (MCP generic health_check ping backlog)
+Last updated: 2026-06-18 (baseball identity ship CLEAR WIP; provenance re-examine backlog)

@@ -1,8 +1,16 @@
 # Manual checks — Baseball identity ship gate (June 2026)
 
-**Status:** ⏳ **PENDING** — run after **Test 8c** bootstrap timing; mark **✅ CLEAR** when all required checks pass.
+**Status:** ✅ **CLEAR (WIP)** — Paul manual sign-off **2026-06-18**. Identity + query routing verified (CLI, MCP, hand plan). **Ship this version** with WIP caveat below — not a finished baseball demo.
 
 **Scope:** Ship **identity + query routing** on the full Lahman bootstrap. **Not** ontology, specialists, stats, or derivatives.
+
+### WIP caveats (shipped anyway)
+
+- **Example network** remains WIP per [`examples/networks/baseball/README.md`](../../examples/networks/baseball/README.md) — Lahman bootstrap + identity only.
+- **CRM stub `categories.json`** — attribute requests route to CRM specialists (e.g. `professional_specialist` web research), not Lahman warehouse reads.
+- **Provenance** — API works (`provenance=true` on step 1 → versioned attrs in step 2), but lineage today reflects **research sources** (URLs, confidence), not Lahman row refs. **Re-examine** when baseball ontology + warehouse specialists land ([`TODO.md`](../../TODO.md)).
+- **Canonical team on deliver** — alias lookup team (e.g. Milwaukee) → step 2 shows primary bind (Atlanta); registry-correct, UX TBD.
+- **MCP `health_check`** — `ping_query` may show `degraded` on baseball (hardcoded CRM ping); storage/graph ok.
 
 **Program:** [`docs/plans/baseball-example-program.md`](../plans/baseball-example-program.md) — slices through 2100 + 0800/0900 polish; **slice #5 (derived stat query) explicitly out of scope.**
 
