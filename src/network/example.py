@@ -119,6 +119,7 @@ class RefreshExampleResult:
     seed_fetch_summary: str | None = None
     declined: bool = False
     dry_run: bool = False
+    sync_only: bool = False
 
 
 def refresh_example_network(
@@ -130,6 +131,7 @@ def refresh_example_network(
     no_default: bool = False,
     yes: bool = False,
     dry_run: bool = False,
+    sync_only: bool = False,
     input_fn: Callable[[str], str] | None = None,
 ) -> RefreshExampleResult:
     """Bootstrap or reset a live network from ``examples/networks/<name>/``."""
@@ -153,26 +155,60 @@ def refresh_example_network(
         ]
         reg_name = resolve_registry_name(name, source) if register else None
         seed_fetch_summary: str | None = None
-        git_source = load_git_seed_source(source / "seed.source.json")
-        if git_source is not None:
-            seed_fetch_summary = git_seed_summary(git_source)
         seed_bootstrap_count = 0
-        if "seed.json" in would_copy:
-            seed_bootstrap_count = count_seed_rows(source / "seed.json")
-        elif git_source is not None:
-            seed_bootstrap_count = -1
+        if not sync_only:
+            git_source = load_git_seed_source(source / "seed.source.json")
+            if git_source is not None:
+                seed_fetch_summary = git_seed_summary(git_source)
+            if "seed.json" in would_copy:
+                seed_bootstrap_count = count_seed_rows(source / "seed.json")
+            elif git_source is not None:
+                seed_bootstrap_count = -1
         return RefreshExampleResult(
             name=name,
             root=live_root,
             source=source,
             copied=would_copy,
-            wiped=exists,
+            wiped=exists and not sync_only,
             registered=register,
             registry_name=reg_name,
             is_default=make_default if register else False,
             seed_bootstrap_count=seed_bootstrap_count,
             seed_fetch_summary=seed_fetch_summary,
             dry_run=True,
+            sync_only=sync_only,
+        )
+
+    if sync_only:
+        if not live_root.is_dir():
+            raise ValueError(
+                f"Sync-only requires an existing live root at {live_root}; "
+                "run a full refresh first (omit --sync-only).",
+            )
+        copied = copy_example_network(name, live_root)
+        registered = False
+        registry_name = None
+        if register:
+            registry_name = resolve_registry_name(name, live_root)
+            entry = register_network(
+                registry_name,
+                live_root,
+                default=make_default,
+                allow_no_default=no_default,
+            )
+            registered = True
+            make_default = entry.default
+        return RefreshExampleResult(
+            name=name,
+            root=live_root,
+            source=source,
+            copied=copied,
+            wiped=False,
+            registered=registered,
+            registry_name=registry_name,
+            is_default=make_default if register else False,
+            seed_bootstrap_count=0,
+            sync_only=True,
         )
 
     if exists and not yes:

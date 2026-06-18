@@ -13,6 +13,14 @@ uv sync
 ./bin/refresh-example-network baseball --yes
 ```
 
+To push committed example changes (e.g. updated `guide.md`) into an **existing** live root without re-running Lahman bootstrap (~25 min):
+
+```bash
+./bin/refresh-example-network baseball --sync-only
+```
+
+Keeps `entities/`, `warehouse/`, `seed/`, specialists, and checkpoints; copies `guide.md`, `network.json`, `bootstrap_handlers/`, etc. from `examples/networks/baseball/`.
+
 Refresh copies `network.json`, `bootstrap_handlers/`, and `guide.md`, then:
 
 1. **Fetches** Lahman CSVs from [`myceliumdata/lahman-seed`](https://github.com/myceliumdata/lahman-seed) (`seed.source.json` pins tag `v2025.1`)

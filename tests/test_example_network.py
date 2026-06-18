@@ -451,3 +451,56 @@ def test_refresh_baseball_fetches_seed_and_bootstraps(
     assert (target / "warehouse" / "lahman.sqlite").is_file()
     assert (EXAMPLE_BASEBALL / "seed.source.json").is_file()
     assert not (EXAMPLE_BASEBALL / "seed").exists()
+
+
+@pytest.mark.smoke
+def test_refresh_sync_only_updates_guide_without_rebootstrap(tmp_path: Path) -> None:
+    target = tmp_path / "crm-live"
+    refresh_example_network("crm", root=target, register=False, yes=True)
+    entities_path = NetworkPaths.from_root(target).entities_path
+    entity_count_before = len(
+        json.loads(entities_path.read_text(encoding="utf-8"))["entities"],
+    )
+
+    (target / "guide.md").write_text("STALE GUIDE", encoding="utf-8")
+
+    result = refresh_example_network("crm", root=target, register=False, sync_only=True)
+    assert result.sync_only is True
+    assert result.wiped is False
+    assert result.seed_bootstrap_count == 0
+    assert (
+        (target / "guide.md").read_text(encoding="utf-8")
+        == (EXAMPLE_CRM / "guide.md").read_text(encoding="utf-8")
+    )
+    entity_count_after = len(
+        json.loads(entities_path.read_text(encoding="utf-8"))["entities"],
+    )
+    assert entity_count_after == entity_count_before
+
+
+@pytest.mark.smoke
+def test_refresh_sync_only_requires_existing_root(tmp_path: Path) -> None:
+    target = tmp_path / "missing-live"
+    with pytest.raises(ValueError, match="Sync-only requires an existing live root"):
+        refresh_example_network("crm", root=target, register=False, sync_only=True)
+
+
+@pytest.mark.smoke
+def test_refresh_sync_only_cli(tmp_path: Path) -> None:
+    target = tmp_path / "crm-live"
+    refresh_example_network("crm", root=target, register=False, yes=True)
+    (target / "guide.md").write_text("STALE", encoding="utf-8")
+
+    result = _run_refresh(
+        "crm",
+        "--root",
+        str(target),
+        "--no-register",
+        "--sync-only",
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+    assert "sync-only: skipped seed fetch and bootstrap" in result.stdout
+    assert (
+        (target / "guide.md").read_text(encoding="utf-8")
+        == (EXAMPLE_CRM / "guide.md").read_text(encoding="utf-8")
+    )

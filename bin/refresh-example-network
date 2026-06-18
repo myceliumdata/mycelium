@@ -74,6 +74,15 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print planned actions without writing",
     )
+    parser.add_argument(
+        "--sync-only",
+        action="store_true",
+        help=(
+            "Update live root from the committed example without wiping runtime "
+            "artifacts or running seed fetch/bootstrap (keeps entities, warehouse, "
+            "specialists, checkpoints)."
+        ),
+    )
     return parser
 
 
@@ -90,6 +99,7 @@ def main(argv: list[str] | None = None) -> int:
             no_default=args.no_default,
             yes=args.yes,
             dry_run=args.dry_run,
+            sync_only=args.sync_only,
         )
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -99,7 +109,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Skipped refresh for {args.name} at {result.root}")
         return 0
 
-    prefix = "Would refresh" if result.dry_run else "Refreshed"
+    if result.sync_only:
+        prefix = "Would sync" if result.dry_run else "Synced"
+    else:
+        prefix = "Would refresh" if result.dry_run else "Refreshed"
     print(f"{prefix} {args.name} → {result.root}")
     print(f"  source: {result.source}")
     if result.wiped:
@@ -107,6 +120,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  {action} existing live root")
     for entry in result.copied:
         print(f"  copy: {entry}")
+    if result.sync_only and not result.dry_run:
+        print("  sync-only: skipped seed fetch and bootstrap")
+    elif result.sync_only and result.dry_run:
+        print("  Would sync-only: skip seed fetch and bootstrap")
     if result.seed_fetch_summary:
         action = "Would fetch" if result.dry_run else "Fetched"
         print(f"  {action} seed: {result.seed_fetch_summary}")
