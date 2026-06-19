@@ -98,7 +98,8 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 - [x] **Baseball generic warehouse resolver (M2b)** — Manifest conventions (`career_sum`, raw People columns) in `batting_specialist` / `bio_specialist`; `career_rbi`, `career_hits`, etc. without per-attr `if` branches. Polish nits → `2026-06-19-1700-baseball-warehouse-manifest-m2a-polish` (after M2c).
 - [x] **Baseball identity bind on deliver (M2c)** — `debut_team` / `debut_year` from registry bind via `player_identity_specialist`; warehouse `parameters` complete from M2b. Hand-test gate passed on live Lahman (June 2026).
 - [x] **Baseball M2 polish** — Manifest capabilities dedup, MCP blurb, `specialist_loader`, full `parameters`, multi-attr test/smoke, hand-test doc M2 extended gate. Prompt `2026-06-19-1700-baseball-warehouse-manifest-m2a-polish`.
-- [x] **Baseball derive codegen sandbox (M3)** — `derive_sandbox` + pack `derive_resolve`; `derive_candidates: ["career_avg"]`; mocked LLM e2e + provenance. Commit `35a89ab`. Review `2026-06-19-1800-baseball-derive-codegen-sandbox-m3`. Manual Lahman `career_avg` gate for Paul.
+- [x] **Baseball derive codegen sandbox (M3)** — `derive_sandbox` + pack `derive_resolve`; `derive_candidates: ["career_avg"]`; mocked LLM e2e + provenance. Commit `35a89ab`. Review `2026-06-19-1800-baseball-derive-codegen-sandbox-m3`.
+- [x] **Baseball derive retry on error (M3b)** — Up to 5 attempts; fix prompt with execution error + failed source; `sqlite3.Error` → `N/A` not MCP error. Review `2026-06-19-1900-baseball-derive-retry-on-error-m3b`. Manual Lahman `career_avg` gate for Paul.
 
 - [ ] **Specialist promotion (derive → product specialist)** — **Out of scope for automation now.** Future: derive telemetry + compute/storage cost signals → agent recommends promoting repeat cross-domain computations to new category + pack specialist; Paul/Grok approve slices until automated. Suppress factory research stub for warehouse categories on baseball. [`2026-06-19-warehouse-factory-layer3-specialist-emergence.md`](docs/plans/conversations/2026-06-19-warehouse-factory-layer3-specialist-emergence.md).
 - [ ] **Seed export (`export-growth-seed`)** — Validated `entities.json` → `seed.json` fragment.
@@ -127,4 +128,4 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ---
 
-Last updated: 2026-06-19 (M3 approved; manual `career_avg` Lahman gate open for Paul)
+Last updated: 2026-06-19 (M3b approved; manual `career_avg` Lahman gate for Paul)

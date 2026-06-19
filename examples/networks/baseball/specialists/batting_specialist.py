@@ -119,8 +119,9 @@ def _evaluate_batting_fields(
     owned: list[str],
     *,
     paths: NetworkPaths,
-) -> tuple[dict[str, Any], str]:
+) -> tuple[dict[str, Any], str, list[str]]:
     wr = _load_warehouse_resolve()
+    derive_audit: list[str] = []
     data = agent.storage.load()
     record = data.get("records", {}).get(entity_id, {})
     if not isinstance(record, dict):
@@ -171,13 +172,15 @@ def _evaluate_batting_fields(
         if resolved is None:
             dr = _load_derive_resolve()
             if dr.is_derive_candidate(key, manifest, "batting"):
-                derived = dr.generate_and_run_derive(
+                derive_result = dr.generate_and_run_derive(
                     key,
                     player_id=player_id,
                     warehouse=warehouse,
                     paths=paths,
                     manifest=manifest,
                 )
+                derive_audit.extend(derive_result.audit_log)
+                derived = derive_result.field
                 if derived is not None:
                     computation: dict[str, str] = {
                         "language": "python",
@@ -232,7 +235,7 @@ def _evaluate_batting_fields(
         na_attrs=na_attrs,
         pending=pending,
     )
-    return values, overall
+    return values, overall, derive_audit
 
 
 def _run_batting_specialist_graph(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
@@ -261,7 +264,7 @@ def _run_batting_specialist_graph(state: MyceliumGraphState | dict[str, Any]) ->
         }
 
     paths = NetworkPaths.from_root(resolve_network_root())
-    values, overall_status = _evaluate_batting_fields(AGENT, pid, owned, paths=paths)
+    values, overall_status, derive_audit = _evaluate_batting_fields(AGENT, pid, owned, paths=paths)
     contrib = {
         "id": pid,
         "category": "batting",
@@ -294,6 +297,7 @@ def _run_batting_specialist_graph(state: MyceliumGraphState | dict[str, Any]) ->
         "route": None,
         "audit_log": [
             f"batting_specialist: {overall_status} for id={pid!r} (category=batting).",
+            *derive_audit,
         ],
         "specialist_contrib": contrib,
         "matched_records": current.matched_records or [],

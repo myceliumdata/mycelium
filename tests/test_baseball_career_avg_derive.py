@@ -19,7 +19,10 @@ from network.example import refresh_example_network
 from network.paths import NetworkPaths
 from network_helpers import apply_network_paths_monkeypatch
 from storage.core import reset_storage
-from baseball_derive_fixtures import CAREER_AVG_DERIVE_SOURCE
+from baseball_derive_fixtures import (
+    CAREER_AVG_DERIVE_BAD_SOURCE,
+    CAREER_AVG_DERIVE_SOURCE,
+)
 
 SAMPLE_PLAYER = {
     "player": "Hank Aaron",
@@ -101,13 +104,24 @@ def _load_derive_module(root: Path):
     return loader.load_derive_resolve()
 
 
-def _patch_derive_source(monkeypatch: pytest.MonkeyPatch, dr, *, counter: dict | None = None):
-    def fake_source(attr, manifest, domain, *, llm_invoke=None):
+def _patch_derive_llm(monkeypatch: pytest.MonkeyPatch, dr, *, counter: dict | None = None):
+    def fake_invoke(prompt, *, llm_invoke=None):
         if counter is not None:
             counter["count"] = counter.get("count", 0) + 1
-        return CAREER_AVG_DERIVE_SOURCE
+        return CAREER_AVG_DERIVE_SOURCE.strip()
 
-    monkeypatch.setattr(dr, "generate_derive_source", fake_source)
+    monkeypatch.setattr(dr, "invoke_llm_for_prompt", fake_invoke)
+
+
+def _patch_derive_llm_sequence(monkeypatch: pytest.MonkeyPatch, dr, sources: list[str]):
+    state = {"index": 0}
+
+    def fake_invoke(prompt, *, llm_invoke=None):
+        idx = min(state["index"], len(sources) - 1)
+        state["index"] += 1
+        return sources[idx].strip()
+
+    monkeypatch.setattr(dr, "invoke_llm_for_prompt", fake_invoke)
 
 
 def _deliver_career_avg(*, provenance: bool = False) -> tuple[object, object]:
@@ -131,7 +145,7 @@ def test_career_avg_derive_mocked_llm(
 ) -> None:
     root = _refresh_baseball_root(tmp_path, monkeypatch)
     dr = _load_derive_module(root)
-    _patch_derive_source(monkeypatch, dr)
+    _patch_derive_llm(monkeypatch, dr)
 
     _, response = _deliver_career_avg()
     assert response.outcome in {"found", "assembled"}
@@ -146,7 +160,7 @@ def test_career_avg_derive_provenance_and_cache(
 ) -> None:
     root = _refresh_baseball_root(tmp_path, monkeypatch)
     dr = _load_derive_module(root)
-    _patch_derive_source(monkeypatch, dr)
+    _patch_derive_llm(monkeypatch, dr)
 
     _, first = _deliver_career_avg(provenance=True)
     assert first.provenance is not None
@@ -158,7 +172,47 @@ def test_career_avg_derive_provenance_and_cache(
     assert version["parameters"]["attribute"] == "career_avg"
 
     counter: dict[str, int] = {}
-    _patch_derive_source(monkeypatch, dr, counter=counter)
+    _patch_derive_llm(monkeypatch, dr, counter=counter)
     _, second = _deliver_career_avg()
     assert str(second.results[0].get("career_avg")) == "0.500"
     assert counter.get("count", 0) == 0
+
+
+@pytest.mark.smoke
+def test_career_avg_derive_retries_after_sqlite_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = _refresh_baseball_root(tmp_path, monkeypatch)
+    dr = _load_derive_module(root)
+    _patch_derive_llm_sequence(
+        monkeypatch,
+        dr,
+        [CAREER_AVG_DERIVE_BAD_SOURCE, CAREER_AVG_DERIVE_SOURCE],
+    )
+
+    _, response = _deliver_career_avg()
+    assert response.outcome in {"found", "assembled"}
+    assert str(response.results[0].get("career_avg")) == "0.500"
+
+
+@pytest.mark.smoke
+def test_career_avg_derive_exhausts_attempts_to_na(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MYCELIUM_DERIVE_MAX_ATTEMPTS", "5")
+    root = _refresh_baseball_root(tmp_path, monkeypatch)
+    dr = _load_derive_module(root)
+    counter: dict[str, int] = {}
+
+    def always_bad(prompt, *, llm_invoke=None):
+        counter["count"] = counter.get("count", 0) + 1
+        return CAREER_AVG_DERIVE_BAD_SOURCE.strip()
+
+    monkeypatch.setattr(dr, "invoke_llm_for_prompt", always_bad)
+
+    _, response = _deliver_career_avg()
+    assert response.results
+    assert response.results[0].get("career_avg") in {"N/A", "pending", None, ""}
+    assert counter.get("count", 0) == 5

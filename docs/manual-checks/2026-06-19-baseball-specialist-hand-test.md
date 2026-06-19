@@ -158,6 +158,7 @@ rm -f ~/mycelium-networks/baseball/agents/batting/storage.json
 | M3-2 | Provenance | `computation.inline` contains `query_warehouse`; `parameters.warehouse`, `lahman.playerID`, `attribute: career_avg` |
 | M3-3 | Cache hit | Second step 1+2 without clearing storage — same value; no new LLM call (version id unchanged) |
 | M3-4 | M2 regression | `career_hr` still **755** — manifest alias path, no LLM |
+| M3b-1 | Derive retry | On bad generated SQL, specialist retries silently (up to 5); operator sees `audit_log` lines like `derive career_avg attempt N failed` — not surfaced in `query_entity` response |
 
 **Step 1** (partial lookup OK if Aaron is unique on your root):
 
