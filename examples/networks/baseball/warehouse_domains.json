@@ -12,7 +12,8 @@
         "career_hr": {"convention": "career_sum", "column": "HR"},
         "career_rbi": {"convention": "career_sum", "column": "RBI"},
         "career_hits": {"convention": "career_sum", "column": "H"}
-      }
+      },
+      "derive_candidates": ["career_avg"]
     },
     "bio": {
       "specialist": "bio_specialist",

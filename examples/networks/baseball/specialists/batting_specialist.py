@@ -42,6 +42,10 @@ def _load_warehouse_resolve():
     return _load_specialist_loader().load_warehouse_resolve()
 
 
+def _load_derive_resolve():
+    return _load_specialist_loader().load_derive_resolve()
+
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -163,6 +167,41 @@ def _evaluate_batting_fields(
             values[key] = "N/A"
             na_attrs.append(key)
             continue
+
+        if resolved is None:
+            dr = _load_derive_resolve()
+            if dr.is_derive_candidate(key, manifest, "batting"):
+                derived = dr.generate_and_run_derive(
+                    key,
+                    player_id=player_id,
+                    warehouse=warehouse,
+                    paths=paths,
+                    manifest=manifest,
+                )
+                if derived is not None:
+                    computation: dict[str, str] = {
+                        "language": "python",
+                        "inline": derived.computation_inline,
+                    }
+                    if derived.model:
+                        computation["model"] = derived.model
+                    written = agent.write_computed_field(
+                        entity_id,
+                        key,
+                        value=derived.value,
+                        sources=sources,
+                        computation=computation,
+                        parameters=dr.provenance_parameters(
+                            player_id=player_id,
+                            paths=paths,
+                            warehouse=warehouse,
+                            attribute=derived.attribute,
+                        ),
+                        at=now,
+                    )
+                    values[key] = written
+                    found_attrs.append(key)
+                    continue
 
         if resolved is None:
             agent.write_na_field(entity_id, key, at=now)

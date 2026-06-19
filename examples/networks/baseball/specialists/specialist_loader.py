@@ -26,3 +26,8 @@ def load_sibling(module_name: str) -> ModuleType:
 def load_warehouse_resolve() -> ModuleType:
     """Load the pack warehouse resolver module."""
     return load_sibling("warehouse_resolve")
+
+
+def load_derive_resolve() -> ModuleType:
+    """Load the pack derive orchestration module."""
+    return load_sibling("derive_resolve")
