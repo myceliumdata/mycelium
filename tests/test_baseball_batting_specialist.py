@@ -132,6 +132,9 @@ def test_career_hr_provenance_shape(
     assert version["computation"]["inline"]
     assert version["parameters"]["lahman.playerID"] == "aaronha01"
     assert version["actor"]["specialist"] == "batting_specialist"
+    inline = version["computation"]["inline"]
+    assert "SUM" in inline
+    assert "playerID" in inline
 
 
 @pytest.mark.smoke

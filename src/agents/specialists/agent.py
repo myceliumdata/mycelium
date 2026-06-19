@@ -13,6 +13,7 @@ from agents.specialists.fields import (
     current_status,
     current_value,
     current_value_matches,
+    field_is_na,
     is_versioned_field,
 )
 from agents.specialists.snapshots import (
@@ -198,6 +199,45 @@ class SpecialistAgent:
         else:
             self.storage.save(data)
         return written or str(value).strip()
+
+    def write_na_field(
+        self,
+        entity_id: str,
+        field: str,
+        *,
+        at: str | None = None,
+        actor_kind: str = "specialist",
+    ) -> None:
+        """Write an ``na`` status version for a field when compute is unavailable."""
+        key = field.strip().lower()
+        if not key:
+            return
+        timestamp = at or _now_iso()
+        use_incremental = self.storage.current_strategy() == "minisql_v1"
+        if use_incremental:
+            record = self.storage.load_entity(entity_id)
+            if record is None:
+                record = {}
+        else:
+            data = self.storage.load()
+            records = data.setdefault("records", {})
+            record = records.setdefault(entity_id, {})
+        if field_is_na(record.get(key)):
+            return
+        version_body: dict[str, Any] = {
+            "at": timestamp,
+            "status": "na",
+            "actor": _actor_body(
+                kind=actor_kind,
+                category=self.category,
+                specialist=self.agent_name,
+            ),
+        }
+        record[key] = append_version(record.get(key), version_body)
+        if use_incremental:
+            self.storage.save_entity(entity_id, record)
+        else:
+            self.storage.save(data)
 
     def read_fields(
         self,

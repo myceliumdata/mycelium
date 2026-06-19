@@ -123,6 +123,28 @@ def test_incremental_save_skips_table_wide_delete(
 
 
 @pytest.mark.smoke
+def test_write_na_field_uses_incremental_save_entity(agent_data_dir: Path) -> None:
+    storage = SpecialistStorage(category="batting", base_dir=agent_data_dir)
+    _seed_minisql(storage)
+    before_a = _field_json_snapshot(storage.sqlite_file, "entity-a")
+
+    agent = SpecialistAgent(category="batting", agent_name="batting_specialist")
+    agent.write_na_field(
+        "entity-c",
+        "career_hr",
+        at="2026-06-17T12:00:00+00:00",
+    )
+
+    assert _field_json_snapshot(storage.sqlite_file, "entity-a") == before_a
+    loaded_c = load_entity_record(storage.sqlite_file, "entity-c")
+    assert loaded_c is not None
+    assert current_value(loaded_c.get("career_hr")) is None
+    from agents.specialists.fields import current_status
+
+    assert current_status(loaded_c["career_hr"]) == "na"
+
+
+@pytest.mark.smoke
 def test_write_bind_fields_multi_rollback_per_entity(
     agent_data_dir: Path,
     monkeypatch: pytest.MonkeyPatch,

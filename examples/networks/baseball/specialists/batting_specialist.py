@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -10,7 +11,6 @@ from agents.registry_bridge import entity_source_key
 from agents.responses import response_found, response_non_core, response_not_found
 from agents.specialists.agent import SpecialistAgent
 from agents.specialists.fields import (
-    append_version,
     field_display_value,
     field_has_value,
     field_is_na,
@@ -22,20 +22,17 @@ from network.warehouse import default_warehouse_path, query_warehouse
 
 LAHMAN_PLAYER_ID = "lahman.playerID"
 
-CAREER_HR_COMPUTATION_INLINE = """import sqlite3
-from pathlib import Path
 
 def career_hr(player_id: str, warehouse: Path) -> int:
-    conn = sqlite3.connect(warehouse)
-    try:
-        row = conn.execute(
-            "SELECT COALESCE(SUM(HR), 0) FROM Batting WHERE playerID = ?",
-            (player_id,),
-        ).fetchone()
-        return int(row[0] if row else 0)
-    finally:
-        conn.close()
-"""
+    rows = query_warehouse(
+        warehouse,
+        'SELECT COALESCE(SUM(CAST("HR" AS INTEGER)), 0) FROM "Batting" WHERE "playerID" = ?',
+        (player_id,),
+    )
+    return int(rows[0][0]) if rows else 0
+
+
+CAREER_HR_COMPUTATION_INLINE = inspect.getsource(career_hr)
 
 
 def _now_iso() -> str:
@@ -88,34 +85,21 @@ def _identity_from_context(ctx: dict[str, Any], entity_id: str | None) -> list[d
     return []
 
 
-def _compute_career_hr(player_id: str, warehouse: Path) -> int:
-    rows = query_warehouse(
-        warehouse,
-        'SELECT COALESCE(SUM(CAST("HR" AS INTEGER)), 0) FROM "Batting" WHERE "playerID" = ?',
-        (player_id,),
-    )
-    return int(rows[0][0]) if rows else 0
-
-
-def _mark_na(agent: SpecialistAgent, entity_id: str, field: str, *, at: str) -> None:
-    data = agent.storage.load()
-    records = data.setdefault("records", {})
-    record = records.setdefault(entity_id, {})
-    if field_is_na(record.get(field)):
-        return
-    record[field] = append_version(
-        record.get(field),
-        {
-            "at": at,
-            "status": "na",
-            "actor": {
-                "kind": "specialist",
-                "category": agent.category,
-                "specialist": agent.agent_name,
-            },
-        },
-    )
-    agent.storage.save(data)
+def _overall_field_status(
+    *,
+    found_attrs: list[str],
+    na_attrs: list[str],
+    pending: list[str],
+) -> str:
+    if pending:
+        return "pending"
+    if found_attrs and not na_attrs:
+        return "found"
+    if na_attrs and not found_attrs:
+        return "na"
+    if na_attrs:
+        return "mixed"
+    return "pending"
 
 
 def _evaluate_batting_fields(
@@ -153,14 +137,14 @@ def _evaluate_batting_fields(
 
         if key == "career_hr":
             if not player_id:
-                _mark_na(agent, entity_id, key, at=now)
+                agent.write_na_field(entity_id, key, at=now)
                 values[key] = "N/A"
                 na_attrs.append(key)
                 continue
             try:
-                total = _compute_career_hr(player_id, warehouse)
+                total = career_hr(player_id, warehouse)
             except FileNotFoundError:
-                _mark_na(agent, entity_id, key, at=now)
+                agent.write_na_field(entity_id, key, at=now)
                 values[key] = "N/A"
                 na_attrs.append(key)
                 continue
@@ -177,23 +161,15 @@ def _evaluate_batting_fields(
             found_attrs.append(key)
             continue
 
-        _mark_na(agent, entity_id, key, at=now)
+        agent.write_na_field(entity_id, key, at=now)
         values[key] = "N/A"
         na_attrs.append(key)
 
-    if found_attrs and not pending:
-        if na_attrs and not found_attrs:
-            overall = "na"
-        elif na_attrs:
-            overall = "mixed"
-        else:
-            overall = "found"
-    elif pending:
-        overall = "pending"
-    elif na_attrs:
-        overall = "na"
-    else:
-        overall = "pending"
+    overall = _overall_field_status(
+        found_attrs=found_attrs,
+        na_attrs=na_attrs,
+        pending=pending,
+    )
     return values, overall
 
 

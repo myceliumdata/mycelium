@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -10,7 +11,6 @@ from agents.registry_bridge import entity_source_key
 from agents.responses import response_found, response_non_core, response_not_found
 from agents.specialists.agent import SpecialistAgent
 from agents.specialists.fields import (
-    append_version,
     field_display_value,
     field_has_value,
     field_is_na,
@@ -22,25 +22,22 @@ from network.warehouse import default_warehouse_path, query_warehouse
 
 LAHMAN_PLAYER_ID = "lahman.playerID"
 
-BIRTH_DATE_COMPUTATION_INLINE = """import sqlite3
-from pathlib import Path
 
 def birth_date(player_id: str, warehouse: Path) -> str | None:
-    conn = sqlite3.connect(warehouse)
-    try:
-        row = conn.execute(
-            "SELECT birthYear, birthMonth, birthDay FROM People WHERE playerID = ?",
-            (player_id,),
-        ).fetchone()
-        if row is None:
-            return None
-        year, month, day = row
-        if year in (None, "") or month in (None, "") or day in (None, ""):
-            return None
-        return f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
-    finally:
-        conn.close()
-"""
+    rows = query_warehouse(
+        warehouse,
+        'SELECT "birthYear", "birthMonth", "birthDay" FROM "People" WHERE "playerID" = ?',
+        (player_id,),
+    )
+    if not rows:
+        return None
+    year, month, day = rows[0]
+    if year in (None, "") or month in (None, "") or day in (None, ""):
+        return None
+    return f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
+
+
+BIRTH_DATE_COMPUTATION_INLINE = inspect.getsource(birth_date)
 
 
 def _now_iso() -> str:
@@ -93,39 +90,21 @@ def _identity_from_context(ctx: dict[str, Any], entity_id: str | None) -> list[d
     return []
 
 
-def _compute_birth_date(player_id: str, warehouse: Path) -> str | None:
-    rows = query_warehouse(
-        warehouse,
-        'SELECT "birthYear", "birthMonth", "birthDay" FROM "People" WHERE "playerID" = ?',
-        (player_id,),
-    )
-    if not rows:
-        return None
-    year, month, day = rows[0]
-    if year in (None, "") or month in (None, "") or day in (None, ""):
-        return None
-    return f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
-
-
-def _mark_na(agent: SpecialistAgent, entity_id: str, field: str, *, at: str) -> None:
-    data = agent.storage.load()
-    records = data.setdefault("records", {})
-    record = records.setdefault(entity_id, {})
-    if field_is_na(record.get(field)):
-        return
-    record[field] = append_version(
-        record.get(field),
-        {
-            "at": at,
-            "status": "na",
-            "actor": {
-                "kind": "specialist",
-                "category": agent.category,
-                "specialist": agent.agent_name,
-            },
-        },
-    )
-    agent.storage.save(data)
+def _overall_field_status(
+    *,
+    found_attrs: list[str],
+    na_attrs: list[str],
+    pending: list[str],
+) -> str:
+    if pending:
+        return "pending"
+    if found_attrs and not na_attrs:
+        return "found"
+    if na_attrs and not found_attrs:
+        return "na"
+    if na_attrs:
+        return "mixed"
+    return "pending"
 
 
 def _evaluate_bio_fields(
@@ -163,19 +142,19 @@ def _evaluate_bio_fields(
 
         if key == "birth_date":
             if not player_id:
-                _mark_na(agent, entity_id, key, at=now)
+                agent.write_na_field(entity_id, key, at=now)
                 values[key] = "N/A"
                 na_attrs.append(key)
                 continue
             try:
-                formatted = _compute_birth_date(player_id, warehouse)
+                formatted = birth_date(player_id, warehouse)
             except FileNotFoundError:
-                _mark_na(agent, entity_id, key, at=now)
+                agent.write_na_field(entity_id, key, at=now)
                 values[key] = "N/A"
                 na_attrs.append(key)
                 continue
             if formatted is None:
-                _mark_na(agent, entity_id, key, at=now)
+                agent.write_na_field(entity_id, key, at=now)
                 values[key] = "N/A"
                 na_attrs.append(key)
                 continue
@@ -192,20 +171,15 @@ def _evaluate_bio_fields(
             found_attrs.append(key)
             continue
 
-        _mark_na(agent, entity_id, key, at=now)
+        agent.write_na_field(entity_id, key, at=now)
         values[key] = "N/A"
         na_attrs.append(key)
 
-    if pending:
-        overall = "pending"
-    elif found_attrs and not na_attrs:
-        overall = "found"
-    elif na_attrs and not found_attrs:
-        overall = "na"
-    elif na_attrs:
-        overall = "mixed"
-    else:
-        overall = "pending"
+    overall = _overall_field_status(
+        found_attrs=found_attrs,
+        na_attrs=na_attrs,
+        pending=pending,
+    )
     return values, overall
 
 
