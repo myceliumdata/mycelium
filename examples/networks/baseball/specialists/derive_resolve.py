@@ -7,7 +7,7 @@ import re
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 
 from network.derive_sandbox import DeriveSourceError, run_derive_function
 from network.paths import NetworkPaths
@@ -16,6 +16,22 @@ from network.warehouse_manifest import load_warehouse_manifest
 
 LAHMAN_PLAYER_ID = "lahman.playerID"
 _SOURCE_TRUNCATE_CHARS = 8000
+_SANDBOX_RULES = (
+    "Rules:\n"
+    "- Define exactly: def compute(player_id: str, warehouse: Path) -> str\n"
+    "- Use only query_warehouse(warehouse, sql, params) and Path (already in scope).\n"
+    "- No imports, no file I/O, no network, no os/subprocess.\n"
+    "- Return a string value suitable for query results.\n"
+    "Output only the Python function."
+)
+
+
+class DeriveReviewRejected(ValueError):
+    """Semantic review rejected a successfully executed derive result."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
 
 
 @dataclass(frozen=True)
@@ -66,37 +82,89 @@ def is_derive_candidate(attr: str, manifest: dict[str, Any], domain: str) -> boo
     return key in {str(item).strip().lower() for item in raw if str(item).strip()}
 
 
-def build_derive_prompt(attr: str, manifest: dict[str, Any], domain: str) -> str:
+def _format_alias_pattern(attr: str, spec: dict[str, Any]) -> str:
+    convention = str(spec.get("convention") or "").strip()
+    if convention == "career_sum" and spec.get("column"):
+        return f"- {attr}: {convention} on column {spec['column']}"
+    if convention == "people_column" and spec.get("column"):
+        return f"- {attr}: {convention} on column {spec['column']}"
+    if convention == "people_compose":
+        columns = spec.get("columns") or []
+        col_text = ", ".join(str(c) for c in columns) if isinstance(columns, list) else ""
+        fmt = spec.get("format")
+        suffix = f" ({fmt})" if fmt else ""
+        return f"- {attr}: {convention} on columns {col_text}{suffix}"
+    return f"- {attr}: {convention or 'alias'}"
+
+
+def format_warehouse_context(manifest: dict[str, Any], domain: str) -> str:
     meta = _domain_meta(manifest, domain)
     tables = meta.get("tables") or []
     grain = meta.get("grain") or []
     conventions = meta.get("conventions") or {}
+    aliases = meta.get("aliases") or {}
     table_blocks = manifest.get("tables") if isinstance(manifest.get("tables"), dict) else {}
-    columns_by_table: list[str] = []
+
+    lines = [
+        "Warehouse context:",
+        f"Domain: {domain}",
+    ]
+    grain_items = [str(item) for item in grain]
+    if grain_items:
+        lines.append(f"Grain: {', '.join(grain_items)}")
+    if any(item in {"stint", "yearID"} for item in grain_items):
+        lines.append(
+            "Note: Grain includes stint/year — multiple rows per player; "
+            "aggregate across all domain rows before career-level rates."
+        )
+
+    lines.append("Tables:")
     for table in tables:
         info = table_blocks.get(table) if isinstance(table_blocks, dict) else None
         cols = info.get("columns") if isinstance(info, dict) else []
         col_text = ", ".join(str(c) for c in cols) if isinstance(cols, list) else ""
-        columns_by_table.append(f"- {table}: [{col_text}]")
-    conventions_text = "\n".join(
-        f"- {name}: {rule}" for name, rule in sorted(conventions.items())
+        row_count = info.get("row_count") if isinstance(info, dict) else None
+        row_suffix = f", {row_count} rows" if row_count is not None else ""
+        lines.append(f"- {table}{row_suffix}: [{col_text}]")
+    if not tables:
+        lines.append("- (none)")
+
+    lines.append("Conventions:")
+    if isinstance(conventions, dict) and conventions:
+        for name, rule in sorted(conventions.items()):
+            lines.append(f"- {name}: {rule}")
+    else:
+        lines.append("- (none)")
+
+    lines.append("Resolved alias patterns in this domain (committed code uses these):")
+    if isinstance(aliases, dict) and aliases:
+        for attr, spec in sorted(aliases.items()):
+            if isinstance(spec, dict):
+                lines.append(_format_alias_pattern(str(attr), spec))
+    else:
+        lines.append("- (none)")
+
+    lines.extend(
+        [
+            "Execution environment:",
+            "- SQLite read-only warehouse via query_warehouse(warehouse, sql, params).",
+            "- Placeholder style: ? for sqlite3 parameters.",
+            "- Integer aggregates stay integer; ratio/rate arithmetic should happen in Python "
+            "after fetching separate aggregates unless explicitly cast.",
+        ],
     )
+    return "\n".join(lines)
+
+
+def build_derive_prompt(attr: str, manifest: dict[str, Any], domain: str) -> str:
+    context = format_warehouse_context(manifest, domain)
     return (
+        f"{context}\n\n"
         "Write one Python function for a Lahman warehouse derive.\n"
-        f"Attribute: {attr.strip().lower()}\n"
-        f"Domain: {domain}\n"
-        f"Grain: {', '.join(str(item) for item in grain)}\n"
-        "Tables and columns:\n"
-        f"{chr(10).join(columns_by_table) or '- (none)'}\n"
-        "Conventions:\n"
-        f"{conventions_text or '- (none)'}\n"
-        "Rules:\n"
-        "- Define exactly: def compute(player_id: str, warehouse: Path) -> str\n"
-        "- Use only query_warehouse(warehouse, sql, params) and Path (already in scope).\n"
-        "- No imports, no file I/O, no network, no os/subprocess.\n"
-        "- Return a string value suitable for query results.\n"
-        "- For batting averages use three decimal places (e.g. 0.305).\n"
-        "Output only the Python function."
+        f"Attribute to derive: {attr.strip().lower()}\n"
+        "Infer appropriate units, aggregation, and formatting from column semantics "
+        "and conventions above.\n"
+        f"{_SANDBOX_RULES}"
     )
 
 
@@ -112,22 +180,74 @@ def build_fix_prompt(
     domain: str,
     *,
     source: str,
-    error: BaseException,
+    error: BaseException | None = None,
+    value: str | None = None,
+    review_reason: str | None = None,
 ) -> str:
+    context = format_warehouse_context(manifest, domain)
+    if review_reason is not None:
+        header = (
+            "The previous derive function executed but returned an implausible value.\n\n"
+            f"Returned value: {value}\n"
+            f"Review rejection: {review_reason}\n\n"
+        )
+    else:
+        assert error is not None
+        header = (
+            "The previous derive function failed when executed.\n\n"
+            f"Error: {type(error).__name__}: {error}\n\n"
+        )
     return (
-        "The previous derive function failed when executed.\n\n"
-        f"Error: {type(error).__name__}: {error}\n\n"
+        f"{context}\n\n"
+        f"{header}"
         "Failed source:\n"
         "```python\n"
         f"{_truncate_source(source)}\n"
         "```\n\n"
-        f"Attribute: {attr.strip().lower()}\n"
-        f"Domain: {domain}\n"
-        "Write a corrected compute(player_id, warehouse) function. Same rules as before.\n"
-        "- Use only query_warehouse(warehouse, sql, params) and Path (already in scope).\n"
-        "- No imports, no file I/O, no network, no os/subprocess.\n"
-        "Output only the Python function."
+        f"Attribute to derive: {attr.strip().lower()}\n"
+        "Write a corrected compute(player_id, warehouse) function.\n"
+        f"{_SANDBOX_RULES}"
     )
+
+
+def build_review_prompt(
+    attr: str,
+    manifest: dict[str, Any],
+    domain: str,
+    *,
+    player_id: str,
+    value: str,
+    source: str,
+) -> str:
+    context = format_warehouse_context(manifest, domain)
+    return (
+        f"{context}\n\n"
+        f"Attribute requested: {attr.strip().lower()}\n"
+        f"player_id used in test run: {player_id}\n\n"
+        "The following function executed without error and returned:\n"
+        f"VALUE: {value}\n\n"
+        "Source:\n"
+        "```python\n"
+        f"{_truncate_source(source)}\n"
+        "```\n\n"
+        "Given the warehouse context above, is VALUE a plausible answer for the requested attribute?\n\n"
+        "Reply in this exact format (no code):\n"
+        "VERDICT: ACCEPT\n"
+        "or\n"
+        "VERDICT: REJECT\n"
+        "REASON: <one short paragraph>"
+    )
+
+
+def parse_review_verdict(text: str) -> tuple[Literal["accept", "reject"], str]:
+    body = text.strip()
+    if re.search(r"VERDICT:\s*ACCEPT\b", body, flags=re.IGNORECASE):
+        return "accept", ""
+    if re.search(r"VERDICT:\s*REJECT\b", body, flags=re.IGNORECASE):
+        reason_match = re.search(r"REASON:\s*(.+)", body, flags=re.IGNORECASE | re.DOTALL)
+        reason = reason_match.group(1).strip() if reason_match else "rejected without reason"
+        return "reject", reason
+    raise DeriveReviewRejected("unparseable review response")
 
 
 def _extract_python(text: str) -> str:
@@ -153,6 +273,23 @@ def invoke_llm_for_prompt(
     response = llm.invoke(prompt)
     content = response.content if hasattr(response, "content") else str(response)
     return _extract_python(str(content))
+
+
+def invoke_llm_for_review(
+    prompt: str,
+    *,
+    review_llm_invoke: Callable[[str], str] | None = None,
+) -> str:
+    if review_llm_invoke is not None:
+        return review_llm_invoke(prompt).strip()
+    if not os.getenv("OPENAI_API_KEY", "").strip():
+        raise DeriveSourceError("OPENAI_API_KEY not set for derive review")
+    from langchain_openai import ChatOpenAI
+
+    llm = ChatOpenAI(model=derive_model(), temperature=0.0)
+    response = llm.invoke(prompt)
+    content = response.content if hasattr(response, "content") else str(response)
+    return str(content).strip()
 
 
 def generate_derive_source(
@@ -200,6 +337,7 @@ def generate_and_run_derive(
     manifest: dict[str, Any],
     domain: str = "batting",
     llm_invoke: Callable[[str], str] | None = None,
+    review_llm_invoke: Callable[[str], str] | None = None,
 ) -> DeriveRunResult:
     if not is_derive_candidate(attr, manifest, domain):
         return DeriveRunResult(field=None)
@@ -208,12 +346,22 @@ def generate_and_run_derive(
     max_attempts = derive_max_attempts()
     audit: list[str] = []
     last_source = ""
+    last_value = ""
     last_error: BaseException | None = None
 
     for attempt in range(1, max_attempts + 1):
         try:
             if attempt == 1:
                 prompt = build_derive_prompt(attr, manifest, domain)
+            elif isinstance(last_error, DeriveReviewRejected):
+                prompt = build_fix_prompt(
+                    attr,
+                    manifest,
+                    domain,
+                    source=last_source,
+                    value=last_value,
+                    review_reason=last_error.reason,
+                )
             else:
                 assert last_error is not None
                 prompt = build_fix_prompt(
@@ -230,12 +378,46 @@ def generate_and_run_derive(
                 player_id=player_id,
                 warehouse=warehouse,
             )
+            last_value = value
         except (DeriveSourceError, sqlite3.Error, OSError, ValueError, TypeError) as exc:
+            if isinstance(exc, DeriveReviewRejected):
+                raise
             last_error = exc
             audit.append(
                 _audit_line(
                     key,
                     f"attempt {attempt} failed {type(exc).__name__}: {exc}",
+                ),
+            )
+            continue
+
+        try:
+            review_prompt = build_review_prompt(
+                attr,
+                manifest,
+                domain,
+                player_id=player_id,
+                value=value,
+                source=source,
+            )
+            review_text = invoke_llm_for_review(
+                review_prompt,
+                review_llm_invoke=review_llm_invoke,
+            )
+            verdict, reason = parse_review_verdict(review_text)
+        except DeriveReviewRejected as exc:
+            last_error = exc
+            audit.append(
+                _audit_line(key, f"attempt {attempt} review rejected: {exc.reason}"),
+            )
+            continue
+
+        if verdict == "reject":
+            last_error = DeriveReviewRejected(reason or "review rejected")
+            audit.append(
+                _audit_line(
+                    key,
+                    f"attempt {attempt} review rejected: {last_error.reason}",
                 ),
             )
             continue

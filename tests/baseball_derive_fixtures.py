@@ -29,3 +29,17 @@ def compute(player_id: str, warehouse: Path) -> str:
         return "0.000"
     return f"{hits / ab:.3f}"
 '''
+
+# SQL integer division — runs clean but returns 0.000 on fixture (4 H / 8 AB).
+CAREER_AVG_DERIVE_SQL_INT_DIV_SOURCE = '''
+def compute(player_id: str, warehouse: Path) -> str:
+    rows = query_warehouse(
+        warehouse,
+        'SELECT COALESCE(SUM(CAST("H" AS INTEGER)), 0) / NULLIF(COALESCE(SUM(CAST("AB" AS INTEGER)), 0), 0) FROM "Batting" WHERE "playerID" = ?',
+        (player_id,),
+    )
+    val = rows[0][0]
+    if val is None:
+        return "0.000"
+    return f"{float(val):.3f}"
+'''

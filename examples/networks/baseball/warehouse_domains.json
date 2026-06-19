@@ -6,7 +6,9 @@
       "tables": ["Batting"],
       "grain": ["playerID", "yearID", "stint", "teamID", "lgID"],
       "conventions": {
-        "career_sum": "SUM({column}) GROUP BY playerID"
+        "career_sum": "SUM({column}) GROUP BY playerID",
+        "rate_from_aggregates": "For career rate stats from counting columns: SUM each operand across all domain grain rows for playerID, then divide in Python",
+        "sqlite_integer_aggregates": "SUM of integer columns returns integers; do not rely on SQL division for ratios"
       },
       "aliases": {
         "career_hr": {"convention": "career_sum", "column": "HR"},

@@ -194,7 +194,13 @@ def _patch_career_avg_derive_mock(root: Path) -> None:
     def fake_invoke(prompt, *, llm_invoke=None):
         return CAREER_AVG_DERIVE_SOURCE.strip()
 
+    def fake_review(prompt, *, review_llm_invoke=None):
+        if "VALUE: 0.000" in prompt:
+            return "VERDICT: REJECT\nREASON: implausible zero average"
+        return "VERDICT: ACCEPT"
+
     dr.invoke_llm_for_prompt = fake_invoke
+    dr.invoke_llm_for_review = fake_review
 
 
 def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:

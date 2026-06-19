@@ -159,6 +159,7 @@ rm -f ~/mycelium-networks/baseball/agents/batting/storage.json
 | M3-3 | Cache hit | Second step 1+2 without clearing storage — same value; no new LLM call (version id unchanged) |
 | M3-4 | M2 regression | `career_hr` still **755** — manifest alias path, no LLM |
 | M3b-1 | Derive retry | On bad generated SQL, specialist retries silently (up to 5); operator sees `derive career_avg attempt N failed` in graph `audit_log` and `QueryResponse.debug` (`operator_audit=`) |
+| M3c-1 | Semantic review | Derive uses full manifest context + LLM review after successful execution; implausible values (e.g. `0.000` from SQL int division) retry silently — clear batting `storage.json` if a bad value was cached |
 
 **Step 1** (partial lookup OK if Aaron is unique on your root):
 

@@ -22,6 +22,7 @@ from storage.core import reset_storage
 from baseball_derive_fixtures import (
     CAREER_AVG_DERIVE_BAD_SOURCE,
     CAREER_AVG_DERIVE_SOURCE,
+    CAREER_AVG_DERIVE_SQL_INT_DIV_SOURCE,
 )
 
 SAMPLE_PLAYER = {
@@ -104,6 +105,12 @@ def _load_derive_module(root: Path):
     return loader.load_derive_resolve()
 
 
+def _auto_review_accept(prompt, *, review_llm_invoke=None):
+    if "VALUE: 0.000" in prompt:
+        return "VERDICT: REJECT\nREASON: implausible zero average for non-zero hits"
+    return "VERDICT: ACCEPT"
+
+
 def _patch_derive_llm(monkeypatch: pytest.MonkeyPatch, dr, *, counter: dict | None = None):
     def fake_invoke(prompt, *, llm_invoke=None):
         if counter is not None:
@@ -111,6 +118,7 @@ def _patch_derive_llm(monkeypatch: pytest.MonkeyPatch, dr, *, counter: dict | No
         return CAREER_AVG_DERIVE_SOURCE.strip()
 
     monkeypatch.setattr(dr, "invoke_llm_for_prompt", fake_invoke)
+    monkeypatch.setattr(dr, "invoke_llm_for_review", _auto_review_accept)
 
 
 def _patch_derive_llm_sequence(monkeypatch: pytest.MonkeyPatch, dr, sources: list[str]):
@@ -122,6 +130,7 @@ def _patch_derive_llm_sequence(monkeypatch: pytest.MonkeyPatch, dr, sources: lis
         return sources[idx].strip()
 
     monkeypatch.setattr(dr, "invoke_llm_for_prompt", fake_invoke)
+    monkeypatch.setattr(dr, "invoke_llm_for_review", _auto_review_accept)
 
 
 def _deliver_career_avg(*, provenance: bool = False) -> tuple[object, object]:
@@ -214,6 +223,7 @@ def test_career_avg_derive_exhausts_attempts_to_na(
         return CAREER_AVG_DERIVE_BAD_SOURCE.strip()
 
     monkeypatch.setattr(dr, "invoke_llm_for_prompt", always_bad)
+    monkeypatch.setattr(dr, "invoke_llm_for_review", _auto_review_accept)
 
     _, response = _deliver_career_avg()
     assert response.results
@@ -221,3 +231,24 @@ def test_career_avg_derive_exhausts_attempts_to_na(
     assert counter.get("count", 0) == 5
     assert "operator_audit=" in response.debug
     assert "derive career_avg failed after 5 attempts" in response.debug
+
+
+@pytest.mark.smoke
+def test_career_avg_derive_retries_after_sql_integer_division(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = _refresh_baseball_root(tmp_path, monkeypatch)
+    dr = _load_derive_module(root)
+    _patch_derive_llm_sequence(
+        monkeypatch,
+        dr,
+        [CAREER_AVG_DERIVE_SQL_INT_DIV_SOURCE, CAREER_AVG_DERIVE_SOURCE],
+    )
+
+    _, response = _deliver_career_avg()
+    assert response.outcome in {"found", "assembled"}
+    assert str(response.results[0].get("career_avg")) == "0.500"
+    assert "operator_audit=" in response.debug
+    assert "derive career_avg attempt 1 review rejected" in response.debug
+    assert "derive career_avg succeeded on attempt 2" in response.debug
