@@ -1,10 +1,11 @@
-# Baseball M2 warehouse polish (M2a + M2b nits)
+# Baseball M2 polish (M2a + M2b + M2c nits)
 
-> **READY** — Claim per `prompts/cursor/WORKFLOW.md`. **After M2c** (does not block M2c).
+> **READY** — Claim per `prompts/cursor/WORKFLOW.md`. **After M2c** (M2c now landed — polish is next optional slice).
 
 **Priority:** Non-blocking nits from Grok reviews:
 - M2a — [`review.md`](../done/2026-06-19-1400-baseball-warehouse-manifest-m2a/review.md)
 - M2b — [`review.md`](../done/2026-06-19-1500-baseball-generic-warehouse-resolver-m2b/review.md)
+- M2c — [`review.md`](../done/2026-06-19-1600-baseball-identity-bind-provenance-m2c/review.md)
 
 **Do not edit `TODO.md`.**
 
@@ -37,11 +38,21 @@ Small cleanup on warehouse manifest surfacing and pack resolver — no new stats
 
 ---
 
+## M2c nits
+
+| # | Fix |
+|---|-----|
+| C1 | Add multi-attr integration test or smoke row: `requested_attributes: ["debut_team", "career_hr", "birth_date"]` + `provenance: true` — bind registry actor, warehouse `parameters.warehouse`. |
+| C2 | Assert `player` bind in `test_baseball_player_identity_specialist.py` alongside debut fields. |
+| C3 | Hand-test doc note: if bind provenance still shows `research`, clear `agents/player_identity/storage.json` and re-deliver. |
+
+---
+
 ## Verification
 
 ```bash
 ./bin/ci-local
-uv run pytest tests/test_warehouse_manifest.py tests/test_baseball_batting_specialist.py tests/test_baseball_bio_specialist.py -q
+uv run pytest tests/test_warehouse_manifest.py tests/test_baseball_batting_specialist.py tests/test_baseball_bio_specialist.py tests/test_baseball_player_identity_specialist.py -q
 ./bin/smoke-baseball-e2e
 ```
 
