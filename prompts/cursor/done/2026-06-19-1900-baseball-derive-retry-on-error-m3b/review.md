@@ -52,7 +52,7 @@ Full read of M3b-scoped files (~+200 lines in `derive_resolve.py`, batting wirin
 
 | # | Nit | Follow-up |
 |---|-----|-----------|
-| N1 | Operator visibility — retry lines not in MCP `debug` | Future: append derive audit tail to `debug_extra` in `assemble_response` or admin audit panel |
+| N1 | Operator visibility — retry lines not in MCP `debug` | Fixed — `assemble_response` adds `operator_audit` to `debug_extra` |
 | N2 | Retry test doesn’t assert `audit_log` content in graph | Optional test via debug/contrib hook |
 
 ## For Paul

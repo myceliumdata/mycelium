@@ -640,6 +640,13 @@ def _attach_provenance(
     )
 
 
+def _operator_audit_from_logs(audit_log: list[str] | None) -> list[str]:
+    """Derive retry lines for QueryResponse.debug (MCP operator visibility)."""
+    if not audit_log:
+        return []
+    return [line for line in audit_log if ": derive " in line]
+
+
 def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
     """Produce final QueryResponse from entity matches and specialist contributions."""
     current = _coerce(state)
@@ -792,6 +799,9 @@ def assemble_response_node(state: MyceliumGraphState | dict[str, Any]) -> dict[s
     }
     if current.classifications:
         debug_extra["classifications"] = current.classifications
+    operator_audit = _operator_audit_from_logs(current.audit_log)
+    if operator_audit:
+        debug_extra["operator_audit"] = operator_audit
 
     resp = response_assembled(
         query,

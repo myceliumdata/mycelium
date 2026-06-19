@@ -194,6 +194,9 @@ def test_career_avg_derive_retries_after_sqlite_error(
     _, response = _deliver_career_avg()
     assert response.outcome in {"found", "assembled"}
     assert str(response.results[0].get("career_avg")) == "0.500"
+    assert "operator_audit=" in response.debug
+    assert "derive career_avg attempt 1 failed" in response.debug
+    assert "derive career_avg succeeded on attempt 2" in response.debug
 
 
 @pytest.mark.smoke
@@ -216,3 +219,5 @@ def test_career_avg_derive_exhausts_attempts_to_na(
     assert response.results
     assert response.results[0].get("career_avg") in {"N/A", "pending", None, ""}
     assert counter.get("count", 0) == 5
+    assert "operator_audit=" in response.debug
+    assert "derive career_avg failed after 5 attempts" in response.debug
