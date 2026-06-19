@@ -36,6 +36,7 @@ BASEBALL_PYTEST_FILES = (
     "tests/test_example_network.py::test_refresh_baseball_fetches_seed_and_bootstraps",
     "tests/test_baseball_pack_ontology.py",
     "tests/test_baseball_batting_specialist.py",
+    "tests/test_baseball_bio_specialist.py",
 )
 
 EXPECTED_BOOTSTRAP_COUNT = 4
@@ -95,8 +96,8 @@ def _write_minimal_lahman_fixture(seed_dir: Path) -> None:
         encoding="utf-8",
     )
     (seed_dir / "People.csv").write_text(
-        "ID,playerID,nameFirst,nameLast,debut\n"
-        "1,aaronha01,Hank,Aaron,\n",
+        "ID,playerID,nameFirst,nameLast,birthYear,birthMonth,birthDay,debut\n"
+        "1,aaronha01,Hank,Aaron,1934,2,5,\n",
         encoding="utf-8",
     )
     (seed_dir / "Appearances.csv").write_text(
@@ -401,6 +402,68 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
                         "career_hr_routes_batting_specialist",
                         request=q_hr2.model_dump(exclude_none=True),
                         response=p_hr2,
+                    ),
+                )
+
+        # Step 2: birth_date routes to bio_specialist and returns raw People value
+        q_bio = EntityQuery(
+            lookup={
+                "player": sample["player"],
+                "debut_team": sample["debut_team"],
+                "debut_year": sample["debut_year"],
+            },
+            requested_attributes=["birth_date"],
+            provenance=True,
+        )
+        r_bio1 = run_query(q_bio)
+        p_bio1 = _pub(r_bio1)
+        if r_bio1.outcome != "lookup_resolved" or not r_bio1.delivery:
+            results.append(
+                _fail(
+                    "birth_date_step1",
+                    f"expected lookup_resolved, got {r_bio1.outcome!r}",
+                    request=q_bio.model_dump(exclude_none=True),
+                    response=p_bio1,
+                ),
+            )
+        else:
+            q_bio2 = EntityQuery(delivery_id=r_bio1.delivery.delivery_id)
+            r_bio2 = run_query(q_bio2)
+            p_bio2 = _pub(r_bio2)
+            debug_blob = r_bio2.debug or ""
+            routed = "bio_specialist" in debug_blob
+            value_ok = (
+                r_bio2.results
+                and r_bio2.results[0].get("birth_date") == "1934-02-05"
+            )
+            prov_ok = False
+            if r_bio2.provenance:
+                try:
+                    version = r_bio2.provenance["entities"][0]["attributes"]["birth_date"][
+                        "versions"
+                    ][0]
+                    prov_ok = bool(
+                        version.get("computation", {}).get("inline")
+                        and version.get("parameters", {}).get("lahman.playerID") == "aaronha01"
+                    )
+                except (KeyError, IndexError, TypeError):
+                    prov_ok = False
+            if not routed or not value_ok or not prov_ok:
+                results.append(
+                    _fail(
+                        "birth_date_routes_bio_specialist",
+                        f"routing={routed} value_ok={value_ok} prov_ok={prov_ok} "
+                        f"outcome={r_bio2.outcome!r}",
+                        request=q_bio2.model_dump(exclude_none=True),
+                        response=p_bio2,
+                    ),
+                )
+            else:
+                results.append(
+                    _ok(
+                        "birth_date_routes_bio_specialist",
+                        request=q_bio2.model_dump(exclude_none=True),
+                        response=p_bio2,
                     ),
                 )
 

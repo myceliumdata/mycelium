@@ -1,0 +1,9 @@
+{
+  "lookup": {
+    "player": "Hank Aaron",
+    "debut_team": "Brooklyn Dodgers",
+    "debut_year": "1957"
+  },
+  "requested_attributes": ["birth_date"],
+  "provenance": true
+}

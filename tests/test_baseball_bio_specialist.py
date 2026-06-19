@@ -1,4 +1,4 @@
-"""Smoke tests for baseball batting specialist warehouse compute + provenance."""
+"""Smoke tests for baseball bio specialist raw warehouse read + provenance."""
 
 from __future__ import annotations
 
@@ -53,6 +53,15 @@ def _write_minimal_lahman_fixture(seed_dir: Path) -> None:
     )
 
 
+def _write_missing_birth_month_fixture(seed_dir: Path) -> None:
+    _write_minimal_lahman_fixture(seed_dir)
+    (seed_dir / "People.csv").write_text(
+        "ID,playerID,nameFirst,nameLast,birthYear,birthMonth,birthDay,debut\n"
+        "1,aaronha01,Hank,Aaron,1934,,5,\n",
+        encoding="utf-8",
+    )
+
+
 def _reset_runtime() -> None:
     for reset_fn in (
         reset_storage,
@@ -66,11 +75,16 @@ def _reset_runtime() -> None:
         reset_fn()
 
 
-def _refresh_baseball_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+def _refresh_baseball_root(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    fixture_fn=_write_minimal_lahman_fixture,
+) -> Path:
     monkeypatch.setenv("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     fixture_csv = tmp_path / "lahman-fixture" / "lahman_1871-2025_csv"
-    _write_minimal_lahman_fixture(fixture_csv)
+    fixture_fn(fixture_csv)
     root = tmp_path / "baseball-live"
 
     def fake_fetch(network_root: Path, *, progress=None) -> str:
@@ -89,72 +103,74 @@ def _refresh_baseball_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> P
     return root
 
 
-def _deliver_career_hr(*, provenance: bool = False) -> tuple[object, object]:
+def _deliver_birth_date(*, provenance: bool = False) -> tuple[object, object]:
     step1 = EntityQuery(
         lookup=dict(SAMPLE_PLAYER),
-        requested_attributes=["career_hr"],
+        requested_attributes=["birth_date"],
         provenance=provenance,
     )
-    r1 = run_query(step1, thread_id="career-hr-step1")
+    r1 = run_query(step1, thread_id="birth-date-step1")
     assert r1.outcome == "lookup_resolved", r1.message
     assert r1.delivery is not None
     step2 = EntityQuery(delivery_id=r1.delivery.delivery_id)
-    r2 = run_query(step2, thread_id="career-hr-step2")
+    r2 = run_query(step2, thread_id="birth-date-step2")
     return r1, r2
 
 
 @pytest.mark.smoke
-def test_career_hr_compute_found(
+def test_birth_date_deliver_found(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _refresh_baseball_root(tmp_path, monkeypatch)
-    _, response = _deliver_career_hr()
+    _, response = _deliver_birth_date()
     assert response.outcome in {"found", "assembled"}
     assert response.results
-    assert str(response.results[0].get("career_hr")) == "3"
+    assert response.results[0].get("birth_date") == "1934-02-05"
 
 
 @pytest.mark.smoke
-def test_career_hr_provenance_shape(
+def test_birth_date_provenance_shape(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _refresh_baseball_root(tmp_path, monkeypatch)
-    _, response = _deliver_career_hr(provenance=True)
+    _, response = _deliver_birth_date(provenance=True)
     assert response.provenance is not None
     attrs = response.provenance["entities"][0]["attributes"]
-    version = attrs["career_hr"]["versions"][0]
+    version = attrs["birth_date"]["versions"][0]
     assert version["status"] == "found"
-    assert version["value"] == "3"
+    assert version["value"] == "1934-02-05"
     assert version["sources"][0]["kind"] == "dataset"
     assert version["sources"][0]["id"] == "lahman"
     assert version["computation"]["inline"]
     assert version["parameters"]["lahman.playerID"] == "aaronha01"
-    assert version["actor"]["specialist"] == "batting_specialist"
+    assert version["actor"]["specialist"] == "bio_specialist"
 
 
 @pytest.mark.smoke
-def test_career_hr_cache_hit(
+def test_birth_date_cache_hit(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     root = _refresh_baseball_root(tmp_path, monkeypatch)
-    _, first = _deliver_career_hr()
-    _, second = _deliver_career_hr()
-    assert str(first.results[0].get("career_hr")) == "3"
-    assert str(second.results[0].get("career_hr")) == "3"
-    storage_path = root / "agents" / "batting" / "storage.json"
-    assert storage_path.is_file()
+    _, first = _deliver_birth_date()
+    _, second = _deliver_birth_date()
+    assert first.results[0].get("birth_date") == "1934-02-05"
+    assert second.results[0].get("birth_date") == "1934-02-05"
+    assert (root / "agents" / "bio" / "storage.json").is_file()
 
 
 @pytest.mark.smoke
-def test_career_hr_missing_warehouse_graceful(
+def test_birth_date_missing_birth_month_na(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    root = _refresh_baseball_root(tmp_path, monkeypatch)
-    (root / "warehouse" / "lahman.sqlite").unlink()
-    _, response = _deliver_career_hr()
+    _refresh_baseball_root(
+        tmp_path,
+        monkeypatch,
+        fixture_fn=_write_missing_birth_month_fixture,
+    )
+    _, response = _deliver_birth_date()
     assert response.results
-    assert response.results[0].get("career_hr") in {"N/A", "pending", None, ""}
+    assert response.results[0].get("birth_date") in {"N/A", "pending", None, ""}

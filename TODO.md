@@ -10,6 +10,7 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 ## Next up (Paul)
 
+
 - [ ] **`bin/smoke-baseball-e2e` — full gate** — Minimal fixture version shipped (`./bin/smoke-baseball-e2e`, ~seconds). Expand to CRM parity: `--full` real Lahman refresh (timing-gate scale, not default CI), team-grain queries after **2100** grain router, lazy-alias scenarios (mock expander), warehouse/derivative queries when ready. See script docstring TODO.
 - [ ] **Lahman bootstrap load — keep optimizing (priority)** — Still too slow for demo scale, and **v1 only loads a sliver of Lahman**: warehouse ingests 6 bootstrap tables (~2 s) but `LahmanSeedHandler` only commits **team + player identity binds** (~58k appearance rows → ~24k players) — not batting/pitching derivations, not full 27-table warehouse, not specialist materializations. **Tomorrow:** (1) run **test 6** post-`c5e5bce`; (2) profile remaining hot path; (3) queue slices as needed — likely **`add_bind_alias` without full `_rebuild_field_indexes`**, batch/bootstrap-specific entity paths, bulk specialist bootstrap API, avoid per-row Python loop where SQL batch suffices. Track timings in [`docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md`](docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md). Headroom: full Lahman + derivatives will multiply load — identity pass must be **minutes or less** before expanding scope.
 - [ ] **Profiling — Lahman bootstrap / storage hot paths** — Part of load optimization above. `time -p`, `cProfile` / `py-spy` on bind loop; record findings in timing-gates doc. See [`docs/plans/storage-evolution-program.md`](docs/plans/storage-evolution-program.md) § Post-mortem.
@@ -18,6 +19,10 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
   - **Storage evolution:** code slices complete; test 6 + profiling gate demo readiness.
   - **Cursor queue:** query orchestrator grain selection (`target_resolve`, supervisor) — next slice to queue.
   - **LahmanSeedHandler** shipped slice `1700` (committed). Improvised spike in `git stash` (`cursor-improvised lahman seed handler`) — compare optional; drop when done.
+
+### Shipped (2026-06-18)
+
+- [x] **Fuzzy bind-field suggestions** — Composite scorer + last-token anchor + first-token prefix; mistake matrix `tests/test_fuzzy_bind_field_suggestion_matrix.py`. Nickname aliases (`Dodgers`) stay LLM path. Slice `2026-06-18-2100-fuzzy-bind-field-suggestion-upgrade`.
 
 ### Shipped (2026-06-14)
 
@@ -75,6 +80,7 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 - [ ] **Long-running threads** — Suspend and ask client for clarification (`thread_id` + checkpoints).
 - [ ] **Search indices** — Scale partial lookup + secondary indices (email → id, etc.). Design when beyond CRM scale.
 - [ ] **Fuzzy match upgrades (aliases & prefixes)** — prefer **LLM alias expansion** with domain context (local LLM; see [`docs/plans/conversations/2026-06-16-llm-alias-resolution.md`](docs/plans/conversations/2026-06-16-llm-alias-resolution.md)) over explicit prefix/alias tables. Policy: [`docs/plans/fuzzy-lookup-policy.md`](docs/plans/fuzzy-lookup-policy.md).
+- [ ] **Field aliases — explore as general framework pattern** — Baseball proved lazy LLM expansion + persisted `field_aliases` on `bootstrap_only` (nicknames with no token overlap, shared ambiguous values across entities). Fuzzy handles typos/prefix; LLM + `guide.md` handles domain shorthand. **Explore generalizing:** manifest policy (e.g. `lazy_field_aliases` vs overloading `bootstrap_only`), step-1 ordering contract across networks, bind_alias vs field_alias roles, suggest-only vs persist-on-resolve, operator visibility/editing, and fit for `query_allowed` networks (CRM acronyms). Distill locks into [`fuzzy-lookup-policy.md`](docs/plans/fuzzy-lookup-policy.md) + alias conversation; implementation tracks CRM deferred item below.
 - [ ] **Query / search any field** — Lookup/search on extended attrs, not only MVR/indexed fields; fuzzy on 0-hit. After index story matures.
 - [ ] **Operator attribute correction** — Admin (primary): view/edit specialist storage values, operator override provenance, re-research policy.
 - [ ] **Operator force re-research** — Explicit retry per entity + attribute; optional operator hints in research context.
@@ -82,7 +88,10 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 - [ ] **Data attribution (product — USP)** — MCP/`describe_network` surfacing, staleness/re-research policy beyond Slice 8 basics.
 - [ ] **Derivative data — token-efficiency examples (USP)** — Once specialists materialize **derivative** attrs (warehouse joins, aggregates, rate stats, etc.), ship **worked examples** that quantify **lower client token cost** when retrieving the derivative via Mycelium vs. fetching/reasoning over all **source** rows the specialist used to build it. Deliverables TBD: side-by-side MCP/query transcripts or scripts (token counts), `examples/networks/` demo query pack, website narrative. Natural first host: **baseball** Lahman derivations ([`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md)). Depends on specialist-owned derivative storage + query path to read it.
 - [ ] **MCP `health_check` — generic per-network ping** — Today `ping_query` hardcodes CRM `_HEALTH_PING_LOOKUP` (`name` + `employer`); **baseball** (and any non-CRM network) reports `degraded` even when storage/graph are ok. Replace with grain-aware step-1/2 ping from active `mvr.grains` + a known row per example network (manifest, `guide.md`, or small fixture map). Goal: `ping_query: ok` on CRM and baseball without CRM strings in `src/mycelium_mcp/server.py`.
-- [ ] **Baseball provenance — re-examine** — Identity ship (2026-06-18) proved `provenance=true` returns versioned attrs (research URLs, confidence). For baseball, provenance must eventually cite **warehouse lineage** (`lahman.playerID`, table/row) for stats/bio, with optional supplemental research clearly labeled — not CRM `professional_specialist` web pulls posing as domain data. Design when baseball ontology + stat/bio specialists ship.
+- [ ] **Computation-centric provenance** — Locked design: every `found` version records **`sources[]`** (input material: dataset pin, web URL, chain state, …) + **`computation`** (actual code that ran — inline or `uri` + `content_hash`) + **`parameters`** (entity `source_keys`, scope). URLs alone are insufficient (web bio, research). Lahman: dataset version + GitHub `retrieved_from`, not table/column in provenance. [`docs/plans/conversations/2026-06-18-computation-centric-provenance.md`](docs/plans/conversations/2026-06-18-computation-centric-provenance.md). **M1:** warehouse specialist + version writer; extend research path later.
+- [x] **Baseball ontology (M1a — before specialists)** — Committed `examples/networks/baseball/categories.json` + `pack_ontology` refresh/bootstrap install (slice `2026-06-19-0900`). Schema-informed categories; CRM stub replaced on baseball roots. Generator deferred.
+- [x] **Baseball batting specialist — `career_hr` (M1b)** — Warehouse aggregate + computation provenance; slice `2026-06-19-1000` (committed). Hand-test aggregates after M1c raw gate.
+- [x] **Baseball bio specialist — raw `birth_date` (M1c)** — People table read on same provenance contract; slice `2026-06-19-1100` (committed). Hand-test raw before aggregates.
 - [ ] **Seed export (`export-growth-seed`)** — Validated `entities.json` → `seed.json` fragment.
 - [ ] **Seed vs grown entity linking** — Network-type-specific merge/override rules.
 
@@ -90,6 +99,8 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ## Future / deferred
 
+- [ ] **Dataset manifest** — Network-level catalog of ingested datasets (`id`, `version`, `retrieved_from`, optional `content_hash`) derived from `seed.source.json` + bootstrap. Provenance cites manifest entry by id/version instead of repeating URLs — bloat reduction; not required for provenance M1. [`docs/plans/conversations/2026-06-18-computation-centric-provenance.md`](docs/plans/conversations/2026-06-18-computation-centric-provenance.md).
+- [ ] **Lazy LLM field aliases on open record types (CRM)** — Today alias expansion runs only on `bootstrap_only` (baseball). Extend to `query_allowed` networks after baseball example ships: acronyms / suffix nicknames with no token overlap (`a16z` → `Andreessen Horowitz`, suffix company names) via same `bind_alias_expansion` + `guide.md` pattern — **after fuzzy**, never auto-create. Likely manifest flag (e.g. `lazy_field_aliases`) rather than overloading `bootstrap_only`. Fuzzy keeps typos + first-token prefix; LLM owns domain nicknames. See [`docs/plans/conversations/2026-06-16-llm-alias-resolution.md`](docs/plans/conversations/2026-06-16-llm-alias-resolution.md).
 - [ ] **Toolbox** — TBD.
 - [ ] **Agent tools review** — Catalog tools by domain; framework vs per-network packs; factory binding.
 - [ ] **Per-network LangSmith projects** — Optional `mycelium-<network>` per root.
@@ -107,4 +118,4 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ---
 
-Last updated: 2026-06-18 (baseball identity ship CLEAR WIP; provenance re-examine backlog)
+Last updated: 2026-06-18 (computation-centric provenance locked; baseball M1 + dataset manifest on TODO)

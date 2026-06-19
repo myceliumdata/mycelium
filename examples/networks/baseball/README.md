@@ -108,6 +108,22 @@ Refresh installs `examples/networks/baseball/categories.json` into the live root
 
 Then deliver with `delivery_id` from the step-1 response. See [`docs/plans/conversations/2026-06-18-computation-centric-provenance.md`](../../../docs/plans/conversations/2026-06-18-computation-centric-provenance.md).
 
+**M1c (`birth_date`):** `bio_specialist` reads raw `People` birth columns on deliver (same provenance envelope). Example:
+
+```json
+{
+  "lookup": {
+    "player": "Hank Aaron",
+    "debut_team": "Brooklyn Dodgers",
+    "debut_year": "1957"
+  },
+  "requested_attributes": ["birth_date"],
+  "provenance": true
+}
+```
+
+See `queries/04-birth-date.json`.
+
 Existing live roots: run `./bin/refresh-example-network baseball --sync-only` to pick up ontology without re-running Lahman bootstrap.
 
 **Attribution:** Lahman data is copyright SABR / Sean Lahman (CC BY-SA 3.0). See the [lahman-seed](https://github.com/myceliumdata/lahman-seed) repository.
