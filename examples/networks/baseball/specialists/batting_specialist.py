@@ -171,7 +171,7 @@ def _evaluate_batting_fields(
 
         if resolved is None:
             dr = _load_derive_resolve()
-            if dr.is_derive_candidate(key, manifest, "batting"):
+            if dr.derive_on_miss_enabled(manifest, "batting"):
                 derive_result = dr.generate_and_run_derive(
                     key,
                     player_id=player_id,

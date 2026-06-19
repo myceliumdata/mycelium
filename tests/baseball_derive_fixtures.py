@@ -43,3 +43,9 @@ def compute(player_id: str, warehouse: Path) -> str:
         return "0.000"
     return f"{float(val):.3f}"
 '''
+
+# Free-form derive guinea pig (M4) — mocked OPS on minimal fixture rows.
+OPS_DERIVE_SOURCE = '''
+def compute(player_id: str, warehouse: Path) -> str:
+    return "0.900"
+'''

@@ -41,7 +41,7 @@ MINIMAL_MANIFEST = {
             "aliases": {
                 "career_hr": {"convention": "career_sum", "column": "HR"},
             },
-            "derive_candidates": ["career_avg"],
+            "derive_on_miss": True,
         },
     },
     "tables": {
@@ -70,6 +70,20 @@ def test_parse_review_verdict_reject(dr) -> None:
 def test_parse_review_verdict_unparseable_raises(dr) -> None:
     with pytest.raises(dr.DeriveReviewRejected, match="unparseable"):
         dr.parse_review_verdict("maybe accept?")
+
+
+def test_derive_on_miss_enabled_true(dr) -> None:
+    manifest = {"domains": {"batting": {"derive_on_miss": True}}}
+    assert dr.derive_on_miss_enabled(manifest, "batting")
+
+
+def test_derive_on_miss_enabled_false(dr) -> None:
+    manifest = {"domains": {"batting": {"derive_on_miss": False}}}
+    assert not dr.derive_on_miss_enabled(manifest, "batting")
+
+
+def test_derive_on_miss_enabled_missing_domain(dr) -> None:
+    assert not dr.derive_on_miss_enabled({"domains": {}}, "batting")
 
 
 def test_format_warehouse_context_includes_grain_conventions_aliases(dr) -> None:

@@ -203,6 +203,33 @@ def _patch_career_avg_derive_mock(root: Path) -> None:
     dr.invoke_llm_for_review = fake_review
 
 
+def _patch_ops_derive_mock(root: Path) -> None:
+    """Mock LLM derive codegen for ops (M4, no OPENAI_API_KEY)."""
+    import importlib.util
+
+    tests_dir = str(REPO_ROOT / "tests")
+    if tests_dir not in sys.path:
+        sys.path.insert(0, tests_dir)
+    from baseball_derive_fixtures import OPS_DERIVE_SOURCE
+
+    loader_path = root / "specialists" / "specialist_loader.py"
+    spec = importlib.util.spec_from_file_location("_smoke_specialist_loader_ops", loader_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load specialist_loader from {loader_path}")
+    loader = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(loader)
+    dr = loader.load_derive_resolve()
+
+    def fake_invoke(prompt, *, llm_invoke=None):
+        return OPS_DERIVE_SOURCE.strip()
+
+    def fake_review(prompt, *, review_llm_invoke=None):
+        return "VERDICT: ACCEPT"
+
+    dr.invoke_llm_for_prompt = fake_invoke
+    dr.invoke_llm_for_review = fake_review
+
+
 def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
     """Refresh baseball with minimal fixture and run player record-type query scenarios."""
     meta: dict[str, Any] = {}
@@ -541,6 +568,63 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
                         "career_avg_derive_mocked",
                         request=q_avg2.model_dump(exclude_none=True),
                         response=p_avg2,
+                    ),
+                )
+
+        # Step 2: ops via free-form derive on manifest miss (mocked LLM — fixture 0.900)
+        _patch_ops_derive_mock(root)
+        q_ops = EntityQuery(
+            lookup={
+                "player": sample["player"],
+                "debut_team": sample["debut_team"],
+                "debut_year": sample["debut_year"],
+            },
+            requested_attributes=["ops"],
+            provenance=True,
+        )
+        r_ops1 = run_query(q_ops)
+        if r_ops1.outcome != "lookup_resolved" or not r_ops1.delivery:
+            results.append(
+                _fail(
+                    "ops_derive_step1",
+                    f"expected lookup_resolved, got {r_ops1.outcome!r}",
+                    request=q_ops.model_dump(exclude_none=True),
+                    response=_pub(r_ops1),
+                ),
+            )
+        else:
+            q_ops2 = EntityQuery(delivery_id=r_ops1.delivery.delivery_id)
+            r_ops2 = run_query(q_ops2)
+            p_ops2 = _pub(r_ops2)
+            value_ok = (
+                r_ops2.results
+                and str(r_ops2.results[0].get("ops")) == "0.900"
+            )
+            prov_ok = False
+            if r_ops2.provenance:
+                try:
+                    version = r_ops2.provenance["entities"][0]["attributes"]["ops"]["versions"][0]
+                    prov_ok = bool(
+                        version.get("parameters", {}).get("attribute") == "ops"
+                        and version.get("parameters", {}).get("warehouse") == "warehouse/lahman.sqlite"
+                    )
+                except (KeyError, IndexError, TypeError):
+                    prov_ok = False
+            if not value_ok or not prov_ok:
+                results.append(
+                    _fail(
+                        "ops_derive_mocked",
+                        f"value_ok={value_ok} prov_ok={prov_ok} outcome={r_ops2.outcome!r}",
+                        request=q_ops2.model_dump(exclude_none=True),
+                        response=p_ops2,
+                    ),
+                )
+            else:
+                results.append(
+                    _ok(
+                        "ops_derive_mocked",
+                        request=q_ops2.model_dump(exclude_none=True),
+                        response=p_ops2,
                     ),
                 )
 

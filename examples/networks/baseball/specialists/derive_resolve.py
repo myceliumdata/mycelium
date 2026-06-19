@@ -74,12 +74,8 @@ def _domain_meta(manifest: dict[str, Any], domain: str) -> dict[str, Any]:
     return meta if isinstance(meta, dict) else {}
 
 
-def is_derive_candidate(attr: str, manifest: dict[str, Any], domain: str) -> bool:
-    key = attr.strip().lower()
-    raw = _domain_meta(manifest, domain).get("derive_candidates")
-    if not isinstance(raw, list):
-        return False
-    return key in {str(item).strip().lower() for item in raw if str(item).strip()}
+def derive_on_miss_enabled(manifest: dict[str, Any], domain: str) -> bool:
+    return bool(_domain_meta(manifest, domain).get("derive_on_miss"))
 
 
 def _format_alias_pattern(attr: str, spec: dict[str, Any]) -> str:
@@ -339,7 +335,7 @@ def generate_and_run_derive(
     llm_invoke: Callable[[str], str] | None = None,
     review_llm_invoke: Callable[[str], str] | None = None,
 ) -> DeriveRunResult:
-    if not is_derive_candidate(attr, manifest, domain):
+    if not derive_on_miss_enabled(manifest, domain):
         return DeriveRunResult(field=None)
 
     key = attr.strip().lower()
