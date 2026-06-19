@@ -5,6 +5,14 @@
 
 > **Note:** This document replaces the previous `docs/vision.md` and `docs/phase-1-direction.md`. The latter two are now considered historical.
 
+### Architecture rationales (why)
+
+This doc focuses on **what** and **how**. For **why** behind major decisions, see [`architecture/whys/`](architecture/whys/README.md) — short, linkable rationales you can read without losing the main narrative.
+
+| Topic | Rationale |
+|-------|-----------|
+| Two-step query (`delivery_id`, attrs on step 1 only) | [two-step-query-protocol.md](architecture/whys/two-step-query-protocol.md) |
+
 ---
 
 ## Overview
@@ -53,7 +61,7 @@ This is a deliberate departure from earlier thinking that treated the core CRM t
 
 ### Public interface: query-only (June 2026)
 
-The **CLI** (`query`) and **MCP** (`describe_network`, `query_entity`, `health_check`) expose **lookups only** via the **target two-step protocol** — step 1: `id` or `lookup`; step 2: `delivery_id` (+ `quote_id` when metered). No `provided_data` on the public model. See [MVR redesign (target protocol)](#mvr-redesign-target-protocol). MCP **`describe_network`** returns author `guide.md`, ontology categories, framework policy, and usage examples.
+The **CLI** (`query`) and **MCP** (`describe_network`, `query_entity`, `health_check`) expose **lookups only** via the **target two-step protocol** — step 1: `id` or `lookup`; step 2: `delivery_id` (+ `quote_id` when metered). No `provided_data` on the public model. **Why two steps:** [two-step-query-protocol.md](architecture/whys/two-step-query-protocol.md). Mechanics: [MVR redesign (target protocol)](#mvr-redesign-target-protocol). MCP **`describe_network`** returns author `guide.md`, ontology categories, framework policy, and usage examples.
 
 Data addition via the public API was removed in the June 2026 refactor (tasks 1000–1050). It will return later as **internal agent coordination**, not as a direct caller-supplied payload.
 
@@ -285,6 +293,8 @@ Future (not v1): per-network LangSmith project names, optional credential profil
 Previously conflated in `entity_key`, `binding`, and `mvr.name_source` — all removed from the public protocol (June 2026).
 
 ### Two-step delivery (like quotes)
+
+**Rationale:** [two-step-query-protocol.md](architecture/whys/two-step-query-protocol.md)
 
 1. **Step 1 — Resolve:** send `id` **or** `lookup` (AND within map); optional `requested_attributes` and `provenance` **on this step only**. Response: `total_matches`, empty `results[]`, and `delivery.delivery_id` (`delivery.create_on_deliver: true` only when step 2 will create from full MVR with 0 registry hits; omitted otherwise) (+ `quote` when `metering.enabled`).
 2. **Step 2 — Deliver:** send `delivery_id` (+ `quote_id` when metered). Response: `assembled` / `found` with full `results[]` (and research when attrs were bound on step 1).

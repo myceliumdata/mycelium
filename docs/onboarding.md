@@ -33,8 +33,9 @@ You are here (step 1). Then:
 
 1. [`README.md`](../README.md) — quick start commands, CLI, examples (`crm`, `empty-crm`, `crm-metering`).
 2. [`architecture.md`](architecture.md) — graph, registry, research, metering.
-3. [`full-code-walkthrough.md`](full-code-walkthrough.md) — where code lives.
-4. [`plans/README.md`](plans/README.md) — which design docs are historical vs active.
+3. [`architecture/whys/README.md`](architecture/whys/README.md) — optional: *why* behind major decisions (e.g. two-step query) without reading slice plans or design conversations.
+4. [`full-code-walkthrough.md`](full-code-walkthrough.md) — where code lives.
+5. [`plans/README.md`](plans/README.md) — which design docs are historical vs active.
 
 [myceliumdata.org](https://myceliumdata.org) links the same path: onboarding → README quick start → architecture.
 
@@ -66,7 +67,7 @@ uv run mycelium network status --network crm --id <uuid> --json
 
 JSON includes `resolve: { id, lookup }` mirroring the inspect input, plus `entity_fields[]` with versioned storage.
 
-**Step-1 negotiation (June 2026):** Branch on `outcome` before step 2. Partial lookup missing MVR fields → `lookup_incomplete` + `required_fields`. Near-miss typos or bind-field conflicts → `lookup_suggested` + `suggestions[].suggested_lookup` (merge into retry `lookup`, or use `suggestions[].id`). Suggestion `reason` values: `sequence_ratio`, `bind_field_fuzzy_match`, `same_bind_field_conflict`. Intentional create after a warning → re-run step 1 with `confirm_new_entity: true`. Policy: [`plans/fuzzy-lookup-policy.md`](plans/fuzzy-lookup-policy.md). **Restart MCP** after pulling suggestion-shape changes.
+**Step-1 negotiation (June 2026):** Branch on `outcome` before step 2. Order on 0-hit: exact → **fuzzy** (`lookup_suggested`) → LLM aliases on `bootstrap_only` networks only → incomplete / create / not_found. Partial lookup missing MVR fields → `lookup_incomplete` + `required_fields` when fuzzy finds nothing. Typos and first-token shorthand → `lookup_suggested` + `suggestions[].suggested_lookup` (merge into retry `lookup`, or use `suggestions[].id`). Bind-field conflicts → `lookup_suggested` with `reason: same_bind_field_conflict`. Fuzzy hits use `reason: fuzzy_bind_field_match`. Intentional create after a warning → re-run step 1 with `confirm_new_entity: true`. Operator guide: [`plans/fuzzy-lookup-policy.md`](plans/fuzzy-lookup-policy.md) § For operators.
 
 ---
 
