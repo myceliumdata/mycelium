@@ -16,6 +16,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from utils.llm_models import classification_model
+
 from .models import Category, CategoryProposal, CategoryProposals, CategoryTreeData, ClassificationResult
 
 # LLM imports/calls live only in this module (_llm_propose_for_attributes, refresh_from_llm).
@@ -209,6 +211,7 @@ class CategoryTree:
     def _cache_as_unknown(self, normalized: str) -> None:
         self._data.attribute_map[normalized] = _UNKNOWN_MAP_SENTINEL
         self._data.last_updated = datetime.now(timezone.utc)
+        self._data.model_used = classification_model()
         self._save()
         self._load()
 
@@ -234,7 +237,6 @@ class CategoryTree:
         self,
         attributes: list[str],
         llm: Any | None = None,
-        model: str = "gpt-4o-mini",
     ) -> list[CategoryProposal]:
         """Lazy LLM call with structured CategoryProposals output (internal + tests via llm=).
         Returns the .proposals list.
@@ -248,7 +250,7 @@ class CategoryTree:
         if llm is None:
             from langchain_openai import ChatOpenAI
 
-            llm = ChatOpenAI(model=model, temperature=0.0)
+            llm = ChatOpenAI(model=classification_model(), temperature=0.0)
 
         prompt = _build_llm_classification_prompt(
             attrs_to_consider,
@@ -295,6 +297,7 @@ class CategoryTree:
 
         if self._apply_proposal(proposal):
             self._data.last_updated = datetime.now(timezone.utc)
+            self._data.model_used = classification_model()
             self._save()
             self._load()
             cat_name = self._data.attribute_map[normalized]
@@ -323,7 +326,6 @@ class CategoryTree:
         self,
         attributes: list[str],
         llm: Any | None = None,
-        model: str = "gpt-4o-mini",
     ) -> dict[str, Any]:
         """Occasional / admin-only path. Never call from supervisor, core_data, or query entrypoints."""
         if self._data is None:
@@ -347,7 +349,6 @@ class CategoryTree:
         proposals = self._llm_propose_for_attributes(
             attrs_to_consider,
             llm=llm,
-            model=model,
         )
 
         changes: dict[str, Any] = {
@@ -372,7 +373,7 @@ class CategoryTree:
                 changes["skipped"].append(attr)
 
         self._data.last_updated = datetime.now(timezone.utc)
-        self._data.model_used = model
+        self._data.model_used = classification_model()
         self._save()
         self._load()
         return changes

@@ -101,6 +101,9 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 - [x] **Baseball M2 polish** — Manifest capabilities dedup, MCP blurb, `specialist_loader`, full `parameters`, multi-attr test/smoke, hand-test doc M2 extended gate. Prompt `2026-06-19-1700-baseball-warehouse-manifest-m2a-polish`.
 - [x] **Baseball derive codegen sandbox (M3)** — `derive_sandbox` + pack `derive_resolve`; `derive_candidates: ["career_avg"]`; mocked LLM e2e + provenance. Commit `35a89ab`. Review `2026-06-19-1800-baseball-derive-codegen-sandbox-m3`.
 - [x] **Baseball derive retry on error (M3b)** — Up to 5 attempts; fix prompt with execution error + failed source; `sqlite3.Error` → `N/A` not MCP error. Review `2026-06-19-1900-baseball-derive-retry-on-error-m3b`. Manual Lahman `career_avg` gate for Paul.
+- [x] **Baseball derive context + semantic review (M3c)** — Manifest context on all derive/fix/review prompts; LLM review before cache; tag `first_llm_computed_result`. Review `2026-06-19-2100-baseball-derive-context-semantic-review-m3c`. Aaron `career_avg` ≈ 0.305 live.
+- [x] **Baseball free-form derive (M4)** — `derive_on_miss` on batting domain; any manifest miss → M3c pipeline (removed `derive_candidates` whitelist). Guinea pig: `ops`. Review `2026-06-19-2200-baseball-free-form-derive-m4`.
+- [ ] **Baseball derive label normalization (M4b)** — Intent-hash / synonym cache (`career_avg` vs `batting_average`); deferred from M4 review.
 
 - [ ] **Specialist promotion (derive → product specialist)** — **Out of scope for automation now.** Future: derive telemetry + compute/storage cost signals → agent recommends promoting repeat cross-domain computations to new category + pack specialist; Paul/Grok approve slices until automated. Suppress factory research stub for warehouse categories on baseball. [`2026-06-19-warehouse-factory-layer3-specialist-emergence.md`](docs/plans/conversations/2026-06-19-warehouse-factory-layer3-specialist-emergence.md).
 - [ ] **Seed export (`export-growth-seed`)** — Validated `entities.json` → `seed.json` fragment.
@@ -110,6 +113,8 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ## Future / deferred
 
+- [x] **LLM model configuration — env-only (v1 partial)** — Shipped `src/utils/llm_models.py` + five `MYCELIUM_*_MODEL` accessors (`MYCELIUM_COMPUTATION_CODEGEN_MODEL`, classification, ontology, research, alias expansion); remediation slice renames derive → computation codegen. **Insufficient** — still falls back to hardcoded `gpt-4o-mini` when unset; no provider dimension. See **LLM model configuration — strict (review)** below.
+- [ ] **LLM model configuration — strict (review)** — **Review and redesign** v1 model env (slices `2026-06-19-2330`, `2026-06-20-0900`). Paul lock: **no guessing** — operator must explicitly configure **provider + model** for each production LLM subsystem (the five vars at minimum). **Missing required var = hard failure at startup** (CLI, MCP `_bootstrap`, admin daemon) — not silent fallback to a baked-in default. Drop `FALLBACK_MODEL` / unset-means-mini behavior. Open design: env shape (e.g. `openai:gpt-4o` per var vs paired `MYCELIUM_*_PROVIDER` + `MYCELIUM_*_MODEL`), whether agent-factory refine is required or opt-in, validation error messages, `.env.example` as explicit template with no implied defaults. Origin: computation codegen needs `gpt-4o`; unset vars hiding misconfiguration is unacceptable for a critical framework capability.
 - [ ] **Dataset manifest** — Network-level catalog of ingested datasets (`id`, `version`, `retrieved_from`, optional `content_hash`) derived from `seed.source.json` + bootstrap. Provenance cites manifest entry by id/version instead of repeating URLs — bloat reduction; not required for provenance M1. [`docs/plans/conversations/2026-06-18-computation-centric-provenance.md`](docs/plans/conversations/2026-06-18-computation-centric-provenance.md).
 - [ ] **Lazy LLM field aliases on open record types (CRM)** — Today alias expansion runs only on `bootstrap_only` (baseball). Extend to `query_allowed` networks after baseball example ships: acronyms / suffix nicknames with no token overlap (`a16z` → `Andreessen Horowitz`, suffix company names) via same `bind_alias_expansion` + `guide.md` pattern — **after fuzzy**, never auto-create. Likely manifest flag (e.g. `lazy_field_aliases`) rather than overloading `bootstrap_only`. Fuzzy keeps typos + first-token prefix; LLM owns domain nicknames. See [`docs/plans/conversations/2026-06-16-llm-alias-resolution.md`](docs/plans/conversations/2026-06-16-llm-alias-resolution.md).
 - [ ] **Toolbox** — TBD.
@@ -129,4 +134,4 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ---
 
-Last updated: 2026-06-19 (M3c shipped; deep provenance on roadmap; Aaron `career_avg` manual gate passed)
+Last updated: 2026-06-20 (LLM model strict config review on roadmap)

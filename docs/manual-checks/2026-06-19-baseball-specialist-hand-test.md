@@ -143,7 +143,7 @@ Use partial lookup `{"player": "Hank Aaron"}` if unique on your root. Always ste
 
 ## M3 gate — `career_avg` derive (live Lahman)
 
-**Requires:** `OPENAI_API_KEY` in framework `.env` (derive uses `MYCELIUM_DERIVE_MODEL`, default `gpt-4o-mini`).
+**Requires:** `OPENAI_API_KEY` in framework `.env` (computation codegen uses `MYCELIUM_COMPUTATION_CODEGEN_MODEL`, default `gpt-4o-mini`).
 
 **Clear stale cache** if you tested before M3 (sticky `N/A`):
 

@@ -191,7 +191,9 @@ class AgentFactory:
         """
         from langchain_openai import ChatOpenAI
 
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0)
+        from utils.llm_models import agent_factory_refine_model
+
+        llm = ChatOpenAI(model=agent_factory_refine_model(), temperature=0.0)
         prompt = (
             "You are an expert Python developer maintaining the Mycelium project. "
             "Review the following generated specialist agent code for consistency "

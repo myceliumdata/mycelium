@@ -10,9 +10,9 @@ from pydantic import BaseModel, Field
 
 from agents.entity_registry import EntityRegistry
 from network.mvr import load_mvr
+from utils.llm_models import alias_expansion_model
 
 _CANONICAL_VALUE_CAP = 500
-_ALIAS_EXPANSION_MODEL = os.getenv("MYCELIUM_ALIAS_EXPANSION_MODEL", "gpt-4o-mini")
 
 
 @dataclass(frozen=True)
@@ -150,7 +150,7 @@ def _llm_propose_canonical_values(
 
     from langchain_openai import ChatOpenAI
 
-    llm = ChatOpenAI(model=_ALIAS_EXPANSION_MODEL, temperature=0.0)
+    llm = ChatOpenAI(model=alias_expansion_model(), temperature=0.0)
     structured = llm.with_structured_output(_FieldAliasProposal)
     result = structured.invoke(prompt)
     if not isinstance(result, _FieldAliasProposal):

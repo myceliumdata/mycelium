@@ -13,6 +13,7 @@ from network.derive_sandbox import DeriveSourceError, run_derive_function
 from network.paths import NetworkPaths
 from network.warehouse import default_warehouse_path
 from network.warehouse_manifest import load_warehouse_manifest
+from utils.llm_models import computation_codegen_model
 
 LAHMAN_PLAYER_ID = "lahman.playerID"
 _SOURCE_TRUNCATE_CHARS = 8000
@@ -46,11 +47,6 @@ class DeriveResolvedField:
 class DeriveRunResult:
     field: DeriveResolvedField | None
     audit_log: tuple[str, ...] = ()
-
-
-def derive_model() -> str:
-    raw = os.getenv("MYCELIUM_DERIVE_MODEL", "gpt-4o-mini").strip()
-    return raw or "gpt-4o-mini"
 
 
 def derive_max_attempts() -> int:
@@ -265,7 +261,7 @@ def invoke_llm_for_prompt(
         raise DeriveSourceError("OPENAI_API_KEY not set for derive codegen")
     from langchain_openai import ChatOpenAI
 
-    llm = ChatOpenAI(model=derive_model(), temperature=0.0)
+    llm = ChatOpenAI(model=computation_codegen_model(), temperature=0.0)
     response = llm.invoke(prompt)
     content = response.content if hasattr(response, "content") else str(response)
     return _extract_python(str(content))
@@ -282,7 +278,7 @@ def invoke_llm_for_review(
         raise DeriveSourceError("OPENAI_API_KEY not set for derive review")
     from langchain_openai import ChatOpenAI
 
-    llm = ChatOpenAI(model=derive_model(), temperature=0.0)
+    llm = ChatOpenAI(model=computation_codegen_model(), temperature=0.0)
     response = llm.invoke(prompt)
     content = response.content if hasattr(response, "content") else str(response)
     return str(content).strip()
@@ -424,7 +420,7 @@ def generate_and_run_derive(
                 value=value,
                 computation_inline=source,
                 attribute=key,
-                model=derive_model() if llm_invoke is None else None,
+                model=computation_codegen_model() if llm_invoke is None else None,
             ),
             audit_log=tuple(audit),
         )

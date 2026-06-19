@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 from network.mvr import MvrPolicy, load_mvr
 from network.env_util import env_int
 from tools.tavily import create_tavily_search_tool, is_web_search_available
+from utils.llm_models import research_model
 
 _RESEARCH_TEMPLATE_DIR = (
     Path(__file__).resolve().parent.parent / "agents" / "factory" / "templates" / "research"
@@ -71,10 +72,6 @@ def research_max_tool_rounds() -> int:
 
 def research_timeout_sec() -> int:
     return env_int("MYCELIUM_RESEARCH_TIMEOUT_SEC", 120)
-
-
-def research_model() -> str:
-    return os.getenv("MYCELIUM_RESEARCH_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini"
 
 
 def is_research_available() -> bool:

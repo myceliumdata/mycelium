@@ -11,6 +11,7 @@ from network.ontology import (
     ProposedOntology,
     generate_skeleton_ontology,
 )
+from utils.llm_models import FALLBACK_MODEL
 
 _CRM_SIX = frozenset(
     {
@@ -103,7 +104,7 @@ def test_generate_skeleton_ontology_happy_path(
     )
 
     assert isinstance(result.categories, CategoryTreeData)
-    assert result.model_used == "gpt-4o-mini"
+    assert result.model_used == FALLBACK_MODEL
     assert len(result.categories.categories) == 3
     assert len(result.agents) == 3
     assert mock.calls == 1

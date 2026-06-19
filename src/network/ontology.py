@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from agents.classification.models import Category, CategoryTreeData
 from agents.registry import RegisteredAgent
 from agents.specialists.base import registry_storage_paths
+from utils.llm_models import ontology_model
 
 _AGENT_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*_specialist$")
 _MIN_CATEGORIES = 3
@@ -172,13 +173,13 @@ def _convert_proposed(proposed: ProposedOntology, model: str) -> SkeletonOntolog
 
 def _invoke_llm(
     creation_prompt: str,
-    model: str,
     llm: Any | None = None,
     *,
     prior_errors: str | None = None,
 ) -> ProposedOntology:
     from langchain_openai import ChatOpenAI
 
+    model = ontology_model()
     client = llm if llm is not None else ChatOpenAI(model=model, temperature=0.0)
     user = _build_user_prompt(creation_prompt)
     if prior_errors:
@@ -202,7 +203,6 @@ def _invoke_llm(
 def generate_skeleton_ontology(
     creation_prompt: str,
     *,
-    model: str = "gpt-4o-mini",
     llm: Any | None = None,
 ) -> SkeletonOntologyResult:
     """LLM + validate + optional one retry. Raises OntologyGenerationError on failure."""
@@ -213,10 +213,11 @@ def generate_skeleton_ontology(
     if llm is None:
         _validate_openai_api_key()
 
+    model = ontology_model()
     last_error: str | None = None
     for attempt in range(2):
         try:
-            proposed = _invoke_llm(prompt, model, llm, prior_errors=last_error)
+            proposed = _invoke_llm(prompt, llm, prior_errors=last_error)
             return _convert_proposed(proposed, model)
         except ValueError as exc:
             last_error = str(exc)
