@@ -1,7 +1,7 @@
 # Baseball specialist hand test — what should work
 
 **Status:** Ready for Paul (June 2026)  
-**Scope:** Identity routing + warehouse specialists through **M2 polish** (`career_hr`, `career_rbi`, `career_hits`, `birth_date`, `bats` when column present; registry bind provenance).
+**Scope:** Identity routing + warehouse specialists through **M3** (`career_hr`, `career_rbi`, `career_hits`, `career_avg` derive, `birth_date`, `bats` when column present; registry bind provenance).
 **Pull vs compute map (while testing):** [§ Warehouse pull vs compute](#warehouse-pull-vs-compute--reference) below.  
 **Deeper identity/routing matrix:** [`2026-06-18-baseball-query-hand-test-plan.md`](2026-06-18-baseball-query-hand-test-plan.md)
 
@@ -80,7 +80,7 @@ Bind-field provenance: `actor.kind` is **`registry`** or **`seed_bootstrap`** (n
 | `career_rbi` | Compute (`career_sum`) | `RBI` | ✅ |
 | `career_hits` | Compute (`career_sum`) | `H` | ✅ |
 | `career_sb` | Compute (`career_sum`) | `SB` | ⏳ alias not in manifest yet |
-| `career_avg` | Compute (rate) | `SUM(H) / SUM(AB)` | ⏳ returns `N/A` |
+| `career_avg` | Compute (derive) | `SUM(H) / SUM(AB)` via LLM codegen + sandbox (M3) | ✅ Aaron ≈ **0.305** on full Lahman; fixture smoke **0.500** |
 | `home_runs`, `rbi`, `at_bats`, `games` | Pull or compute | season-scoped row vs career SUM | ⏳ scope TBD |
 | `ops`, `batting_average` | Compute (recipe) | multi-column / season rate | ⏳ |
 
@@ -109,7 +109,7 @@ Needs team record + season in query — not player specialist path.
 | Franchise lineage, career teams list | Cross-table emergent specialists |
 | OPS+, WAR, custom mashups | No Lahman column; external source or recipe |
 
-**Hand-test anchors (full Lahman):** `career_hr` ≈ 755, `career_rbi` ≈ 2297, `career_hits` ≈ 3771, `birth_date` = `1934-02-05` for Hank Aaron (`aaronha01`).
+**Hand-test anchors (full Lahman):** `career_hr` ≈ 755, `career_rbi` ≈ 2297, `career_hits` ≈ 3771, `career_avg` ≈ **0.305**, `birth_date` = `1934-02-05` for Hank Aaron (`aaronha01`).
 
 ---
 
@@ -126,7 +126,7 @@ Use partial lookup `{"player": "Hank Aaron"}` if unique on your root. Always ste
 | 4 | Bio raw columns | `["bats", "throws", "birth_city"]` | `R`, `R`, `Mobile` (typical); `people_column` inline |
 | 5 | Cache hit | Repeat **#3** without clearing storage | Same values; provenance version ids / timestamps unchanged |
 | 6 | Manifest (optional) | `describe_network` | `warehouse_manifest.present`; aliases on disk in `warehouse_manifest.json` |
-| 7 | Negative | `["career_avg"]` or `{"lookup": {"player": "XYZZY"}}` | `N/A` or `not_found` — no crash |
+| 7 | Negative | `{"lookup": {"player": "XYZZY"}}` | `not_found` — no crash |
 
 **Step 1 example (#3):**
 
@@ -136,6 +136,53 @@ Use partial lookup `{"player": "Hank Aaron"}` if unique on your root. Always ste
   "requested_attributes": ["debut_team", "debut_year", "career_hr", "career_rbi", "career_hits", "birth_date"],
   "provenance": true
 }
+```
+
+---
+
+## M3 gate — `career_avg` derive (live Lahman)
+
+**Requires:** `OPENAI_API_KEY` in framework `.env` (derive uses `MYCELIUM_DERIVE_MODEL`, default `gpt-4o-mini`).
+
+**Clear stale cache** if you tested before M3 (sticky `N/A`):
+
+```bash
+rm -f ~/mycelium-networks/baseball/agents/batting/storage.json
+./bin/refresh-example-network baseball --sync-only
+# restart MCP / Claude session if query_entity was already running
+```
+
+| # | What | Expect |
+|---|------|--------|
+| M3-1 | First deliver | `career_avg` ≈ **0.305** (three decimals, leading zero) |
+| M3-2 | Provenance | `computation.inline` contains `query_warehouse`; `parameters.warehouse`, `lahman.playerID`, `attribute: career_avg` |
+| M3-3 | Cache hit | Second step 1+2 without clearing storage — same value; no new LLM call (version id unchanged) |
+| M3-4 | M2 regression | `career_hr` still **755** — manifest alias path, no LLM |
+
+**Step 1** (partial lookup OK if Aaron is unique on your root):
+
+```json
+{
+  "lookup": {"player": "Hank Aaron"},
+  "requested_attributes": ["career_avg"],
+  "provenance": true
+}
+```
+
+**Step 2:**
+
+```json
+{
+  "delivery_id": "<from step 1>"
+}
+```
+
+**CLI equivalent:**
+
+```bash
+uv run mycelium query --network baseball \
+  --lookup-json '{"lookup":{"player":"Hank Aaron"},"requested_attributes":["career_avg"],"provenance":true}'
+uv run mycelium query --network baseball --delivery-id d_…
 ```
 
 ---
@@ -223,7 +270,7 @@ Don’t fail the build on these — they’re explicitly out of scope:
 |------|-----|
 | `height`, `weight`, `birth_country`, `final_game` | No manifest alias yet |
 | `career_sb` | Batting alias not in manifest yet |
-| `career_avg`, `ops` | Rate recipes — returns `N/A` |
+| `ops`, `batting_average` (non-alias) | Multi-column rate recipes — returns `N/A` until manifest alias or derive candidate |
 | `career_wins`, `era`, pitching stats | `pitching_specialist` stub |
 | `season_wins`, team season attrs | `team_season_specialist` stub |
 | Career team list via query API | Identity is debut bind only — use warehouse SQL (identity doc § H) |

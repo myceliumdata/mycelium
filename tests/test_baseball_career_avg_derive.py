@@ -19,19 +19,7 @@ from network.example import refresh_example_network
 from network.paths import NetworkPaths
 from network_helpers import apply_network_paths_monkeypatch
 from storage.core import reset_storage
-
-CAREER_AVG_SOURCE = '''
-def compute(player_id: str, warehouse: Path) -> str:
-    rows = query_warehouse(
-        warehouse,
-        'SELECT COALESCE(SUM(CAST("H" AS INTEGER)), 0), COALESCE(SUM(CAST("AB" AS INTEGER)), 0) FROM "Batting" WHERE "playerID" = ?',
-        (player_id,),
-    )
-    hits, ab = int(rows[0][0]), int(rows[0][1])
-    if ab == 0:
-        return "0.000"
-    return f"{hits / ab:.3f}"
-'''
+from baseball_derive_fixtures import CAREER_AVG_DERIVE_SOURCE
 
 SAMPLE_PLAYER = {
     "player": "Hank Aaron",
@@ -117,7 +105,7 @@ def _patch_derive_source(monkeypatch: pytest.MonkeyPatch, dr, *, counter: dict |
     def fake_source(attr, manifest, domain, *, llm_invoke=None):
         if counter is not None:
             counter["count"] = counter.get("count", 0) + 1
-        return CAREER_AVG_SOURCE
+        return CAREER_AVG_DERIVE_SOURCE
 
     monkeypatch.setattr(dr, "generate_derive_source", fake_source)
 

@@ -9,18 +9,7 @@ import pytest
 
 from network.derive_sandbox import DeriveSourceError, run_derive_function, validate_derive_source
 
-CAREER_AVG_SOURCE = '''
-def compute(player_id: str, warehouse: Path) -> str:
-    rows = query_warehouse(
-        warehouse,
-        'SELECT COALESCE(SUM(CAST("H" AS INTEGER)), 0), COALESCE(SUM(CAST("AB" AS INTEGER)), 0) FROM "Batting" WHERE "playerID" = ?',
-        (player_id,),
-    )
-    hits, ab = int(rows[0][0]), int(rows[0][1])
-    if ab == 0:
-        return "0.000"
-    return f"{hits / ab:.3f}"
-'''
+from baseball_derive_fixtures import CAREER_AVG_DERIVE_SOURCE
 
 
 def _make_batting_db(path: Path) -> None:
@@ -53,7 +42,7 @@ def test_run_derive_function_career_avg_example(tmp_path: Path) -> None:
     db = tmp_path / "lahman.sqlite"
     _make_batting_db(db)
     value = run_derive_function(
-        CAREER_AVG_SOURCE,
+        CAREER_AVG_DERIVE_SOURCE,
         player_id="a",
         warehouse=db,
     )

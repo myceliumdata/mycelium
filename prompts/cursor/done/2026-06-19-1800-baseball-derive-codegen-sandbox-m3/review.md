@@ -63,12 +63,12 @@ Full read of all files in `35a89ab` (9 files, +580 lines). No `/review` subagent
 
 ## Nits (non-blocking)
 
-| # | Nit | Suggested follow-up |
-|---|-----|---------------------|
-| N1 | Hand-test doc still lists `career_avg` → `N/A` | Update [`docs/manual-checks/2026-06-19-baseball-specialist-hand-test.md`](../../../docs/manual-checks/2026-06-19-baseball-specialist-hand-test.md) gate rows + add M3 manual step (clear batting storage, `provenance: true`, expect ≈ `0.305` on full Lahman) |
-| N2 | `CAREER_AVG_SOURCE` duplicated in `test_derive_sandbox.py` and `test_baseball_career_avg_derive.py` | Shared fixture constant in `tests/` helper (polish) |
-| N3 | No `smoke-baseball-e2e` scenario for `career_avg` | Optional row with env-guarded mock or document pytest-only (prompt allowed either) |
-| N4 | Sandbox Path method allowlist | Future slice if codegen abuse seen in manual gate |
+| # | Nit | Status |
+|---|-----|--------|
+| N1 | Hand-test doc `career_avg` + M3 gate | **Fixed** — polish commit |
+| N2 | Duplicated `CAREER_AVG` source in tests | **Fixed** — `tests/baseball_derive_fixtures.py` |
+| N3 | `smoke-baseball-e2e` `career_avg` scenario | **Fixed** — `career_avg_derive_mocked` (12 scenarios) |
+| N4 | Sandbox Path method allowlist | Deferred — future hardening if live codegen misbehaves |
 
 Program polish backlog: baseball program doc § M3 row when Paul confirms manual Lahman gate.
 
