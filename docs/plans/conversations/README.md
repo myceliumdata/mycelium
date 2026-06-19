@@ -16,5 +16,6 @@ Full-context notes from **Paul + Grok** design discussions. These preserve reaso
 | 2026-06-16 | Bootstrap experiment v0 results | [2026-06-16-bootstrap-experiment-v0-results.md](2026-06-16-bootstrap-experiment-v0-results.md) | 241 teams auto-commit; LLM hybrid |
 | 2026-06-18 | Computation-centric provenance; source-first ontology | [2026-06-18-computation-centric-provenance.md](2026-06-18-computation-centric-provenance.md) | `TODO.md` → computation-centric provenance; baseball M1; dataset manifest (deferred) |
 | 2026-06-19 | Warehouse layer 3, stats surface, specialist emergence | [2026-06-19-warehouse-factory-layer3-specialist-emergence.md](2026-06-19-warehouse-factory-layer3-specialist-emergence.md) | `TODO.md` → warehouse manifest M2a; specialist promotion; retention policy |
+| 2026-06-19 | Deep provenance — input-fact lineage beyond computation envelope | [2026-06-19-deep-provenance-lineage-expansion.md](2026-06-19-deep-provenance-lineage-expansion.md) | `TODO.md` → deep provenance |
 
 When resuming work, read the relevant conversation doc first, then **`docs/plans/entity-protocol-and-registry-program.md`** (full slice map), then `TODO.md` for the current checklist.
