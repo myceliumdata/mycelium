@@ -36,6 +36,12 @@ def _write_minimal_lahman_fixture(seed_dir: Path) -> None:
         "1957,BRO,aaronha01\n",
         encoding="utf-8",
     )
+    (seed_dir / "Batting.csv").write_text(
+        "playerID,yearID,stint,teamID,lgID,G,AB,R,H,2B,3B,HR,RBI,SB,CS,BB,SO,IBB,HBP,SH,SF,GIDP\n"
+        "aaronha01,1957,1,BRO,NL,1,4,0,2,0,0,1,1,0,0,0,0,0,0,0,0,0\n"
+        "aaronha01,1958,1,LAN,NL,1,4,0,2,0,0,2,2,0,0,0,0,0,0,0,0,0\n",
+        encoding="utf-8",
+    )
 
 
 @pytest.mark.smoke

@@ -16,6 +16,9 @@ BOOTSTRAP_TABLES = (
     "TeamsFranchises",
 )
 
+LAHMAN_PLAYER_ID = "lahman.playerID"
+LAHMAN_TEAM_ID = "lahman.teamID"
+
 
 def resolve_network_seed(network_root: Path) -> Path | None:
     """Locate Lahman seed under ``<network_root>/seed/``."""

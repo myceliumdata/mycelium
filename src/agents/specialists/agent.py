@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable
 
 from agents.specialists.base import SpecialistStorage
+from agents.specialists.computed import append_computed_version, build_computed_version_body
 from agents.specialists.fields import (
     append_version,
     current_status,
@@ -147,6 +148,56 @@ class SpecialistAgent:
         else:
             self.storage.save(data)
         return current
+
+    def write_computed_field(
+        self,
+        entity_id: str,
+        field: str,
+        *,
+        value: str,
+        sources: list[dict[str, Any]],
+        computation: dict[str, str],
+        parameters: dict[str, str],
+        at: str | None = None,
+    ) -> str:
+        """Write a computed field version with dataset/computation provenance."""
+        self._maybe_optimize_storage()
+        timestamp = at or _now_iso()
+        key = field.strip().lower()
+        if not key:
+            return ""
+        use_incremental = self.storage.current_strategy() == "minisql_v1"
+        if use_incremental:
+            record = self.storage.load_entity(entity_id)
+            if record is None:
+                record = {}
+        else:
+            data = self.storage.load()
+            records = data.setdefault("records", {})
+            record = records.setdefault(entity_id, {})
+        if current_value_matches(record.get(key), str(value)):
+            existing = current_value(record.get(key))
+            if existing is not None:
+                return existing
+        version_body = build_computed_version_body(
+            value=str(value).strip(),
+            actor=_actor_body(
+                kind="specialist",
+                category=self.category,
+                specialist=self.agent_name,
+            ),
+            sources=sources,
+            computation=computation,
+            parameters=parameters,
+            at=timestamp,
+        )
+        record[key] = append_computed_version(record.get(key), version_body)
+        written = current_value(record[key])
+        if use_incremental:
+            self.storage.save_entity(entity_id, record)
+        else:
+            self.storage.save(data)
+        return written or str(value).strip()
 
     def read_fields(
         self,

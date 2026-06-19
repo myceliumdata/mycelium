@@ -35,6 +35,7 @@ BASEBALL_PYTEST_FILES = (
     "tests/test_strict_record_type_routing.py",
     "tests/test_example_network.py::test_refresh_baseball_fetches_seed_and_bootstraps",
     "tests/test_baseball_pack_ontology.py",
+    "tests/test_baseball_batting_specialist.py",
 )
 
 EXPECTED_BOOTSTRAP_COUNT = 4
@@ -101,6 +102,12 @@ def _write_minimal_lahman_fixture(seed_dir: Path) -> None:
     (seed_dir / "Appearances.csv").write_text(
         "yearID,teamID,playerID\n"
         "1957,BRO,aaronha01\n",
+        encoding="utf-8",
+    )
+    (seed_dir / "Batting.csv").write_text(
+        "playerID,yearID,stint,teamID,lgID,G,AB,R,H,2B,3B,HR,RBI,SB,CS,BB,SO,IBB,HBP,SH,SF,GIDP\n"
+        "aaronha01,1957,1,BRO,NL,1,4,0,2,0,0,1,1,0,0,0,0,0,0,0,0,0\n"
+        "aaronha01,1958,1,LAN,NL,1,4,0,2,0,0,2,2,0,0,0,0,0,0,0,0,0\n",
         encoding="utf-8",
     )
 
@@ -335,7 +342,7 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
                     ),
                 )
 
-        # Step 2: career_hr routes to batting_specialist (values may be pending)
+        # Step 2: career_hr routes to batting_specialist and returns computed value
         q_hr = EntityQuery(
             lookup={
                 "player": sample["player"],
@@ -343,6 +350,7 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
                 "debut_year": sample["debut_year"],
             },
             requested_attributes=["career_hr"],
+            provenance=True,
         )
         r_hr1 = run_query(q_hr)
         p_hr1 = _pub(r_hr1)
@@ -361,11 +369,28 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
             p_hr2 = _pub(r_hr2)
             debug_blob = r_hr2.debug or ""
             routed = "batting_specialist" in debug_blob
-            if not routed:
+            value_ok = (
+                r_hr2.results
+                and str(r_hr2.results[0].get("career_hr")) == "3"
+            )
+            prov_ok = False
+            if r_hr2.provenance:
+                try:
+                    version = r_hr2.provenance["entities"][0]["attributes"]["career_hr"][
+                        "versions"
+                    ][0]
+                    prov_ok = bool(
+                        version.get("computation", {}).get("inline")
+                        and version.get("parameters", {}).get("lahman.playerID") == "aaronha01"
+                    )
+                except (KeyError, IndexError, TypeError):
+                    prov_ok = False
+            if not routed or not value_ok or not prov_ok:
                 results.append(
                     _fail(
                         "career_hr_routes_batting_specialist",
-                        f"expected batting_specialist routing in debug; got {debug_blob!r}",
+                        f"routing={routed} value_ok={value_ok} prov_ok={prov_ok} "
+                        f"outcome={r_hr2.outcome!r}",
                         request=q_hr2.model_dump(exclude_none=True),
                         response=p_hr2,
                     ),

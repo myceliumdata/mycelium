@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -133,6 +134,16 @@ def _render_missing_specialists(
         )
 
 
+def _install_pack_specialists(example_name: str, paths: NetworkPaths) -> None:
+    """Copy committed pack specialist modules over factory stubs."""
+    pack_dir = _examples_root() / example_name / "specialists"
+    if not pack_dir.is_dir():
+        return
+    paths.specialists_dir.mkdir(parents=True, exist_ok=True)
+    for py_file in sorted(pack_dir.glob("*.py")):
+        shutil.copy2(py_file, paths.specialists_dir / py_file.name)
+
+
 def install_pack_ontology_from_example(example_name: str, paths: NetworkPaths) -> bool:
     """Copy committed pack ontology into a live root; register agents and stub specialists."""
     source = example_pack_categories_path(example_name)
@@ -153,6 +164,7 @@ def install_pack_ontology_from_example(example_name: str, paths: NetworkPaths) -
     agents = _agents_from_category_tree(tree)
     _write_agent_registry(paths, agents)
     _render_missing_specialists(tree, agents, paths)
+    _install_pack_specialists(example_name, paths)
 
     from agents.classification import get_category_tree, reset_category_tree
 

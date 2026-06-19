@@ -2,6 +2,7 @@
   "type": "git",
   "repo": "https://github.com/myceliumdata/lahman-seed.git",
   "ref": "v2025.1",
+  "dataset_id": "lahman",
   "source_path": "lahman_1871-2025_csv",
   "dest": "seed/lahman_1871-2025_csv"
 }

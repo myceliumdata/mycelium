@@ -92,7 +92,21 @@ Refresh installs `examples/networks/baseball/categories.json` into the live root
 | `pitching` | `pitching_specialist` | `career_wins`, `era`, `strikeouts`, … |
 | `team_season` | `team_season_specialist` | `season_wins`, `park`, `attendance`, … |
 
-Specialists are **framework stubs** until M1b (warehouse reads + computation provenance). Step-2 routing is live; attribute values may be empty/pending.
+**M1b (`career_hr`):** `batting_specialist` reads the Lahman warehouse on deliver and caches results with computation-centric provenance (`sources`, `computation.inline`, `parameters`). Other specialists remain stubs until follow-up slices.
+
+```json
+{
+  "lookup": {
+    "player": "Hank Aaron",
+    "debut_team": "Brooklyn Dodgers",
+    "debut_year": "1957"
+  },
+  "requested_attributes": ["career_hr"],
+  "provenance": true
+}
+```
+
+Then deliver with `delivery_id` from the step-1 response. See [`docs/plans/conversations/2026-06-18-computation-centric-provenance.md`](../../../docs/plans/conversations/2026-06-18-computation-centric-provenance.md).
 
 Existing live roots: run `./bin/refresh-example-network baseball --sync-only` to pick up ontology without re-running Lahman bootstrap.
 
