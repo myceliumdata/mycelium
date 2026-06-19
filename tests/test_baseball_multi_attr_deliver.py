@@ -1,4 +1,4 @@
-"""Smoke tests for baseball player_identity bind delivery + registry provenance."""
+"""Multi-attribute deliver: registry bind + warehouse specialists + provenance."""
 
 from __future__ import annotations
 
@@ -45,7 +45,8 @@ def _write_minimal_lahman_fixture(seed_dir: Path) -> None:
     )
     (seed_dir / "Batting.csv").write_text(
         "playerID,yearID,stint,teamID,lgID,G,AB,R,H,2B,3B,HR,RBI,SB,CS,BB,SO,IBB,HBP,SH,SF,GIDP\n"
-        "aaronha01,1957,1,BRO,NL,1,4,0,2,0,0,1,1,0,0,0,0,0,0,0,0,0\n",
+        "aaronha01,1957,1,BRO,NL,1,4,0,2,0,0,1,1,0,0,0,0,0,0,0,0,0\n"
+        "aaronha01,1958,1,LAN,NL,1,4,0,2,0,0,2,2,0,0,0,0,0,0,0,0,0\n",
         encoding="utf-8",
     )
 
@@ -86,55 +87,42 @@ def _refresh_baseball_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> P
     return root
 
 
-def _deliver_bind_attrs(
-    attrs: list[str],
-    *,
-    provenance: bool = False,
-) -> tuple[object, object]:
+@pytest.mark.smoke
+def test_multi_attr_bind_and_warehouse_provenance(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _refresh_baseball_root(tmp_path, monkeypatch)
     step1 = EntityQuery(
         lookup=dict(SAMPLE_PLAYER),
-        requested_attributes=attrs,
-        provenance=provenance,
-    )
-    r1 = run_query(step1, thread_id="bind-attrs-step1")
-    assert r1.outcome == "lookup_resolved", r1.message
-    assert r1.delivery is not None
-    step2 = EntityQuery(delivery_id=r1.delivery.delivery_id)
-    r2 = run_query(step2, thread_id="bind-attrs-step2")
-    return r1, r2
-
-
-@pytest.mark.smoke
-def test_debut_bind_attrs_deliver_from_registry(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    _refresh_baseball_root(tmp_path, monkeypatch)
-    _, response = _deliver_bind_attrs(["debut_team", "debut_year"])
-    assert response.outcome in {"found", "assembled"}
-    assert response.results
-    row = response.results[0]
-    assert row.get("debut_team") == "Brooklyn Dodgers"
-    assert row.get("debut_year") == "1957"
-
-
-@pytest.mark.smoke
-def test_debut_bind_provenance_registry_not_research(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    _refresh_baseball_root(tmp_path, monkeypatch)
-    _, response = _deliver_bind_attrs(
-        ["player", "debut_team", "debut_year"],
+        requested_attributes=["debut_team", "career_hr", "birth_date"],
         provenance=True,
     )
-    assert response.provenance is not None
-    attrs = response.provenance["entities"][0]["attributes"]
-    for field in ("player", "debut_team", "debut_year"):
-        version = attrs[field]["versions"][0]
-        assert version["status"] == "found"
-        assert version["actor"]["kind"] in {"registry", "seed_bootstrap"}
-        assert version["actor"]["kind"] != "research"
-        assert version["actor"]["specialist"] == "player_identity_specialist"
-        assert "sources" not in version
-        assert "computation" not in version
+    r1 = run_query(step1, thread_id="multi-attr-step1")
+    assert r1.outcome == "lookup_resolved", r1.message
+    assert r1.delivery is not None
+    r2 = run_query(
+        EntityQuery(delivery_id=r1.delivery.delivery_id),
+        thread_id="multi-attr-step2",
+    )
+    assert r2.outcome in {"found", "assembled"}
+    assert r2.provenance is not None
+    attrs = r2.provenance["entities"][0]["attributes"]
+
+    bind_version = attrs["debut_team"]["versions"][0]
+    assert bind_version["actor"]["kind"] in {"registry", "seed_bootstrap"}
+    assert bind_version["actor"]["kind"] != "research"
+
+    hr_version = attrs["career_hr"]["versions"][0]
+    assert hr_version["parameters"]["warehouse"] == "warehouse/lahman.sqlite"
+    assert hr_version["parameters"]["attribute"] == "career_hr"
+    assert hr_version["parameters"]["column"] == "HR"
+
+    bio_version = attrs["birth_date"]["versions"][0]
+    assert bio_version["parameters"]["warehouse"] == "warehouse/lahman.sqlite"
+    assert bio_version["parameters"]["attribute"] == "birth_date"
+
+    row = r2.results[0]
+    assert row.get("debut_team") == "Brooklyn Dodgers"
+    assert str(row.get("career_hr")) == "3"
+    assert row.get("birth_date") == "1934-02-05"

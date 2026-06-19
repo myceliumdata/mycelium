@@ -201,5 +201,4 @@ def warehouse_manifest_capabilities(paths: NetworkPaths) -> dict[str, Any] | Non
         "dataset_id": dataset_id,
         "domains": domain_names,
         "tables": table_names,
-        "full_manifest_path": rel_path,
     }

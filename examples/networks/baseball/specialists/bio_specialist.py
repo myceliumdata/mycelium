@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import importlib.util
-import sys
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from agents.registry_bridge import entity_source_key
@@ -23,18 +20,26 @@ from network.paths import NetworkPaths, resolve_network_root
 LAHMAN_PLAYER_ID = "lahman.playerID"
 
 
-def _load_warehouse_resolve():
-    key = "_baseball_warehouse_resolve"
+def _load_specialist_loader():
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    key = "_baseball_specialist_loader"
     if key in sys.modules:
         return sys.modules[key]
-    path = Path(__file__).resolve().parent / "warehouse_resolve.py"
+    path = Path(__file__).resolve().parent / "specialist_loader.py"
     spec = importlib.util.spec_from_file_location(key, path)
     if spec is None or spec.loader is None:
-        raise ImportError(f"Cannot load warehouse_resolve from {path}")
+        raise ImportError(f"Cannot load specialist_loader from {path}")
     mod = importlib.util.module_from_spec(spec)
     sys.modules[key] = mod
     spec.loader.exec_module(mod)
     return mod
+
+
+def _load_warehouse_resolve():
+    return _load_specialist_loader().load_warehouse_resolve()
 
 
 def _now_iso() -> str:
@@ -175,6 +180,8 @@ def _evaluate_bio_fields(
                 player_id=player_id,
                 paths=paths,
                 warehouse=warehouse,
+                attribute=resolved.attribute,
+                column=resolved.column,
             ),
             at=now,
         )

@@ -146,6 +146,7 @@ def test_birth_date_provenance_shape(
     assert version["computation"]["inline"]
     assert version["parameters"]["lahman.playerID"] == "aaronha01"
     assert version["parameters"]["warehouse"] == "warehouse/lahman.sqlite"
+    assert version["parameters"]["attribute"] == "birth_date"
     assert version["actor"]["specialist"] == "bio_specialist"
     inline = version["computation"]["inline"]
     assert "birthYear" in inline
@@ -178,3 +179,38 @@ def test_birth_date_missing_birth_month_na(
     _, response = _deliver_birth_date()
     assert response.results
     assert response.results[0].get("birth_date") == "N/A"
+
+
+def _write_bats_fixture(seed_dir: Path) -> None:
+    _write_minimal_lahman_fixture(seed_dir)
+    (seed_dir / "People.csv").write_text(
+        "ID,playerID,nameFirst,nameLast,birthYear,birthMonth,birthDay,debut,bats,throws\n"
+        "1,aaronha01,Hank,Aaron,1934,2,5,,L,R\n",
+        encoding="utf-8",
+    )
+
+
+@pytest.mark.smoke
+def test_bats_deliver_found(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _refresh_baseball_root(
+        tmp_path,
+        monkeypatch,
+        fixture_fn=_write_bats_fixture,
+    )
+    step1 = EntityQuery(
+        lookup=dict(SAMPLE_PLAYER),
+        requested_attributes=["bats"],
+    )
+    r1 = run_query(step1, thread_id="bats-step1")
+    assert r1.outcome == "lookup_resolved", r1.message
+    assert r1.delivery is not None
+    r2 = run_query(
+        EntityQuery(delivery_id=r1.delivery.delivery_id),
+        thread_id="bats-step2",
+    )
+    assert r2.outcome in {"found", "assembled"}
+    assert r2.results
+    assert r2.results[0].get("bats") == "L"

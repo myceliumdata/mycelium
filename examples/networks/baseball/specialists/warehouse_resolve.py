@@ -62,6 +62,8 @@ PEOPLE_BIRTH_DATE_INLINE = inspect.getsource(people_birth_date)
 class ResolvedField:
     value: str
     computation_inline: str
+    attribute: str
+    column: str | None = None
 
 
 def load_manifest(paths: NetworkPaths) -> dict[str, Any] | None:
@@ -110,21 +112,38 @@ def resolve_domain_attribute(
         column = alias.get("column")
         if not isinstance(column, str) or not column.strip():
             return None
-        total = career_sum(column.strip(), player_id, warehouse)
-        return ResolvedField(value=str(total), computation_inline=CAREER_SUM_INLINE)
+        col = column.strip()
+        total = career_sum(col, player_id, warehouse)
+        return ResolvedField(
+            value=str(total),
+            computation_inline=CAREER_SUM_INLINE,
+            attribute=key,
+            column=col,
+        )
     if convention == "people_column":
         column = alias.get("column")
         if not isinstance(column, str) or not column.strip():
             return None
-        raw = people_column(column.strip(), player_id, warehouse)
+        col = column.strip()
+        raw = people_column(col, player_id, warehouse)
         if raw is None:
             return None
-        return ResolvedField(value=raw, computation_inline=PEOPLE_COLUMN_INLINE)
+        return ResolvedField(
+            value=raw,
+            computation_inline=PEOPLE_COLUMN_INLINE,
+            attribute=key,
+            column=col,
+        )
     if convention == "people_compose" and alias.get("format") == "iso_date":
         formatted = people_birth_date(player_id, warehouse)
         if formatted is None:
             return None
-        return ResolvedField(value=formatted, computation_inline=PEOPLE_BIRTH_DATE_INLINE)
+        return ResolvedField(
+            value=formatted,
+            computation_inline=PEOPLE_BIRTH_DATE_INLINE,
+            attribute=key,
+            column=None,
+        )
     return None
 
 
@@ -133,9 +152,16 @@ def provenance_parameters(
     player_id: str,
     paths: NetworkPaths,
     warehouse: Path | None = None,
+    attribute: str | None = None,
+    column: str | None = None,
 ) -> dict[str, str]:
     wh = warehouse or default_warehouse_path(paths)
-    return {
+    params: dict[str, str] = {
         LAHMAN_PLAYER_ID: player_id,
         "warehouse": warehouse_relative(paths, wh),
     }
+    if attribute and attribute.strip():
+        params["attribute"] = attribute.strip().lower()
+    if column and column.strip():
+        params["column"] = column.strip()
+    return params

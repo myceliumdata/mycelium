@@ -12,6 +12,7 @@ from bootstrap_handlers.lahman_common import (
     resolve_network_seed,
 )
 from network.bootstrap.context import BootstrapContext, BootstrapResult
+from network.warehouse_manifest import maybe_write_warehouse_manifest
 
 LAHMAN_PLAYER_ID = "lahman.playerID"
 LAHMAN_TEAM_ID = "lahman.teamID"
@@ -44,8 +45,6 @@ class LahmanSeedHandler:
         if progress is not None:
             progress.retrieving("building warehouse")
         ingest_counts = ingest_warehouse(csv_dir, warehouse_path)
-        from network.warehouse_manifest import maybe_write_warehouse_manifest
-
         maybe_write_warehouse_manifest(ctx.paths)
         player_rows = distinct_player_debut_rows(warehouse_path)
 

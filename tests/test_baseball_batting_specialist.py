@@ -132,6 +132,8 @@ def test_career_hr_provenance_shape(
     assert version["computation"]["inline"]
     assert version["parameters"]["lahman.playerID"] == "aaronha01"
     assert version["parameters"]["warehouse"] == "warehouse/lahman.sqlite"
+    assert version["parameters"]["attribute"] == "career_hr"
+    assert version["parameters"]["column"] == "HR"
     assert version["actor"]["specialist"] == "batting_specialist"
     inline = version["computation"]["inline"]
     assert "SUM" in inline
@@ -214,4 +216,6 @@ def test_career_rbi_provenance_parameters(
     version = response.provenance["entities"][0]["attributes"]["career_rbi"]["versions"][0]
     assert "SUM" in version["computation"]["inline"]
     assert version["parameters"]["warehouse"] == "warehouse/lahman.sqlite"
+    assert version["parameters"]["attribute"] == "career_rbi"
+    assert version["parameters"]["column"] == "RBI"
     assert version["parameters"]["lahman.playerID"] == "aaronha01"

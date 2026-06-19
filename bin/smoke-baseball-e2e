@@ -38,6 +38,7 @@ BASEBALL_PYTEST_FILES = (
     "tests/test_baseball_batting_specialist.py",
     "tests/test_baseball_bio_specialist.py",
     "tests/test_baseball_player_identity_specialist.py",
+    "tests/test_baseball_multi_attr_deliver.py",
 )
 
 EXPECTED_BOOTSTRAP_COUNT = 4
@@ -509,6 +510,67 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
                         "bind_attrs_registry_provenance",
                         request=q_bind2.model_dump(exclude_none=True),
                         response=p_bind2,
+                    ),
+                )
+
+        # Step 2: multi-attr bind + warehouse provenance
+        q_multi = EntityQuery(
+            lookup={
+                "player": sample["player"],
+                "debut_team": sample["debut_team"],
+                "debut_year": sample["debut_year"],
+            },
+            requested_attributes=["debut_team", "career_hr", "birth_date"],
+            provenance=True,
+        )
+        r_multi1 = run_query(q_multi)
+        if r_multi1.outcome != "lookup_resolved" or not r_multi1.delivery:
+            results.append(
+                _fail(
+                    "multi_attr_step1",
+                    f"expected lookup_resolved, got {r_multi1.outcome!r}",
+                    request=q_multi.model_dump(exclude_none=True),
+                    response=_pub(r_multi1),
+                ),
+            )
+        else:
+            q_multi2 = EntityQuery(delivery_id=r_multi1.delivery.delivery_id)
+            r_multi2 = run_query(q_multi2)
+            p_multi2 = _pub(r_multi2)
+            prov_ok = False
+            if r_multi2.provenance:
+                try:
+                    attrs = r_multi2.provenance["entities"][0]["attributes"]
+                    bind_kind = attrs["debut_team"]["versions"][0]["actor"]["kind"]
+                    hr_params = attrs["career_hr"]["versions"][0]["parameters"]
+                    prov_ok = (
+                        bind_kind in {"registry", "seed_bootstrap"}
+                        and hr_params.get("warehouse") == "warehouse/lahman.sqlite"
+                        and hr_params.get("attribute") == "career_hr"
+                    )
+                except (KeyError, IndexError, TypeError):
+                    prov_ok = False
+            value_ok = (
+                r_multi2.results
+                and r_multi2.results[0].get("debut_team") == SAMPLE_PLAYER_DEBUT_TEAM
+                and str(r_multi2.results[0].get("career_hr")) == "3"
+                and r_multi2.results[0].get("birth_date") == "1934-02-05"
+            )
+            if not value_ok or not prov_ok:
+                results.append(
+                    _fail(
+                        "multi_attr_bind_and_warehouse_provenance",
+                        f"value_ok={value_ok} prov_ok={prov_ok} outcome={r_multi2.outcome!r}",
+                        request=q_multi2.model_dump(exclude_none=True),
+                        response=p_multi2,
+                    ),
+                )
+            else:
+                results.append(
+                    _ok(
+                        "multi_attr_bind_and_warehouse_provenance",
+                        request=q_multi2.model_dump(exclude_none=True),
+                        response=p_multi2,
                     ),
                 )
 

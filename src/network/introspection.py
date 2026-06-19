@@ -802,6 +802,13 @@ def format_mcp_instructions(capabilities: dict[str, Any]) -> str:
         else:
             label = capabilities.get("display_name") or capabilities.get("network_name")
         text += f" Active network: {label}."
+    warehouse = capabilities.get("warehouse_manifest")
+    if isinstance(warehouse, dict) and warehouse.get("present"):
+        rel_path = warehouse.get("path") or "warehouse_manifest.json"
+        text += (
+            f" Warehouse manifest on disk at `{rel_path}`; "
+            "domain grains and attribute aliases are in describe_network JSON."
+        )
     return text
 
 

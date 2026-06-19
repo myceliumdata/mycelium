@@ -70,6 +70,22 @@ def test_build_network_capabilities_missing_guide(
 
 
 @pytest.mark.smoke
+def test_format_mcp_instructions_mentions_warehouse_manifest() -> None:
+    text = format_mcp_instructions(
+        {
+            "display_name": "Baseball example",
+            "network_name": "baseball",
+            "warehouse_manifest": {
+                "present": True,
+                "path": "warehouse_manifest.json",
+            },
+        },
+    )
+    assert "warehouse_manifest.json" in text
+    assert "describe_network" in text
+
+
+@pytest.mark.smoke
 def test_format_mcp_instructions_references_describe_network() -> None:
     text = format_mcp_instructions(
         {
