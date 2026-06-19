@@ -10,6 +10,8 @@ from agents.entity_registry import get_entity_registry
 from agents.registry import get_agent_registry
 from agents.specialists.protocol import dispatch_read_fields
 from models.state import EntityQuery, QueryResponse, normalized_requested_attributes
+from network.intent_map import load_intent_map, lookup_intent_slug
+from network.paths import NetworkPaths, resolve_network_root
 
 
 def _category_for_attribute(attr: str, *, entity_id: str) -> str | None:
@@ -35,6 +37,40 @@ def _agent_for_category(category: str) -> str | None:
     return None
 
 
+def _read_attribute_provenance(
+    agent_name: str,
+    entity_id: str,
+    attr: str,
+    *,
+    intent_map: dict[str, str],
+) -> dict[str, Any] | None:
+    key = attr.strip().lower()
+    read = dispatch_read_fields(agent_name, entity_id, [key], include_versions=True)
+    entry = read.get(key)
+    if isinstance(entry, dict):
+        provenance = entry.get("provenance")
+        if isinstance(provenance, dict) and provenance.get("versions"):
+            return deepcopy(provenance)
+
+    slug = lookup_intent_slug(key, intent_map)
+    if slug and slug != key:
+        slug_read = dispatch_read_fields(agent_name, entity_id, [slug], include_versions=True)
+        slug_entry = slug_read.get(slug)
+        if isinstance(slug_entry, dict):
+            provenance = slug_entry.get("provenance")
+            if isinstance(provenance, dict) and provenance.get("versions"):
+                adjusted = deepcopy(provenance)
+                for version in adjusted.get("versions", []):
+                    if isinstance(version, dict) and isinstance(version.get("parameters"), dict):
+                        version["parameters"] = {
+                            **version["parameters"],
+                            "attribute": key,
+                            "intent_slug": slug,
+                        }
+                return adjusted
+    return None
+
+
 def build_query_provenance(
     *,
     entity_ids: list[str],
@@ -46,6 +82,11 @@ def build_query_provenance(
     requested = normalized_requested_attributes(requested_attributes)
     if not requested or not entity_ids:
         return None
+
+    try:
+        intent_map = load_intent_map(NetworkPaths.from_root(resolve_network_root()))
+    except (ValueError, OSError):
+        intent_map = {}
 
     entities: list[dict[str, Any]] = []
 
@@ -60,17 +101,14 @@ def build_query_provenance(
             agent_name = _agent_for_category(category)
             if not agent_name:
                 continue
-            read = dispatch_read_fields(
+            provenance = _read_attribute_provenance(
                 agent_name,
                 entity_id,
-                [attr],
-                include_versions=True,
+                attr,
+                intent_map=intent_map,
             )
-            entry = read.get(attr.strip().lower())
-            if isinstance(entry, dict):
-                provenance = entry.get("provenance")
-                if isinstance(provenance, dict) and provenance.get("versions"):
-                    attributes[attr] = deepcopy(provenance)
+            if provenance is not None:
+                attributes[attr] = provenance
         if attributes:
             entities.append({"id": entity_id, "attributes": attributes})
 

@@ -39,3 +39,7 @@ def alias_expansion_model() -> str:
 
 def agent_factory_refine_model() -> str:
     return llm_model("MYCELIUM_AGENT_FACTORY_REFINE_MODEL")
+
+
+def intent_normalization_model() -> str:
+    return llm_model("MYCELIUM_INTENT_NORMALIZATION_MODEL")

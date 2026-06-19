@@ -15,6 +15,8 @@ from agents.specialists.fields import (
 )
 from models.state import MyceliumGraphState, graph_requested_attributes
 from network.dataset_source import load_pack_dataset_source
+from network.intent_map import load_intent_map
+from network.intent_normalization import resolve_intent_slug
 from network.paths import NetworkPaths, resolve_network_root
 
 LAHMAN_PLAYER_ID = "lahman.playerID"
@@ -172,8 +174,43 @@ def _evaluate_batting_fields(
         if resolved is None:
             dr = _load_derive_resolve()
             if dr.derive_on_miss_enabled(manifest, "batting"):
+                requested_key = key
+                intent_map = load_intent_map(paths)
+                intent_slug = resolve_intent_slug(
+                    requested_key,
+                    domain="batting",
+                    manifest=manifest,
+                    paths=paths,
+                    intent_map=intent_map,
+                )
+                if intent_slug != requested_key:
+                    derive_audit.append(
+                        f"batting_specialist: intent {requested_key} -> {intent_slug}",
+                    )
+
+                slug_entry = record.get(intent_slug)
+                if field_has_value(slug_entry):
+                    values[requested_key] = field_display_value(slug_entry)
+                    found_attrs.append(requested_key)
+                    continue
+                if field_is_na(slug_entry):
+                    values[requested_key] = "N/A"
+                    na_attrs.append(requested_key)
+                    continue
+
+                if intent_slug != requested_key:
+                    legacy_entry = record.get(requested_key)
+                    if field_has_value(legacy_entry):
+                        values[requested_key] = field_display_value(legacy_entry)
+                        found_attrs.append(requested_key)
+                        continue
+                    if field_is_na(legacy_entry):
+                        values[requested_key] = "N/A"
+                        na_attrs.append(requested_key)
+                        continue
+
                 derive_result = dr.generate_and_run_derive(
-                    key,
+                    requested_key,
                     player_id=player_id,
                     warehouse=warehouse,
                     paths=paths,
@@ -190,7 +227,7 @@ def _evaluate_batting_fields(
                         computation["model"] = derived.model
                     written = agent.write_computed_field(
                         entity_id,
-                        key,
+                        intent_slug,
                         value=derived.value,
                         sources=sources,
                         computation=computation,
@@ -198,13 +235,19 @@ def _evaluate_batting_fields(
                             player_id=player_id,
                             paths=paths,
                             warehouse=warehouse,
-                            attribute=derived.attribute,
+                            attribute=requested_key,
+                            intent_slug=intent_slug,
                         ),
                         at=now,
                     )
-                    values[key] = written
-                    found_attrs.append(key)
+                    values[requested_key] = written
+                    found_attrs.append(requested_key)
                     continue
+
+                agent.write_na_field(entity_id, intent_slug, at=now)
+                values[requested_key] = "N/A"
+                na_attrs.append(requested_key)
+                continue
 
         if resolved is None:
             agent.write_na_field(entity_id, key, at=now)

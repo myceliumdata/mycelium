@@ -9,6 +9,7 @@ from utils.llm_models import (
     alias_expansion_model,
     classification_model,
     computation_codegen_model,
+    intent_normalization_model,
     llm_model,
     ontology_model,
     research_model,
@@ -20,6 +21,7 @@ _MODEL_ENV_KEYS = (
     "MYCELIUM_ONTOLOGY_MODEL",
     "MYCELIUM_RESEARCH_MODEL",
     "MYCELIUM_ALIAS_EXPANSION_MODEL",
+    "MYCELIUM_INTENT_NORMALIZATION_MODEL",
     "MYCELIUM_AGENT_FACTORY_REFINE_MODEL",
 )
 
@@ -52,6 +54,7 @@ def test_llm_model_set_returns_value(monkeypatch: pytest.MonkeyPatch) -> None:
         (ontology_model, "MYCELIUM_ONTOLOGY_MODEL", "gpt-4.1"),
         (research_model, "MYCELIUM_RESEARCH_MODEL", "gpt-4o-mini"),
         (alias_expansion_model, "MYCELIUM_ALIAS_EXPANSION_MODEL", "gpt-4o-mini"),
+        (intent_normalization_model, "MYCELIUM_INTENT_NORMALIZATION_MODEL", "gpt-4o-mini"),
     ],
 )
 def test_subsystem_accessors(

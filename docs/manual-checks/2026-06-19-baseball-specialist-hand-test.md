@@ -162,6 +162,7 @@ rm -f ~/mycelium-networks/baseball/agents/batting/storage.json
 | M3b-1 | Derive retry | On bad generated SQL, specialist retries silently (up to 5); operator sees `derive career_avg attempt N failed` in graph `audit_log` and `QueryResponse.debug` (`operator_audit=`) |
 | M3c-1 | Semantic review | Derive uses full manifest context + LLM review after successful execution; implausible values (e.g. `0.000` from SQL int division) retry silently — clear batting `storage.json` if a bad value was cached |
 | M4-1 | Free-form derive (`ops`) | Manifest miss on batting domain → M3c pipeline (no `derive_candidates` whitelist); mocked CI **0.900**; clear batting cache if stale |
+| M4b-1 | Intent dedup | Clear batting cache; deliver `career_avg` then `batting_average` — same value, no second computation codegen; `intent_map.json` at network root; results keys stay requested labels |
 
 **Step 1** (partial lookup OK if Aaron is unique on your root):
 
