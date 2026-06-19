@@ -14,5 +14,7 @@ Full-context notes from **Paul + Grok** design discussions. These preserve reaso
 | 2026-06-16 | Canonical team/city names — ingest + LLM layers | [2026-06-16-canonical-team-city-names.md](2026-06-16-canonical-team-city-names.md) | Full canonical name; LLM aliases |
 | 2026-06-16 | Canonical bootstrap — generic framework vs network specialists | [2026-06-16-canonical-names-bootstrap-specialists.md](2026-06-16-canonical-names-bootstrap-specialists.md) | No custom orchestrator; bootstrap phase |
 | 2026-06-16 | Bootstrap experiment v0 results | [2026-06-16-bootstrap-experiment-v0-results.md](2026-06-16-bootstrap-experiment-v0-results.md) | 241 teams auto-commit; LLM hybrid |
+| 2026-06-18 | Computation-centric provenance; source-first ontology | [2026-06-18-computation-centric-provenance.md](2026-06-18-computation-centric-provenance.md) | `TODO.md` → computation-centric provenance; baseball M1; dataset manifest (deferred) |
+| 2026-06-19 | Warehouse layer 3, stats surface, specialist emergence | [2026-06-19-warehouse-factory-layer3-specialist-emergence.md](2026-06-19-warehouse-factory-layer3-specialist-emergence.md) | `TODO.md` → warehouse manifest M2a; specialist promotion; retention policy |
 
 When resuming work, read the relevant conversation doc first, then **`docs/plans/entity-protocol-and-registry-program.md`** (full slice map), then `TODO.md` for the current checklist.
