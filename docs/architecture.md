@@ -12,6 +12,14 @@ This doc focuses on **what** and **how**. For **why** behind major decisions, se
 | Topic | Rationale |
 |-------|-----------|
 | Two-step query (`delivery_id`, attrs on step 1 only) | [two-step-query-protocol.md](architecture/whys/two-step-query-protocol.md) |
+| Specialist-owned data (no `core_data`) | [specialist-owned-data.md](architecture/whys/specialist-owned-data.md) |
+| Identity vs lookup vs MVR | [identity-lookup-and-mvr.md](architecture/whys/identity-lookup-and-mvr.md) |
+| Three-layer storage (canonical, indexes, protocol record) | [three-layer-storage-model.md](architecture/whys/three-layer-storage-model.md) |
+| Data factory (not MCP on raw data) | [data-factory-origin.md](architecture/whys/data-factory-origin.md) |
+| Computation-centric provenance | [computation-centric-provenance.md](architecture/whys/computation-centric-provenance.md) |
+| Warehouse factory stack (discovery → routing → execution) | [warehouse-factory-stack.md](architecture/whys/warehouse-factory-stack.md) |
+| Metering economics (quotes, marginal pricing) | [metering-economics.md](architecture/whys/metering-economics.md) |
+| Multi-record-type routing; fan team vs franchise | [multi-record-type-routing.md](architecture/whys/multi-record-type-routing.md) |
 
 ---
 
