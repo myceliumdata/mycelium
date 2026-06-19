@@ -2,6 +2,7 @@
 
 **Status:** Ready for Paul (June 2026)  
 **Scope:** Identity routing + warehouse specialists shipped through M1c + polish nits (`career_hr`, `birth_date`).  
+**Pull vs compute map (while testing):** [§ Warehouse pull vs compute](#warehouse-pull-vs-compute--reference) below.  
 **Deeper identity/routing matrix:** [`2026-06-18-baseball-query-hand-test-plan.md`](2026-06-18-baseball-query-hand-test-plan.md)
 
 Use **Claude + MCP** (`query_entity`, `describe_network`, `health_check`) or `./bin/baseball-query` with the same JSON.
@@ -34,6 +35,81 @@ Use **Claude + MCP** (`query_entity`, `describe_network`, `health_check`) or `./
 | `health_check` | Registry/storage reachable (`ping_query` may still show `degraded` on baseball — known WIP) |
 
 **Two-step pattern:** Step 1 with `lookup` (+ optional `requested_attributes`) → `lookup_resolved` + `delivery_id`. Step 2 with only `delivery_id` → `found` / `assembled` + `results[]`.
+
+---
+
+## Warehouse pull vs compute — reference
+
+Quick map while testing: **pull** = read a stored warehouse value (one row/column); **compute** = Python over warehouse rows (aggregate, compose, or formula). Both specialist paths record `computation.inline` in provenance — the distinction is whether the answer is already stored vs derived.
+
+**Legend:** ✅ works now · 🔜 M2b (manifest generic resolver) · ⏳ later stub / recipe
+
+### Registry / identity (bootstrap, not warehouse specialists)
+
+| Attribute | Type | Source | Status |
+|-----------|------|--------|--------|
+| `player` | Pull | People display name at bootstrap | ✅ |
+| `debut_team` | Pull | Earliest debut season ⋈ Teams | ✅ |
+| `debut_year` | Pull | People / Appearances | ✅ |
+| `team` | Pull | Teams canonical label (team record type) | ✅ |
+
+Bind-field provenance fix is **M2c** — values are correct today; lineage may still look like research until then.
+
+### Bio (`People`, grain `playerID`)
+
+| Attribute | Type | Lahman | Status |
+|-----------|------|--------|--------|
+| `birth_date` | Compute (compose) | `birthYear` + `birthMonth` + `birthDay` → `YYYY-MM-DD` | ✅ Aaron → `1934-02-05` |
+| `bats` | Pull | `bats` | ⏳ → 🔜 |
+| `throws` | Pull | `throws` | ⏳ → 🔜 |
+| `birth_city` | Pull | `birthCity` | ⏳ → 🔜 |
+| `birth_country` | Pull | `birthCountry` | ⏳ → 🔜 |
+| `height` | Pull | `height` | ⏳ → 🔜 |
+| `weight` | Pull | `weight` | ⏳ → 🔜 |
+| `debut` | Pull | `debut` | ⏳ → 🔜 |
+| `final_game` | Pull | `finalGame` | ⏳ → 🔜 |
+| `death_date` | Compute (compose) | death Y/M/D columns | ⏳ |
+
+### Batting (`Batting`, grain player-year-stint-team)
+
+**`career_sum`** = `SUM(column) GROUP BY playerID` across all stints (hard-coded per attr today; generic in M2b).
+
+| Attribute | Type | Lahman col | Status |
+|-----------|------|------------|--------|
+| `career_hr` | Compute (`career_sum`) | `HR` | ✅ Aaron ≈ **755** |
+| `career_rbi` | Compute (`career_sum`) | `RBI` | ⏳ → 🔜 |
+| `career_hits` | Compute (`career_sum`) | `H` | ⏳ → 🔜 |
+| `career_sb` | Compute (`career_sum`) | `SB` | ⏳ |
+| `career_avg` | Compute (rate) | `SUM(H) / SUM(AB)` | ⏳ M2b → `N/A` |
+| `home_runs`, `rbi`, `at_bats`, `games` | Pull or compute | season-scoped row vs career SUM | ⏳ scope TBD |
+| `ops`, `batting_average` | Compute (recipe) | multi-column / season rate | ⏳ |
+
+### Pitching (`Pitching`) — specialist stub
+
+| Attribute | Type | Lahman col | Status |
+|-----------|------|------------|--------|
+| `career_wins`, `career_losses`, `career_strikeouts`, `career_saves` | Compute (`career_sum`) | `W`, `L`, `SO`, `SV` | ⏳ |
+| `career_era`, `era` | Compute (rate) | innings-weighted formula | ⏳ |
+| `wins`, `strikeouts`, `walks`, `games_pitched` | Pull (season) | one Pitching row | ⏳ |
+
+### Team season (`Teams`, grain year + team) — specialist stub
+
+| Attribute | Type | Lahman col | Status |
+|-----------|------|------------|--------|
+| `season_wins`, `season_losses`, `finish_rank` | Pull | `W`, `L`, `Rank` | ⏳ |
+| `park`, `attendance`, `runs_scored`, `runs_allowed` | Pull | same-name cols | ⏳ |
+
+Needs team record + season in query — not player specialist path.
+
+### Not warehouse (research / emergent)
+
+| Examples | Why |
+|----------|-----|
+| Web bio enrichment | Research cache path (clear specialist storage if you expect warehouse) |
+| Franchise lineage, career teams list | Cross-table emergent specialists |
+| OPS+, WAR, custom mashups | No Lahman column; external source or recipe |
+
+**Hand-test anchors (full Lahman):** `career_hr` ≈ 755, `birth_date` = `1934-02-05` for Hank Aaron (`aaronha01`).
 
 ---
 
@@ -117,7 +193,9 @@ Don’t fail the build on these — they’re explicitly out of scope:
 
 | What | Why |
 |------|-----|
-| `height`, `bats`, `throws`, `birth_city`, … | Bio specialist returns `N/A`; no research path |
+| `height`, `bats`, `throws`, `birth_city`, … | Bio specialist returns `N/A` until **M2b** (see [pull vs compute](#warehouse-pull-vs-compute--reference)) |
+| `career_rbi`, `career_hits` | Batting `career_sum` until **M2b** |
+| `career_avg`, `ops` | Rate recipes — M2b returns `N/A` |
 | `career_wins`, `era`, pitching stats | `pitching_specialist` stub |
 | `season_wins`, team season attrs | `team_season_specialist` stub |
 | Career team list via query API | Identity is debut bind only — use warehouse SQL (identity doc § H) |
