@@ -44,6 +44,9 @@ class LahmanSeedHandler:
         if progress is not None:
             progress.retrieving("building warehouse")
         ingest_counts = ingest_warehouse(csv_dir, warehouse_path)
+        from network.warehouse_manifest import maybe_write_warehouse_manifest
+
+        maybe_write_warehouse_manifest(ctx.paths)
         player_rows = distinct_player_debut_rows(warehouse_path)
 
         team_registry = get_entity_registry(record_type="team")

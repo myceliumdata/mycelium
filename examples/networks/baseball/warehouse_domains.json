@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "domains": {
+    "batting": {
+      "specialist": "batting_specialist",
+      "tables": ["Batting"],
+      "grain": ["playerID", "yearID", "stint", "teamID", "lgID"],
+      "conventions": {
+        "career_sum": "SUM({column}) GROUP BY playerID"
+      }
+    },
+    "bio": {
+      "specialist": "bio_specialist",
+      "tables": ["People"],
+      "grain": ["playerID"]
+    },
+    "pitching": {
+      "specialist": "pitching_specialist",
+      "tables": ["Pitching"],
+      "grain": ["playerID", "yearID", "stint", "teamID", "lgID"]
+    },
+    "team_season": {
+      "specialist": "team_season_specialist",
+      "tables": ["Teams"],
+      "grain": ["yearID", "teamID", "lgID"]
+    }
+  }
+}

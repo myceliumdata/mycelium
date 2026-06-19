@@ -13,6 +13,7 @@ from agents.entity_registry import RegistryEntity, get_entity_registry
 from network.metering_policy import load_metering_policy
 from network.mvr import load_mvr, load_mvr_config
 from network.paths import NetworkPaths, network_metadata, resolve_network_root
+from network.warehouse_manifest import warehouse_manifest_capabilities
 
 
 @dataclass(frozen=True)
@@ -764,6 +765,9 @@ def build_network_capabilities() -> dict[str, Any]:
     }
     if not guide_present:
         payload["guide_note"] = _GUIDE_MISSING_NOTE
+    warehouse = warehouse_manifest_capabilities(paths)
+    if warehouse is not None:
+        payload["warehouse_manifest"] = warehouse
     return payload
 
 

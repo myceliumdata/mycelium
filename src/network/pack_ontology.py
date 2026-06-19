@@ -165,6 +165,9 @@ def install_pack_ontology_from_example(example_name: str, paths: NetworkPaths) -
     _write_agent_registry(paths, agents)
     _render_missing_specialists(tree, agents, paths)
     _install_pack_specialists(example_name, paths)
+    from network.warehouse_manifest import maybe_write_warehouse_manifest
+
+    maybe_write_warehouse_manifest(paths)
 
     from agents.classification import get_category_tree, reset_category_tree
 

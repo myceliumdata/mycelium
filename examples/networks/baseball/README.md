@@ -124,6 +124,16 @@ Then deliver with `delivery_id` from the step-1 response. See [`docs/plans/conve
 
 See `queries/04-birth-date.json`.
 
+## Hand testing
+
+Operator gate and **warehouse pull vs compute** reference (what works now vs M2b vs later):
+
+[`docs/manual-checks/2026-06-19-baseball-specialist-hand-test.md`](../../../docs/manual-checks/2026-06-19-baseball-specialist-hand-test.md#warehouse-pull-vs-compute--reference)
+
+## Warehouse manifest (M2a)
+
+After bootstrap or `--sync-only` refresh when `warehouse/lahman.sqlite` exists, the framework writes **`warehouse_manifest.json`** at the network root. It merges pack domain rules (`examples/networks/baseball/warehouse_domains.json`) with sqlite introspection (columns + row counts per domain table). **`describe_network`** includes a `warehouse_manifest` summary (dataset id, domains, tables); read the full file on disk for grains and conventions. Operators should not hand-edit the manifest — re-run bootstrap or sync to regenerate.
+
 Existing live roots: run `./bin/refresh-example-network baseball --sync-only` to pick up ontology without re-running Lahman bootstrap.
 
 **Attribution:** Lahman data is copyright SABR / Sean Lahman (CC BY-SA 3.0). See the [lahman-seed](https://github.com/myceliumdata/lahman-seed) repository.
