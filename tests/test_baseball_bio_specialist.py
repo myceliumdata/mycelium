@@ -146,6 +146,9 @@ def test_birth_date_provenance_shape(
     assert version["computation"]["inline"]
     assert version["parameters"]["lahman.playerID"] == "aaronha01"
     assert version["actor"]["specialist"] == "bio_specialist"
+    inline = version["computation"]["inline"]
+    assert "birthYear" in inline
+    assert "playerID" in inline
 
 
 @pytest.mark.smoke
@@ -173,4 +176,4 @@ def test_birth_date_missing_birth_month_na(
     )
     _, response = _deliver_birth_date()
     assert response.results
-    assert response.results[0].get("birth_date") in {"N/A", "pending", None, ""}
+    assert response.results[0].get("birth_date") == "N/A"
