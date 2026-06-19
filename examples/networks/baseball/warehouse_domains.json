@@ -7,12 +7,28 @@
       "grain": ["playerID", "yearID", "stint", "teamID", "lgID"],
       "conventions": {
         "career_sum": "SUM({column}) GROUP BY playerID"
+      },
+      "aliases": {
+        "career_hr": {"convention": "career_sum", "column": "HR"},
+        "career_rbi": {"convention": "career_sum", "column": "RBI"},
+        "career_hits": {"convention": "career_sum", "column": "H"}
       }
     },
     "bio": {
       "specialist": "bio_specialist",
       "tables": ["People"],
-      "grain": ["playerID"]
+      "grain": ["playerID"],
+      "aliases": {
+        "birth_date": {
+          "convention": "people_compose",
+          "columns": ["birthYear", "birthMonth", "birthDay"],
+          "format": "iso_date"
+        },
+        "debut": {"convention": "people_column", "column": "debut"},
+        "bats": {"convention": "people_column", "column": "bats"},
+        "throws": {"convention": "people_column", "column": "throws"},
+        "birth_city": {"convention": "people_column", "column": "birthCity"}
+      }
     },
     "pitching": {
       "specialist": "pitching_specialist",

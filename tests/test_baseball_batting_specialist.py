@@ -131,6 +131,7 @@ def test_career_hr_provenance_shape(
     assert version["sources"][0]["id"] == "lahman"
     assert version["computation"]["inline"]
     assert version["parameters"]["lahman.playerID"] == "aaronha01"
+    assert version["parameters"]["warehouse"] == "warehouse/lahman.sqlite"
     assert version["actor"]["specialist"] == "batting_specialist"
     inline = version["computation"]["inline"]
     assert "SUM" in inline
@@ -161,3 +162,56 @@ def test_career_hr_missing_warehouse_graceful(
     _, response = _deliver_career_hr()
     assert response.results
     assert response.results[0].get("career_hr") in {"N/A", "pending", None, ""}
+
+
+def _deliver_career_stats(
+    attrs: list[str],
+    *,
+    provenance: bool = False,
+    thread_prefix: str = "career-stats",
+) -> tuple[object, object]:
+    step1 = EntityQuery(
+        lookup=dict(SAMPLE_PLAYER),
+        requested_attributes=attrs,
+        provenance=provenance,
+    )
+    r1 = run_query(step1, thread_id=f"{thread_prefix}-step1")
+    assert r1.outcome == "lookup_resolved", r1.message
+    assert r1.delivery is not None
+    step2 = EntityQuery(delivery_id=r1.delivery.delivery_id)
+    r2 = run_query(step2, thread_id=f"{thread_prefix}-step2")
+    return r1, r2
+
+
+@pytest.mark.smoke
+def test_career_rbi_and_hits_compute_found(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _refresh_baseball_root(tmp_path, monkeypatch)
+    _, response = _deliver_career_stats(
+        ["career_rbi", "career_hits"],
+        thread_prefix="career-rbi-hits",
+    )
+    assert response.outcome in {"found", "assembled"}
+    assert response.results
+    row = response.results[0]
+    assert str(row.get("career_rbi")) == "3"
+    assert str(row.get("career_hits")) == "4"
+
+
+@pytest.mark.smoke
+def test_career_rbi_provenance_parameters(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _refresh_baseball_root(tmp_path, monkeypatch)
+    _, response = _deliver_career_stats(
+        ["career_rbi"],
+        provenance=True,
+        thread_prefix="career-rbi-prov",
+    )
+    version = response.provenance["entities"][0]["attributes"]["career_rbi"]["versions"][0]
+    assert "SUM" in version["computation"]["inline"]
+    assert version["parameters"]["warehouse"] == "warehouse/lahman.sqlite"
+    assert version["parameters"]["lahman.playerID"] == "aaronha01"

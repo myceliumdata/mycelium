@@ -50,7 +50,7 @@ Six tests cover: pack config load, sqlite introspection, full baseball refresh w
 | P2 | Lazy `maybe_write_warehouse_manifest` imports in `lahman_seed.py` / `pack_ontology.py` | Fine if avoiding import cycles; otherwise hoist to module top for consistency with `introspection.py`. |
 | P3 | `format_mcp_instructions` silent on `warehouse_manifest` | Optional one-liner: “see `warehouse_manifest` in describe_network when present.” |
 
-**Queued:** `prompts/cursor/next/2026-06-19-1700-baseball-warehouse-manifest-m2a-polish.md` (after M2c).
+**Queued:** `prompts/cursor/next/2026-06-19-1700-baseball-warehouse-manifest-m2a-polish.md` (M2a A1–A3 + M2b B1–B4, after M2c).
 
 ## Diff reviewed
 

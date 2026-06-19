@@ -1,0 +1,141 @@
+"""Manifest-driven Lahman warehouse resolution (baseball pack)."""
+
+from __future__ import annotations
+
+import inspect
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from network.paths import NetworkPaths
+from network.warehouse import default_warehouse_path, query_warehouse
+from network.warehouse_manifest import load_warehouse_manifest
+
+LAHMAN_PLAYER_ID = "lahman.playerID"
+
+
+def career_sum(column: str, player_id: str, warehouse: Path) -> int:
+    safe_col = column.replace('"', '""')
+    rows = query_warehouse(
+        warehouse,
+        f'SELECT COALESCE(SUM(CAST("{safe_col}" AS INTEGER)), 0) FROM "Batting" WHERE "playerID" = ?',
+        (player_id,),
+    )
+    return int(rows[0][0]) if rows else 0
+
+
+def people_column(column: str, player_id: str, warehouse: Path) -> str | None:
+    safe_col = column.replace('"', '""')
+    rows = query_warehouse(
+        warehouse,
+        f'SELECT "{safe_col}" FROM "People" WHERE "playerID" = ?',
+        (player_id,),
+    )
+    if not rows:
+        return None
+    value = rows[0][0]
+    if value in (None, ""):
+        return None
+    return str(value).strip()
+
+
+def people_birth_date(player_id: str, warehouse: Path) -> str | None:
+    rows = query_warehouse(
+        warehouse,
+        'SELECT "birthYear", "birthMonth", "birthDay" FROM "People" WHERE "playerID" = ?',
+        (player_id,),
+    )
+    if not rows:
+        return None
+    year, month, day = rows[0]
+    if year in (None, "") or month in (None, "") or day in (None, ""):
+        return None
+    return f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
+
+
+CAREER_SUM_INLINE = inspect.getsource(career_sum)
+PEOPLE_COLUMN_INLINE = inspect.getsource(people_column)
+PEOPLE_BIRTH_DATE_INLINE = inspect.getsource(people_birth_date)
+
+
+@dataclass(frozen=True)
+class ResolvedField:
+    value: str
+    computation_inline: str
+
+
+def load_manifest(paths: NetworkPaths) -> dict[str, Any] | None:
+    return load_warehouse_manifest(paths)
+
+
+def warehouse_relative(paths: NetworkPaths, warehouse: Path) -> str:
+    try:
+        return str(warehouse.relative_to(paths.root))
+    except ValueError:
+        return str(warehouse)
+
+
+def domain_aliases(manifest: dict[str, Any], domain: str) -> dict[str, dict[str, Any]]:
+    domains = manifest.get("domains")
+    if not isinstance(domains, dict):
+        return {}
+    meta = domains.get(domain)
+    if not isinstance(meta, dict):
+        return {}
+    raw = meta.get("aliases")
+    if not isinstance(raw, dict):
+        return {}
+    return {
+        str(key).strip().lower(): value
+        for key, value in raw.items()
+        if isinstance(value, dict)
+    }
+
+
+def resolve_domain_attribute(
+    attr: str,
+    *,
+    domain: str,
+    manifest: dict[str, Any],
+    player_id: str,
+    warehouse: Path,
+) -> ResolvedField | None:
+    """Resolve one manifest alias; return None when attr is unknown for this domain."""
+    key = attr.strip().lower()
+    alias = domain_aliases(manifest, domain).get(key)
+    if not alias:
+        return None
+    convention = alias.get("convention")
+    if convention == "career_sum":
+        column = alias.get("column")
+        if not isinstance(column, str) or not column.strip():
+            return None
+        total = career_sum(column.strip(), player_id, warehouse)
+        return ResolvedField(value=str(total), computation_inline=CAREER_SUM_INLINE)
+    if convention == "people_column":
+        column = alias.get("column")
+        if not isinstance(column, str) or not column.strip():
+            return None
+        raw = people_column(column.strip(), player_id, warehouse)
+        if raw is None:
+            return None
+        return ResolvedField(value=raw, computation_inline=PEOPLE_COLUMN_INLINE)
+    if convention == "people_compose" and alias.get("format") == "iso_date":
+        formatted = people_birth_date(player_id, warehouse)
+        if formatted is None:
+            return None
+        return ResolvedField(value=formatted, computation_inline=PEOPLE_BIRTH_DATE_INLINE)
+    return None
+
+
+def provenance_parameters(
+    *,
+    player_id: str,
+    paths: NetworkPaths,
+    warehouse: Path | None = None,
+) -> dict[str, str]:
+    wh = warehouse or default_warehouse_path(paths)
+    return {
+        LAHMAN_PLAYER_ID: player_id,
+        "warehouse": warehouse_relative(paths, wh),
+    }

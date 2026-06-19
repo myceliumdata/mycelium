@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-import inspect
+import importlib.util
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -18,26 +19,22 @@ from agents.specialists.fields import (
 from models.state import MyceliumGraphState, graph_requested_attributes
 from network.dataset_source import load_pack_dataset_source
 from network.paths import NetworkPaths, resolve_network_root
-from network.warehouse import default_warehouse_path, query_warehouse
 
 LAHMAN_PLAYER_ID = "lahman.playerID"
 
 
-def birth_date(player_id: str, warehouse: Path) -> str | None:
-    rows = query_warehouse(
-        warehouse,
-        'SELECT "birthYear", "birthMonth", "birthDay" FROM "People" WHERE "playerID" = ?',
-        (player_id,),
-    )
-    if not rows:
-        return None
-    year, month, day = rows[0]
-    if year in (None, "") or month in (None, "") or day in (None, ""):
-        return None
-    return f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
-
-
-BIRTH_DATE_COMPUTATION_INLINE = inspect.getsource(birth_date)
+def _load_warehouse_resolve():
+    key = "_baseball_warehouse_resolve"
+    if key in sys.modules:
+        return sys.modules[key]
+    path = Path(__file__).resolve().parent / "warehouse_resolve.py"
+    spec = importlib.util.spec_from_file_location(key, path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load warehouse_resolve from {path}")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[key] = mod
+    spec.loader.exec_module(mod)
+    return mod
 
 
 def _now_iso() -> str:
@@ -114,13 +111,15 @@ def _evaluate_bio_fields(
     *,
     paths: NetworkPaths,
 ) -> tuple[dict[str, Any], str]:
+    wr = _load_warehouse_resolve()
     data = agent.storage.load()
     record = data.get("records", {}).get(entity_id, {})
     if not isinstance(record, dict):
         record = {}
 
     sources = load_pack_dataset_source(paths) or []
-    warehouse = default_warehouse_path(paths)
+    warehouse = wr.default_warehouse_path(paths)
+    manifest = wr.load_manifest(paths)
     player_id = entity_source_key(entity_id, LAHMAN_PLAYER_ID)
     now = _now_iso()
     values: dict[str, Any] = {}
@@ -140,40 +139,47 @@ def _evaluate_bio_fields(
             na_attrs.append(key)
             continue
 
-        if key == "birth_date":
-            if not player_id:
-                agent.write_na_field(entity_id, key, at=now)
-                values[key] = "N/A"
-                na_attrs.append(key)
-                continue
-            try:
-                formatted = birth_date(player_id, warehouse)
-            except FileNotFoundError:
-                agent.write_na_field(entity_id, key, at=now)
-                values[key] = "N/A"
-                na_attrs.append(key)
-                continue
-            if formatted is None:
-                agent.write_na_field(entity_id, key, at=now)
-                values[key] = "N/A"
-                na_attrs.append(key)
-                continue
-            written = agent.write_computed_field(
-                entity_id,
-                key,
-                value=formatted,
-                sources=sources,
-                computation={"language": "python", "inline": BIRTH_DATE_COMPUTATION_INLINE},
-                parameters={LAHMAN_PLAYER_ID: player_id},
-                at=now,
-            )
-            values[key] = written
-            found_attrs.append(key)
+        if not player_id or manifest is None:
+            agent.write_na_field(entity_id, key, at=now)
+            values[key] = "N/A"
+            na_attrs.append(key)
             continue
 
-        agent.write_na_field(entity_id, key, at=now)
-        values[key] = "N/A"
-        na_attrs.append(key)
+        try:
+            resolved = wr.resolve_domain_attribute(
+                key,
+                domain="bio",
+                manifest=manifest,
+                player_id=player_id,
+                warehouse=warehouse,
+            )
+        except FileNotFoundError:
+            agent.write_na_field(entity_id, key, at=now)
+            values[key] = "N/A"
+            na_attrs.append(key)
+            continue
+
+        if resolved is None:
+            agent.write_na_field(entity_id, key, at=now)
+            values[key] = "N/A"
+            na_attrs.append(key)
+            continue
+
+        written = agent.write_computed_field(
+            entity_id,
+            key,
+            value=resolved.value,
+            sources=sources,
+            computation={"language": "python", "inline": resolved.computation_inline},
+            parameters=wr.provenance_parameters(
+                player_id=player_id,
+                paths=paths,
+                warehouse=warehouse,
+            ),
+            at=now,
+        )
+        values[key] = written
+        found_attrs.append(key)
 
     overall = _overall_field_status(
         found_attrs=found_attrs,

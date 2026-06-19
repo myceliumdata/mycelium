@@ -145,6 +145,7 @@ def test_birth_date_provenance_shape(
     assert version["sources"][0]["id"] == "lahman"
     assert version["computation"]["inline"]
     assert version["parameters"]["lahman.playerID"] == "aaronha01"
+    assert version["parameters"]["warehouse"] == "warehouse/lahman.sqlite"
     assert version["actor"]["specialist"] == "bio_specialist"
     inline = version["computation"]["inline"]
     assert "birthYear" in inline

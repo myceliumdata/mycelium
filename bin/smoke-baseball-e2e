@@ -383,6 +383,7 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
                     prov_ok = bool(
                         version.get("computation", {}).get("inline")
                         and version.get("parameters", {}).get("lahman.playerID") == "aaronha01"
+                        and version.get("parameters", {}).get("warehouse") == "warehouse/lahman.sqlite"
                     )
                 except (KeyError, IndexError, TypeError):
                     prov_ok = False
@@ -402,6 +403,52 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
                         "career_hr_routes_batting_specialist",
                         request=q_hr2.model_dump(exclude_none=True),
                         response=p_hr2,
+                    ),
+                )
+
+        # Step 2: career_rbi routes to batting_specialist (manifest career_sum)
+        q_rbi = EntityQuery(
+            lookup={
+                "player": sample["player"],
+                "debut_team": sample["debut_team"],
+                "debut_year": sample["debut_year"],
+            },
+            requested_attributes=["career_rbi"],
+            provenance=True,
+        )
+        r_rbi1 = run_query(q_rbi)
+        if r_rbi1.outcome != "lookup_resolved" or not r_rbi1.delivery:
+            results.append(
+                _fail(
+                    "career_rbi_step1",
+                    f"expected lookup_resolved, got {r_rbi1.outcome!r}",
+                    request=q_rbi.model_dump(exclude_none=True),
+                    response=_pub(r_rbi1),
+                ),
+            )
+        else:
+            q_rbi2 = EntityQuery(delivery_id=r_rbi1.delivery.delivery_id)
+            r_rbi2 = run_query(q_rbi2)
+            p_rbi2 = _pub(r_rbi2)
+            value_ok = (
+                r_rbi2.results
+                and str(r_rbi2.results[0].get("career_rbi")) == "3"
+            )
+            if not value_ok:
+                results.append(
+                    _fail(
+                        "career_rbi_routes_batting_specialist",
+                        f"expected career_rbi=3, got {r_rbi2.results!r}",
+                        request=q_rbi2.model_dump(exclude_none=True),
+                        response=p_rbi2,
+                    ),
+                )
+            else:
+                results.append(
+                    _ok(
+                        "career_rbi_routes_batting_specialist",
+                        request=q_rbi2.model_dump(exclude_none=True),
+                        response=p_rbi2,
                     ),
                 )
 
@@ -445,6 +492,7 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
                     prov_ok = bool(
                         version.get("computation", {}).get("inline")
                         and version.get("parameters", {}).get("lahman.playerID") == "aaronha01"
+                        and version.get("parameters", {}).get("warehouse") == "warehouse/lahman.sqlite"
                     )
                 except (KeyError, IndexError, TypeError):
                     prov_ok = False
