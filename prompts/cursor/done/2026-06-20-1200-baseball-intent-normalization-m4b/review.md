@@ -50,7 +50,7 @@
 
 | # | Item |
 |---|------|
-| P1 | Hand-test summary table row `batting_average` still says “intent-hash deferred (M4b)” — update to ✅; line ~278 same |
+| P1 | ~~Hand-test summary table row `batting_average`~~ — fixed in gate doc pass |
 | P2 | No `intent_dedup_mocked` smoke scenario (pytest-only per prompt — acceptable) |
 | P3 | Intent LLM still called on second synonym (`intent_calls == 2`) even when slug cache hit — expected v1 (map warms per label); could skip LLM when slug storage hit before intent resolve in a future polish |
 
@@ -63,7 +63,9 @@ MYCELIUM_INTENT_NORMALIZATION_MODEL=gpt-4o-mini
 MYCELIUM_COMPUTATION_CODEGEN_MODEL=gpt-4o
 ```
 
-Clear batting `storage.json`; manual M4b-1: `career_avg` then `batting_average`.
+Clear batting `storage.json` + `intent_map.json`; manual M4b-1: `career_avg` then `batting_average`.
+
+**Manual gate:** ✅ **CLEAR** 2026-06-19 — Aaron `0.305` both labels; shared timestamp + `intent_slug: career_batting_average`; no second codegen. [`docs/manual-checks/2026-06-19-baseball-m4b-intent-normalization-gate.md`](../../../../docs/manual-checks/2026-06-19-baseball-m4b-intent-normalization-gate.md)
 
 ---
 

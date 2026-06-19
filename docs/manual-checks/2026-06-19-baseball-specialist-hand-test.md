@@ -1,7 +1,7 @@
 # Baseball specialist hand test — what should work
 
 **Status:** Ready for Paul (June 2026)  
-**Scope:** Identity routing + warehouse specialists through **M3** (`career_hr`, `career_rbi`, `career_hits`, `career_avg` derive, `birth_date`, `bats` when column present; registry bind provenance).
+**Scope:** Identity routing + warehouse specialists through **M4b** (`career_hr`, `career_rbi`, `career_hits`, `career_avg` derive, intent synonym dedup, `birth_date`, `bats` when column present; registry bind provenance).
 **Pull vs compute map (while testing):** [§ Warehouse pull vs compute](#warehouse-pull-vs-compute--reference) below.  
 **Deeper identity/routing matrix:** [`2026-06-18-baseball-query-hand-test-plan.md`](2026-06-18-baseball-query-hand-test-plan.md)
 
@@ -83,7 +83,7 @@ Bind-field provenance: `actor.kind` is **`registry`** or **`seed_bootstrap`** (n
 | `career_avg` | Compute (derive) | `SUM(H) / SUM(AB)` via LLM codegen + sandbox (M3) | ✅ Aaron ≈ **0.305** on full Lahman; fixture smoke **0.500** |
 | `home_runs`, `rbi`, `at_bats`, `games` | Pull or compute | season-scoped row vs career SUM | ⏳ scope TBD |
 | `ops` | Compute (derive on miss, M4) | free-form label via LLM codegen | ✅ fixture smoke **0.900** (mocked); live optional |
-| `batting_average` | Compute (derive on miss) | synonym of career rate — same derive path when routed | ⏳ intent-hash deferred (M4b) |
+| `batting_average` | Compute (derive on miss) | synonym of career rate — intent slug `career_batting_average` (M4b) | ✅ Aaron **0.305**; cache hit after `career_avg` |
 
 ### Pitching (`Pitching`) — specialist stub
 
@@ -162,7 +162,7 @@ rm -f ~/mycelium-networks/baseball/agents/batting/storage.json
 | M3b-1 | Derive retry | On bad generated SQL, specialist retries silently (up to 5); operator sees `derive career_avg attempt N failed` in graph `audit_log` and `QueryResponse.debug` (`operator_audit=`) |
 | M3c-1 | Semantic review | Derive uses full manifest context + LLM review after successful execution; implausible values (e.g. `0.000` from SQL int division) retry silently — clear batting `storage.json` if a bad value was cached |
 | M4-1 | Free-form derive (`ops`) | Manifest miss on batting domain → M3c pipeline (no `derive_candidates` whitelist); mocked CI **0.900**; clear batting cache if stale |
-| M4b-1 | Intent dedup | Clear batting cache; deliver `career_avg` then `batting_average` — same value, no second computation codegen; `intent_map.json` at network root; results keys stay requested labels |
+| M4b-1 | Intent dedup | ✅ **CLEAR** 2026-06-19 — clear batting cache + `intent_map.json`; `career_avg` then `batting_average` → **0.305**, same timestamp, `intent_slug: career_batting_average`; gate doc [`2026-06-19-baseball-m4b-intent-normalization-gate.md`](2026-06-19-baseball-m4b-intent-normalization-gate.md) |
 
 **Step 1** (partial lookup OK if Aaron is unique on your root):
 
@@ -275,7 +275,7 @@ Don’t fail the build on these — they’re explicitly out of scope:
 |------|-----|
 | `height`, `weight`, `birth_country`, `final_game` | No manifest alias yet |
 | `career_sb` | Batting alias not in manifest yet |
-| `batting_average` (non-alias synonym) | Derive on miss when routed to batting — separate cache key from `career_avg` until M4b intent hash |
+
 | `career_wins`, `era`, pitching stats | `pitching_specialist` stub |
 | `season_wins`, team season attrs | `team_season_specialist` stub |
 | Career team list via query API | Identity is debut bind only — use warehouse SQL (identity doc § H) |
