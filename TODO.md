@@ -97,6 +97,7 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 - [x] **Baseball generic warehouse resolver (M2b)** — Manifest conventions (`career_sum`, raw People columns) in `batting_specialist` / `bio_specialist`; `career_rbi`, `career_hits`, etc. without per-attr `if` branches. Polish nits → `2026-06-19-1700-baseball-warehouse-manifest-m2a-polish` (after M2c).
 - [x] **Baseball identity bind on deliver (M2c)** — `debut_team` / `debut_year` from registry bind via `player_identity_specialist`; warehouse `parameters` complete from M2b. Hand-test gate passed on live Lahman (June 2026).
 - [x] **Baseball M2 polish** — Manifest capabilities dedup, MCP blurb, `specialist_loader`, full `parameters`, multi-attr test/smoke, hand-test doc M2 extended gate. Prompt `2026-06-19-1700-baseball-warehouse-manifest-m2a-polish`.
+- [ ] **Baseball derive codegen sandbox (M3)** — Manifest cache miss → LLM generates sandboxed Python; guinea pig `career_avg`. Framework `derive_sandbox` + pack `derive_resolve`; provenance `computation.inline` + full `parameters`. Prompt `2026-06-19-1800-baseball-derive-codegen-sandbox-m3`. Parent [`2026-06-19-warehouse-factory-layer3-specialist-emergence.md`](docs/plans/conversations/2026-06-19-warehouse-factory-layer3-specialist-emergence.md).
 - [ ] **Specialist promotion (derive → product specialist)** — **Out of scope for automation now.** Future: derive telemetry + compute/storage cost signals → agent recommends promoting repeat cross-domain computations to new category + pack specialist; Paul/Grok approve slices until automated. Suppress factory research stub for warehouse categories on baseball. [`2026-06-19-warehouse-factory-layer3-specialist-emergence.md`](docs/plans/conversations/2026-06-19-warehouse-factory-layer3-specialist-emergence.md).
 - [ ] **Seed export (`export-growth-seed`)** — Validated `entities.json` → `seed.json` fragment.
 - [ ] **Seed vs grown entity linking** — Network-type-specific merge/override rules.
@@ -124,4 +125,4 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ---
 
-Last updated: 2026-06-19 (M1 shipped; M2a–c + specialist promotion on TODO; conversation archive 2026-06-19)
+Last updated: 2026-06-19 (M2 shipped + hand-test passed; M3 queued; conversation archive 2026-06-19)
