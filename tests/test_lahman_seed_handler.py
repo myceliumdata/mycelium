@@ -306,3 +306,31 @@ def test_lahman_seed_handler_ingests_all_lahman_tables(tmp_path: Path) -> None:
 
     manifest_path = paths.root / "warehouse_manifest.json"
     assert manifest_path.is_file()
+
+
+@pytest.mark.smoke
+def test_lahman_warehouse_materializes_player_debut(tmp_path: Path) -> None:
+    import importlib.util
+
+    paths = _prepare_baseball_root(tmp_path, seed_fixture="minimal")
+    apply_network_paths(paths)
+    run_network_bootstrap(paths)
+
+    spec = importlib.util.spec_from_file_location(
+        "test_lahman_common",
+        BASEBALL_EXAMPLE / "bootstrap_handlers" / "lahman_common.py",
+    )
+    assert spec is not None and spec.loader is not None
+    lahman_common = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(lahman_common)
+
+    warehouse_path = paths.root / "warehouse" / "lahman.sqlite"
+    rows = lahman_common.distinct_player_debut_rows(warehouse_path)
+    assert rows == [("aaronha01", "Hank Aaron", "1957", "Brooklyn Dodgers")]
+
+    conn = sqlite3.connect(warehouse_path)
+    try:
+        count = conn.execute("SELECT COUNT(*) FROM player_debut").fetchone()[0]
+        assert count == 1
+    finally:
+        conn.close()

@@ -323,8 +323,6 @@ class EntityRegistry:
         if self._defer_flush():
             if rebuild_source_key_index:
                 self._rebuild_source_key_index()
-            if rebuild_field_indexes:
-                self._rebuild_field_indexes()
             return
         self._maybe_optimize_storage()
         if rebuild_source_key_index:

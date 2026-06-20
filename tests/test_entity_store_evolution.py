@@ -79,6 +79,29 @@ def test_bootstrap_deferred_save_single_flush(
 
 
 @pytest.mark.smoke
+def test_bootstrap_deferred_save_single_field_index_rebuild(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reg = _person_registry(tmp_path, monkeypatch)
+    with patch.object(
+        reg,
+        "_rebuild_field_indexes",
+        wraps=reg._rebuild_field_indexes,
+    ) as rebuild_mock:
+        with bootstrap_deferred_save():
+            for index in range(5):
+                entity = _make_entity(f"idx-{index}", f"Index {index}", "Acme Corp")
+                reg.register_entity(entity)
+                reg.assign_bind_index(entity.id, entity.bind_values)
+                reg.save_entity(entity)
+    assert rebuild_mock.call_count == 1
+    matches = reg.lookup_by_field("name", "Index 4")
+    assert len(matches) == 1
+    assert matches[0].id == "idx-4"
+
+
+@pytest.mark.smoke
 def test_save_entity_without_deferred_flushes_each_time(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

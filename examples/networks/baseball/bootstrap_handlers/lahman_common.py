@@ -113,6 +113,61 @@ def _load_csv(conn: sqlite3.Connection, table: str, csv_path: Path) -> int:
         return rows
 
 
+_PLAYER_DEBUT_MATERIALIZE_SQL = '''
+CREATE TABLE player_debut AS
+WITH player_display AS (
+    SELECT
+        TRIM(p."playerID") AS player_id,
+        TRIM(p."nameFirst") || ' ' || TRIM(p."nameLast") AS display_name,
+        CASE
+            WHEN TRIM(COALESCE(p."debut", "")) != ""
+                THEN SUBSTR(TRIM(p."debut"), 1, 4)
+            ELSE (
+                SELECT CAST(MIN(CAST(a."yearID" AS INTEGER)) AS TEXT)
+                FROM "Appearances" a
+                WHERE a."playerID" = p."playerID"
+            )
+        END AS debut_year
+    FROM "People" p
+    WHERE TRIM(COALESCE(p."playerID", "")) != ""
+      AND TRIM(COALESCE(p."nameFirst", "")) != ""
+      AND TRIM(COALESCE(p."nameLast", "")) != ""
+)
+SELECT
+    pd.player_id AS playerID,
+    pd.display_name,
+    pd.debut_year,
+    MIN(TRIM(t."name")) AS debut_team
+FROM player_display pd
+JOIN "Appearances" a
+  ON a."playerID" = pd.player_id
+ AND CAST(a."yearID" AS TEXT) = pd.debut_year
+JOIN "Teams" t
+  ON t."yearID" = a."yearID"
+ AND t."teamID" = a."teamID"
+WHERE TRIM(COALESCE(t."name", "")) != ""
+  AND pd.debut_year IS NOT NULL
+  AND TRIM(pd.debut_year) != ""
+GROUP BY pd.player_id, pd.display_name, pd.debut_year
+'''
+
+
+def _materialize_player_debut(conn: sqlite3.Connection) -> int:
+    """Build ``player_debut`` once at warehouse ingest (bootstrap perf)."""
+    try:
+        conn.execute('SELECT 1 FROM "People" LIMIT 1')
+    except sqlite3.OperationalError:
+        return 0
+    conn.execute("DROP TABLE IF EXISTS player_debut")
+    conn.execute(_PLAYER_DEBUT_MATERIALIZE_SQL)
+    conn.execute(
+        'CREATE INDEX IF NOT EXISTS idx_player_debut_playerID ON player_debut("playerID")',
+    )
+    row = conn.execute("SELECT COUNT(*) FROM player_debut").fetchone()
+    conn.commit()
+    return int(row[0]) if row else 0
+
+
 def ingest_warehouse(csv_dir: Path, warehouse_path: Path) -> dict[str, int]:
     """Load bootstrap Lahman tables into ``warehouse/lahman.sqlite``."""
     warehouse_path.parent.mkdir(parents=True, exist_ok=True)
@@ -125,6 +180,7 @@ def ingest_warehouse(csv_dir: Path, warehouse_path: Path) -> dict[str, int]:
             path = csv_dir / f"{table}.csv"
             if path.is_file():
                 counts[table] = _load_csv(conn, table, path)
+        _materialize_player_debut(conn)
     finally:
         conn.close()
     return counts
@@ -161,46 +217,14 @@ def distinct_player_debut_rows(
     conn = sqlite3.connect(warehouse_path)
     try:
         try:
-            conn.execute('SELECT 1 FROM "People" LIMIT 1')
+            conn.execute("SELECT 1 FROM player_debut LIMIT 1")
         except sqlite3.OperationalError:
             return []
         rows = conn.execute(
             '''
-            WITH player_display AS (
-                SELECT
-                    TRIM(p."playerID") AS player_id,
-                    TRIM(p."nameFirst") || ' ' || TRIM(p."nameLast") AS display_name,
-                    CASE
-                        WHEN TRIM(COALESCE(p."debut", "")) != ""
-                            THEN SUBSTR(TRIM(p."debut"), 1, 4)
-                        ELSE (
-                            SELECT CAST(MIN(CAST(a."yearID" AS INTEGER)) AS TEXT)
-                            FROM "Appearances" a
-                            WHERE a."playerID" = p."playerID"
-                        )
-                    END AS debut_year
-                FROM "People" p
-                WHERE TRIM(COALESCE(p."playerID", "")) != ""
-                  AND TRIM(COALESCE(p."nameFirst", "")) != ""
-                  AND TRIM(COALESCE(p."nameLast", "")) != ""
-            )
-            SELECT
-                pd.player_id,
-                pd.display_name,
-                pd.debut_year,
-                MIN(TRIM(t."name")) AS debut_team
-            FROM player_display pd
-            JOIN "Appearances" a
-              ON a."playerID" = pd.player_id
-             AND CAST(a."yearID" AS TEXT) = pd.debut_year
-            JOIN "Teams" t
-              ON t."yearID" = a."yearID"
-             AND t."teamID" = a."teamID"
-            WHERE TRIM(COALESCE(t."name", "")) != ""
-              AND pd.debut_year IS NOT NULL
-              AND TRIM(pd.debut_year) != ""
-            GROUP BY pd.player_id, pd.display_name, pd.debut_year
-            ORDER BY pd.player_id
+            SELECT playerID, display_name, debut_year, debut_team
+            FROM player_debut
+            ORDER BY playerID
             ''',
         ).fetchall()
         return [
