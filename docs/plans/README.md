@@ -133,6 +133,7 @@ Explored ideas we are **unlikely to ship**; decision record + pointer to convers
 
 | Doc | Topic |
 |-----|-------|
+| [`conversations/2026-06-20-live-gate-program.md`](conversations/2026-06-20-live-gate-program.md) | **Live gate** — opt-in baseball + CRM regression (`bin/gate-*-live`) |
 | [`attribute-provenance-and-storage.md`](attribute-provenance-and-storage.md) | Architecture — entity/index/protocol split |
 | [`storage-evolution-program.md`](storage-evolution-program.md) | **Active** — specialist + entity `minisql_v1`, deferred bootstrap save (slices in `prompts/cursor/next/` + `hold/`) |
 | [`baseball-example-program.md`](baseball-example-program.md) | **Exploratory** — `baseball` second example (Lahman); ur [`mycelium_lahman_design_prompt.md`](mycelium_lahman_design_prompt.md) |
