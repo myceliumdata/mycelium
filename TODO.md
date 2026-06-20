@@ -75,7 +75,8 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ## Examples & demos (open)
 
-- [ ] **Public baseball example (feedback loop)** — Ship a **public** Lahman demo (website or standalone) so outsiders can try queries and give feedback. Open design: embedded chat vs MCP-only, hosted network root vs read-only snapshot, rate limits, cost model. Depends on bootstrap perf (`2280`) and program slices M10–M13 for credible coverage. Track alongside [`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md).
+- [ ] **Website update — after baseball program ships** — When baseball example is demo-ready (program slices through M14 + `2350` polish, bootstrap perf `2280`, live gate green on full Lahman): update [myceliumdata.org](https://myceliumdata.org) — second example network, warehouse factory / specialist hierarchy story, query walkthrough hooks. Queue work in **`../mycelium-website/prompts/cursor/next/`**; Paul pushes and deploys. Cross-check `docs/architecture.md`, `docs/onboarding.md`, [`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md).
+- [ ] **Public baseball example (feedback loop)** — Ship a **public** Lahman demo (website or standalone) so outsiders can try queries and give feedback. Open design: embedded chat vs MCP-only, hosted network root vs read-only snapshot, rate limits, cost model. Depends on bootstrap perf (`2280`) and program slices M10–M13 for credible coverage. May overlap website update above — coordinate narrative. Track alongside [`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md).
 - [ ] **Example network READMEs — remaining gaps** — Index shipped ([`examples/networks/README.md`](examples/networks/README.md)). **Still thin:** [`empty-crm/README.md`](examples/networks/empty-crm/README.md) vs CRM bar; thicken as features land. Any new demo (derivative token-efficiency USP) ships with a **solid README** from day one.
 
 ---
@@ -158,4 +159,4 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ---
 
-Last updated: 2026-06-21 (specialist-class-hierarchy why; M14 = framework bases in src/)
+Last updated: 2026-06-21 (website update after baseball ships; M13 ingested)
