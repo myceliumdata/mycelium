@@ -6,6 +6,10 @@
 
 **`franchise_specialist`**: on request (e.g. `franchise_teams` or client pushback attr), aggregate fan-facing team identities sharing `lahman.franchID` (Brooklyn + LA Dodgers).
 
+## Pack pattern (mandatory)
+
+Same as M11 — **product specialist**, not a thin `pack_common` warehouse wrapper. Do not duplicate `pack_common` graph/evaluate loops; implement franchise aggregation in `franchise_specialist.py` or a small `franchise_common.py` sibling. Include **`pack_bootstrap`** if importing pack siblings.
+
 ## v1 scope
 
 - Read `TeamsFranchises` + `Teams` warehouse tables.

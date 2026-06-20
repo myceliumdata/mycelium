@@ -6,6 +6,13 @@
 
 **`roster_specialist`** (or `team_roster_specialist`): given **team** entity + optional `yearID` scope, return roster artifact — list of player display names / ids from `Appearances` ⋈ `People`.
 
+## Pack pattern (mandatory)
+
+This is a **product specialist** (cross-table join), not a manifest `career_sum` read. **Do not** wire it through `run_warehouse_player_graph` / `run_warehouse_team_graph` unless you add a deliberate new helper in `pack_common.py` (e.g. `run_product_team_graph`) that fits the pattern.
+
+- New `roster_specialist.py` still needs the **`pack_bootstrap` block** (copy from `pitching_specialist.py`) if it imports sibling pack modules.
+- Prefer one cohesive graph function in the specialist file or a focused `roster_common.py` sibling — not a copy of the old 200-line warehouse loop.
+
 ## Design locks (from program doc)
 
 - Single coherent computation + unified cache key (`teamID` + `yearID`).

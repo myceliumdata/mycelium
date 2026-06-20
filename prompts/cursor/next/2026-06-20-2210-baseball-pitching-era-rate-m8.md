@@ -31,4 +31,4 @@ Note: `bb-pitch-01`–`02`, `bb-multi-01`, `bb-team-01` already shipped (M5–M6
 
 ## Optional
 
-- `derive_on_miss: true` on pitching for unsupported rate labels — only if small; else defer.
+- `derive_on_miss: true` on pitching for unsupported rate labels — only if small; else defer. If implemented, use `pack_common.run_warehouse_player_graph` **`on_miss` / `on_miss_resolve`** hooks (see `batting_specialist.py`) — do not add inline graph logic to `pitching_specialist.py`.

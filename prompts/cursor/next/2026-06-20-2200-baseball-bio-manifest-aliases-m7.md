@@ -4,7 +4,7 @@
 
 ## Objective
 
-Add remaining **bio** warehouse aliases to `examples/networks/baseball/warehouse_domains.json` and verify via smoke tests. No new specialist file — `bio_specialist` + `warehouse_resolve` already handle `people_column` / compose conventions.
+Add remaining **bio** warehouse aliases to `examples/networks/baseball/warehouse_domains.json` and verify via smoke tests. No new specialist file — `bio_specialist` is already a thin `pack_common` wrapper; manifest + `warehouse_resolve` changes only.
 
 ## Aliases to add
 

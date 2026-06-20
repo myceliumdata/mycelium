@@ -14,6 +14,10 @@ Allow season-scoped warehouse reads: client sends scope on step 1 (design lock w
 - `batting_specialist` / `pitching_specialist`: season attrs (`wins`, `era`, …) filter warehouse by `yearID` when scoped.
 - Provenance `parameters` includes `yearID` when used.
 
+## Pack pattern (mandatory)
+
+Specialists are **thin wrappers** (`pack_common.run_warehouse_player_graph` / `run_warehouse_team_graph`). Implement scope in **`warehouse_resolve.py`** and/or **`pack_common.evaluate_*_warehouse_fields`** — read `yearID` from query state/context once, pass through resolve helpers. **Do not** inflate `batting_specialist.py`, `pitching_specialist.py`, or `team_season_specialist.py` with duplicate scope logic.
+
 ## Tests
 
 - Smoke: Brooklyn Dodgers `season_wins` with `scope.yearID=1957` vs without (latest).
