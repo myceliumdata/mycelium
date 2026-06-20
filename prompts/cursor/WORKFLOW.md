@@ -80,6 +80,7 @@ prompts/
   - Constraints and principles (especially from `docs/architecture.md`)
   - Required output format and location (`prompts/cursor/done/<name>/`)
   - Instructions telling Cursor to follow the discovery + claiming process defined in this `WORKFLOW.md` (i.e. do not assume the filename will be provided directly)
+  - **Live gate tests (when applicable)** — if the slice adds or changes user-visible behavior on an example network that has a live gate catalog (`tests/live/networks.yaml`), the prompt must require extending the live gate: new scenarios in `tests/live/catalogs/<network>.yaml`, anchor values in `tests/live/anchors/` (from live root discovery), drift checks in `tests/live/gate_runner.py` when anchors change, and `phases` in `networks.yaml` if new phase labels are needed. Mark scenarios `@pytest.mark.live_gate` only — never default CI. If the slice is internal-only (refactor, docs, framework with no example-network behavior change), say **Live gate: N/A** explicitly.
 
 ### 2. Discovering and Claiming the Next Task (Cursor)
 

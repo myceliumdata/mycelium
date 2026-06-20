@@ -35,7 +35,9 @@ Paul chose **option 2**: keep Grok’s implementation, formal review here, Curso
 
 **Strong:** Correct pattern clone — pack specialists copied on `--sync-only`, manifest-driven resolve, provenance envelope matches M2b. `_domain_table` fixes latent bug where pitching `career_sum` would have hit Batting. Team season v1 (“latest year”) is documented and matches hand-test until M9 scope.
 
-**Acceptable debt:** Near-duplicate specialist files (batting/pitching/team_season share ~200 lines). Acceptable for v1; a shared pack base module is a future polish slice, not blocking.
+**Refactor (2026-06-20 follow-up):** `pack_common.py` + `registry_identity_common.py` deduplicate warehouse and identity graph paths; `bio_specialist`, `batting_specialist`, `pitching_specialist`, `team_season_specialist`, and identity specialists are thin wrappers. OSS-quality clarity — not deferred polish.
+
+**Live gate (2026-06-20 follow-up):** Four new scenarios (`bb-pitch-01/02`, `bb-multi-01`, `bb-team-01`), anchors, `networks.yaml` phases, `gate_runner.py` drift checks. Baseball catalog **19 scenarios**.
 
 ## Polish nits (non-blocking)
 
@@ -43,8 +45,8 @@ Paul chose **option 2**: keep Grok’s implementation, formal review here, Curso
 |---|-----|-----------|
 | P1 | `bin/smoke-baseball-e2e` inline scenarios omit pitching/team_season (pytest only) | Optional inline rows or `--with-pytest` default note in README |
 | P2 | `attendance` in ontology but no manifest alias | M6b or M9 |
-| P3 | Live gate unchanged — no Aaron `career_wins` anchor yet | `2270-live-gate-domain-parity` |
-| P4 | Duplicated `_load_specialist_loader` in four pack modules | Shared helper in `specialist_loader.py` later |
+| P3 | Manual gate hand-test doc not yet synced | `2270` doc-only slice |
+| P4 | `career_era` live gate | M8 `bb-pitch-03` |
 
 ## Next
 

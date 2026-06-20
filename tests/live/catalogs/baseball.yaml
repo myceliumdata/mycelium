@@ -252,3 +252,83 @@ scenarios:
         team: XYZZY Franchise
     assert_step1:
       outcome: not_found
+
+  - id: bb-pitch-01
+    phase: pitching
+    description: Aaron pitching career_sum (zero — validates warehouse path)
+    step1:
+      lookup:
+        player: "{{ anchors.player }}"
+      requested_attributes: [career_wins, career_strikeouts]
+      provenance: true
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].career_wins:
+          equals: "{{ anchors.career_wins }}"
+        results[0].career_strikeouts:
+          equals: "{{ anchors.career_strikeouts }}"
+
+  - id: bb-pitch-02
+    phase: pitching
+    description: Nolan Ryan career_wins and career_strikeouts
+    step1:
+      lookup:
+        player: "{{ anchors.pitcher_player }}"
+      requested_attributes: [career_wins, career_strikeouts]
+      provenance: true
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].career_wins:
+          equals: "{{ anchors.pitcher_career_wins }}"
+        results[0].career_strikeouts:
+          equals: "{{ anchors.pitcher_career_strikeouts }}"
+
+  - id: bb-multi-01
+    phase: pitching
+    description: Multi-domain batting + pitching on Aaron
+    step1:
+      lookup:
+        player: "{{ anchors.player }}"
+      requested_attributes: [career_hr, career_wins]
+      provenance: true
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].career_hr:
+          equals: "{{ anchors.career_hr }}"
+        results[0].career_wins:
+          equals: "{{ anchors.career_wins }}"
+
+  - id: bb-team-01
+    phase: team_season
+    description: Brooklyn Dodgers season_wins and season_losses (latest year)
+    step1:
+      lookup:
+        team: "{{ anchors.team_label }}"
+      requested_attributes: [season_wins, season_losses]
+      provenance: true
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].season_wins:
+          equals: "{{ anchors.season_wins }}"
+        results[0].season_losses:
+          equals: "{{ anchors.season_losses }}"

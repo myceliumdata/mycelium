@@ -10,7 +10,7 @@ Unless Paul explicitly authorizes implementation in the **current message**, Gro
 
 - Read, search, explain, and diagnose (root cause, repro steps, what to verify).
 - Review Cursor slices: write `review.md`, run `./bin/ci-local`, commit **after Approved** per `prompts/cursor/WORKFLOW.md` §4.
-- Queue work for Cursor: write prompts in `prompts/cursor/next/`.
+- Queue work for Cursor: write prompts in `prompts/cursor/next/`. When specifying a slice, **always include live gate test requirements when applicable** (see `prompts/cursor/WORKFLOW.md` §1 — catalog scenarios, anchors, drift checks; live gate only, not default CI).
 - Update review artifacts, manual gate docs, and planning docs when Paul asks or when review workflow requires it.
 
 **Do not**

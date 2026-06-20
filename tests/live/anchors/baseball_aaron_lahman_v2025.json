@@ -9,5 +9,14 @@
   "birth_date": "1934-02-05",
   "bats": "R",
   "throws": "R",
-  "birth_city": "Mobile"
+  "birth_city": "Mobile",
+  "career_wins": 0,
+  "career_strikeouts": 0,
+  "career_losses": 0,
+  "pitcher_player": "Nolan Ryan",
+  "pitcher_career_wins": 324,
+  "pitcher_career_strikeouts": 5714,
+  "team_label": "Brooklyn Dodgers",
+  "season_wins": 84,
+  "season_losses": 70
 }

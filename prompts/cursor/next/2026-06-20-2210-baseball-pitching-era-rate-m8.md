@@ -15,7 +15,19 @@ Ship **`career_era`** (and optionally season `era`) via manifest **recipe** conv
 ## Tests
 
 - Minimal fixture: Pitching rows with known ER/IPouts → expected ERA string (3 decimals).
-- `tests/test_baseball_pitching_specialist.py` smoke + provenance `parameters.column` / computation inline.
+- `tests/test_baseball_pitching_specialist.py` smoke + provenance `parameters.inline` / computation inline.
+
+## Live gate (required)
+
+Add **`bb-pitch-03`** to `tests/live/catalogs/baseball.yaml` (phase `pitching`):
+
+- Nolan Ryan (`{{ anchors.pitcher_player }}`) `career_era` — two-step deliver.
+- Anchor `pitcher_career_era` in `baseball_aaron_lahman_v2025.json` from live root (Ryan has non-zero pitching; Aaron ERA is not a useful gate).
+- Extend `gate_runner.py` drift check for `pitcher_career_era` on Ryan.
+
+Note: `bb-pitch-01`–`02`, `bb-multi-01`, `bb-team-01` already shipped (M5–M6 gate). Do not duplicate.
+
+`@pytest.mark.live_gate` only — never default CI.
 
 ## Optional
 

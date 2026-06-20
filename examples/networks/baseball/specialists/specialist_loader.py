@@ -8,6 +8,18 @@ from pathlib import Path
 from types import ModuleType
 
 
+def ensure_sibling_imports() -> Path:
+    """Put the pack specialists directory on ``sys.path`` for sibling imports."""
+    root = Path(__file__).resolve().parent
+    root_s = str(root)
+    if root_s not in sys.path:
+        sys.path.insert(0, root_s)
+    return root
+
+
+ensure_sibling_imports()
+
+
 def load_sibling(module_name: str) -> ModuleType:
     """Load a sibling ``.py`` module from the network specialists directory."""
     key = f"_baseball_pack_{module_name}"

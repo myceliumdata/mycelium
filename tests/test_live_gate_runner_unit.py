@@ -110,9 +110,17 @@ def test_networks_refresh_before_gate_flags() -> None:
 def test_load_catalog_baseball_has_minimum_scenarios() -> None:
     entry = gr.load_networks_registry()["baseball"]
     scenarios = gr.load_catalog(entry.catalog_path)
-    assert len(scenarios) >= 15
+    assert len(scenarios) >= 19
     phases = {item.phase for item in scenarios}
-    assert phases >= {"preflight", "identity", "m2", "derive", "infra"}
+    assert phases >= {
+        "preflight",
+        "identity",
+        "m2",
+        "pitching",
+        "team_season",
+        "derive",
+        "infra",
+    }
 
 
 @pytest.mark.smoke

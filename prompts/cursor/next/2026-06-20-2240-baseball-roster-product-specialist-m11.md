@@ -20,4 +20,14 @@
 ## Tests
 
 - Minimal fixture: 1957 BRO roster includes Hank Aaron.
-- Smoke + optional live-gate scenario after Paul reloads Lahman.
+- Smoke deliver + provenance on roster attr.
+
+## Live gate (required)
+
+Add **`bb-roster-01`** to `tests/live/catalogs/baseball.yaml` (new phase `roster` in `networks.yaml`):
+
+- `{team: "{{ anchors.team_label }}"}` + `scope: {yearID: "1957"}` + `requested_attributes: [roster]` (attr name per your design lock).
+- Anchor `roster_count_1957_bro` or similar stable assertion (e.g. minimum player count, or includes `"Hank Aaron"` substring in delivered roster) — discover from live root.
+- Drift check in `gate_runner.py` if numeric anchor used.
+
+`@pytest.mark.live_gate` only — never default CI.

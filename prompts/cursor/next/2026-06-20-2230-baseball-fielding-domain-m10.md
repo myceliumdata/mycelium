@@ -20,3 +20,13 @@ Add **fielding** category to committed ontology + `fielding_specialist.py` pack 
 - Minimal fixture Fielding.csv for sample player.
 - `tests/test_baseball_fielding_specialist.py` smoke.
 - Add to `bin/smoke-baseball-e2e` pytest list.
+
+## Live gate (required)
+
+Add **`bb-field-01`** to `tests/live/catalogs/baseball.yaml` (new phase `fielding` — add to `tests/live/networks.yaml` `baseball.phases`):
+
+- Player with known fielding totals on full Lahman (e.g. Ozzie Smith or Aaron if non-zero on root) — `career_games` + `career_putouts` two-step deliver.
+- New anchors in `baseball_aaron_lahman_v2025.json` (e.g. `fielder_player`, `fielder_career_games`) from live root discovery.
+- `gate_runner.py` drift checks for fielding attrs.
+
+`@pytest.mark.live_gate` only — never default CI.

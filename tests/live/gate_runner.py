@@ -453,7 +453,78 @@ def discover_anchor_drift(
             "career_avg": anchors.get("career_avg"),
             "career_rbi": anchors.get("career_rbi"),
             "career_hits": anchors.get("career_hits"),
+            "career_wins": anchors.get("career_wins"),
+            "career_strikeouts": anchors.get("career_strikeouts"),
         }
+        pitcher = anchors.get("pitcher_player")
+        if pitcher:
+            for attr, key in (
+                ("pitcher_career_wins", "career_wins"),
+                ("pitcher_career_strikeouts", "career_strikeouts"),
+            ):
+                expected = anchors.get(attr)
+                if expected is None:
+                    continue
+                q1 = EntityQuery(
+                    lookup={"player": str(pitcher)},
+                    requested_attributes=[key],
+                )
+                r1 = run_query(q1)
+                if r1.outcome != "lookup_resolved" or not r1.delivery:
+                    report["checks"].append(
+                        {
+                            "check": f"resolve_{key}_{pitcher}",
+                            "expected": expected,
+                            "actual": None,
+                            "drift": True,
+                            "detail": f"step1 outcome={r1.outcome!r}",
+                        },
+                    )
+                    continue
+                reset_core_graph()
+                r2 = run_query(EntityQuery(delivery_id=r1.delivery.delivery_id))
+                actual = r2.results[0].get(key) if r2.results else None
+                report["checks"].append(
+                    {
+                        "check": f"resolve_{key}_{pitcher}",
+                        "expected": expected,
+                        "actual": actual,
+                        "drift": str(actual) != str(expected),
+                    },
+                )
+        team_label = anchors.get("team_label")
+        if team_label:
+            for attr in ("season_wins", "season_losses"):
+                expected = anchors.get(attr)
+                if expected is None:
+                    continue
+                q1 = EntityQuery(
+                    lookup={"team": str(team_label)},
+                    requested_attributes=[attr],
+                )
+                r1 = run_query(q1)
+                if r1.outcome != "lookup_resolved" or not r1.delivery:
+                    report["checks"].append(
+                        {
+                            "check": f"resolve_{attr}_{team_label}",
+                            "expected": expected,
+                            "actual": None,
+                            "drift": True,
+                            "detail": f"step1 outcome={r1.outcome!r}",
+                        },
+                    )
+                    continue
+                reset_core_graph()
+                r2 = run_query(EntityQuery(delivery_id=r1.delivery.delivery_id))
+                actual = r2.results[0].get(attr) if r2.results else None
+                report["checks"].append(
+                    {
+                        "check": f"resolve_{attr}_{team_label}",
+                        "expected": expected,
+                        "actual": actual,
+                        "drift": str(actual) != str(expected),
+                    },
+                )
         for attr, expected in attrs.items():
             if expected is None:
                 continue

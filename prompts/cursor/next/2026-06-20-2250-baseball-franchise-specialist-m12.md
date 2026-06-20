@@ -17,6 +17,16 @@
 - Fixture with BRO + LAN sharing `franchID=LAD`.
 - Smoke deliver on franchise attr; provenance cites warehouse + `franchID` parameter.
 
+## Live gate (required)
+
+Add **`bb-franchise-01`** to `tests/live/catalogs/baseball.yaml` (new phase `franchise` in `networks.yaml`):
+
+- Dodgers franchise query — deliver includes both Brooklyn and Los Angeles team labels (or canonical franchise metadata per v1 shape).
+- Anchor `franchise_team_labels` (sorted list or count) from live Lahman root.
+- Drift check in `gate_runner.py`.
+
+`@pytest.mark.live_gate` only — never default CI.
+
 ## Non-goals
 
 - Auto-merge team registry rows.
