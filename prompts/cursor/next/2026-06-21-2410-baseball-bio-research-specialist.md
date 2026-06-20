@@ -1,6 +1,6 @@
 # Baseball bio specialist — warehouse + Tavily research hybrid
 
-> **READY** — Claim after baseball program sign-off (2026-06-21). Runs **before** multi-domain derive (`2400`) if Paul wants bio first; otherwise after `2400`. **Do not edit `TODO.md`.**
+> **DRAFT — do not claim** until Paul + Grok resolve open questions in [`docs/plans/conversations/2026-06-21-baseball-bio-research-specialist.md`](../../../docs/plans/conversations/2026-06-21-baseball-bio-research-specialist.md) § Open questions. Program sign-off done (2026-06-21). **Do not edit `TODO.md`.**
 
 ## Objective
 

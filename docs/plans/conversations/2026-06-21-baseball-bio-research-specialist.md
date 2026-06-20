@@ -1,7 +1,7 @@
 # Baseball bio specialist — warehouse + Tavily research (design conversation)
 
 **Date:** 2026-06-21  
-**Status:** Direction locked for slice; implementation via Cursor  
+**Status:** Direction sketched — **open questions for Paul** before Cursor claims slice
 **Builds on:** M1c bio warehouse reads, M14 `WarehousePlayerStatSpecialist`, CRM `run_field_research` + Tavily
 
 ---
@@ -69,6 +69,17 @@ Do not mix Tavily URLs into warehouse computation-centric fields.
 
 ---
 
-## Cursor slice
+## Open questions (Paul + Grok — resolve before implement)
+
+1. **Framework shape** — `WarehouseResearchPlayerSpecialist` (warehouse then research in one `run()`) vs separate `bio_research` category vs CRM-style generated research specialist only for bio misses?
+2. **Research trigger** — Any unaliased bio label (`research_on_miss: true`) vs explicit allowlist in manifest/ontology vs “research only when client sends `research: true`” flag?
+3. **Guinea-pig gate attrs** — `hall_of_fame_year` (verifiable, boring) vs `primary_nickname` (fuzzy normalization) vs both? Who picks anchors after Tavily discovery?
+4. **Ontology** — New attrs need `categories.json` / routing entries before step-1 can request them — ship ontology generator pass or hand-add?
+5. **Provenance on mixed deliver** — Step-2 with `birth_date` (warehouse) + `hall_of_fame_year` (Tavily) in one query: OK to mix computation-centric + URL sources in one `results[]` row?
+6. **Latency / cost** — Always sync Tavily on miss (CRM default) or async/pending for bio follow-ups?
+7. **Ordering vs derive slice** — Bio research before `2400` multi-domain derive, or derive expansion first?
+8. **Boundary** — Facts that *could* be Lahman manifest aliases later (e.g. `hall_of_fame_year` from `Hall of Fame` table) — research-only by policy, or ingest path preferred?
+
+## Cursor slice (draft — do not claim until above resolved)
 
 `prompts/cursor/next/2026-06-21-2410-baseball-bio-research-specialist.md`
