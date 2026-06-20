@@ -113,7 +113,8 @@ Retention agent (deferred) weighs compute cost, access frequency, and storage co
 | M1 (done) | `career_hr` | Committed pack Python |
 | M2 (done) | Named attrs | Manifest + generic resolver |
 | M3 (queued) | Named attr, manifest miss | LLM codegen + sandbox |
-| M4+ | `derive` / NL question | Intent hash cache; ontology routes domains not stat names |
+| M4b (done) | Free-form label + intent slug | Derive on miss; synonym dedup via `intent_map.json` |
+| M5 (unlikely) | NL `question` on wire protocol | **Not shipping** — host agent maps NL → `requested_attributes`; see [`unlikely/README.md`](../../plans/unlikely/README.md) |
 
 Constant: computation-centric provenance envelope across phases.
 

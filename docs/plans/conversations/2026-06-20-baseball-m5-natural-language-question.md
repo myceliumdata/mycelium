@@ -2,12 +2,42 @@
 
 **Date:** 2026-06-20  
 **Participants:** Paul + Grok  
-**Status:** Design lock for slice  
+**Status:** **Deferred — unlikely to implement** (June 2026)  
+**Index:** [`docs/plans/unlikely/README.md`](../unlikely/README.md) — not on `TODO.md`  
 **Builds on:** M4 (`derive_on_miss`), M4b (intent slug + `intent_map.json`), M3c derive pipeline
 
 ---
 
-## Problem (M4b ceiling)
+## Decision record (why we are not doing this)
+
+**Conclusion:** Do **not** add a `question` field to `EntityQuery`. The warehouse derive **M track ends at M4b** for product purposes.
+
+### Who would have been the client?
+
+| Caller | Reality |
+|--------|---------|
+| **Claude + MCP** (baseball demo) | Already translates NL → `requested_attributes` before `query_entity`. Server-side NL parsing duplicates the host LLM. |
+| **CLI / operators** | Send labels or read `describe_network` / hand-test docs. |
+| **Anonymous agents** | Not a near-term baseball consumer. |
+| **Thin non-LLM API clients** | Hypothetical (dumb form, fixed integration). None on the roadmap. |
+
+### Why M4b is enough
+
+- Free-form labels (`ops`, `career_avg`) + **intent slug dedup** (M4b) cover the server-side factory value: cache, derive, provenance, synonym collapse.
+- Natural language belongs in the **MCP host** (agent/client), not in the structured two-step wire protocol — consistent with [`docs/architecture.md`](../../architecture.md) (CLI/MCP expose lookups via `EntityQuery`, not caller prose).
+
+### Cost of M5 if we built it
+
+- Extra server LLM call per query (intent model), latency, protocol surface, tests, and docs — for a path the demonstrated client does not use.
+
+### What we keep from this doc
+
+- Design locks below remain valid **if** assumptions change (e.g. a committed non-LLM product surface that posts user prose directly to Mycelium).
+- Cursor prompt archived cancelled: `prompts/cursor/done/2026-06-20-1400-baseball-natural-language-question-m5/`.
+
+---
+
+## Problem (M4b ceiling) — original design
 
 Clients must speak **attribute labels** in `requested_attributes` — even free-form labels like `ops`. Agentic users ask **natural language** (“What was Hank Aaron’s career batting average?”). The factory should accept that without a new protocol later.
 

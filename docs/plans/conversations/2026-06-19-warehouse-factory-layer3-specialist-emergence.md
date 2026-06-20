@@ -107,7 +107,7 @@ Full detail: Grok session 2026-06-19 (this doc + Paul hand-test transcripts).
 | **M2** | Named attrs | Manifest conventions + generic resolver (still committed logic) |
 | **M3** | Named attrs, cache miss | LLM codegen + sandbox |
 | **M4** | `derive` / free-form label | LLM program; cache key from intent hash |
-| **M5** | Natural language `question` | Classify intent → codegen; ontology routes domains not stat names |
+| ~~**M5**~~ | Natural language `question` on `EntityQuery` | **Deferred unlikely** (June 2026) — NL in MCP host; M track ends at M4b. [`unlikely/README.md`](../unlikely/README.md) |
 
 Constant: `sources[]` + `computation` + `parameters` provenance envelope.
 

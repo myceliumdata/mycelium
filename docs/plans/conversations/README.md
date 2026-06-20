@@ -19,6 +19,6 @@ Full-context notes from **Paul + Grok** design discussions. These preserve reaso
 | 2026-06-19 | Deep provenance — input-fact lineage beyond computation envelope | [2026-06-19-deep-provenance-lineage-expansion.md](2026-06-19-deep-provenance-lineage-expansion.md) | `TODO.md` → deep provenance |
 | 2026-06-19 | Baseball M4 — free-form derive on manifest miss | [2026-06-19-baseball-m4-free-form-derive.md](2026-06-19-baseball-m4-free-form-derive.md) | Cursor `2026-06-19-2200-baseball-free-form-derive-m4` |
 | 2026-06-20 | Baseball M4b — intent normalization (label → slug) | [2026-06-20-baseball-m4b-intent-normalization.md](2026-06-20-baseball-m4b-intent-normalization.md) | `TODO.md` → M4b shipped; gate [`2026-06-19-baseball-m4b-intent-normalization-gate.md`](../manual-checks/2026-06-19-baseball-m4b-intent-normalization-gate.md) |
-| 2026-06-20 | Baseball M5 — natural language `question` → intent | [2026-06-20-baseball-m5-natural-language-question.md](2026-06-20-baseball-m5-natural-language-question.md) | `TODO.md` → M5; Cursor `2026-06-20-1400-baseball-natural-language-question-m5` |
+| 2026-06-20 | Baseball M5 — natural language `question` → intent (**deferred — unlikely**) | [2026-06-20-baseball-m5-natural-language-question.md](2026-06-20-baseball-m5-natural-language-question.md) | [`unlikely/README.md`](../unlikely/README.md) — not on `TODO.md` |
 
 When resuming work, read the relevant conversation doc first, then **`docs/plans/entity-protocol-and-registry-program.md`** (full slice map), then `TODO.md` for the current checklist.

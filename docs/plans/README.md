@@ -119,6 +119,14 @@ Implementation handoffs live in `prompts/cursor/done/<slug>/` with `prompt.md`, 
 |-----|-------|
 | [`admin-ui-backlog.md`](admin-ui-backlog.md) | Cleared June 2026; operator work in `TODO.md` |
 
+### Unlikely (explicit non-roadmap — not in `TODO.md`)
+
+Explored ideas we are **unlikely to ship**; decision record + pointer to conversation archive.
+
+| Doc | Notes |
+|-----|-------|
+| [`unlikely/README.md`](unlikely/README.md) | Index — e.g. baseball M5 `EntityQuery.question` deferred June 2026 |
+
 ---
 
 ## Active backlogs (may still guide work)

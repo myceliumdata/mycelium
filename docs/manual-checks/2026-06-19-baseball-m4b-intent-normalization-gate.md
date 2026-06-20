@@ -84,5 +84,5 @@ Both returned `outcome: assembled` with value `0.305`.
 
 ## Next
 
-- **M5** — NL `question` → intent slug → same derive path (framework lift).
 - **LLM strict config** — Six required env vars; startup hard fail when unset ([`TODO.md`](../../TODO.md)).
+- **M5 `EntityQuery.question`** — deferred unlikely ([`docs/plans/unlikely/README.md`](../../plans/unlikely/README.md)); NL stays in MCP host, not wire protocol.
