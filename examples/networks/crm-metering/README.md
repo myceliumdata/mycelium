@@ -12,7 +12,7 @@ Refresh copies `network.json`, `seed.json`, and `guide.md`, then runs `DefaultSe
 
 Default live root: `~/mycelium-networks/crm-metering` (registered as `crm-metering`).
 
-**Live regression:** `./bin/gate-live crm-metering` — see [`docs/manual-checks/2026-06-20-live-gate-program.md`](../../../docs/manual-checks/2026-06-20-live-gate-program.md).
+**Live regression:** `./bin/gate-live crm-metering` auto-refreshes the live root before scenarios (`--no-refresh` to skip) — see [`docs/manual-checks/2026-06-20-live-gate-program.md`](../../../docs/manual-checks/2026-06-20-live-gate-program.md).
 
 ## Paul Murphy arc (acceptance)
 

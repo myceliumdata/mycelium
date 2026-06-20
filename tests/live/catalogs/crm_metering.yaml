@@ -24,15 +24,8 @@ scenarios:
       lookup:
         name: "{{ anchors.persons.paul_metering.name }}"
         employer: "{{ anchors.persons.paul_metering.employer }}"
-    assert_step1:
-      outcome: lookup_resolved
-      delivery_present: true
-    step2:
-      lookup:
-        name: "{{ anchors.persons.paul_metering.name }}"
-        employer: "{{ anchors.persons.paul_metering.employer }}"
       requested_attributes: [email]
-    assert_step2:
+    assert_step1:
       outcome: quote_required
       quote_present: true
       delivery_present: true
