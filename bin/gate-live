@@ -37,12 +37,16 @@ _bootstrap()
 from dotenv import load_dotenv  # noqa: E402
 
 from gate_runner import (  # noqa: E402
+    _DERIVE_CACHE_REL_PATHS,
     discover_anchor_drift,
+    derive_cache_files_exist,
+    derive_phase_in_scope,
     expand_path,
     format_summary_table,
     fresh_derive_cache,
     load_networks_registry,
     run_catalog,
+    should_fresh_derive,
 )
 
 
@@ -56,6 +60,10 @@ def _print_list(registry: dict) -> None:
         print(f"  {name}")
         print(f"    default_root: {entry.default_root}")
         print(f"    phases: {', '.join(entry.phases)}")
+        refresh = "yes" if entry.refresh_before_gate else "no"
+        print(f"    refresh_before_gate: {refresh}")
+        fresh = "yes" if entry.fresh_derive_before_gate else "no"
+        print(f"    fresh_derive_before_gate: {fresh}")
         print(f"    catalog: {entry.catalog_path.relative_to(entry.catalog_path.parent.parent)}")
 
 
@@ -97,7 +105,15 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--fresh-derive",
         action="store_true",
-        help="Baseball only: clear batting storage + intent_map before derive phase",
+        help=(
+            "Baseball only: force clear batting storage + intent_map before derive phase "
+            "(default when fresh_derive_before_gate and derive phase runs)"
+        ),
+    )
+    parser.add_argument(
+        "--no-fresh-derive",
+        action="store_true",
+        help="Baseball only: skip clearing batting storage + intent_map before derive phase",
     )
     parser.add_argument(
         "--discover",
@@ -114,7 +130,27 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="PATH",
         help="Override MYCELIUM_NETWORK_ROOT",
     )
+    parser.add_argument(
+        "--no-refresh",
+        action="store_true",
+        help="Skip automatic refresh-example-network before gate (when enabled for network)",
+    )
     return parser
+
+
+def _refresh_network_for_gate(network: str, root: Path) -> int:
+    """Wipe and re-bootstrap the live root from the committed example."""
+    cmd = [
+        str(REPO_ROOT / "bin" / "refresh-example-network"),
+        network,
+        "--yes",
+        "--no-default",
+        "--root",
+        str(root),
+    ]
+    print(f"Refreshing {network} @ {root} before live gate...", file=sys.stderr)
+    proc = subprocess.run(cmd, cwd=REPO_ROOT)
+    return proc.returncode
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -143,13 +179,6 @@ def main(argv: list[str] | None = None) -> int:
 
     entry = registry[network]
     root = expand_path(args.root) if args.root else entry.default_root
-    if not root.is_dir():
-        print(f"Error: network root missing: {root}", file=sys.stderr)
-        print(
-            f"Bootstrap: ./bin/refresh-example-network {network} --yes",
-            file=sys.stderr,
-        )
-        return 2
 
     if args.discover:
         report = discover_anchor_drift(entry, network_root=root)
@@ -165,12 +194,54 @@ def main(argv: list[str] | None = None) -> int:
                 )
         return 1 if report.get("drift_detected") else 0
 
+    if entry.refresh_before_gate and not args.no_refresh:
+        refresh_code = _refresh_network_for_gate(network, root)
+        if refresh_code != 0:
+            print(
+                f"Error: refresh failed for {network} (exit {refresh_code})",
+                file=sys.stderr,
+            )
+            return refresh_code
+    elif not root.is_dir():
+        print(f"Error: network root missing: {root}", file=sys.stderr)
+        print(
+            f"Bootstrap: ./bin/refresh-example-network {network} --yes",
+            file=sys.stderr,
+        )
+        return 2
+
     phases = _parse_phases(args.phase)
-    if args.fresh_derive and network == "baseball":
-        if phases is None or "derive" in phases:
-            removed = fresh_derive_cache(root)
-            if removed and not args.json:
-                print(f"Cleared fresh-derive cache: {', '.join(removed)}", file=sys.stderr)
+    do_fresh_derive = should_fresh_derive(
+        network=network,
+        entry=entry,
+        phases=phases,
+        fresh_derive_flag=args.fresh_derive,
+        no_fresh_derive=args.no_fresh_derive,
+    )
+    if do_fresh_derive:
+        fresh_derive_cache(root)
+        if not args.json:
+            print(
+                f"Clearing baseball derive cache: {', '.join(_DERIVE_CACHE_REL_PATHS)}",
+                file=sys.stderr,
+            )
+            if not args.fresh_derive and entry.fresh_derive_before_gate:
+                print(
+                    "  (fresh_derive_before_gate; pass --no-fresh-derive to keep existing cache)",
+                    file=sys.stderr,
+                )
+    elif (
+        network == "baseball"
+        and args.no_fresh_derive
+        and derive_phase_in_scope(phases)
+        and derive_cache_files_exist(root)
+        and not args.json
+    ):
+        print(
+            "Warning: stale baseball derive cache may cause false failures "
+            "(pass without --no-fresh-derive to auto-clear)",
+            file=sys.stderr,
+        )
 
     os.environ["LIVE_GATE_NETWORK"] = network
     os.environ["MYCELIUM_NETWORK_ROOT"] = str(root)
@@ -178,7 +249,7 @@ def main(argv: list[str] | None = None) -> int:
         os.environ["LIVE_GATE_PHASE"] = ",".join(sorted(phases))
     else:
         os.environ.pop("LIVE_GATE_PHASE", None)
-    if args.fresh_derive:
+    if do_fresh_derive:
         os.environ["LIVE_GATE_FRESH_DERIVE"] = "1"
     else:
         os.environ.pop("LIVE_GATE_FRESH_DERIVE", None)
@@ -215,8 +286,11 @@ def main(argv: list[str] | None = None) -> int:
 
     proc = subprocess.run(cmd, cwd=REPO_ROOT)
     if proc.returncode != 0:
-        results, _meta = run_catalog(entry, phases=phases, network_root=root)
-        print(format_summary_table(results), file=sys.stderr)
+        try:
+            results, _meta = run_catalog(entry, phases=phases, network_root=root)
+            print(format_summary_table(results), file=sys.stderr)
+        except Exception as exc:
+            print(f"Live gate summary unavailable: {exc}", file=sys.stderr)
     return proc.returncode
 
 

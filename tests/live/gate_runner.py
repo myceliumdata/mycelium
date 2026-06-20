@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from pydantic import ValidationError
 
 from agents.classification import reset_category_tree
 from agents.entity_registry import get_entity_registry, reset_entity_registry
@@ -40,6 +41,8 @@ class NetworkEntry:
     anchors_path: Path | None
     default_root: Path
     phases: list[str]
+    refresh_before_gate: bool = False
+    fresh_derive_before_gate: bool = False
 
 
 @dataclass
@@ -86,6 +89,8 @@ def load_networks_registry(path: Path | None = None) -> dict[str, NetworkEntry]:
             anchors_path=anchors,
             default_root=expand_path(str(cfg["default_root"])),
             phases=list(cfg.get("phases") or []),
+            refresh_before_gate=bool(cfg.get("refresh_before_gate", False)),
+            fresh_derive_before_gate=bool(cfg.get("fresh_derive_before_gate", False)),
         )
     return entries
 
@@ -109,6 +114,8 @@ def _resolve_template(value: Any, *, anchors: dict[str, Any], context: dict[str,
                 node: Any = context
                 for part in expr.split(".")[1:]:
                     node = node[part]
+                if node is None:
+                    return ""
                 return str(node)
             raise KeyError(f"unknown template: {expr}")
 
@@ -180,6 +187,22 @@ def _build_query(payload: dict[str, Any]) -> EntityQuery:
     return EntityQuery.model_validate(payload)
 
 
+def _invalid_query_result(
+    spec: ScenarioSpec,
+    *,
+    detail: str,
+    request: dict[str, Any],
+) -> ScenarioResult:
+    return ScenarioResult(
+        id=spec.id,
+        phase=spec.phase,
+        passed=False,
+        skipped=False,
+        detail=detail,
+        request=request,
+    )
+
+
 def run_scenario(
     spec: ScenarioSpec,
     *,
@@ -211,7 +234,14 @@ def run_scenario(
         step1_payload = {}
     else:
         step1_payload = _resolve_template(spec.step1, anchors=anchors, context=context)
-        query1 = _build_query(step1_payload)
+        try:
+            query1 = _build_query(step1_payload)
+        except ValidationError as exc:
+            return _invalid_query_result(
+                spec,
+                detail=f"invalid step1 query: {exc}",
+                request=step1_payload,
+            )
         response1 = run_query(query1)
         public1 = _public_dict(response1)
 
@@ -286,7 +316,14 @@ def run_scenario(
         if "delivery_id" not in step2_payload and scenario_ctx.get("delivery_id"):
             step2_payload.setdefault("delivery_id", scenario_ctx["delivery_id"])
 
-    query2 = _build_query(step2_payload)
+    try:
+        query2 = _build_query(step2_payload)
+    except ValidationError as exc:
+        return _invalid_query_result(
+            spec,
+            detail=f"invalid step2 query: {exc}",
+            request=step2_payload,
+        )
     response2 = run_query(query2)
     public2 = _public_dict(response2)
 
@@ -462,12 +499,40 @@ def discover_anchor_drift(
 def fresh_derive_cache(root: Path) -> list[str]:
     """Remove baseball derive cache files before derive phase."""
     removed: list[str] = []
-    for rel in ("agents/batting/storage.json", "intent_map.json"):
+    for rel in _DERIVE_CACHE_REL_PATHS:
         path = root / rel
         if path.is_file():
             path.unlink()
             removed.append(rel)
     return removed
+
+
+_DERIVE_CACHE_REL_PATHS = ("agents/batting/storage.json", "intent_map.json")
+
+
+def derive_phase_in_scope(phases: set[str] | None) -> bool:
+    return phases is None or "derive" in phases
+
+
+def derive_cache_files_exist(root: Path) -> bool:
+    return any((root / rel).is_file() for rel in _DERIVE_CACHE_REL_PATHS)
+
+
+def should_fresh_derive(
+    *,
+    network: str,
+    entry: NetworkEntry,
+    phases: set[str] | None,
+    fresh_derive_flag: bool,
+    no_fresh_derive: bool,
+) -> bool:
+    if network != "baseball":
+        return False
+    if no_fresh_derive:
+        return False
+    if not derive_phase_in_scope(phases):
+        return False
+    return entry.fresh_derive_before_gate or fresh_derive_flag
 
 
 def format_summary_table(results: list[ScenarioResult]) -> str:

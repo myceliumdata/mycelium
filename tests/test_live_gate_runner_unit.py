@@ -22,6 +22,91 @@ def test_load_networks_registry_has_four_networks() -> None:
 
 
 @pytest.mark.smoke
+def test_baseball_fresh_derive_before_gate_flag() -> None:
+    registry = gr.load_networks_registry()
+    assert registry["baseball"].fresh_derive_before_gate is True
+    assert registry["crm"].fresh_derive_before_gate is False
+    assert registry["crm-metering"].fresh_derive_before_gate is False
+    assert registry["empty-crm"].fresh_derive_before_gate is False
+
+
+@pytest.mark.smoke
+def test_should_fresh_derive_all_phases_baseball_default() -> None:
+    entry = gr.load_networks_registry()["baseball"]
+    assert gr.should_fresh_derive(
+        network="baseball",
+        entry=entry,
+        phases=None,
+        fresh_derive_flag=False,
+        no_fresh_derive=False,
+    )
+
+
+@pytest.mark.smoke
+def test_should_fresh_derive_m2_only_false() -> None:
+    entry = gr.load_networks_registry()["baseball"]
+    assert not gr.should_fresh_derive(
+        network="baseball",
+        entry=entry,
+        phases={"m2"},
+        fresh_derive_flag=False,
+        no_fresh_derive=False,
+    )
+
+
+@pytest.mark.smoke
+def test_should_fresh_derive_no_fresh_derive_false() -> None:
+    entry = gr.load_networks_registry()["baseball"]
+    assert not gr.should_fresh_derive(
+        network="baseball",
+        entry=entry,
+        phases={"derive"},
+        fresh_derive_flag=False,
+        no_fresh_derive=True,
+    )
+
+
+@pytest.mark.smoke
+def test_should_fresh_derive_non_baseball_false() -> None:
+    entry = gr.load_networks_registry()["crm"]
+    assert not gr.should_fresh_derive(
+        network="crm",
+        entry=entry,
+        phases=None,
+        fresh_derive_flag=True,
+        no_fresh_derive=False,
+    )
+
+
+@pytest.mark.smoke
+def test_should_fresh_derive_explicit_flag_without_registry() -> None:
+    entry = gr.NetworkEntry(
+        name="baseball",
+        catalog_path=Path("catalogs/baseball.yaml"),
+        anchors_path=None,
+        default_root=Path("/tmp/baseball"),
+        phases=["derive"],
+        fresh_derive_before_gate=False,
+    )
+    assert gr.should_fresh_derive(
+        network="baseball",
+        entry=entry,
+        phases={"derive"},
+        fresh_derive_flag=True,
+        no_fresh_derive=False,
+    )
+
+
+@pytest.mark.smoke
+def test_networks_refresh_before_gate_flags() -> None:
+    registry = gr.load_networks_registry()
+    assert registry["empty-crm"].refresh_before_gate is True
+    assert registry["crm-metering"].refresh_before_gate is True
+    assert registry["crm"].refresh_before_gate is True
+    assert registry["baseball"].refresh_before_gate is False
+
+
+@pytest.mark.smoke
 def test_load_catalog_baseball_has_minimum_scenarios() -> None:
     entry = gr.load_networks_registry()["baseball"]
     scenarios = gr.load_catalog(entry.catalog_path)
@@ -92,3 +177,16 @@ def test_crm_seed_anchor_json() -> None:
     data = json.loads(path.read_text(encoding="utf-8"))
     assert data["seed_count"] == 15
     assert data["persons"]["batch_match_count"] == 3
+
+
+@pytest.mark.smoke
+def test_crm_metering_quote_scenario_attrs_on_step1() -> None:
+    entry = gr.load_networks_registry()["crm-metering"]
+    spec = next(
+        item
+        for item in gr.load_catalog(entry.catalog_path)
+        if item.id == "meter-01-quote"
+    )
+    assert spec.step1.get("requested_attributes") == ["email"]
+    assert spec.step2 is None
+    assert spec.assert_step1.get("outcome") == "quote_required"

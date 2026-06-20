@@ -5,6 +5,8 @@
 
 Unified CLI for deployed example networks. Uses real roots under `~/mycelium-networks/<network>` and framework `.env`. **Never run from `ci-local`.**
 
+**CLI note:** Step 2 must use the same `--network` (or `--network-dir`) as step 1; the CLI prints a stderr hint after step 1 and diagnoses cross-network `delivery_id` mismatches on step 2.
+
 ---
 
 ## Quick start
@@ -15,7 +17,8 @@ Unified CLI for deployed example networks. Uses real roots under `~/mycelium-net
 ./bin/gate-live crm --phase protocol
 ./bin/gate-live crm-metering --phase metering
 ./bin/gate-live baseball --phase m2
-./bin/gate-live baseball --phase derive --fresh-derive
+./bin/gate-live baseball --phase derive
+./bin/gate-live baseball --phase derive --no-fresh-derive
 ./bin/gate-live empty-crm --phase growth
 ./bin/gate-live baseball --discover
 ./bin/gate-live crm --json
@@ -43,7 +46,9 @@ Catalogs: [`tests/live/catalogs/`](../../tests/live/catalogs/)
 
 - Framework repo with `uv sync`
 - `.env` at repo root (`load_dotenv` on each run)
-- Deployed root: `./bin/refresh-example-network <network> --yes`
+- Deployed root under `~/mycelium-networks/<network>` (created on first run when auto-refresh applies)
+
+**Auto-refresh (default):** `crm`, `crm-metering`, and `empty-crm` run `./bin/refresh-example-network <network> --yes` before scenarios so gates always start from a clean example snapshot. Use `./bin/gate-live <network> --no-refresh` to inspect a grown root without wiping. **Baseball** does not auto-refresh (Lahman bootstrap is slow) — refresh manually when needed.
 
 ### Baseball
 
@@ -60,7 +65,7 @@ MYCELIUM_COMPUTATION_CODEGEN_MODEL=gpt-4o
 MYCELIUM_INTENT_NORMALIZATION_MODEL=gpt-4o-mini   # M4b synonym dedup
 ```
 
-Use `--fresh-derive` to clear `agents/batting/storage.json` and `intent_map.json` before the derive phase.
+**Derive cache (default on):** When the gate includes the **derive** phase (full run or `--phase derive`), `gate-live` automatically clears `agents/batting/storage.json` and `intent_map.json` before scenarios (`fresh_derive_before_gate` in registry). Use `--no-fresh-derive` to keep an existing cache for cache-hit checks. `--phase m2` alone does not clear derive cache.
 
 ### CRM
 
@@ -80,15 +85,7 @@ Metering phase needs `OPENAI_API_KEY` and `TAVILY_API_KEY` (email research on de
 
 ### Empty CRM
 
-**Must be empty before growth phase.** Growth scenarios create the first entity.
-
-```bash
-./bin/refresh-example-network empty-crm --yes
-./bin/gate-live empty-crm --phase preflight   # expect 0 entities
-./bin/gate-live empty-crm --phase growth      # creates Paul Murphy row
-```
-
-Re-run growth only after refreshing to a clean root.
+Growth scenarios create the first entity from an empty registry. Auto-refresh wipes the root before each `./bin/gate-live empty-crm` run (no manual refresh required unless you pass `--no-refresh`).
 
 ---
 
