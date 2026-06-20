@@ -37,6 +37,8 @@ from agents.target_deliver import (
     hydrate_matches_for_deliver,
     load_delivery_scope,
 )
+from network.delivery_hints import delivery_not_found_message
+from network.paths import resolve_network_root
 from agents.target_metering import (
     delivery_payload_from_scope,
     run_target_metering_gate,
@@ -152,7 +154,10 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
             return {
                 "response": response_not_found(
                     query,
-                    message=f"No valid delivery for delivery_id {delivery_id!r}.",
+                    message=delivery_not_found_message(
+                        delivery_id,
+                        active_root=resolve_network_root(),
+                    ),
                     **id_kwargs,
                 ),
                 "audit_log": ["target_resolve: deliver not_found (missing or expired scope)."],
@@ -164,7 +169,10 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
             return {
                 "response": response_not_found(
                     query,
-                    message=f"No valid delivery for delivery_id {delivery_id!r}.",
+                    message=delivery_not_found_message(
+                        delivery_id,
+                        active_root=resolve_network_root(),
+                    ),
                     **id_kwargs,
                 ),
                 "audit_log": ["target_resolve: deliver not_found (scope hydration failed)."],

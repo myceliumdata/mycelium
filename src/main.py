@@ -28,7 +28,8 @@ from network.introspection import (
     format_status_verbose,
     status_to_dict,
 )
-from network.paths import NetworkPaths, apply_network_paths, resolve_network_root
+from network.paths import NetworkPaths, apply_network_paths, network_metadata, resolve_network_root
+from network.delivery_hints import format_step2_cli_hint
 from network.registry import (
     list_networks,
     network_root_status,
@@ -549,6 +550,22 @@ def main(argv: list[str] | None = None) -> int:
 
         response = run_query(query, thread_id=thread_id)
         _print_response(response)
+        if response.outcome in {"lookup_resolved", "quote_required"} and response.delivery:
+            root = resolve_network_root(
+                cli_network_dir=getattr(args, "network_dir", None),
+                cli_network_name=getattr(args, "network", None),
+            )
+            meta = network_metadata(root=root)
+            quote_id = None
+            if isinstance(response.quote, dict):
+                quote_id = response.quote.get("quote_id")
+            hint = format_step2_cli_hint(
+                delivery_id=response.delivery.delivery_id,
+                network_name=meta.get("network_name"),
+                network_root=root,
+                quote_id=str(quote_id) if quote_id else None,
+            )
+            print(hint, file=sys.stderr)
         if response.outcome in {"lookup_resolved", "quote_required", "payment_required"}:
             return 0
         return 0 if response.results else 1

@@ -23,8 +23,8 @@ cp .env.example .env
 # Step 1 — resolve (copy delivery_id from response)
 uv run mycelium query --lookup-json '{"name": "Nichanan Kesonpat", "employer": "1k(x)"}'
 
-# Step 2 — deliver
-uv run mycelium query --delivery-id d_abc123
+# Step 2 — deliver (same network as step 1)
+uv run mycelium query --network crm --delivery-id d_abc123
 ```
 
 **When to use which:**
@@ -58,8 +58,8 @@ uv run mycelium network create wheat_farm \
 # Step 1 — resolve by lookup (returns delivery_id, empty results[])
 uv run mycelium query --lookup-json '{"name": "Nichanan Kesonpat", "employer": "1k(x)"}'
 
-# Step 2 — deliver full identity rows
-uv run mycelium query --delivery-id d_abc123
+# Step 2 — deliver full identity rows (same network as step 1)
+uv run mycelium query --network crm --delivery-id d_abc123
 
 # Step 1 with attrs (bound into delivery scope for step 2)
 uv run mycelium query --lookup-json '{"name": "Andrea Kalmans", "employer": "Lontra Ventures"}' --attributes email
