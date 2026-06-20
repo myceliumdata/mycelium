@@ -7,14 +7,36 @@ import sqlite3
 import zipfile
 from pathlib import Path
 
+# All 27 Lahman 2025 CSV tables (readme2025.txt in lahman_1871-2025_csv/).
+LAHMAN_CSV_TABLE_COUNT = 27
 BOOTSTRAP_TABLES = (
     "People",
     "Teams",
+    "TeamsFranchises",
+    "Parks",
+    "Schools",
     "Appearances",
     "Batting",
     "Pitching",
     "Fielding",
-    "TeamsFranchises",
+    "FieldingOF",
+    "FieldingOFsplit",
+    "Managers",
+    "ManagersHalf",
+    "HomeGames",
+    "TeamsHalf",
+    "BattingPost",
+    "PitchingPost",
+    "FieldingPost",
+    "SeriesPost",
+    "AllstarFull",
+    "HallOfFame",
+    "AwardsPlayers",
+    "AwardsManagers",
+    "AwardsSharePlayers",
+    "AwardsShareManagers",
+    "CollegePlaying",
+    "Salaries",
 )
 
 LAHMAN_PLAYER_ID = "lahman.playerID"

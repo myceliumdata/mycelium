@@ -29,3 +29,4 @@ class BootstrapResult:
     handler_id: str = "default_seed"
     errors: list[str] = field(default_factory=list)
     entities_by_record_type: dict[str, int] = field(default_factory=dict)
+    warehouse_ingest_counts: dict[str, int] = field(default_factory=dict)

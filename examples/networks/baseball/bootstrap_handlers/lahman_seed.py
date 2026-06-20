@@ -117,4 +117,5 @@ class LahmanSeedHandler:
                 "team": teams_committed,
                 "player": players_committed,
             },
+            warehouse_ingest_counts=ingest_counts,
         )

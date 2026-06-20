@@ -81,7 +81,15 @@ Skip if M9–M13 already addressed; do not expand scope into framework provenanc
 | M9 N4 | Restore `deliveries.json` exists assert on `test_issue_delivery_roundtrip` |
 | M9 N5 | Optional: team scope with unknown `yearID` → `N/A` smoke |
 
-### 7 — Docs
+### 7 — M13 bootstrap polish (from review)
+
+| Item | Action |
+|------|--------|
+| M13 N1 | `test_lahman_seed_handler`: assert against `LAHMAN_CSV_TABLE_COUNT` import |
+| M13 N2 | `docs/seed-bootstrap.md`: document `warehouse_ingest_counts` on `BootstrapResult` |
+| M13 N3 | Optional: surface ingest counts in bootstrap progress/CLI output |
+
+### 8 — Docs
 
 - `docs/manual-checks/2026-06-19-baseball-specialist-hand-test.md` — ensure polish gate scenarios cited; remove any stale ⏳ rows superseded by M9–M13.
 - `docs/manual-checks/2026-06-20-live-gate-program.md` — final scenario count + phase list after all catalog changes.
