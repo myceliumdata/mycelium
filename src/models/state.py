@@ -32,14 +32,13 @@ class LookupSuggestion(BaseModel):
         default=None,
         description="Stable registry UUID when suggestion targets a specific row.",
     )
-    score: float = Field(description="Similarity score 0.0–1.0 (sequence_ratio).")
+    score: float = Field(description="Similarity score 0.0–1.0 (composite fuzzy bind-field match).")
     reason: str = Field(
-        default="sequence_ratio",
+        default="fuzzy_bind_field_match",
         description=(
-            "Why this candidate was suggested: sequence_ratio (fuzzy primary bind "
-            "field), bind_field_fuzzy_match (fuzzy non-primary bind field), "
-            "same_bind_field_conflict (exact match on other bind fields, conflict "
-            "on one field)."
+            "Why this candidate was suggested: fuzzy_bind_field_match (composite typo/"
+            "shorthand scorer), same_bind_field_conflict (exact match on other bind "
+            "fields, conflict on one field)."
         ),
     )
     record_type: str | None = Field(

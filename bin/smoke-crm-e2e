@@ -279,7 +279,7 @@ def run_crm_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
             or r3.total_matches != 0
             or suggestion is None
             or suggestion.suggested_lookup != {"employer": "645 Ventures"}
-            or suggestion.reason != "bind_field_fuzzy_match"
+            or suggestion.reason not in {"fuzzy_bind_field_match", "bind_field_fuzzy_match"}
         ):
             results.append(
                 _fail(

@@ -34,7 +34,7 @@ From `docs/architecture.md` and `prompts/system/CORE_PROMPT.md`:
 
 - **`IdentityRecord`**: `id` + **`bind_values`** (`dict[str, str]` aligned with registry rows).
 - **`EntityQuery`** (target protocol): step 1 — `id` or `lookup`, optional `requested_attributes`, `provenance`; step 2 — `delivery_id`, optional `quote_id`. `EntityQuery` rejects `entity_key` / `binding` (`extra="forbid"`).
-- **`LookupSuggestion`**: `suggested_lookup` (partial/full MVR bind map), `score`, `reason` (`sequence_ratio`, `bind_field_fuzzy_match`, `same_bind_field_conflict`), optional `id`. No parallel `name` / `employer` convenience fields. Built via `lookup_suggestion()` helper.
+- **`LookupSuggestion`**: `suggested_lookup` (partial/full MVR bind map), `score`, `reason` (`fuzzy_bind_field_match`, `same_bind_field_conflict`), optional `id`. Composite fuzzy scorer in `entity_resolution.fuzzy_bind_field_similarity()`. No parallel `name` / `employer` convenience fields. Built via `lookup_suggestion()` helper.
 - **`QueryResponse`**: `outcome`, `total_matches`, `delivery`, `quote`, `suggestions`, `required_fields`, `results`, `message`, `provenance`, `debug`, `trace_id`, `thread_id`. Step-1 outcomes include `lookup_incomplete`, `lookup_suggested`, and `lookup_resolved`. Public JSON via `public_dict()` / `public_json()` (omits inapplicable keys).
 - **`MyceliumGraphState`**: `query` required at input; internal fields (`route`, `identity_record`, `response`, `audit_log`, classifications, etc.).
 

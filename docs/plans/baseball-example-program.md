@@ -109,9 +109,9 @@ Not a full application — iterative starter: design, schemas, skeleton ingest/q
 
 ## Alias resolution (draft — Paul, June 2026)
 
-**Problem:** Shorthand and nicknames fail today’s fuzzy bind-field ranker (`SequenceMatcher` — good for typos, not `645` → `645 Ventures` or `Yanks` → Yankees). See [`fuzzy-lookup-policy.md`](fuzzy-lookup-policy.md).
+**Fuzzy (framework, shipped slice 2100):** typos, first-token prefix (`645` → `645 Ventures`), last-token anchor (`Tie Cobb` → `Ty Cobb`). See [`fuzzy-lookup-policy.md`](fuzzy-lookup-policy.md) § For operators.
 
-**Direction:** **LLM-in-the-loop alias expansion** instead of growing explicit alias/prefix tables in the framework.
+**LLM alias expansion (baseball `guide.md`):** nicknames with **no token overlap** (`Dodgers`, `Yanks`) — not fuzzy; lazy on `bootstrap_only` 0-hit after fuzzy.
 
 - On 0-hit (or low-confidence) lookup, prompt a **local LLM** with network context, e.g.  
   *“In the context of baseball teams, what could `Yanks` refer to?”*  

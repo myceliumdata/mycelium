@@ -10,7 +10,7 @@ See also [architecture.md](architecture.md) § Target protocol and [seed-bootstr
 |-------------|-------------|---------|
 | `player` + `debut_team` + `debut_year` | `player` | Full MVR — one Lahman catalog row |
 | `player` + `debut_team` | `player` | Partial (year missing) |
-| `player` only | `player` (partial) | Field index; unique → `lookup_resolved`; homonyms → multi-match; 0-hit on `bootstrap_only` → `not_found` |
+| `player` only | `player` (partial) | Field index; unique → `lookup_resolved`; homonyms → multi-match; 0-hit → fuzzy → LLM alias → `lookup_suggested` / `lookup_resolved` / `not_found` |
 | `team` only | `team` | Fan-facing franchise label |
 | `{player, team}` (legacy) | — | `not_found` (`team` is not a player bind field) |
 | Other / unknown keys | — | `not_found` |
@@ -34,10 +34,10 @@ Manifest (`examples/networks/baseball/network.json`):
 
 ## `new_records` policy
 
-| Value | Partial 0-hit (no fuzzy) | Full MVR 0-hit |
-|-------|--------------------------|----------------|
-| `query_allowed` (CRM) | `lookup_incomplete` + `required_fields` | `create_pending` |
-| `bootstrap_only` (baseball) | `not_found` (after alias expansion path) | `not_found` / `lookup_suggested` — never `create_pending` |
+| Value | Partial 0-hit | Full MVR 0-hit |
+|-------|---------------|----------------|
+| `query_allowed` (CRM) | fuzzy → `lookup_suggested`, else `lookup_incomplete` + `required_fields` | fuzzy → `lookup_suggested`, else `create_pending` |
+| `bootstrap_only` (baseball) | fuzzy → `lookup_suggested`, else LLM alias → `lookup_resolved` / `not_found` | same; never `create_pending` |
 
 ## Delivery scope
 

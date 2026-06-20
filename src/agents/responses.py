@@ -621,7 +621,7 @@ def _lookup_suggested_message(
             "Retry with suggestions[].suggested_lookup or suggestions[].id. Set "
             "confirm_new_entity=true only if you intend a new bind."
         )
-    if "bind_field_fuzzy_match" in reasons:
+    if "fuzzy_bind_field_match" in reasons or "bind_field_fuzzy_match" in reasons:
         return (
             "Near-miss registry bind field found. Retry with a corrected lookup map "
             "(suggestions[].suggested_lookup)."

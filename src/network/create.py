@@ -24,7 +24,6 @@ from network.registry import register_network
 from network.seed_import import bootstrap_seed_at_paths, count_seed_rows
 
 _NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
-_DEFAULT_ONTOLOGY_MODEL = "gpt-4o-mini"
 
 
 class CreateNetworkResult(BaseModel):
