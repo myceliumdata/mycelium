@@ -89,11 +89,21 @@ Skip if M9–M13 already addressed; do not expand scope into framework provenanc
 | M13 N2 | `docs/seed-bootstrap.md`: document `warehouse_ingest_counts` on `BootstrapResult` |
 | M13 N3 | Optional: surface ingest counts in bootstrap progress/CLI output |
 
-### 8 — Docs
+### 8 — M14 warehouse hierarchy polish (from review)
 
-- `docs/manual-checks/2026-06-19-baseball-specialist-hand-test.md` — ensure polish gate scenarios cited; remove any stale ⏳ rows superseded by M9–M13.
+| Item | Action |
+|------|--------|
+| M14 N1 | `docs/architecture/whys/specialist-class-hierarchy.md` — refresh “Current state” diagram to post-M14 hierarchy |
+| M14 N2 | Consolidate or document single source for `derive_on_miss_enabled` (framework vs `derive_resolve.py`) |
+| M14 N3 | `run_warehouse_*` legacy wrappers: remove dead `on_miss` params or warn on use |
+| M14 N4 | Remove unused `pending` list in `_evaluate_*_warehouse_fields` or wire pending-field path |
+| M14 N5 | Optional: framework mocked test for `resolve_derive_on_miss` |
+
+### 9 — Docs
+
+- `docs/manual-checks/2026-06-19-baseball-specialist-hand-test.md` — ensure polish gate scenarios cited; remove any stale ⏳ rows superseded by M9–M14.
 - `docs/manual-checks/2026-06-20-live-gate-program.md` — final scenario count + phase list after all catalog changes.
-- `docs/plans/baseball-example-program.md` — update slice map (M9 shipped, gate count 23).
+- `docs/plans/baseball-example-program.md` — update slice map (M9–M14 shipped, gate count 26).
 
 ## Live gate (required)
 

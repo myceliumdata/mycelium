@@ -17,23 +17,16 @@ _bootstrap_mod = importlib.util.module_from_spec(_bootstrap_spec)
 _bootstrap_spec.loader.exec_module(_bootstrap_mod)
 _bootstrap_mod.bootstrap(__file__)
 
-from agents.specialists.agent import SpecialistAgent
+from agents.specialists.warehouse_stat import WarehouseTeamStatSpecialist
 from models.state import MyceliumGraphState
 
-from pack_common import run_warehouse_team_graph
+from baseball_warehouse_hooks import BaseballWarehouseTeamHooks
 
 
-class TeamSeasonSpecialist(SpecialistAgent):
+class TeamSeasonSpecialist(BaseballWarehouseTeamHooks, WarehouseTeamStatSpecialist):
     category = "team_season"
+    domain = "team_season"
     agent_name = "team_season_specialist"
-
-    def run(self, state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
-        return run_warehouse_team_graph(
-            state,
-            agent=AGENT,
-            category="team_season",
-            domain="team_season",
-        )
 
 
 AGENT = TeamSeasonSpecialist()
