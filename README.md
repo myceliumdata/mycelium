@@ -20,10 +20,11 @@ cp .env.example .env
 # Bootstrap or reset the CRM example (default: ~/mycelium-networks/crm)
 ./bin/refresh-example-network crm
 
-# Step 1 — resolve (copy delivery_id from response)
-uv run mycelium query --lookup-json '{"name": "Nichanan Kesonpat", "employer": "1k(x)"}'
+# Step 1 — resolve (copy delivery_id from stdout JSON; stderr prints step-2 hint)
+uv run mycelium query --network crm \
+  --lookup-json '{"name": "Nichanan Kesonpat", "employer": "1k(x)"}'
 
-# Step 2 — deliver (same network as step 1)
+# Step 2 — deliver (same --network as step 1)
 uv run mycelium query --network crm --delivery-id d_abc123
 ```
 
@@ -33,6 +34,7 @@ uv run mycelium query --network crm --delivery-id d_abc123
 |------|---------|
 | **CRM example** (committed reference; wipe stale research before demos) | `./bin/refresh-example-network crm` |
 | **CRM E2E smoke** (two-step queries + `results[]` shape; optional pytest) | `./bin/smoke-crm-e2e` |
+| **Live gate regression** (deployed roots + `.env`; never CI) | `./bin/gate-live <network>` — see [`docs/manual-checks/2026-06-20-live-gate-program.md`](docs/manual-checks/2026-06-20-live-gate-program.md) |
 | **Empty-seed CRM** (no bootstrap people; growth from query binds) | `./bin/refresh-example-network empty-crm` |
 | **Custom domain** (your categories + specialists) | `uv run mycelium network create <name> --root <path> --prompt "..."` (optional `--seed <file>`) |
 | **Live demo UI** (network state while you query) | `./bin/restart-admin` → open `http://127.0.0.1:5173` |

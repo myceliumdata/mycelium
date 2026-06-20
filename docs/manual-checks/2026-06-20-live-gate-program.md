@@ -1,6 +1,6 @@
 # Live gate program — opt-in regression (June 2026)
 
-**Status:** Ready for operators  
+**Status:** ✅ **Passed** — Paul afternoon sweep **2026-06-20** (all four networks, 32 scenarios).  
 **Design:** [`docs/plans/conversations/2026-06-20-live-gate-program.md`](../plans/conversations/2026-06-20-live-gate-program.md)
 
 Unified CLI for deployed example networks. Uses real roots under `~/mycelium-networks/<network>` and framework `.env`. **Never run from `ci-local`.**
@@ -14,11 +14,17 @@ Unified CLI for deployed example networks. Uses real roots under `~/mycelium-net
 ```bash
 ./bin/gate-live --list
 
+# Full afternoon sweep (after baseball Lahman reload + .env keys)
+./bin/gate-live baseball
+./bin/gate-live crm
+./bin/gate-live crm-metering
+./bin/gate-live empty-crm
+
+# Partial runs
 ./bin/gate-live crm --phase protocol
 ./bin/gate-live crm-metering --phase metering
 ./bin/gate-live baseball --phase m2
-./bin/gate-live baseball --phase derive
-./bin/gate-live baseball --phase derive --no-fresh-derive
+./bin/gate-live baseball --phase derive --no-fresh-derive   # keep derive cache
 ./bin/gate-live empty-crm --phase growth
 ./bin/gate-live baseball --discover
 ./bin/gate-live crm --json
@@ -28,15 +34,18 @@ Unified CLI for deployed example networks. Uses real roots under `~/mycelium-net
 
 ## Networks
 
-| Network | Default root | Phases |
-|---------|--------------|--------|
-| `baseball` | `~/mycelium-networks/baseball` | preflight, identity, m2, derive, infra |
-| `crm` | `~/mycelium-networks/crm` | preflight, protocol, research, negative |
-| `crm-metering` | `~/mycelium-networks/crm-metering` | preflight, metering |
-| `empty-crm` | `~/mycelium-networks/empty-crm` | preflight, growth |
+| Network | Default root | Phases | `refresh_before_gate` | `fresh_derive_before_gate` |
+|---------|--------------|--------|-------------------------|----------------------------|
+| `baseball` | `~/mycelium-networks/baseball` | preflight, identity, m2, derive, infra | no | **yes** (derive phase only) |
+| `crm` | `~/mycelium-networks/crm` | preflight, protocol, research, negative | **yes** | no |
+| `crm-metering` | `~/mycelium-networks/crm-metering` | preflight, metering | **yes** | no |
+| `empty-crm` | `~/mycelium-networks/empty-crm` | preflight, growth | **yes** | no |
 
-Registry: [`tests/live/networks.yaml`](../../tests/live/networks.yaml)  
+Registry: [`tests/live/networks.yaml`](../../tests/live/networks.yaml)
+
 Catalogs: [`tests/live/catalogs/`](../../tests/live/catalogs/)
+
+**crm-metering:** `meter-01-quote` asserts `quote_required` on **step 1** (`requested_attributes: [email]`); `meter-02-deliver` accepts quote via captured `delivery_id` + `quote_id`.
 
 ---
 
@@ -110,6 +119,8 @@ Scenarios with missing keys are **skipped** (not failed).
 | crm | 7 |
 | crm-metering | 4 |
 | empty-crm | 5 |
+
+**Afternoon sweep 2026-06-20:** 32/32 pass (Paul). Notable fixes in tree before sweep: warm-cache intent inference removed (`bb-derive-02` `ops`), CLI step-2 network hints, `fresh_derive_before_gate` default, CRM auto-refresh, crm-metering catalog shape.
 
 ---
 

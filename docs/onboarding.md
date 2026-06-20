@@ -47,13 +47,14 @@ You are here (step 1). Then:
 uv sync --all-extras
 cp .env.example .env   # OPENAI_API_KEY + TAVILY_API_KEY for research demos
 ./bin/refresh-example-network crm
-# Step 1 — copy delivery_id from JSON
+# Step 1 — copy delivery_id from JSON (stderr prints step-2 hint with --network)
 uv run mycelium query --network crm \
   --lookup-json '{"name": "Nichanan Kesonpat", "employer": "1k(x)"}'
-# Step 2 — paste delivery_id
+# Step 2 — same --network as step 1
 uv run mycelium query --network crm --delivery-id d_…
 ./bin/ci-local         # same gate as GitHub CI before you open a PR
 ./bin/smoke-crm-e2e    # CRM end-to-end: refresh + two-step query scenarios (~3s)
+./bin/gate-live crm    # opt-in live regression on ~/mycelium-networks/crm (never CI)
 ```
 
 Optional: `./bin/restart-admin` → `http://127.0.0.1:5173` for the admin UI (`POST /query` **Run query** panel mirrors the same two-step flow).
@@ -94,4 +95,4 @@ JSON includes `resolve: { id, lookup }` mirroring the inspect input, plus `entit
 
 ---
 
-*Last updated: June 2026 (framework MVR generic vocabulary; `./bin/smoke-crm-e2e`).*
+*Last updated: June 2026 (live gate program, CLI step-2 network hints, `./bin/smoke-crm-e2e`).*

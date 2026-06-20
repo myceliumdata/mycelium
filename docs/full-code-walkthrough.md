@@ -120,9 +120,11 @@ CLI/MCP/admin → resolve network_root → EntityQuery → run_query → graph.a
   → QueryResponse.public_dict() (+ thread_id, trace_id)
 ```
 
-Two-step example: `mycelium query --lookup-json '{…}'` then `mycelium query --delivery-id d_…`. Admin UI mirrors the same explicit two-step flow.
+Two-step example: `mycelium query --network crm --lookup-json '{…}'` then `mycelium query --network crm --delivery-id d_…`. CLI prints a **stderr** copy-paste hint after step 1; step-2 deliver misses use `network/delivery_hints.py` for cross-network / expired diagnostics. Admin UI mirrors the same explicit two-step flow.
 
 **CRM E2E smoke gate:** `./bin/smoke-crm-e2e` refreshes the committed CRM example into a temp root and asserts two-step query scenarios + `results[]` shape (`--with-pytest` adds related smoke tests).
+
+**Live gate (opt-in):** `./bin/gate-live <network>` — deployed roots under `~/mycelium-networks/`, YAML catalogs in `tests/live/`. See [`docs/manual-checks/2026-06-20-live-gate-program.md`](manual-checks/2026-06-20-live-gate-program.md).
 
 ---
 

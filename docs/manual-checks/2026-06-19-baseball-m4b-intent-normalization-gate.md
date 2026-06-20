@@ -23,7 +23,7 @@ MYCELIUM_INTENT_NORMALIZATION_MODEL=gpt-4o-mini
 MYCELIUM_COMPUTATION_CODEGEN_MODEL=gpt-4o
 ```
 
-**Clear stale pre-M4b cache** when upgrading an existing root (legacy per-label rows still readable via intent-map alias scan after M-track polish):
+**Clear stale pre-M4b cache** when upgrading an existing root (legacy per-label rows still readable via intent-map alias scan):
 
 ```bash
 rm -f ~/mycelium-networks/baseball/agents/batting/storage.json
@@ -32,7 +32,7 @@ rm -f ~/mycelium-networks/baseball/intent_map.json
 # restart MCP if query_entity was already running
 ```
 
-Recommended on first M4b validation; routine synonym delivers no longer require clearing between `career_avg` and `batting_average` when storage is already under the shared intent slug.
+**Live gate:** `./bin/gate-live baseball` auto-clears derive cache before scenarios (`fresh_derive_before_gate`). **Note (2026-06-20):** warm-cache intent skip on map miss was removed — second synonym may call intent LLM again; codegen still dedupes under shared slug. See slice `2026-06-20-1950-disable-warm-cache-intent-inference`.
 
 ---
 
