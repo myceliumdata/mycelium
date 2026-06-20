@@ -1,6 +1,6 @@
 # Live gate program — opt-in regression (June 2026)
 
-**Status:** ✅ **Passed** — Paul afternoon sweep **2026-06-20** (all four networks, 32 scenarios).  
+**Status:** ✅ **Passed** — Baseball program sign-off **2026-06-21** (`27/27`); afternoon sweep **2026-06-20** (all four networks, 32 scenarios).
 **Design:** [`docs/plans/conversations/2026-06-20-live-gate-program.md`](../plans/conversations/2026-06-20-live-gate-program.md)
 
 Unified CLI for deployed example networks. Uses real roots under `~/mycelium-networks/<network>` and framework `.env`. **Never run from `ci-local`.**
@@ -121,6 +121,8 @@ Scenarios with missing keys are **skipped** (not failed).
 | empty-crm | 5 |
 
 **Afternoon sweep 2026-06-20:** 32/32 pass (Paul). Notable fixes in tree before sweep: warm-cache intent inference removed (`bb-derive-02` `ops`), CLI step-2 network hints, `fresh_derive_before_gate` default, CRM auto-refresh, crm-metering catalog shape.
+
+**Baseball program sign-off 2026-06-21:** **27/27** on optimized Lahman root (`~/mycelium-networks/baseball`). Anchor fix `da5b006` (Fielding sums for `bb-field-01`). Post-program gate: [`2026-06-21-baseball-program-post-program-gate.md`](2026-06-21-baseball-program-post-program-gate.md).
 
 ---
 

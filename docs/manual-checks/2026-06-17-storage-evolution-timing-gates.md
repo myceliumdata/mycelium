@@ -17,8 +17,10 @@
 | **Test 7** | Post alias skip rebuild (`f45b65c`+) | **555** (~9 min) | **Recorded** | **2.2×** vs test 6; **~23×** vs baseline; further bootstrap perf **deferred** (Paul, June 2026) |
 | **Test 8c** | Post source-key skip (`ff52422`+) | **1,150** (~19 min) | **Recorded** | Pre-1800: 57,627 appearance binds; **23,777** entities |
 | **Test 9** | Post debut bind (`8ccd389`+, slice 1800) | **1,539** (~**26 min**) | **Recorded** (Paul, 2026-06-18) | **23,596** player binds; **23,837** entities; `~/mycelium-networks/baseball` |
+| **Test 10a** | Pre-2280 full ingest (`2260`+) | **1,751** (~**29 min**) | **Recorded** (Paul, 2026-06-21) | Same bind count; 27-table warehouse + pre-deferred-index rebuild |
+| **Test 10** | Post-2280 (`beac23c`+) | **214** (~**3.5 min**) | **Recorded** (Paul, 2026-06-21) | **8.2×** vs 10a; **7.2×** vs test 9; demo-viable cold bootstrap |
 
-**Takeaway:** Lahman bootstrap is **not** “50k INSERTs.” Warehouse ingest is **~2 s** on a fast local root (CSV load + debut SQL can sit longer under “Retrieving data…”). Post slice 1800 the progress counter matches **~24k debut binds** (one per `playerID`), not ~58k appearance rows. Incremental specialist writes (test 6) and alias-only index skip (test 7) removed the worst costs; **~24k new-player `save_entity` field-index rebuilds remain O(n²)** — test 9 confirms that path still dominates (~26 min). Next perf slice: incremental field-index update during deferred bootstrap (backlog from test 7).
+**Takeaway:** Lahman bootstrap is **not** “50k INSERTs.” Warehouse ingest is **~2 s** on a fast local root (CSV load + debut SQL can sit longer under “Retrieving data…”). Post slice 1800 the progress counter matches **~24k debut binds** (one per `playerID`), not ~58k appearance rows. **Test 10 (2280):** deferred index rebuild + `player_debut` table cut cold refresh from ~26–29 min to **~3.5 min** on Paul’s MacBook Pro — baseball program demo gate **passed**. Further incremental field-index engineering is backlog unless new networks multiply bind scale.
 
 See [Lessons learned](#lessons-learned-posterity-june-2026) and [`docs/plans/storage-evolution-program.md`](../plans/storage-evolution-program.md) § Post-mortem.
 
@@ -172,6 +174,21 @@ Record **real**, **user**, **sys** from `time -p` output. Stderr progress (post 
 **vs test 8c:** **1.34× slower** (1,539 s vs 1,150 s) despite **2.4× fewer** loop iterations — confirms alias rows were not the bottleneck after test 7; **~24k field-index rebuilds** still dominate. **vs test 7:** **2.77× slower** (source_keys + 3-field bind vs 2-field pre-1900 era).
 
 **Gate:** Identity + routing testable at ~26 min; demo-scale refresh still needs incremental field-index slice.
+
+---
+
+## Timing test 10 — post-2280 deferred index rebuild (baseball program sign-off)
+
+**When:** Post `beac23c` (`2026-06-20-2280-baseball-bootstrap-perf-index-and-debut`).
+
+**What changed:** Deferred field-index rebuild during bootstrap; `player_debut` SQL table; full 27-table warehouse ingest (M13). Same **23,596** player binds; **23,837** entities committed.
+
+| Run | Date | real (s) | user (s) | sys (s) | Notes |
+|-----|------|----------|----------|---------|-------|
+| **Test 10a** (pre-2280) | 2026-06-21 | **1,751.03** (~**29 min 11 s**) | 1,611.50 | 66.81 | `./bin/refresh-example-network baseball --yes --no-default`; wiped `~/mycelium-networks/baseball` |
+| **Test 10** (post-2280) | 2026-06-21 | **214.03** (~**3 min 34 s**) | 134.04 | 49.54 | Same command/root after pull; **8.2×** vs 10a; **7.2×** vs test 9 |
+
+**Gate:** Cold Lahman bootstrap **demo-viable** (&lt;5 min on Paul's MacBook Pro). Baseball program sign-off gate **passed**.
 
 ---
 

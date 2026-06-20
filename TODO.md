@@ -10,21 +10,20 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 ## Next up (Paul)
 
-- [ ] **Review architecture doc + whys** — [`docs/architecture.md`](docs/architecture.md) and [`docs/architecture/whys/`](docs/architecture/whys/README.md) (nine rationale topics; future candidates listed in whys README).
+- [ ] **Baseball bio specialist — warehouse + Tavily research** — Cursor: `prompts/cursor/next/2026-06-21-2410-baseball-bio-research-specialist.md`. Hybrid `WarehouseResearchPlayerSpecialist`; `research_on_miss` on bio (not derive). Design: [`docs/plans/conversations/2026-06-21-baseball-bio-research-specialist.md`](docs/plans/conversations/2026-06-21-baseball-bio-research-specialist.md).
+- [ ] **Baseball multi-domain derive** — Cursor: `prompts/cursor/next/2026-06-21-2400-baseball-multi-domain-derive-live-gate.md` (pitching/fielding `derive_on_miss` + gate). After bio or parallel per priority.
+- [ ] **Website update — baseball program shipped** — Program sign-off **2026-06-21** (gate 27/27, bootstrap ~3.5 min). Update [myceliumdata.org](https://myceliumdata.org): second example network, warehouse factory / specialist hierarchy, query walkthrough. Queue in **`../mycelium-website/prompts/cursor/next/`**; Paul deploys.
+- [ ] **Review architecture doc + whys** — [`docs/architecture.md`](docs/architecture.md) and [`docs/architecture/whys/`](docs/architecture/whys/README.md).
+- [ ] **Baseball pack → framework extraction review** — Audit remaining pack code (`warehouse_resolve`, `derive_resolve`, `product_common`, bootstrap handlers) for promotion into `src/`. M14 started hierarchy; finish resolver protocols + `ProductTeamSpecialist`.
+- [ ] **Specialist hierarchy — next tiers** — `ProductTeamSpecialist` (roster/franchise); `ResearchSpecialistAgent` alignment with factory CRM template; onboarding walkthrough.
+- [ ] **`bin/smoke-baseball-e2e` — full gate** — `--full` Lahman refresh smoke (optional; live gate covers real root); lazy-alias scenarios.
 
-- [ ] **`bin/smoke-baseball-e2e` — full gate** — Minimal fixture version shipped (`./bin/smoke-baseball-e2e`, ~seconds): player + team record-type queries, warehouse stats, mocked derive. **Still open:** `--full` real Lahman refresh (timing-gate scale, not default CI), lazy-alias scenarios (mock expander). See script docstring TODO. *(Live Lahman anchors live in live gate, not smoke.)*
-- [ ] **Lahman bootstrap load — keep optimizing (priority)** — Still too slow for demo scale, and **v1 only loads a sliver of Lahman**: warehouse ingests 6 bootstrap tables (~2 s) but `LahmanSeedHandler` only commits **team + player identity binds** (~58k appearance rows → ~24k players) — not batting/pitching derivations, not full 27-table warehouse, not specialist materializations. **Next:** (1) run **test 6** post-`c5e5bce`; (2) profile remaining hot path; (3) queue slices as needed — likely **`add_bind_alias` without full `_rebuild_field_indexes`**, batch/bootstrap-specific entity paths, bulk specialist bootstrap API, avoid per-row Python loop where SQL batch suffices. Track timings in [`docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md`](docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md). Headroom: full Lahman + derivatives will multiply load — identity pass must be **minutes or less** before expanding scope.
-- [ ] **Profiling — Lahman bootstrap / storage hot paths** — Part of load optimization above. `time -p`, `cProfile` / `py-spy` on bind loop; record findings in timing-gates doc. See [`docs/plans/storage-evolution-program.md`](docs/plans/storage-evolution-program.md) § Post-mortem.
-- [ ] **Storage evolution timing test 6** — Fresh `--root`; `time -p ./bin/refresh-example-network baseball --yes --no-default`; record **real** in timing-gates doc Test 6 row. Kill any pre-incremental test 5 run first.
-- [ ] **Baseball pack → framework extraction review** — After M14 + program slices land, audit remaining pack code (`warehouse_resolve`, `derive_resolve`, `product_common`, bootstrap handlers) for promotion into `src/`. M14 starts the hierarchy; this pass finishes resolver protocols and product tier. Goal: second warehouse network subclasses framework bases only.
-- [ ] **Warehouse stat specialist base class (M14)** — Cursor: `prompts/cursor/next/2026-06-20-2340-baseball-warehouse-stat-specialist-base-class-m14.md`. **After M13 + 2280, before 2350 polish.** Ship **`WarehousePlayerStatSpecialist` / `WarehouseTeamStatSpecialist` in `src/agents/specialists/`** (framework); baseball pack = thin subclasses + resolver hooks. Manifest-driven derive-on-miss. Paul lock: **framework hierarchy**, not pack-only — see [`docs/architecture/whys/specialist-class-hierarchy.md`](docs/architecture/whys/specialist-class-hierarchy.md).
-- [ ] **Specialist hierarchy — next tiers** — After M14: `ProductTeamSpecialist` (roster/franchise + scope-aware cache); align factory CRM template with `ResearchSpecialistAgent`; onboarding “subclass framework bases” walkthrough.
-- [ ] **Stat specialist model — document** — Largely addressed by specialist-class-hierarchy why; extend onboarding after M14 + product base land.
-- [ ] **`baseball` example network** — Lahman second example; full slice map in [`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md). **Not done** when batting+bio pass — need pitching, team_season, fielding, scope, cross-record product specialists, full ingest. **Cursor queue:** `prompts/cursor/next/2026-06-20-22*.md` (M7–M13).
-  - **Shipped (identity + batting path):** M1a–M4b, record-type routing, live gate 16/16, MCP `health_ping`, examples index.
-  - **Shipped (domain parity M5–M6, 2026-06-20 evening):** `pitching_specialist`, `team_identity_specialist`, `team_season_specialist` pack modules; manifest aliases; multi-domain smoke (`career_hr` + `career_wins`).
-  - **Next slices:** M13 full warehouse ingest → 2280 bootstrap perf → **M14 warehouse stat base class** → 2350 polish capstone.
-  - **Bootstrap perf:** test 6 + profiling still gates casual demo (orthogonal to specialist coverage).
+### Shipped (2026-06-21 — baseball program sign-off)
+
+- [x] **`baseball` example program** — M1–M14 + `2280` bootstrap perf + `2350` polish; live gate **27/27**; cold bootstrap **~3.5 min** (Test 10). Post-program gate: [`docs/manual-checks/2026-06-21-baseball-program-post-program-gate.md`](docs/manual-checks/2026-06-21-baseball-program-post-program-gate.md). Plan: [`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md).
+- [x] **Lahman bootstrap demo timing** — Post-`2280`: **214 s** vs pre-optimization **1,751 s** (~8.2×). [`docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md`](docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md) Test 10.
+- [x] **Warehouse stat framework (M14)** — `WarehousePlayerStatSpecialist` / `WarehouseTeamStatSpecialist`; thin baseball pack subclasses.
+- [x] **Live gate fielding anchor fix** — `da5b006` (Fielding sums vs Batting `G`).
 
 ### Shipped (2026-06-20 afternoon)
 
@@ -75,7 +74,7 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ## Examples & demos (open)
 
-- [ ] **Website update — after baseball program ships** — When baseball example is demo-ready (program slices through M14 + `2350` polish, bootstrap perf `2280`, live gate green on full Lahman): update [myceliumdata.org](https://myceliumdata.org) — second example network, warehouse factory / specialist hierarchy story, query walkthrough hooks. Queue work in **`../mycelium-website/prompts/cursor/next/`**; Paul pushes and deploys. Cross-check `docs/architecture.md`, `docs/onboarding.md`, [`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md).
+
 - [ ] **Public baseball example (feedback loop)** — Ship a **public** Lahman demo (website or standalone) so outsiders can try queries and give feedback. Open design: embedded chat vs MCP-only, hosted network root vs read-only snapshot, rate limits, cost model. Depends on bootstrap perf (`2280`) and program slices M10–M13 for credible coverage. May overlap website update above — coordinate narrative. Track alongside [`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md).
 - [ ] **Example network READMEs — remaining gaps** — Index shipped ([`examples/networks/README.md`](examples/networks/README.md)). **Still thin:** [`empty-crm/README.md`](examples/networks/empty-crm/README.md) vs CRM bar; thicken as features land. Any new demo (derivative token-efficiency USP) ships with a **solid README** from day one.
 
@@ -159,4 +158,4 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ---
 
-Last updated: 2026-06-21 (website update after baseball ships; M13 ingested)
+Last updated: 2026-06-21 (baseball program sign-off; bio research slice queued)

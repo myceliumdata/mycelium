@@ -1,6 +1,6 @@
-# Baseball example (work in progress)
+# Baseball example
 
-> **WIP (June 2026)** — Query path, warehouse stats, and derive pipeline ship on live Lahman; **bootstrap refresh timing** is still too slow for casual demo scale. Load optimization is ongoing ([`docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md`](../../../docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md)). Program status: [`docs/plans/baseball-example-program.md`](../../../docs/plans/baseball-example-program.md).
+> **Program complete (June 2026)** — Live gate **27/27**; cold bootstrap **~3.5 min** on full Lahman post-`2280`. Sign-off: [`docs/manual-checks/2026-06-21-baseball-program-post-program-gate.md`](../../../docs/manual-checks/2026-06-21-baseball-program-post-program-gate.md). Program map: [`docs/plans/baseball-example-program.md`](../../../docs/plans/baseball-example-program.md).
 
 Lahman second-network example: **player** + **team** record types, warehouse specialists, and LLM derive on manifest miss.
 
@@ -31,7 +31,7 @@ For full specialist coverage (pitching, team_season, fielding, roster, franchise
 
 **Live regression** (real `~/mycelium-networks/baseball`): `./bin/gate-live baseball` — derive cache auto-clears; full Lahman reload is manual before gate.
 
-To push committed example changes (e.g. updated `guide.md`) into an **existing** live root without re-running Lahman bootstrap (~25 min):
+To push committed example changes (e.g. updated `guide.md`) into an **existing** live root without re-running Lahman bootstrap (~3–4 min full reload; use `--sync-only` when pack-only):
 
 ```bash
 ./bin/refresh-example-network baseball --sync-only

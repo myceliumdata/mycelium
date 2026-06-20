@@ -1,6 +1,6 @@
 # Baseball example — program design (`baseball` network)
 
-**Status:** **Near complete** (June 2026) — M1–M14 + bootstrap perf shipped; live gate **27** scenarios on real Lahman (`./bin/gate-live baseball`). **Open:** casual demo timing on cold bootstrap (identity pass); lazy-alias smoke scenarios; `--full` smoke gate. Safe to refresh for development; run `./bin/gate-live baseball` for program sign-off.  
+**Status:** ✅ **Complete** (June 2026) — Program sign-off **2026-06-21**: live gate **27/27**, cold bootstrap **~3.5 min** post-`2280` (Test 10). Post-program gate: [`docs/manual-checks/2026-06-21-baseball-program-post-program-gate.md`](../manual-checks/2026-06-21-baseball-program-post-program-gate.md). **Follow-on (not blockers):** multi-domain derive slice, bio+Tavily hybrid, `--full` smoke gate.
 **Ur artifact:** [`mycelium_lahman_design_prompt.md`](mycelium_lahman_design_prompt.md) — original Grok design brief; preserved, not maintained as source of truth  
 **Conversations:** [`conversations/2026-06-14-data-factory-origin.md`](conversations/2026-06-14-data-factory-origin.md), [`conversations/2026-06-15-baseball-example-design.md`](conversations/2026-06-15-baseball-example-design.md)  
 **Roadmap:** [`TODO.md`](../../TODO.md) → `baseball` example
