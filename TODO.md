@@ -16,10 +16,11 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 - [ ] **Lahman bootstrap load — keep optimizing (priority)** — Still too slow for demo scale, and **v1 only loads a sliver of Lahman**: warehouse ingests 6 bootstrap tables (~2 s) but `LahmanSeedHandler` only commits **team + player identity binds** (~58k appearance rows → ~24k players) — not batting/pitching derivations, not full 27-table warehouse, not specialist materializations. **Next:** (1) run **test 6** post-`c5e5bce`; (2) profile remaining hot path; (3) queue slices as needed — likely **`add_bind_alias` without full `_rebuild_field_indexes`**, batch/bootstrap-specific entity paths, bulk specialist bootstrap API, avoid per-row Python loop where SQL batch suffices. Track timings in [`docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md`](docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md). Headroom: full Lahman + derivatives will multiply load — identity pass must be **minutes or less** before expanding scope.
 - [ ] **Profiling — Lahman bootstrap / storage hot paths** — Part of load optimization above. `time -p`, `cProfile` / `py-spy` on bind loop; record findings in timing-gates doc. See [`docs/plans/storage-evolution-program.md`](docs/plans/storage-evolution-program.md) § Post-mortem.
 - [ ] **Storage evolution timing test 6** — Fresh `--root`; `time -p ./bin/refresh-example-network baseball --yes --no-default`; record **real** in timing-gates doc Test 6 row. Kill any pre-incremental test 5 run first.
-- [ ] **`baseball` example network** — Lahman second example; [`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md) (ur: [`mycelium_lahman_design_prompt.md`](docs/plans/mycelium_lahman_design_prompt.md)). Two registry grains (**player** + fan-facing **team** city+name; franchise via specialist), agent-managed warehouse + derivations. **Locked:** uuid4 on load; Lahman `playerID` = source metadata only. **Player MVR (draft):** name + team — team disambiguates homonyms; any team the player played for → same uuid (index TBD). **Seed data:** Paul has `~/mycelium-networks/baseball/seed/lahman_1871-2025_csv.zip` (~40MB); hosting TBD — avoid git blob if possible; SABR Box not bot-fetchable; may self-host URL + ingest script.
-  - **Shipped on loaded roots:** ontology M1a–M4b, live gate 16/16, `bin/smoke-baseball-e2e` minimal fixture, MCP `health_ping`.
-  - **Storage evolution:** code slices complete; test 6 + profiling gate demo readiness.
-  - **LahmanSeedHandler** shipped slice `1700` (committed). Improvised spike in `git stash` (`cursor-improvised lahman seed handler`) — compare optional; drop when done.
+- [ ] **`baseball` example network** — Lahman second example; full slice map in [`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md). **Not done** when batting+bio pass — need pitching, team_season, fielding, scope, cross-record product specialists, full ingest. **Cursor queue:** `prompts/cursor/next/2026-06-20-22*.md` (M7–M13).
+  - **Shipped (identity + batting path):** M1a–M4b, record-type routing, live gate 16/16, MCP `health_ping`, examples index.
+  - **Shipped (domain parity M5–M6, 2026-06-20 evening):** `pitching_specialist`, `team_identity_specialist`, `team_season_specialist` pack modules; manifest aliases; multi-domain smoke (`career_hr` + `career_wins`).
+  - **Next slices (pattern clones):** M7 bio aliases → M8 pitching ERA → M9 query scope → M10 fielding → M11 roster product → M12 franchise → M13 full warehouse ingest → live gate domain parity.
+  - **Bootstrap perf:** test 6 + profiling still gates casual demo (orthogonal to specialist coverage).
 
 ### Shipped (2026-06-20 afternoon)
 
@@ -150,4 +151,4 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ---
 
-Last updated: 2026-06-20 (afternoon live gate sweep + baseball example polish; Lahman bootstrap timing still open)
+Last updated: 2026-06-20 (baseball M5–M6 domain parity + slice map M7–M13 queued)

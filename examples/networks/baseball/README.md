@@ -112,7 +112,7 @@ Refresh installs `examples/networks/baseball/categories.json` into the live root
 | `pitching` | `pitching_specialist` | `career_wins`, `era`, `strikeouts`, … |
 | `team_season` | `team_season_specialist` | `season_wins`, `park`, `attendance`, … |
 
-**M1b (`career_hr`):** `batting_specialist` reads the Lahman warehouse on deliver and caches results with computation-centric provenance (`sources`, `computation.inline`, `parameters`). Other specialists remain stubs until follow-up slices.
+**Warehouse specialists (pack):** `batting_specialist`, `bio_specialist`, `pitching_specialist` (`career_wins`, …), `team_season_specialist` (`season_wins`, … — latest season per `teamID` until query scope ships), `player_identity_specialist`, `team_identity_specialist`. All use computation-centric provenance on deliver. **Still open:** fielding, franchise/roster product specialists, full 27-table ingest — see [`docs/plans/baseball-example-program.md`](../../../docs/plans/baseball-example-program.md) slice map.
 
 ```json
 {

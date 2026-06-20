@@ -89,22 +89,23 @@ Bind-field provenance: `actor.kind` is **`registry`** or **`seed_bootstrap`** (n
 | `ops` | Compute (derive on miss, M4) | free-form label via LLM codegen | ✅ fixture smoke **0.900** (mocked); live optional |
 | `batting_average` | Compute (derive on miss) | synonym of career rate — intent slug `career_batting_average` (M4b) | ✅ Aaron **0.305**; cache hit after `career_avg` |
 
-### Pitching (`Pitching`) — specialist stub
+### Pitching (`Pitching`) — `pitching_specialist` (M5)
 
 | Attribute | Type | Lahman col | Status |
 |-----------|------|------------|--------|
-| `career_wins`, `career_losses`, `career_strikeouts`, `career_saves` | Compute (`career_sum`) | `W`, `L`, `SO`, `SV` | ⏳ |
-| `career_era`, `era` | Compute (rate) | innings-weighted formula | ⏳ |
-| `wins`, `strikeouts`, `walks`, `games_pitched` | Pull (season) | one Pitching row | ⏳ |
+| `career_wins`, `career_losses`, `career_strikeouts`, `career_saves` | Compute (`career_sum`) | `W`, `L`, `SO`, `SV` | ✅ smoke; live after `--sync-only` |
+| `career_era`, `era` | Compute (rate) | innings-weighted formula | ⏳ M8 slice |
+| `wins`, `strikeouts`, `walks`, `games_pitched` | Pull (season) | one Pitching row | ⏳ needs M9 scope |
 
-### Team season (`Teams`, grain year + team) — specialist stub
+### Team season (`Teams`, grain year + team) — `team_season_specialist` (M6)
 
 | Attribute | Type | Lahman col | Status |
 |-----------|------|------------|--------|
-| `season_wins`, `season_losses`, `finish_rank` | Pull | `W`, `L`, `Rank` | ⏳ |
-| `park`, `attendance`, `runs_scored`, `runs_allowed` | Pull | same-name cols | ⏳ |
+| `season_wins`, `season_losses`, `finish_rank` | Pull (`team_latest_column`) | `W`, `L`, `Rank` | ✅ smoke (latest year); live after sync |
+| `park`, `runs_scored`, `runs_allowed` | Pull | same-name cols | ✅ manifest aliases |
+| `attendance` | Pull | `Teams` col when present | ⏳ optional alias |
 
-Needs team record + season in query — not player specialist path.
+v1 uses **latest `yearID` per `teamID`** until M9 query scope ships.
 
 ### Not warehouse (research / emergent)
 
@@ -280,8 +281,8 @@ Don’t fail the build on these — they’re explicitly out of scope:
 | `height`, `weight`, `birth_country`, `final_game` | No manifest alias yet |
 | `career_sb` | Batting alias not in manifest yet |
 
-| `career_wins`, `era`, pitching stats | `pitching_specialist` stub |
-| `season_wins`, team season attrs | `team_season_specialist` stub |
+| `career_era`, season-scoped pitching attrs | M8/M9 slices |
+| `roster`, franchise aggregation | M11/M12 product specialists |
 | Career team list via query API | Identity is debut bind only — use warehouse SQL (identity doc § H) |
 | CRM attrs (`email`, `employer`, …) | Wrong network / stub categories replaced on baseball root |
 | `record_type` on `EntityQuery` | Removed — routing is lookup-key shape only |

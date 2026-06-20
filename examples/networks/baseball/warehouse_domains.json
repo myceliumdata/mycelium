@@ -36,12 +36,32 @@
     "pitching": {
       "specialist": "pitching_specialist",
       "tables": ["Pitching"],
-      "grain": ["playerID", "yearID", "stint", "teamID", "lgID"]
+      "grain": ["playerID", "yearID", "stint", "teamID", "lgID"],
+      "conventions": {
+        "career_sum": "SUM({column}) GROUP BY playerID on Pitching table"
+      },
+      "aliases": {
+        "career_wins": {"convention": "career_sum", "column": "W"},
+        "career_losses": {"convention": "career_sum", "column": "L"},
+        "career_strikeouts": {"convention": "career_sum", "column": "SO"},
+        "career_saves": {"convention": "career_sum", "column": "SV"}
+      }
     },
     "team_season": {
       "specialist": "team_season_specialist",
       "tables": ["Teams"],
-      "grain": ["yearID", "teamID", "lgID"]
+      "grain": ["yearID", "teamID", "lgID"],
+      "conventions": {
+        "team_latest_column": "Latest yearID row per teamID until query scope ships"
+      },
+      "aliases": {
+        "season_wins": {"convention": "team_latest_column", "column": "W"},
+        "season_losses": {"convention": "team_latest_column", "column": "L"},
+        "finish_rank": {"convention": "team_latest_column", "column": "Rank"},
+        "park": {"convention": "team_latest_column", "column": "park"},
+        "runs_scored": {"convention": "team_latest_column", "column": "R"},
+        "runs_allowed": {"convention": "team_latest_column", "column": "RA"}
+      }
     }
   }
 }

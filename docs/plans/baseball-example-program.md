@@ -284,16 +284,55 @@ See `examples/networks/baseball/README.md`.
 
 **Experiment v0** (standalone, pre-formal-bootstrap): `bootstrap_experiment.py` — disposition TBD; do not treat as the long-term path.
 
-| Order | Scope |
+### Shipped (identity + batting-centric path)
+
+| Slice | Scope | Status |
+|-------|--------|--------|
+| 0 | Lahman schema pass | ✅ |
+| 0b | CRM formal bootstrap | ✅ |
+| 1–2 | Skeleton + `LahmanSeedHandler` (6-table ingest, team/player registries) | ✅ |
+| 3–4 | Player debut bind + team MVR bootstrap | ✅ 1800 |
+| M1a | Committed ontology (`categories.json`) | ✅ |
+| M1b–M1c | `batting_specialist` (`career_hr`) + `bio_specialist` (`birth_date`) | ✅ |
+| M2a–M2c | Warehouse manifest + generic resolver + identity bind on deliver | ✅ |
+| M3–M4b | Derive sandbox, retry, context/review, free-form derive, intent normalization | ✅ batting domain |
+| — | Record-type routing (player vs team lookup keys) | ✅ 1100/1800 |
+| — | Live gate 16/16 on loaded Lahman root | ✅ 2026-06-20 |
+
+### In flight / next (domain parity — pattern clones)
+
+Most slices clone **`batting_specialist` / `bio_specialist` / `player_identity_specialist`**: pack `.py` under `examples/networks/baseball/specialists/`, manifest aliases in `warehouse_domains.json`, `warehouse_resolve` convention, smoke test, optional live-gate scenario.
+
+| Slice | Scope | Pattern | Cursor prompt |
+|-------|--------|---------|---------------|
+| **M5** | **`pitching_specialist`** — `career_wins`, `career_losses`, `career_strikeouts`, `career_saves` via `career_sum` on `Pitching` | batting M1b | *(implementing 2026-06-20)* |
+| **M5b** | **`team_identity_specialist`** — registry bind `team` (no web research) | player_identity | *(implementing 2026-06-20)* |
+| **M6** | **`team_season_specialist`** — `season_wins`, `park`, … via `team_latest_column` (latest `yearID` per `teamID` until scope ships) | batting + team `source_keys` | *(implementing 2026-06-20)* |
+| **M6b** | **Bio manifest aliases** — `height`, `weight`, `birth_country`, `final_game`, `death_date` | bio `people_column` / compose | `prompts/cursor/next/2026-06-20-2200-baseball-bio-manifest-aliases-m7.md` |
+| **M7** | **Pitching rate stats** — `career_era`, `era` (innings-weighted recipe in manifest; pool-then-divide) | batting derive or committed recipe | `prompts/cursor/next/2026-06-20-2210-baseball-pitching-era-rate-m8.md` |
+| **M8** | **Query scope** — `yearID` / `teamID` on step 1 or delivery scope → `parameters.scope` in provenance; season-scoped pulls | framework + manifest | `prompts/cursor/next/2026-06-20-2220-baseball-query-scope-yearid-m9.md` |
+| **M9** | **Fielding domain** — ontology category + `fielding_specialist` + `Fielding` table aliases | M5 pattern | `prompts/cursor/next/2026-06-20-2230-baseball-fielding-domain-m10.md` |
+| **M10** | **Appearances / roster product** — cross-record-type: team entity → player list (single artifact, unified cache) | product specialist (not fan-out) | `prompts/cursor/next/2026-06-20-2240-baseball-roster-product-specialist-m11.md` |
+| **M11** | **Franchise product specialist** — re-aggregate fan teams by `franchID` on client pushback | product specialist | `prompts/cursor/next/2026-06-20-2250-baseball-franchise-specialist-m12.md` |
+| **M12** | **Full warehouse ingest** — bootstrap all 27 Lahman tables (not identity sliver) | `lahman_common.BOOTSTRAP_TABLES` | `prompts/cursor/next/2026-06-20-2260-baseball-full-warehouse-ingest-m13.md` |
+| **M13** | **Live gate expansion** — pitching + team_season + multi-domain scenarios on Aaron + Brooklyn Dodgers | `tests/live/catalogs/baseball.yaml` | `prompts/cursor/next/2026-06-20-2270-baseball-live-gate-domain-parity.md` |
+
+### Cross-cutting (not single-domain clones)
+
+| Topic | Notes |
 |-------|--------|
-| 0 | ~~Unzip Lahman; ER/schema note~~ ✅ done |
-| 0b | ~~Formal bootstrap phase (CRM seed)~~ ✅ done — extend for baseball warehouse |
-| 1 | `examples/networks/baseball/` skeleton + `network.json` + hosting story |
-| 2 | Baseball bootstrap handler: warehouse ingest + team/player registry via bootstrap contract — **v1 `LahmanSeedHandler` shipped** (`bootstrap_handlers/lahman_seed.py`; one debut bind per `playerID`) |
-| 3 | Player registry load + debut bind index — ✅ shipped (1800) |
-| 4 | Team registry + MVR (may merge with 2) |
-| 5 | One end-to-end query (resolve player → simple derived stat) |
+| **Multi-specialist fan-out** | Framework ships (`invoke_specialists` + `assemble_response`). Works when pack specialists exist — e.g. `career_hr` + `career_wins` on one player. |
+| **Cross-domain product output** | Roster, franchise, career-teams list — **one specialist** per coherent artifact; see warehouse-factory conversation § Specialist emergence B. |
+| **Derive on miss** | Today **batting only**. Extend to pitching (rate misses) after M7 recipes land. |
+| **Bootstrap perf** | Identity bind pass timing — test 6 + profiling; gates casual demo. |
+| **Research stub suppression** | Pack install overwrites factory stubs on `--sync-only`; ensure first deliver on fresh root uses pack modules (polish if research path still wins). |
+
+### Explicit non-goals (unchanged)
+
+- NL `question` on `EntityQuery` — deferred unlikely (M track ends M4b)
+- Specialist promotion automation — manual slices until telemetry ships
+- 40MB Lahman zip in git
 
 ---
 
-*Updated: 2026-06-20 — live gate pass; query + derive path demo-ready on loaded roots; bootstrap perf still gates casual demo.*
+*Updated: 2026-06-20 — M5/M6 domain parity started; batting+bio+identity not sufficient for “example complete”.*

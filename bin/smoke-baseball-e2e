@@ -40,6 +40,9 @@ BASEBALL_PYTEST_FILES = (
     "tests/test_baseball_multi_attr_deliver.py",
     "tests/test_baseball_career_avg_derive.py",
     "tests/test_baseball_intent_dedup.py",
+    "tests/test_baseball_pitching_specialist.py",
+    "tests/test_baseball_team_season_specialist.py",
+    "tests/test_baseball_multi_domain_deliver.py",
 )
 
 EXPECTED_BOOTSTRAP_COUNT = 4
