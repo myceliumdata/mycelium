@@ -29,6 +29,13 @@ Note: `bb-pitch-01`–`02`, `bb-multi-01`, `bb-team-01` already shipped (M5–M6
 
 `@pytest.mark.live_gate` only — never default CI.
 
+## Manual gate docs (required)
+
+Sync operator docs for the M5–M6 gate work already in the catalog (no new scenarios beyond `bb-pitch-03` above):
+
+- `docs/manual-checks/2026-06-19-baseball-specialist-hand-test.md` — move pitching / team_season rows from ❌ to ✅ where covered by live gate (`bb-pitch-*`, `bb-multi-01`, `bb-team-01`).
+- `docs/manual-checks/2026-06-20-live-gate-program.md` — baseball catalog **19 scenarios**; list `pitching` and `team_season` phases.
+
 ## Optional
 
 - `derive_on_miss: true` on pitching for unsupported rate labels — only if small; else defer. If implemented, use `pack_common.run_warehouse_player_graph` **`on_miss` / `on_miss_resolve`** hooks (see `batting_specialist.py`) — do not add inline graph logic to `pitching_specialist.py`.

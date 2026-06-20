@@ -45,7 +45,7 @@ Paul chose **option 2**: keep Grok’s implementation, formal review here, Curso
 |---|-----|-----------|
 | P1 | `bin/smoke-baseball-e2e` inline scenarios omit pitching/team_season (pytest only) | Optional inline rows or `--with-pytest` default note in README |
 | P2 | `attendance` in ontology but no manifest alias | M6b or M9 |
-| P3 | Manual gate hand-test doc not yet synced | `2270` doc-only slice |
+| P3 | Manual gate hand-test doc not yet synced | M8 prompt (manual gate docs section) |
 | P4 | `career_era` live gate | M8 `bb-pitch-03` |
 
 ## Next

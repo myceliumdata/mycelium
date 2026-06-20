@@ -31,7 +31,7 @@ Shipped three pack specialists and manifest/resolver extensions so pitching and 
 
 - M5–M6 marked shipped in `TODO.md` (already updated).
 - Cursor: pick up `2026-06-20-2200-baseball-bio-manifest-aliases-m7.md` next.
-- Live gate pitching/team anchors — deferred to `2270-live-gate-domain-parity` prompt.
+- Live gate pitching/team anchors — shipped 2026-06-20; manual gate doc sync folded into M8 prompt.
 
 ## Suggested commit
 

@@ -1,6 +1,6 @@
 # Baseball example — program design (`baseball` network)
 
-**Status:** **Work in progress** (June 2026) — `LahmanSeedHandler`, warehouse manifest, record-type routing, debut player bind, warehouse stats, and derive pipeline (M1–M4b) ship; live gate **16/16** on real Lahman (`./bin/gate-live baseball`). **Open:** Lahman bootstrap refresh timing (identity pass too slow for casual demo); lazy-alias smoke scenarios; `--full` smoke gate. Safe to refresh for development; not demo-ready until bootstrap perf meets timing gates.  
+**Status:** **Work in progress** (June 2026) — `LahmanSeedHandler`, warehouse manifest, record-type routing, debut player bind, warehouse stats, and derive pipeline (M1–M4b) ship; pitching / team_season specialists + live gate **19/19** on real Lahman (`./bin/gate-live baseball`). **Open:** Lahman bootstrap refresh timing (identity pass too slow for casual demo); lazy-alias smoke scenarios; `--full` smoke gate. Safe to refresh for development; not demo-ready until bootstrap perf meets timing gates.  
 **Ur artifact:** [`mycelium_lahman_design_prompt.md`](mycelium_lahman_design_prompt.md) — original Grok design brief; preserved, not maintained as source of truth  
 **Conversations:** [`conversations/2026-06-14-data-factory-origin.md`](conversations/2026-06-14-data-factory-origin.md), [`conversations/2026-06-15-baseball-example-design.md`](conversations/2026-06-15-baseball-example-design.md)  
 **Roadmap:** [`TODO.md`](../../TODO.md) → `baseball` example
@@ -297,25 +297,22 @@ See `examples/networks/baseball/README.md`.
 | M2a–M2c | Warehouse manifest + generic resolver + identity bind on deliver | ✅ |
 | M3–M4b | Derive sandbox, retry, context/review, free-form derive, intent normalization | ✅ batting domain |
 | — | Record-type routing (player vs team lookup keys) | ✅ 1100/1800 |
-| — | Live gate 16/16 on loaded Lahman root | ✅ 2026-06-20 |
+| M5–M6 | `pitching_specialist`, `team_identity_specialist`, `team_season_specialist` + live gate (`bb-pitch-*`, `bb-multi-01`, `bb-team-01`) | `pack_common` thin wrappers | ✅ 2026-06-20 |
+| — | Live gate 19/19 on loaded Lahman root | ✅ 2026-06-20 |
 
 ### In flight / next (domain parity — pattern clones)
 
-Most slices clone **`batting_specialist` / `bio_specialist` / `player_identity_specialist`**: pack `.py` under `examples/networks/baseball/specialists/`, manifest aliases in `warehouse_domains.json`, `warehouse_resolve` convention, smoke test, optional live-gate scenario.
+Most slices extend **`pack_common` thin wrappers** + manifest aliases in `warehouse_domains.json`, `warehouse_resolve` convention, smoke test, and **required live-gate scenario** per slice (see each Cursor prompt).
 
 | Slice | Scope | Pattern | Cursor prompt |
 |-------|--------|---------|---------------|
-| **M5** | **`pitching_specialist`** — `career_wins`, `career_losses`, `career_strikeouts`, `career_saves` via `career_sum` on `Pitching` | batting M1b | *(implementing 2026-06-20)* |
-| **M5b** | **`team_identity_specialist`** — registry bind `team` (no web research) | player_identity | *(implementing 2026-06-20)* |
-| **M6** | **`team_season_specialist`** — `season_wins`, `park`, … via `team_latest_column` (latest `yearID` per `teamID` until scope ships) | batting + team `source_keys` | *(implementing 2026-06-20)* |
 | **M6b** | **Bio manifest aliases** — `height`, `weight`, `birth_country`, `final_game`, `death_date` | bio `people_column` / compose | `prompts/cursor/next/2026-06-20-2200-baseball-bio-manifest-aliases-m7.md` |
-| **M7** | **Pitching rate stats** — `career_era`, `era` (innings-weighted recipe in manifest; pool-then-divide) | batting derive or committed recipe | `prompts/cursor/next/2026-06-20-2210-baseball-pitching-era-rate-m8.md` |
+| **M7** | **Pitching rate stats** — `career_era`, `era` (innings-weighted recipe in manifest; pool-then-divide) + manual gate doc sync | batting derive or committed recipe | `prompts/cursor/next/2026-06-20-2210-baseball-pitching-era-rate-m8.md` |
 | **M8** | **Query scope** — `yearID` / `teamID` on step 1 or delivery scope → `parameters.scope` in provenance; season-scoped pulls | framework + manifest | `prompts/cursor/next/2026-06-20-2220-baseball-query-scope-yearid-m9.md` |
 | **M9** | **Fielding domain** — ontology category + `fielding_specialist` + `Fielding` table aliases | M5 pattern | `prompts/cursor/next/2026-06-20-2230-baseball-fielding-domain-m10.md` |
 | **M10** | **Appearances / roster product** — cross-record-type: team entity → player list (single artifact, unified cache) | product specialist (not fan-out) | `prompts/cursor/next/2026-06-20-2240-baseball-roster-product-specialist-m11.md` |
 | **M11** | **Franchise product specialist** — re-aggregate fan teams by `franchID` on client pushback | product specialist | `prompts/cursor/next/2026-06-20-2250-baseball-franchise-specialist-m12.md` |
 | **M12** | **Full warehouse ingest** — bootstrap all 27 Lahman tables (not identity sliver) | `lahman_common.BOOTSTRAP_TABLES` | `prompts/cursor/next/2026-06-20-2260-baseball-full-warehouse-ingest-m13.md` |
-| **M13** | **Live gate expansion** — pitching + team_season + multi-domain scenarios on Aaron + Brooklyn Dodgers | `tests/live/catalogs/baseball.yaml` | `prompts/cursor/next/2026-06-20-2270-baseball-live-gate-domain-parity.md` |
 
 ### Cross-cutting (not single-domain clones)
 
