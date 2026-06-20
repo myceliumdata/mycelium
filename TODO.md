@@ -16,6 +16,8 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 - [ ] **Lahman bootstrap load — keep optimizing (priority)** — Still too slow for demo scale, and **v1 only loads a sliver of Lahman**: warehouse ingests 6 bootstrap tables (~2 s) but `LahmanSeedHandler` only commits **team + player identity binds** (~58k appearance rows → ~24k players) — not batting/pitching derivations, not full 27-table warehouse, not specialist materializations. **Next:** (1) run **test 6** post-`c5e5bce`; (2) profile remaining hot path; (3) queue slices as needed — likely **`add_bind_alias` without full `_rebuild_field_indexes`**, batch/bootstrap-specific entity paths, bulk specialist bootstrap API, avoid per-row Python loop where SQL batch suffices. Track timings in [`docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md`](docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md). Headroom: full Lahman + derivatives will multiply load — identity pass must be **minutes or less** before expanding scope.
 - [ ] **Profiling — Lahman bootstrap / storage hot paths** — Part of load optimization above. `time -p`, `cProfile` / `py-spy` on bind loop; record findings in timing-gates doc. See [`docs/plans/storage-evolution-program.md`](docs/plans/storage-evolution-program.md) § Post-mortem.
 - [ ] **Storage evolution timing test 6** — Fresh `--root`; `time -p ./bin/refresh-example-network baseball --yes --no-default`; record **real** in timing-gates doc Test 6 row. Kill any pre-incremental test 5 run first.
+- [ ] **Baseball pack → framework extraction review** — After program slices land, audit `examples/networks/baseball/` (especially `pack_common`, `warehouse_resolve`, `derive_resolve`, bootstrap handlers) for logic generic enough to promote into `src/` (warehouse convention resolver, query scope replay, product-specialist hooks). Goal: next warehouse-backed network reuses framework primitives; baseball pack stays manifest + thin wrappers only.
+- [ ] **Stat specialist model — document & decide** — Paul question: CRM categories are **factory-generated research specialists** (same template, different `attribute_map`); baseball has **separate pack modules** per domain (`batting_specialist`, `pitching_specialist`, `bio_specialist`, …). Capture why (warehouse table routing, derive-on-miss, record-type grain, product specialists vs manifest reads) and whether further consolidation — e.g. one `warehouse_stat_specialist` driven only by `warehouse_domains.json` — is worth a slice. Distill into architecture doc or whys entry; link from onboarding walkthrough.
 - [ ] **`baseball` example network** — Lahman second example; full slice map in [`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md). **Not done** when batting+bio pass — need pitching, team_season, fielding, scope, cross-record product specialists, full ingest. **Cursor queue:** `prompts/cursor/next/2026-06-20-22*.md` (M7–M13).
   - **Shipped (identity + batting path):** M1a–M4b, record-type routing, live gate 16/16, MCP `health_ping`, examples index.
   - **Shipped (domain parity M5–M6, 2026-06-20 evening):** `pitching_specialist`, `team_identity_specialist`, `team_season_specialist` pack modules; manifest aliases; multi-domain smoke (`career_hr` + `career_wins`).
@@ -52,6 +54,7 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 External contributors should not be forced into the Grok + Cursor handoff. Open decisions:
 
+- [ ] **Contributor walkthroughs** — End-to-end examples for new contributors: curated query list (CLI, MCP/chat) with **expected response shape** and **which framework or project feature each query demonstrates** (two-step delivery, record-type routing, warehouse manifest, derive, provenance, multi-specialist merge, etc.). Host in `docs/onboarding.md` or a dedicated `docs/contributor-walkthrough.md`; cross-link from `examples/networks/README.md`.
 - [ ] **CONTRIBUTING.md** — Ignore `prompts/cursor/`; normal PRs; `./bin/ci-local` sufficient.
 - [ ] **Soften always-on Cursor rule** — `alwaysApply: false` on `04-cursor-workflow.mdc`, or move maintainer rules out of public tree.
 - [ ] **Gitignore local Cursor config** — `.cursor/permissions.json` at minimum.
@@ -70,6 +73,7 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ## Examples & demos (open)
 
+- [ ] **Public baseball example (feedback loop)** — Ship a **public** Lahman demo (website or standalone) so outsiders can try queries and give feedback. Open design: embedded chat vs MCP-only, hosted network root vs read-only snapshot, rate limits, cost model. Depends on bootstrap perf (`2280`) and program slices M10–M13 for credible coverage. Track alongside [`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md).
 - [ ] **Example network READMEs — remaining gaps** — Index shipped ([`examples/networks/README.md`](examples/networks/README.md)). **Still thin:** [`empty-crm/README.md`](examples/networks/empty-crm/README.md) vs CRM bar; thicken as features land. Any new demo (derivative token-efficiency USP) ships with a **solid README** from day one.
 
 ---
@@ -92,6 +96,7 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ## Query, entity & research (open)
 
+- [ ] **MCP usage economics (Claude & other hosts)** — Research how external chat clients (Claude, ChatGPT, etc.) can **pay for MCP tool usage** — operator-funded vs end-user wallet, per-network metering hooks, settlement protocol tie-in, hosted demo cost recovery. Output: short design note + whether Mycelium exposes usage quotes on MCP `health_check` / tool metadata. Related: **Settlement protocol** below.
 - [ ] **Settlement protocol** — Real x402 `PaymentProvider`, fundable-wallet harness, HTTP 402 gateway, rebate/pool ledger. Deferred from metering Slice 11.
 - [ ] **Per-record query messages (multi-match)** — Collective `message` today; per-id status when attrs diverge per match.
 - [ ] **Multi-turn thread semantics** — Reuse specialist cache across attributes on one `thread_id` without redundant research.
@@ -151,4 +156,4 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ---
 
-Last updated: 2026-06-20 (baseball M5–M6 domain parity + slice map M7–M13 queued)
+Last updated: 2026-06-20 (M9 scope shipped; contributor walkthrough + public demo + framework extraction + MCP economics on roadmap)
