@@ -6,9 +6,8 @@ not the full ~9+ minute Lahman refresh.
 
 TODO(full): expand to parity with ``bin/smoke-crm-e2e``:
   - ``--full``: real git seed fetch + full Lahman bootstrap (manual / timing gate only)
-  - team record-type queries (``{team: "Brooklyn Dodgers"}``) — inline in this script
   - lazy field-alias scenarios (Bronx Bombers, Dodgers multi-match) via mock expander
-  - optional warehouse stat / derivative queries when those paths exist
+Team record-type queries ship inline; warehouse stat / derive scenarios ship inline (mocked LLM).
 See ``TODO.md`` → ``smoke-baseball-e2e`` full gate.
 """
 

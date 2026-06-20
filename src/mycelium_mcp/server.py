@@ -19,13 +19,11 @@ os.environ["MYCELIUM_USE_SYNC_CHECKPOINTER"] = "1"
 from agents.runtime import refresh_runtime_from_disk
 from graphs.core import run_query
 from models.state import BillingPrincipal, EntityQuery, IdentityRecord, QueryResponse
+from network.health_ping import resolve_health_ping_lookup
 from network.introspection import build_network_capabilities, format_mcp_instructions
 from storage.core import get_storage
 
 mcp = FastMCP("Mycelium", instructions="")
-
-# Health ping: two-step target resolve for a known CRM seed row.
-_HEALTH_PING_LOOKUP = {"name": "Nichanan Kesonpat", "employer": "1k(x)"}
 
 
 def _network_health_info() -> dict[str, str | None]:
@@ -345,23 +343,31 @@ def health_check() -> str:
             checks["lightweight_tool"] = f"error: {exc}"
 
         try:
-            ping_step1_raw = _execute_mcp_query(
-                json.dumps({"lookup": _HEALTH_PING_LOOKUP}),
-            )
-            ping_step1 = json.loads(ping_step1_raw)
-            delivery = ping_step1.get("delivery") or {}
-            delivery_id = delivery.get("delivery_id") if isinstance(delivery, dict) else None
-            if ping_step1.get("outcome") == "lookup_resolved" and delivery_id:
-                ping_raw = _execute_mcp_query(json.dumps({"delivery_id": delivery_id}))
-                ping = json.loads(ping_raw)
+            ping_lookup = resolve_health_ping_lookup()
+            if ping_lookup is None:
+                checks["ping_query"] = "skipped: no health_ping.lookup in network.json"
             else:
-                ping = ping_step1
-            if ping.get("results"):
-                checks["ping_query"] = "ok"
-            elif "Query failed internally" in str(ping.get("message", "")):
-                checks["ping_query"] = "degraded"
-            else:
-                checks["ping_query"] = "degraded"
+                ping_step1_raw = _execute_mcp_query(
+                    json.dumps({"lookup": ping_lookup}),
+                )
+                ping_step1 = json.loads(ping_step1_raw)
+                delivery = ping_step1.get("delivery") or {}
+                delivery_id = (
+                    delivery.get("delivery_id") if isinstance(delivery, dict) else None
+                )
+                if ping_step1.get("outcome") == "lookup_resolved" and delivery_id:
+                    ping_raw = _execute_mcp_query(
+                        json.dumps({"delivery_id": delivery_id}),
+                    )
+                    ping = json.loads(ping_raw)
+                else:
+                    ping = ping_step1
+                if ping.get("results"):
+                    checks["ping_query"] = "ok"
+                elif "Query failed internally" in str(ping.get("message", "")):
+                    checks["ping_query"] = "degraded"
+                else:
+                    checks["ping_query"] = "degraded"
         except Exception as exc:
             checks["ping_query"] = f"error: {exc}"
 

@@ -33,5 +33,11 @@
       "require_paid_before_accept": true,
       "description": "When enabled with metering: quote_required → pay_quote MCP → query_entity+quote_id. Settlement is separate from MCP quote negotiation."
     }
+  },
+  "health_ping": {
+    "lookup": {
+      "name": "Nichanan Kesonpat",
+      "employer": "1k(x)"
+    }
   }
 }

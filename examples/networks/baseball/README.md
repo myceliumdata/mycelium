@@ -1,8 +1,8 @@
 # Baseball example (work in progress)
 
-> **WIP (June 2026)** — Bootstrap and warehouse ingest are usable; **query orchestration, derivatives, and performance are not production-ready.** Lahman refresh can take a long time on the identity-bind pass alone; load optimization is ongoing ([`docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md`](../../../docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md)). Do not treat this example as a finished demo until [`docs/plans/baseball-example-program.md`](../../../docs/plans/baseball-example-program.md) checklist advances.
+> **WIP (June 2026)** — Query path, warehouse stats, and derive pipeline ship on live Lahman; **bootstrap refresh timing** is still too slow for casual demo scale. Load optimization is ongoing ([`docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md`](../../../docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md)). Program status: [`docs/plans/baseball-example-program.md`](../../../docs/plans/baseball-example-program.md).
 
-Lahman second-network example. **Not** wired into `mycelium query` yet.
+Lahman second-network example: **player** + **team** record types, warehouse specialists, and LLM derive on manifest miss.
 
 ## Quick start
 
@@ -11,7 +11,23 @@ From the framework repo root:
 ```bash
 uv sync
 ./bin/refresh-example-network baseball --yes
+
+# Step 1 — partial player lookup (copy delivery_id)
+uv run mycelium query --network baseball \
+  --lookup-json '{"player":"Hank Aaron"}'
+
+# Step 2 — identity deliver
+uv run mycelium query --network baseball --delivery-id d_…
+
+# Step 1 — warehouse stat + provenance
+uv run mycelium query --network baseball \
+  --lookup-json '{"player":"Hank Aaron"}' \
+  --requested-attributes career_hr --provenance
 ```
+
+**Fast CI gate** (minimal fixture, mocked derive): `./bin/smoke-baseball-e2e`
+
+**Live regression** (real `~/mycelium-networks/baseball`): `./bin/gate-live baseball` — derive cache auto-clears; full Lahman reload is manual before gate.
 
 To push committed example changes (e.g. updated `guide.md`) into an **existing** live root without re-running Lahman bootstrap (~25 min):
 
@@ -28,7 +44,9 @@ Refresh copies `network.json`, `bootstrap_handlers/`, and `guide.md`, then:
 
 Default live root: `~/mycelium-networks/baseball` (registered in `networks.json`).
 
-**Live regression:** `./bin/gate-live baseball` (derive cache auto-clears; full Lahman reload manual) — see [`docs/manual-checks/2026-06-20-live-gate-program.md`](../../../docs/manual-checks/2026-06-20-live-gate-program.md).
+See [`docs/manual-checks/2026-06-20-live-gate-program.md`](../../../docs/manual-checks/2026-06-20-live-gate-program.md).
+
+MCP: `describe_network` at connect; `health_check` uses `health_ping.lookup` in `network.json` (`{"player":"Hank Aaron"}`) after bootstrap.
 
 ## Step-1 lookup (operators)
 

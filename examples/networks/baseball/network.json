@@ -27,5 +27,10 @@
   },
   "metering": {
     "enabled": false
+  },
+  "health_ping": {
+    "lookup": {
+      "player": "Hank Aaron"
+    }
   }
 }

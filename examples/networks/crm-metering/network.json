@@ -31,5 +31,11 @@
       "provider": "mock",
       "require_paid_before_accept": true
     }
+  },
+  "health_ping": {
+    "lookup": {
+      "name": "Paul Murphy",
+      "employer": "Acme Corp"
+    }
   }
 }

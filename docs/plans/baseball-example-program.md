@@ -1,6 +1,6 @@
 # Baseball example — program design (`baseball` network)
 
-**Status:** **Work in progress** (June 2026) — `LahmanSeedHandler` + warehouse shipped; record-type routing + debut player bind shipped (slice 1800); derivatives and bootstrap performance **not** done. Safe to refresh for development; not demo-ready on `origin`.  
+**Status:** **Work in progress** (June 2026) — `LahmanSeedHandler`, warehouse manifest, record-type routing, debut player bind, warehouse stats, and derive pipeline (M1–M4b) ship; live gate **16/16** on real Lahman (`./bin/gate-live baseball`). **Open:** Lahman bootstrap refresh timing (identity pass too slow for casual demo); lazy-alias smoke scenarios; `--full` smoke gate. Safe to refresh for development; not demo-ready until bootstrap perf meets timing gates.  
 **Ur artifact:** [`mycelium_lahman_design_prompt.md`](mycelium_lahman_design_prompt.md) — original Grok design brief; preserved, not maintained as source of truth  
 **Conversations:** [`conversations/2026-06-14-data-factory-origin.md`](conversations/2026-06-14-data-factory-origin.md), [`conversations/2026-06-15-baseball-example-design.md`](conversations/2026-06-15-baseball-example-design.md)  
 **Roadmap:** [`TODO.md`](../../TODO.md) → `baseball` example
@@ -296,4 +296,4 @@ See `examples/networks/baseball/README.md`.
 
 ---
 
-*Updated: 2026-06-18 — record_type vocabulary; player debut bind locked (slice 1800).*
+*Updated: 2026-06-20 — live gate pass; query + derive path demo-ready on loaded roots; bootstrap perf still gates casual demo.*
