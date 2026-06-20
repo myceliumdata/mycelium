@@ -1,0 +1,24 @@
+---
+description: Framework specialist class hierarchy — promote shared graph/derive/product behavior to src/, keep pack specialists thin
+alwaysApply: true
+---
+
+# Specialist hierarchy (Paul, June 2026)
+
+`SpecialistAgent` (`src/agents/specialists/agent.py`) is the **framework root**. Do not reimplement warehouse graphs, derive-on-miss, or product-specialist shells only under `examples/networks/`.
+
+## Where code lives
+
+| Layer | Location | Responsibility |
+|-------|----------|----------------|
+| Root + tiers | `src/agents/specialists/` | `SpecialistAgent`, `Warehouse*StatSpecialist` (M14), future `ProductTeamSpecialist` |
+| Pack | `examples/networks/<network>/specialists/` | Thin subclasses: `category`, `domain`, pack resolver hooks |
+| Network data | `warehouse_domains.json`, manifests | Aliases, `derive_on_miss`, conventions |
+
+## When implementing slices
+
+- **Warehouse stat domains** (batting, pitching, bio, fielding, team_season): subclass framework warehouse bases — not new `pack_common` callback loops per file.
+- **Product specialists** (roster, franchise): shared shell belongs in framework when promoted; until then avoid duplicating another 80-line graph in the pack.
+- **No `src/` → `examples/` imports.** Pack subclasses override hooks to load network resolvers.
+
+Full rationale: `docs/architecture/whys/specialist-class-hierarchy.md`

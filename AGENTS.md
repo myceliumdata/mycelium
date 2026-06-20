@@ -41,8 +41,22 @@ If unclear, **ask** or stay in diagnose-only mode.
 | `prompts/cursor/done/*/review.md` | Grok after slice review |
 | `origin` push | Paul only — Grok pushes only when Paul explicitly asks |
 
+## Specialist hierarchy (Paul, June 2026 — standing)
+
+**`SpecialistAgent` is the framework root** (`src/agents/specialists/agent.py`). Proven example-network patterns move **up** into `src/agents/specialists/` as middle tiers; packs keep thin subclasses + manifests + network-specific resolvers.
+
+| Tier | Home | Examples |
+|------|------|----------|
+| Root | `src/` | `SpecialistAgent` |
+| Warehouse stats | `src/` (M14+) | `WarehousePlayerStatSpecialist`, `WarehouseTeamStatSpecialist` |
+| Product artifacts | `src/` (follow-on) | `ProductTeamSpecialist` (roster, franchise) |
+| Network pack | `examples/networks/<net>/specialists/` | `BattingSpecialist` — `category` + `domain` + resolver hooks only |
+
+**Grok holds the line on:** slice prompts, reviews, and diagnoses — reject pack-only duplication of graph/derive/product shells when a framework base is the right home. Source of truth: [`docs/architecture/whys/specialist-class-hierarchy.md`](docs/architecture/whys/specialist-class-hierarchy.md).
+
 ## Related docs
 
 - `prompts/cursor/WORKFLOW.md` — full handoff, review checklist, commit/push policy
 - `docs/architecture.md` — design source of truth
+- `docs/architecture/whys/specialist-class-hierarchy.md` — specialist class hierarchy rationale
 - `prompts/system/CORE_PROMPT.md` — project principles
