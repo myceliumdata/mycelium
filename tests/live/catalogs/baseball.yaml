@@ -436,7 +436,7 @@ scenarios:
 
   - id: bb-roster-01
     phase: roster
-    description: scoped roster for 1957 Brooklyn Dodgers includes Hank Aaron
+    description: scoped roster for 1957 Brooklyn Dodgers includes Duke Snider
     step1:
       lookup:
         team: "{{ anchors.team_label }}"
@@ -451,7 +451,7 @@ scenarios:
       outcome: assembled
       path:
         results[0].roster:
-          contains: "{{ anchors.player }}"
+          contains: "{{ anchors.roster_member_1957_bro }}"
 
   - id: bb-franchise-01
     phase: franchise

@@ -539,7 +539,7 @@ def discover_anchor_drift(
                 )
             scoped_year = "1957"
             for attr, expected in (
-                ("roster", anchors.get("player")),
+                ("roster", anchors.get("roster_member_1957_bro")),
             ):
                 if expected is None:
                     continue
