@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 
 from network.intent_map import (
-    infer_slug_from_warm_cache,
     labels_for_intent_slug,
     load_intent_map,
     lookup_intent_slug,
@@ -53,13 +52,6 @@ def test_intent_map_round_trip(tmp_path) -> None:
     assert '"version": "1.0"' in raw
 
 
-def _is_cached(entry) -> bool:
-    if not isinstance(entry, dict) or not entry.get("versions"):
-        return False
-    status = entry["versions"][-1].get("status")
-    return status in ("found", "na")
-
-
 def test_labels_for_intent_slug() -> None:
     intent_map = {
         "career_avg": "career_batting_average",
@@ -71,49 +63,3 @@ def test_labels_for_intent_slug() -> None:
         "career_avg",
         "batting_average",
     }
-
-
-def test_infer_slug_from_warm_cache_single_candidate() -> None:
-    record = {"career_batting_average": {"versions": [{"status": "found", "value": "0.500"}]}}
-    intent_map = {"career_avg": "career_batting_average"}
-
-    assert (
-        infer_slug_from_warm_cache(record, intent_map, is_cached=_is_cached)
-        == "career_batting_average"
-    )
-
-
-def test_infer_slug_from_warm_cache_na_only_slug() -> None:
-    record = {"career_batting_average": {"versions": [{"status": "na"}]}}
-    intent_map = {"career_avg": "career_batting_average"}
-
-    assert (
-        infer_slug_from_warm_cache(record, intent_map, is_cached=_is_cached)
-        == "career_batting_average"
-    )
-
-
-def test_infer_slug_from_warm_cache_no_candidates_returns_none() -> None:
-    record: dict[str, object] = {}
-    intent_map = {"career_avg": "career_batting_average"}
-
-    assert infer_slug_from_warm_cache(record, intent_map, is_cached=_is_cached) is None
-
-    assert infer_slug_from_warm_cache(record, {}, is_cached=_is_cached) is None
-
-
-def test_infer_slug_from_warm_cache_ambiguous_returns_none() -> None:
-    record = {
-        "career_batting_average": {"versions": [{"status": "found", "value": "0.500"}]},
-        "career_ops": {"versions": [{"status": "found", "value": "0.900"}]},
-    }
-    intent_map = {"career_avg": "career_batting_average", "ops": "career_ops"}
-
-    assert infer_slug_from_warm_cache(record, intent_map, is_cached=_is_cached) is None
-
-
-def test_infer_slug_from_warm_cache_unrelated_single_storage_returns_none() -> None:
-    record = {"career_ops": {"versions": [{"status": "found", "value": "0.900"}]}}
-    intent_map = {"career_avg": "career_batting_average", "ops": "career_ops"}
-
-    assert infer_slug_from_warm_cache(record, intent_map, is_cached=_is_cached) is None

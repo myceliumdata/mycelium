@@ -16,11 +16,9 @@ from agents.specialists.fields import (
 from models.state import MyceliumGraphState, graph_requested_attributes
 from network.dataset_source import load_pack_dataset_source
 from network.intent_map import (
-    infer_slug_from_warm_cache,
     labels_for_intent_slug,
     load_intent_map,
     lookup_intent_slug,
-    save_intent_mapping,
 )
 from network.intent_normalization import resolve_intent_slug
 from network.paths import NetworkPaths, resolve_network_root
@@ -209,18 +207,7 @@ def _evaluate_batting_fields(
             if dr.derive_on_miss_enabled(manifest, "batting"):
                 requested_key = key
                 intent_map = load_intent_map(paths)
-                intent_slug: str | None = None
-                if lookup_intent_slug(requested_key, intent_map) is None:
-                    warmed = infer_slug_from_warm_cache(
-                        record,
-                        intent_map,
-                        is_cached=lambda entry: field_has_value(entry)
-                        or field_is_na(entry),
-                    )
-                    if warmed is not None:
-                        intent_slug = warmed
-                        save_intent_mapping(paths, requested_key, warmed)
-                        intent_map[requested_key] = warmed
+                intent_slug = lookup_intent_slug(requested_key, intent_map)
                 if intent_slug is None:
                     intent_slug = resolve_intent_slug(
                         requested_key,

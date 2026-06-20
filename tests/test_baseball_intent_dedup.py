@@ -29,6 +29,11 @@ SAMPLE_PLAYER = {
     "debut_year": "1957",
 }
 INTENT_SLUG = "career_batting_average"
+OPS_INTENT_SLUG = "career_ops"
+OPS_DERIVE_SOURCE = '''
+def compute(player_id: str, warehouse: Path) -> str:
+    return "0.928"
+'''
 
 
 def _write_minimal_lahman_fixture(seed_dir: Path) -> None:
@@ -106,9 +111,9 @@ def _patch_intent_and_derive_mocks(monkeypatch: pytest.MonkeyPatch, dr, *, codeg
 
     def fake_intent_llm(prompt, *, llm_invoke=None):
         intent_calls["count"] = intent_calls.get("count", 0) + 1
-        if "career_avg" in prompt:
+        if "Requested attribute label: career_avg" in prompt:
             return IntentProposal(intent_slug=INTENT_SLUG, confidence=0.95)
-        if "batting_average" in prompt:
+        if "Requested attribute label: batting_average" in prompt:
             return IntentProposal(intent_slug=INTENT_SLUG, confidence=0.95)
         return IntentProposal(intent_slug="unknown_stat", confidence=0.95)
 
@@ -176,7 +181,7 @@ def test_intent_dedup_career_avg_then_batting_average(
     _, second = _deliver_attr("batting_average", provenance=True)
     assert str(second.results[0].get("batting_average")) == "0.500"
     assert codegen_counter.get("count", 0) == 1
-    assert intent_calls.get("count", 0) == 1
+    assert intent_calls.get("count", 0) == 2
 
     intent_map_after = json.loads((root / "intent_map.json").read_text(encoding="utf-8"))
     assert intent_map_after["mappings"]["batting_average"] == INTENT_SLUG
@@ -242,61 +247,63 @@ def test_legacy_per_label_storage_hit_for_synonym(
 
 
 @pytest.mark.smoke
-def test_warm_cache_ambiguous_still_calls_intent_llm(
+def test_ops_after_career_avg_does_not_reuse_batting_slug(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from agents.specialists.computed import build_computed_version_body
-    from agents.specialists.fields import append_version
-
     root = _refresh_baseball_root(tmp_path, monkeypatch)
     dr = _load_derive_module(root)
     codegen_counter: dict[str, int] = {}
-    intent_calls = _patch_intent_and_derive_mocks(monkeypatch, dr, codegen_counter=codegen_counter)
+    intent_calls = {"count": 0}
 
-    step1 = EntityQuery(lookup=dict(SAMPLE_PLAYER), requested_attributes=["career_hr"])
-    r1 = run_query(step1, thread_id="ambig-seed-step1")
-    assert r1.outcome == "lookup_resolved" and r1.delivery is not None
-    run_query(EntityQuery(delivery_id=r1.delivery.delivery_id), thread_id="ambig-seed-step2")
+    def fake_intent_llm(prompt, *, llm_invoke=None):
+        intent_calls["count"] = intent_calls.get("count", 0) + 1
+        if "Requested attribute label: career_avg" in prompt:
+            return IntentProposal(intent_slug=INTENT_SLUG, confidence=0.95)
+        if "Requested attribute label: ops" in prompt:
+            return IntentProposal(intent_slug=OPS_INTENT_SLUG, confidence=0.95)
+        return IntentProposal(intent_slug="unknown_stat", confidence=0.95)
+
+    def fake_codegen(prompt, *, llm_invoke=None):
+        codegen_counter["count"] = codegen_counter.get("count", 0) + 1
+        if "Attribute to derive: ops" in prompt:
+            return OPS_DERIVE_SOURCE.strip()
+        return CAREER_AVG_DERIVE_SOURCE.strip()
+
+    def fake_review(prompt, *, review_llm_invoke=None):
+        return "VERDICT: ACCEPT"
+
+    monkeypatch.setattr(
+        "network.intent_normalization._invoke_intent_llm",
+        lambda prompt, llm_invoke=None: fake_intent_llm(prompt),
+    )
+    monkeypatch.setattr(dr, "invoke_llm_for_prompt", fake_codegen)
+    monkeypatch.setattr(dr, "invoke_llm_for_review", fake_review)
+
+    _, first = _deliver_attr("career_avg", provenance=True)
+    assert str(first.results[0].get("career_avg")) == "0.500"
+    assert codegen_counter.get("count", 0) == 1
+    assert intent_calls.get("count", 0) == 1
+
+    intent_map = json.loads((root / "intent_map.json").read_text(encoding="utf-8"))
+    assert intent_map["mappings"]["career_avg"] == INTENT_SLUG
 
     storage_path = root / "agents" / "batting" / "storage.json"
     storage = json.loads(storage_path.read_text(encoding="utf-8"))
     entity_id = next(iter(storage["records"]))
-    actor = {"kind": "specialist", "category": "batting", "specialist": "batting_specialist"}
-    for slug, value in (INTENT_SLUG, "0.500"), ("career_ops", "0.900"):
-        storage["records"][entity_id][slug] = append_version(
-            None,
-            build_computed_version_body(
-                value=value,
-                actor=actor,
-                sources=[],
-                computation={"language": "python", "inline": "legacy"},
-                parameters={"attribute": slug},
-                at="2026-01-01T00:00:00+00:00",
-            ),
-        )
-    storage_path.write_text(json.dumps(storage, indent=2), encoding="utf-8")
+    assert INTENT_SLUG in storage["records"][entity_id]
 
-    (root / "intent_map.json").write_text(
-        json.dumps(
-            {
-                "version": "1.0",
-                "mappings": {
-                    "career_avg": INTENT_SLUG,
-                    "ops": "career_ops",
-                },
-            },
-            indent=2,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-    _reset_runtime()
-    reset_core_graph()
+    _, second = _deliver_attr("ops", provenance=True)
+    assert str(second.results[0].get("ops")) == "0.928"
+    assert codegen_counter.get("count", 0) == 2
+    assert intent_calls.get("count", 0) == 2
 
-    _, response = _deliver_attr("batting_average")
-    assert str(response.results[0].get("batting_average")) == "0.500"
-    assert intent_calls.get("count", 0) == 1
+    intent_map_after = json.loads((root / "intent_map.json").read_text(encoding="utf-8"))
+    assert intent_map_after["mappings"]["ops"] == OPS_INTENT_SLUG
+    assert intent_map_after["mappings"]["ops"] != INTENT_SLUG
+
+    storage_after = json.loads(storage_path.read_text(encoding="utf-8"))
+    assert OPS_INTENT_SLUG in storage_after["records"][entity_id]
 
 
 @pytest.mark.smoke
