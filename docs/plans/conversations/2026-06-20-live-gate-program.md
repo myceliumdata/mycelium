@@ -1,35 +1,42 @@
-# Live gate program — opt-in regression suites (baseball + CRM)
+# Live gate program — opt-in regression (all example networks)
 
 **Date:** 2026-06-20  
 **Participants:** Paul + Grok  
-**Status:** Design lock for slice  
+**Status:** Design lock for slice (rev. unified `gate-live`)  
 **Replaces:** ad hoc manual MCP/CLI sessions for regression detection
 
 ---
 
 ## Problem
 
-- **Smoke / CI** uses temp fixtures and **mocked** LLMs — fast, no keys, does not prove live Lahman anchors (Aaron `0.305`, `755`, M4b dedup) or deployed CRM roots.
-- **Manual gates** in `docs/manual-checks/` are thorough but time-consuming and not diffable run-to-run.
-- Hank Aaron / CRM two-step sessions require real `.env` and `~/mycelium-networks/*` roots.
+- **Smoke / CI** uses temp fixtures and **mocked** LLMs — fast, no keys, does not prove live deployed roots.
+- **Manual gates** are thorough but time-consuming.
+- Multiple **example networks** need regression coverage: `baseball`, `crm`, `crm-metering`, `empty-crm`.
 
 ---
 
 ## Solution
 
-**Live gate** tier: opt-in pytest suite + operator scripts. **Never** run from `bin/ci-local`.
+**Single operator entry:** `bin/gate-live <network>` where `<network>` is the example name (same as `refresh-example-network`).
+
+```bash
+./bin/gate-live baseball --phase derive --fresh-derive
+./bin/gate-live crm --phase protocol
+./bin/gate-live crm-metering --phase metering
+./bin/gate-live empty-crm --phase growth
+./bin/gate-live --list
+```
 
 | Piece | Role |
 |-------|------|
-| `@pytest.mark.live_gate` | Marker — excluded from CI smoke |
-| `tests/live/gate_runner.py` | YAML catalog → step 1/2 `run_query` → assertions |
-| `tests/live/conftest.py` | `load_dotenv`, root resolution, skip if preflight fails |
-| `bin/gate-baseball-live` | Operator entry — baseball |
-| `bin/gate-crm-live` | Operator entry — CRM |
-| Scenario YAML | Executable spec (anchors, phases, depends_on) |
-| `docs/manual-checks/runs/*.json` | Per-run reports (gitignored) |
+| `bin/gate-live` | Argparse → env vars → `pytest tests/live/ -m live_gate` |
+| `tests/live/networks.yaml` | Registry: network → catalog, anchors, default root |
+| `tests/live/catalogs/*.yaml` | Per-network scenario specs |
+| `@pytest.mark.live_gate` | Opt-in marker — **never CI** |
 
-**Transport:** in-process `run_query` (same graph as MCP). No Claude required.
+**Default root:** `~/mycelium-networks/<network>` (override `MYCELIUM_NETWORK_ROOT`).
+
+**Transport:** in-process `run_query`.
 
 ---
 
@@ -37,60 +44,31 @@
 
 | Topic | Lock |
 |-------|------|
-| CI | **Never** invoke live gates from `ci-local` or GitHub CI |
-| Root default | `~/mycelium-networks/baseball` / `~/mycelium-networks/crm` (override `MYCELIUM_NETWORK_ROOT`) |
-| Env | `load_dotenv(repo/.env)`; baseball derive requires `OPENAI_API_KEY` + intent/codegen model vars |
-| Bootstrap | **No full Lahman re-bootstrap** in gate — preflight asserts warehouse + registry exist |
-| Cache | Baseball `--fresh-derive` clears batting `storage.json` + `intent_map.json` before derive phase |
-| CRM research | **Optional phase** `--phase research` — requires `OPENAI_API_KEY` + `TAVILY_API_KEY`; may be flaky |
-| CRM metering | **Optional phase** `--phase metering` — uses `crm-metering` network (separate root) |
-| Anchors | Versioned JSON under `tests/live/anchors/`; `--discover` prints drift vs live root |
-| Thorough | Catalog must cover manual gate tables (baseball hand-test M2–M4b; CRM MVR post-program + smoke-crm scenarios) |
+| CLI shape | **One script** `gate-live` + **required** network positional (not separate per-network bins) |
+| Networks v1 | `baseball`, `crm`, `crm-metering`, `empty-crm` |
+| CI | Never from `ci-local` |
+| Env | `load_dotenv(repo/.env)` |
+| Bootstrap | No in-gate full refresh; preflight asserts deployed state |
+| empty-crm | Tests **cold start / growth** — 0 entities preflight, first row on step-2 deliver |
+| crm-metering | Dedicated catalog; quote → accept arc (not folded into `crm` only) |
+| Baseball cache | `--fresh-derive` for baseball derive phase only |
 
 ---
 
-## Baseball phases
+## Network summaries
 
-| Phase | Source doc | LLM |
-|-------|------------|-----|
-| `preflight` | warehouse file, env, resolve Aaron | No |
-| `identity` | partial lookup, negatives | No |
-| `m2` | M2 extended #1–#7 | No |
-| `derive` | M3 career_avg, M4 ops, M4b dedup | Yes |
-| `infra` | describe_network blurb (optional subprocess or import) | No |
-
----
-
-## CRM phases
-
-| Phase | Source doc | Keys |
-|-------|------------|------|
-| `preflight` | 15 entities, `bind_values` shape | No |
-| `protocol` | two-step, batch 645, fuzzy typo, create_on_deliver | No |
-| `research` | email deliver (single + batch) | OpenAI + Tavily |
-| `metering` | quote_required → assembled on `crm-metering` | OpenAI + Tavily |
-| `negative` | not_found, legacy CLI rejected (subprocess) | No |
-
----
-
-## Assertion vocabulary (YAML)
-
-- `equals`, `approx` (+ `decimals`, `tolerance`)
-- `contains` (string / provenance path)
-- `outcome`, `total_matches`, `len_results`
-- `same_provenance_timestamp_as` (scenario id)
-- `audit_log_excludes` / `audit_log_includes` (debug substring)
-- `skip_if_missing_env` on scenario or phase
+| Network | Phases | Keys |
+|---------|--------|------|
+| **baseball** | preflight, identity, m2, derive, infra | Derive: OpenAI + model vars |
+| **crm** | preflight, protocol, research, negative | Research: OpenAI + Tavily |
+| **crm-metering** | preflight, metering | OpenAI + Tavily for email deliver |
+| **empty-crm** | preflight, growth | OpenAI + Tavily if email on step 1 |
 
 ---
 
 ## Non-goals (v1)
 
-- MCP subprocess wire tests
-- Full Lahman `--full` refresh in gate
-- M3b chaos / injected SQL failures
-- Admin UI browser automation
-- `EntityQuery.question` (M5 deferred)
+- MCP subprocess, Admin UI, full Lahman re-bootstrap, M5 question field
 
 ---
 
