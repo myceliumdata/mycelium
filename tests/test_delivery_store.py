@@ -48,6 +48,23 @@ def test_issue_delivery_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     loaded = store.get(scope.delivery_id)
     assert loaded is not None
     assert loaded.model_dump() == scope.model_dump()
+
+
+@pytest.mark.smoke
+def test_issue_delivery_persists_query_scope(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MYCELIUM_DELIVERIES_PATH", str(tmp_path / "deliveries.json"))
+    scope = issue_delivery(
+        entity_ids=["ent-1"],
+        lookup={"team": "Brooklyn Dodgers"},
+        requested_attributes=["season_wins"],
+        query_scope={"yearID": "1957"},
+    )
+    assert scope.query_scope == {"yearID": "1957"}
+    store = get_delivery_store()
+    store.put(scope)
+    loaded = store.get(scope.delivery_id)
+    assert loaded is not None
+    assert loaded.query_scope == {"yearID": "1957"}
     assert (tmp_path / "deliveries.json").is_file()
 
 

@@ -102,6 +102,20 @@ def overall_field_status(
     return "pending"
 
 
+def query_year_id(state: MyceliumGraphState) -> str | None:
+    """Return yearID from step-1 query scope or step-2 delivery-bound scope."""
+    raw_scope: dict[str, Any]
+    if state.delivery_scope_query_scope:
+        raw_scope = state.delivery_scope_query_scope
+    else:
+        raw_scope = state.query.scope or {}
+    raw = raw_scope.get("yearID")
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    return text or None
+
+
 def evaluate_player_warehouse_fields(
     agent: SpecialistAgent,
     entity_id: str,
@@ -109,6 +123,7 @@ def evaluate_player_warehouse_fields(
     *,
     paths: NetworkPaths,
     domain: str,
+    year_id: str | None = None,
     on_miss: Callable[[str], bool] | None = None,
     on_miss_resolve: Callable[..., Any] | None = None,
 ) -> tuple[dict[str, Any], str, list[str]]:
@@ -155,6 +170,7 @@ def evaluate_player_warehouse_fields(
                 manifest=manifest,
                 player_id=player_id,
                 warehouse=warehouse,
+                year_id=year_id,
             )
         except FileNotFoundError:
             agent.write_na_field(entity_id, key, at=now)
@@ -200,6 +216,7 @@ def evaluate_player_warehouse_fields(
                 warehouse=warehouse,
                 attribute=resolved.attribute,
                 column=resolved.column,
+                year_id=year_id,
             ),
             at=now,
         )
@@ -221,6 +238,7 @@ def evaluate_team_warehouse_fields(
     *,
     paths: NetworkPaths,
     domain: str,
+    year_id: str | None = None,
 ) -> tuple[dict[str, Any], str]:
     wr = load_warehouse_resolve()
     data = agent.storage.load()
@@ -263,6 +281,7 @@ def evaluate_team_warehouse_fields(
                 manifest=manifest,
                 team_id=team_id,
                 warehouse=warehouse,
+                year_id=year_id,
             )
         except FileNotFoundError:
             agent.write_na_field(entity_id, key, at=now)
@@ -288,6 +307,7 @@ def evaluate_team_warehouse_fields(
                 warehouse=warehouse,
                 attribute=resolved.attribute,
                 column=resolved.column,
+                year_id=year_id,
             ),
             at=now,
         )
@@ -346,12 +366,14 @@ def run_warehouse_player_graph(
         }
 
     paths = NetworkPaths.from_root(resolve_network_root())
+    year_id = query_year_id(current)
     values, overall_status, derive_audit = evaluate_player_warehouse_fields(
         agent,
         entity_id,
         owned,
         paths=paths,
         domain=domain,
+        year_id=year_id,
         on_miss=on_miss,
         on_miss_resolve=on_miss_resolve,
     )
@@ -441,12 +463,14 @@ def run_warehouse_team_graph(
         }
 
     paths = NetworkPaths.from_root(resolve_network_root())
+    year_id = query_year_id(current)
     values, overall_status = evaluate_team_warehouse_fields(
         agent,
         entity_id,
         owned,
         paths=paths,
         domain=domain,
+        year_id=year_id,
     )
     contrib = {
         "id": entity_id,

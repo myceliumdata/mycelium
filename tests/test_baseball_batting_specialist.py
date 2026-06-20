@@ -219,3 +219,25 @@ def test_career_rbi_provenance_parameters(
     assert version["parameters"]["attribute"] == "career_rbi"
     assert version["parameters"]["column"] == "RBI"
     assert version["parameters"]["lahman.playerID"] == "aaronha01"
+
+
+@pytest.mark.smoke
+def test_career_hr_ignores_year_scope(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _refresh_baseball_root(tmp_path, monkeypatch)
+    step1 = EntityQuery(
+        lookup=dict(SAMPLE_PLAYER),
+        scope={"yearID": "9999"},
+        requested_attributes=["career_hr"],
+    )
+    r1 = run_query(step1, thread_id="career-hr-scope-step1")
+    assert r1.outcome == "lookup_resolved", r1.message
+    assert r1.delivery is not None
+    r2 = run_query(
+        EntityQuery(delivery_id=r1.delivery.delivery_id),
+        thread_id="career-hr-scope-step2",
+    )
+    assert r2.outcome in {"found", "assembled"}
+    assert str(r2.results[0].get("career_hr")) == "3"

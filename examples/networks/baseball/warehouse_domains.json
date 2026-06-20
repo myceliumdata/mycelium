@@ -63,7 +63,7 @@
       "tables": ["Teams"],
       "grain": ["yearID", "teamID", "lgID"],
       "conventions": {
-        "team_latest_column": "Latest yearID row per teamID until query scope ships"
+        "team_latest_column": "Latest yearID row per teamID when scope omits yearID; scoped yearID when EntityQuery.scope.yearID is set"
       },
       "aliases": {
         "season_wins": {"convention": "team_latest_column", "column": "W"},

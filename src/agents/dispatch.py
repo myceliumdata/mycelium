@@ -208,6 +208,7 @@ def target_resolve_node(state: MyceliumGraphState | dict[str, Any]) -> dict[str,
                 "entity_resolution_kind": resolution_kind,
                 "delivery_scope_attrs": list(scope.requested_attributes),
                 "delivery_scope_provenance": bool(scope.provenance),
+                "delivery_scope_query_scope": dict(scope.query_scope or {}),
                 "audit_log": [
                     f"target_resolve: deliver step-2 attrs="
                     f"{scope.requested_attributes!r} entity_count={len(matched)}.",

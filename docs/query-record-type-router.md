@@ -43,6 +43,24 @@ Manifest (`examples/networks/baseball/network.json`):
 
 `DeliveryScope.record_type` is set at issue time from the inferred record type. Step 2 loads the matching registry via `scope.record_type`.
 
+## Query scope (M9)
+
+Step 1 may include optional **`scope`** on `EntityQuery` (top-level sibling of `lookup`, not nested under bind keys):
+
+```json
+{
+  "lookup": {"team": "Brooklyn Dodgers"},
+  "scope": {"yearID": "1957"},
+  "requested_attributes": ["season_wins"]
+}
+```
+
+- Bound on `DeliveryScope.query_scope` at issue time; step 2 replays via internal graph state (`delivery_scope_query_scope`).
+- **`team_season`**: `team_latest_column` aliases use scoped `yearID` when present; omit scope for latest year per `teamID` (M6 default).
+- **`career_sum` / `career_era_weighted`**: ignore `yearID` (career totals).
+- Future **`season_column`** aliases require `yearID` (season-scoped pull).
+- Provenance `parameters.yearID` is set when scope was applied.
+
 ## Removed (slice 1100)
 
 - Multi-grain fan-out (`query_grain_router.py`)

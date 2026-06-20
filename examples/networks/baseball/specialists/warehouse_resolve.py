@@ -46,14 +46,52 @@ def career_sum(
     return int(rows[0][0]) if rows else 0
 
 
-def team_latest_column(column: str, team_id: str, warehouse: Path) -> str | None:
-    """Read one Teams column for the latest ``yearID`` row matching ``teamID``."""
+def team_latest_column(
+    column: str,
+    team_id: str,
+    warehouse: Path,
+    *,
+    year_id: str | None = None,
+) -> str | None:
+    """Read one Teams column for ``teamID``, optionally filtered to ``yearID``."""
     safe_col = column.replace('"', '""')
+    if year_id is not None and str(year_id).strip():
+        rows = query_warehouse(
+            warehouse,
+            f'SELECT "{safe_col}" FROM "Teams" WHERE "teamID" = ? AND "yearID" = ?',
+            (team_id, str(year_id).strip()),
+        )
+    else:
+        rows = query_warehouse(
+            warehouse,
+            f'SELECT "{safe_col}" FROM "Teams" WHERE "teamID" = ? '
+            f'ORDER BY CAST("yearID" AS INTEGER) DESC LIMIT 1',
+            (team_id,),
+        )
+    if not rows:
+        return None
+    value = rows[0][0]
+    if value in (None, ""):
+        return None
+    return str(value).strip()
+
+
+def season_column(
+    column: str,
+    player_id: str,
+    warehouse: Path,
+    *,
+    table: str = "Batting",
+    year_id: str,
+) -> str | None:
+    """Read one column from a single season row (playerID + yearID)."""
+    safe_col = column.replace('"', '""')
+    safe_table = table.replace('"', '""')
     rows = query_warehouse(
         warehouse,
-        f'SELECT "{safe_col}" FROM "Teams" WHERE "teamID" = ? '
-        f'ORDER BY CAST("yearID" AS INTEGER) DESC LIMIT 1',
-        (team_id,),
+        f'SELECT "{safe_col}" FROM "{safe_table}" '
+        f'WHERE "playerID" = ? AND "yearID" = ? LIMIT 1',
+        (player_id, str(year_id).strip()),
     )
     if not rows:
         return None
@@ -125,6 +163,7 @@ def career_era_weighted(player_id: str, warehouse: Path, *, table: str = "Pitchi
 
 CAREER_SUM_INLINE = inspect.getsource(career_sum)
 TEAM_LATEST_COLUMN_INLINE = inspect.getsource(team_latest_column)
+SEASON_COLUMN_INLINE = inspect.getsource(season_column)
 PEOPLE_COLUMN_INLINE = inspect.getsource(people_column)
 PEOPLE_BIRTH_DATE_INLINE = inspect.getsource(people_birth_date)
 PEOPLE_COMPOSE_ISO_DATE_INLINE = inspect.getsource(people_compose_iso_date)
@@ -174,6 +213,7 @@ def resolve_domain_attribute(
     manifest: dict[str, Any],
     player_id: str,
     warehouse: Path,
+    year_id: str | None = None,
 ) -> ResolvedField | None:
     """Resolve one manifest alias; return None when attr is unknown for this domain."""
     key = attr.strip().lower()
@@ -191,6 +231,29 @@ def resolve_domain_attribute(
         return ResolvedField(
             value=str(total),
             computation_inline=CAREER_SUM_INLINE,
+            attribute=key,
+            column=col,
+        )
+    if convention == "season_column":
+        if year_id is None or not str(year_id).strip():
+            return None
+        column = alias.get("column")
+        if not isinstance(column, str) or not column.strip():
+            return None
+        col = column.strip()
+        table = _domain_table(manifest, domain)
+        raw = season_column(
+            col,
+            player_id,
+            warehouse,
+            table=table,
+            year_id=str(year_id).strip(),
+        )
+        if raw is None:
+            return None
+        return ResolvedField(
+            value=raw,
+            computation_inline=SEASON_COLUMN_INLINE,
             attribute=key,
             column=col,
         )
@@ -250,6 +313,7 @@ def resolve_team_domain_attribute(
     manifest: dict[str, Any],
     team_id: str,
     warehouse: Path,
+    year_id: str | None = None,
 ) -> ResolvedField | None:
     """Resolve one team-scoped manifest alias (latest season row per teamID)."""
     key = attr.strip().lower()
@@ -262,7 +326,7 @@ def resolve_team_domain_attribute(
         if not isinstance(column, str) or not column.strip():
             return None
         col = column.strip()
-        raw = team_latest_column(col, team_id, warehouse)
+        raw = team_latest_column(col, team_id, warehouse, year_id=year_id)
         if raw is None:
             return None
         return ResolvedField(
@@ -281,6 +345,7 @@ def provenance_parameters(
     warehouse: Path | None = None,
     attribute: str | None = None,
     column: str | None = None,
+    year_id: str | None = None,
 ) -> dict[str, str]:
     wh = warehouse or default_warehouse_path(paths)
     params: dict[str, str] = {
@@ -291,6 +356,8 @@ def provenance_parameters(
         params["attribute"] = attribute.strip().lower()
     if column and column.strip():
         params["column"] = column.strip()
+    if year_id is not None and str(year_id).strip():
+        params["yearID"] = str(year_id).strip()
     return params
 
 
@@ -301,6 +368,7 @@ def team_provenance_parameters(
     warehouse: Path | None = None,
     attribute: str | None = None,
     column: str | None = None,
+    year_id: str | None = None,
 ) -> dict[str, str]:
     wh = warehouse or default_warehouse_path(paths)
     params: dict[str, str] = {
@@ -311,4 +379,6 @@ def team_provenance_parameters(
         params["attribute"] = attribute.strip().lower()
     if column and column.strip():
         params["column"] = column.strip()
+    if year_id is not None and str(year_id).strip():
+        params["yearID"] = str(year_id).strip()
     return params

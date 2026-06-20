@@ -46,3 +46,29 @@ def test_season_wins_provenance_team_id(
     _, response = _deliver_season_wins(provenance=True)
     version = response.provenance["entities"][0]["attributes"]["season_wins"]["versions"][0]
     assert version.get("parameters", {}).get("lahman.teamID") == "BRO"
+
+
+@pytest.mark.smoke
+def test_season_wins_scoped_year(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    refresh_baseball_root(tmp_path, monkeypatch)
+    step1 = EntityQuery(
+        lookup={"team": "Brooklyn Dodgers"},
+        scope={"yearID": "1957"},
+        requested_attributes=["season_wins", "season_losses"],
+        provenance=True,
+    )
+    r1 = run_query(step1, thread_id="season-wins-scoped-step1")
+    assert r1.outcome == "lookup_resolved", r1.message
+    assert r1.delivery is not None
+    r2 = run_query(
+        EntityQuery(delivery_id=r1.delivery.delivery_id),
+        thread_id="season-wins-scoped-step2",
+    )
+    assert r2.outcome in {"found", "assembled"}
+    assert str(r2.results[0].get("season_wins")) == "84"
+    assert str(r2.results[0].get("season_losses")) == "70"
+    version = r2.provenance["entities"][0]["attributes"]["season_wins"]["versions"][0]
+    assert version.get("parameters", {}).get("yearID") == "1957"

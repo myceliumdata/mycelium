@@ -34,6 +34,10 @@ class DeliveryScope(BaseModel):
         default=False,
         description="Step-2 should bind a provisional registry row from lookup (0 step-1 matches).",
     )
+    query_scope: dict[str, str] = Field(
+        default_factory=dict,
+        description="Optional warehouse filters from step-1 EntityQuery.scope (e.g. yearID).",
+    )
 
 
 class DeliveriesDocument(BaseModel):
@@ -71,6 +75,7 @@ def issue_delivery(
     provenance: bool = False,
     create_on_deliver: bool = False,
     record_type: str | None = None,
+    query_scope: dict[str, str] | None = None,
     now: datetime | None = None,
 ) -> DeliveryScope:
     """Create a new delivery scope with ``d_`` id and configured TTL."""
@@ -86,6 +91,7 @@ def issue_delivery(
         provenance=bool(provenance),
         create_on_deliver=bool(create_on_deliver),
         record_type=record_type,
+        query_scope={str(k): str(v) for k, v in (query_scope or {}).items()},
     )
 
 

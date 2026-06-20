@@ -373,3 +373,44 @@ scenarios:
           equals: "{{ anchors.season_wins }}"
         results[0].season_losses:
           equals: "{{ anchors.season_losses }}"
+
+  - id: bb-team-02
+    phase: team_season
+    description: Brooklyn Dodgers scoped 1957 season_wins and season_losses
+    step1:
+      lookup:
+        team: "{{ anchors.team_label }}"
+      scope:
+        yearID: "1957"
+      requested_attributes: [season_wins, season_losses]
+      provenance: true
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].season_wins:
+          equals: "{{ anchors.season_wins }}"
+        results[0].season_losses:
+          equals: "{{ anchors.season_losses }}"
+
+  - id: bb-scope-01
+    phase: m2
+    description: career_hr ignores bogus yearID scope (career_sum)
+    step1:
+      lookup:
+        player: "{{ anchors.player }}"
+      scope:
+        yearID: "9999"
+      requested_attributes: [career_hr]
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].career_hr:
+          equals: "{{ anchors.career_hr }}"

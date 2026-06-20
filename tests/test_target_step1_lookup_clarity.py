@@ -361,3 +361,9 @@ def test_same_bind_field_conflict_suggested_lookup(
 def test_confirm_new_entity_rejected_on_step2() -> None:
     with pytest.raises(ValueError, match="confirm_new_entity is step 1 only"):
         EntityQuery(delivery_id="d_abc", confirm_new_entity=True)
+
+
+@pytest.mark.smoke
+def test_scope_rejected_on_step2() -> None:
+    with pytest.raises(ValueError, match="scope is step 1 only"):
+        EntityQuery(delivery_id="d_abc", scope={"yearID": "1957"})

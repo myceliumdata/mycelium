@@ -416,6 +416,7 @@ def issue_target_delivery(
         provenance=bool(query.provenance),
         create_on_deliver=create_on_deliver,
         record_type=resolved_record_type,
+        query_scope=dict(query.scope or {}),
     )
     get_delivery_store().put(scope)
     return DeliveryPayload.from_scope(scope)

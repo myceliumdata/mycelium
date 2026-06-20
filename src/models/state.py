@@ -173,6 +173,13 @@ class EntityQuery(BaseModel):
         default=None,
         description="Optional billing principal; required for some funding models.",
     )
+    scope: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "Step 1 only. Optional warehouse filters (e.g. yearID for season-scoped "
+            "reads). Bound on delivery scope for step 2."
+        ),
+    )
     provenance: bool = Field(
         default=False,
         description=(
@@ -203,6 +210,8 @@ class EntityQuery(BaseModel):
                 raise ValueError("requested_attributes are step 1 only")
             if self.provenance:
                 raise ValueError("provenance is step 1 only")
+            if self.scope:
+                raise ValueError("scope is step 1 only")
             if self.principal is not None:
                 raise ValueError("step 2 accepts only delivery_id")
             return self
@@ -491,6 +500,10 @@ class MyceliumGraphState(BaseModel):
     delivery_scope_provenance: bool = Field(
         default=False,
         description="Step-2 deliver: provenance flag bound on step-1 delivery scope.",
+    )
+    delivery_scope_query_scope: dict[str, str] = Field(
+        default_factory=dict,
+        description="Step-2 deliver: warehouse scope keys bound on step-1 delivery scope.",
     )
 
 
