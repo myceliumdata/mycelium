@@ -6,6 +6,8 @@ This example ships **`seed.json`** (bootstrap fixture only — imported into `en
 
 For a **no-seed** growth demo, see [`../empty-crm/`](../empty-crm/).
 
+**Live regression:** `./bin/gate-live crm` — see [`docs/manual-checks/2026-06-20-live-gate-program.md`](../../../docs/manual-checks/2026-06-20-live-gate-program.md).
+
 Edit **`guide.md`** at your network root to tell visiting agents what this network is for (MCP `describe_network` returns it verbatim).
 
 The current `seed.json` is a small public-safe subset (15 people) including demo names used in docs and tests (`Nichanan Kesonpat`, `Andrea Kalmans`, ambiguous `Kevin Zhang` pairs).
@@ -60,7 +62,7 @@ uv run mycelium network status --network crm --lookup-json '{"name":"Andrea Kalm
 
 `seed.json` is imported into **`entities.json` at bootstrap only** (refresh/create). Queries read the registry. When a visiting agent binds a new person, use the two-step protocol:
 
-**Step 1** — full MVR `lookup` (for example `{"name":"Paul Murphy","employer":"Acme Corp"}`) plus optional `requested_attributes` on the same request. Response: `lookup_resolved` with `delivery.delivery_id` and `delivery.create_on_deliver: true` when there are 0 registry matches and no same-name collision (or after `confirm_new_entity: true` following `lookup_suggested`). Partial lookup with missing MVR fields returns `lookup_incomplete` with `required_fields` when there are no near-miss bind-field matches; partial name-only or employer-only lookup with 0 exact hits but a fuzzy bind-field match returns `lookup_suggested` (`sequence_ratio` / `employer_sequence_ratio`) with `suggestions[].suggested_lookup` for retry (for example `{"name":"Andrea Kalmans"}` or `{"employer":"645 Ventures"}`). Shorthand aliases (for example `{"employer":"645"}`) still return `lookup_incomplete`.
+**Step 1** — full MVR `lookup` (for example `{"name":"Paul Murphy","employer":"Acme Corp"}`) plus optional `requested_attributes` on the same request. Response: `lookup_resolved` with `delivery.delivery_id` and `delivery.create_on_deliver: true` when there are 0 registry matches and no same-name collision (or after `confirm_new_entity: true` following `lookup_suggested`). On 0 exact hits the framework tries **fuzzy bind-field suggestions** (typos, first-token shorthand) before `lookup_incomplete` or `create_pending`. Examples: `{"name":"Andrea Kalman"}` → `lookup_suggested` with `{"name":"Andrea Kalmans"}`; `{"employer":"645 Venture"}` → `{"employer":"645 Ventures"}`; `{"employer":"645"}` → `{"employer":"645 Ventures"}`. Retry step 1 with `suggestions[].suggested_lookup`. Partial lookup with no fuzzy hit still returns `lookup_incomplete` (for example `{"name":"Paul Murphy"}` alone). Policy: [`docs/plans/fuzzy-lookup-policy.md`](../../../docs/plans/fuzzy-lookup-policy.md) § For operators.
 
 **Step 2** — `delivery_id` (+ `quote_id` when metered). Mycelium then:
 

@@ -1,0 +1,57 @@
+version: 1
+scenarios:
+  - id: meter-preflight-01
+    phase: preflight
+    description: Metering network seeded with 15 entities
+    skip_query: true
+    assert_step1:
+      registry_entity_count: "{{ anchors.seed_count }}"
+
+  - id: meter-preflight-02
+    phase: preflight
+    description: Metering enabled in network.json
+    skip_query: true
+    assert_step1:
+      file_exists: network.json
+
+  - id: meter-01-quote
+    phase: metering
+    description: Paul Murphy email quote_required
+    skip_if_missing_env:
+      - OPENAI_API_KEY
+      - TAVILY_API_KEY
+    step1:
+      lookup:
+        name: "{{ anchors.persons.paul_metering.name }}"
+        employer: "{{ anchors.persons.paul_metering.employer }}"
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2:
+      lookup:
+        name: "{{ anchors.persons.paul_metering.name }}"
+        employer: "{{ anchors.persons.paul_metering.employer }}"
+      requested_attributes: [email]
+    assert_step2:
+      outcome: quote_required
+      quote_present: true
+      delivery_present: true
+    capture:
+      delivery_id: delivery_id
+      quote_id: quote_id
+
+  - id: meter-02-deliver
+    phase: metering
+    description: Accept quote and deliver email
+    skip_if_missing_env:
+      - OPENAI_API_KEY
+      - TAVILY_API_KEY
+    depends_on: meter-01-quote
+    step1:
+      delivery_id: "{{ context.meter-01-quote.delivery_id }}"
+      quote_id: "{{ context.meter-01-quote.quote_id }}"
+    assert_step1:
+      outcome: assembled
+      path:
+        results[0].email:
+          truthy: true

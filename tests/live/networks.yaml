@@ -1,0 +1,23 @@
+baseball:
+  catalog: catalogs/baseball.yaml
+  anchors: anchors/baseball_aaron_lahman_v2025.json
+  default_root: ~/mycelium-networks/baseball
+  phases: [preflight, identity, m2, derive, infra]
+
+crm:
+  catalog: catalogs/crm.yaml
+  anchors: anchors/crm_seed_v1.json
+  default_root: ~/mycelium-networks/crm
+  phases: [preflight, protocol, research, negative]
+
+crm-metering:
+  catalog: catalogs/crm_metering.yaml
+  anchors: anchors/crm_seed_v1.json
+  default_root: ~/mycelium-networks/crm-metering
+  phases: [preflight, metering]
+
+empty-crm:
+  catalog: catalogs/empty_crm.yaml
+  anchors: null
+  default_root: ~/mycelium-networks/empty-crm
+  phases: [preflight, growth]

@@ -1,0 +1,254 @@
+version: 1
+scenarios:
+  - id: bb-preflight-01
+    phase: preflight
+    description: Lahman warehouse sqlite present
+    skip_query: true
+    assert_step1:
+      file_exists: warehouse/lahman.sqlite
+
+  - id: bb-preflight-02
+    phase: preflight
+    description: Player registry populated
+    skip_query: true
+    assert_step1:
+      registry_entity_count_gte: 1
+
+  - id: bb-id-01
+    phase: identity
+    description: Hank Aaron partial lookup resolves
+    step1:
+      lookup:
+        player: "{{ anchors.player }}"
+    assert_step1:
+      outcome: lookup_resolved
+      total_matches_gte: 1
+      results_empty: true
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: found
+      path:
+        results[0].player:
+          truthy: true
+
+  - id: bb-m2-01
+    phase: m2
+    description: career_hr and birth_date warehouse deliver
+    step1:
+      lookup:
+        player: "{{ anchors.player }}"
+      requested_attributes: [career_hr, birth_date]
+      provenance: true
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].career_hr:
+          equals: "{{ anchors.career_hr }}"
+        results[0].birth_date:
+          equals: "{{ anchors.birth_date }}"
+
+  - id: bb-m2-02
+    phase: m2
+    description: career_rbi and career_hits anchors
+    step1:
+      lookup:
+        player: "{{ anchors.player }}"
+      requested_attributes: [career_rbi, career_hits]
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].career_rbi:
+          equals: "{{ anchors.career_rbi }}"
+        results[0].career_hits:
+          equals: "{{ anchors.career_hits }}"
+
+  - id: bb-m2-03
+    phase: m2
+    description: Six-attribute multi-specialist deliver
+    step1:
+      lookup:
+        player: "{{ anchors.player }}"
+      requested_attributes:
+        - debut_team
+        - debut_year
+        - career_hr
+        - career_rbi
+        - career_hits
+        - birth_date
+      provenance: true
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].career_hr:
+          equals: "{{ anchors.career_hr }}"
+        results[0].birth_date:
+          equals: "{{ anchors.birth_date }}"
+
+  - id: bb-m2-04
+    phase: m2
+    description: Bio raw columns bats throws birth_city
+    step1:
+      lookup:
+        player: "{{ anchors.player }}"
+      requested_attributes: [bats, throws, birth_city]
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].bats:
+          equals: "{{ anchors.bats }}"
+        results[0].throws:
+          equals: "{{ anchors.throws }}"
+        results[0].birth_city:
+          equals: "{{ anchors.birth_city }}"
+
+  - id: bb-m2-05
+    phase: m2
+    description: Cache hit repeat career_hr deliver
+    step1:
+      lookup:
+        player: "{{ anchors.player }}"
+      requested_attributes: [career_hr]
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].career_hr:
+          equals: "{{ anchors.career_hr }}"
+
+  - id: bb-m2-06
+    phase: m2
+    description: Unknown player not_found
+    step1:
+      lookup:
+        player: XYZZY
+    assert_step1:
+      outcome: not_found
+
+  - id: bb-derive-01
+    phase: derive
+    description: career_avg derive on full Lahman
+    skip_if_missing_env:
+      - OPENAI_API_KEY
+      - MYCELIUM_COMPUTATION_CODEGEN_MODEL
+    step1:
+      lookup:
+        player: "{{ anchors.player }}"
+      requested_attributes: [career_avg]
+      provenance: true
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].career_avg:
+          approx: "{{ anchors.career_avg }}"
+          tolerance: 0.001
+    capture:
+      provenance_timestamp: "provenance_timestamp:career_avg"
+
+  - id: bb-derive-02
+    phase: derive
+    description: ops free-form derive on miss
+    skip_if_missing_env:
+      - OPENAI_API_KEY
+      - MYCELIUM_COMPUTATION_CODEGEN_MODEL
+    step1:
+      lookup:
+        player: "{{ anchors.player }}"
+      requested_attributes: [ops]
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].ops:
+          approx: "{{ anchors.ops }}"
+          tolerance: 0.05
+
+  - id: bb-derive-03
+    phase: derive
+    description: M4b synonym batting_average cache hit
+    skip_if_missing_env:
+      - OPENAI_API_KEY
+      - MYCELIUM_INTENT_NORMALIZATION_MODEL
+    depends_on: bb-derive-01
+    step1:
+      lookup:
+        player: "{{ anchors.player }}"
+      requested_attributes: [batting_average]
+      provenance: true
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].batting_average:
+          approx: "{{ anchors.career_avg }}"
+          tolerance: 0.001
+      same_timestamp_as: bb-derive-01
+      intent_slug: career_batting_average
+
+  - id: bb-infra-01
+    phase: infra
+    description: Repeat delivery_id delivers again
+    step1:
+      lookup:
+        player: "{{ anchors.player }}"
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: found
+
+  - id: bb-infra-02
+    phase: infra
+    description: career_hr M2 regression after derive phase
+    step1:
+      lookup:
+        player: "{{ anchors.player }}"
+      requested_attributes: [career_hr]
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].career_hr:
+          equals: "{{ anchors.career_hr }}"
+
+  - id: bb-infra-03
+    phase: infra
+    description: Negative unknown team not_found
+    step1:
+      lookup:
+        team: XYZZY Franchise
+    assert_step1:
+      outcome: not_found

@@ -1,0 +1,10 @@
+{
+  "seed_count": 15,
+  "persons": {
+    "nichanan": {"name": "Nichanan Kesonpat", "employer": "1k(x)"},
+    "andrea": {"name": "Andrea Kalmans", "employer": "Lontra Ventures"},
+    "paul_metering": {"name": "Paul Murphy", "employer": "Acme Corp"},
+    "batch_employer": "645 Ventures",
+    "batch_match_count": 3
+  }
+}

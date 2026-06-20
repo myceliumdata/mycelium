@@ -22,6 +22,7 @@ dependencies = [
     "email-validator>=2.0.0",
     "jinja2>=3.1.6",
     "langchain-tavily>=0.2.18",
+    "pyyaml>=6.0.0",
     "fastapi>=0.115.0",
     "uvicorn>=0.32.0",
 ]
@@ -78,4 +79,5 @@ filterwarnings = [
 markers = [
     "smoke: fast smoke tests for frequent runs during development and quick verification",
     "full: heavier integration tests (real DB, graph, checkpoints) run at end of major changesets",
+    "live_gate: opt-in live regression against deployed network roots (never CI)",
 ]

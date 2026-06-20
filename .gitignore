@@ -30,3 +30,4 @@ admin-ui/node_modules/
 admin-ui/dist/
 .env.~*~
 docs/.DS_Store
+docs/manual-checks/runs/

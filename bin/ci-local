@@ -18,4 +18,6 @@ echo "==> smoke tests"
 export LANGCHAIN_TRACING_V2=false
 uv run pytest -m smoke -q
 
+# Opt-in live regression (never CI): ./bin/gate-live <network>
+
 echo "CI local: all steps passed."

@@ -1,0 +1,64 @@
+version: 1
+scenarios:
+  - id: ec-preflight-01
+    phase: preflight
+    description: Empty registry before growth
+    skip_query: true
+    assert_step1:
+      registry_entity_count: 0
+
+  - id: ec-growth-01
+    phase: growth
+    description: Paul Murphy step1 create_on_deliver when empty
+    skip_if_missing_env:
+      - OPENAI_API_KEY
+      - TAVILY_API_KEY
+    step1:
+      lookup:
+        name: Paul Murphy
+        employer: Acme Corp
+      requested_attributes: [email]
+    assert_step1:
+      outcome: lookup_resolved
+      total_matches: 0
+      results_empty: true
+      delivery_present: true
+      create_on_deliver: true
+    capture:
+      delivery_id: delivery_id
+
+  - id: ec-growth-02
+    phase: growth
+    description: Step2 deliver creates first entity
+    depends_on: ec-growth-01
+    step1:
+      delivery_id: "{{ context.ec-growth-01.delivery_id }}"
+    assert_step1:
+      outcome: assembled
+    step2: false
+
+  - id: ec-growth-03
+    phase: growth
+    description: Repeat lookup finds one match without create_on_deliver
+    step1:
+      lookup:
+        name: Paul Murphy
+        employer: Acme Corp
+    assert_step1:
+      outcome: lookup_resolved
+      total_matches: 1
+      create_on_deliver: false
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: found
+      path:
+        results[0].name:
+          equals: Paul Murphy
+
+  - id: ec-growth-04
+    phase: growth
+    description: Registry count is one after growth arc
+    skip_query: true
+    assert_step1:
+      registry_entity_count: 1

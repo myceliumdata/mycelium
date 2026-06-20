@@ -20,6 +20,8 @@ uv run mycelium query --network-dir ~/mycelium-networks/empty-crm \
 
 After refresh, `entities.json` is absent or empty — no bootstrap import runs. The first registry row is created on **step 2 deliver**, not step 1. Step 2 ensures MVR `name`/`employer` mappings exist in `categories.json` automatically before writing bind versions to specialist storage.
 
+**Live regression:** `./bin/gate-live empty-crm` (refresh to empty root before growth phase) — see [`docs/manual-checks/2026-06-20-live-gate-program.md`](../../../docs/manual-checks/2026-06-20-live-gate-program.md).
+
 ## Layout
 
 ```

@@ -1,0 +1,224 @@
+#!/usr/bin/env python3
+"""Opt-in live regression gate for deployed example networks."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+_SRC_ROOT = REPO_ROOT / "src"
+_VENV_PYTHON = REPO_ROOT / ".venv" / "bin" / "python3"
+
+
+def _bootstrap() -> None:
+    os.environ.setdefault("LANGCHAIN_TRACING_V2", "false")
+    os.environ.setdefault("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
+    if _VENV_PYTHON.is_file():
+        try:
+            if Path(sys.executable).resolve() != _VENV_PYTHON.resolve():
+                os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON), *sys.argv])
+        except OSError:
+            pass
+    src = str(_SRC_ROOT)
+    if src not in sys.path:
+        sys.path.insert(0, src)
+    live_dir = str(REPO_ROOT / "tests" / "live")
+    if live_dir not in sys.path:
+        sys.path.insert(0, live_dir)
+
+
+_bootstrap()
+
+from dotenv import load_dotenv  # noqa: E402
+
+from gate_runner import (  # noqa: E402
+    discover_anchor_drift,
+    expand_path,
+    format_summary_table,
+    fresh_derive_cache,
+    load_networks_registry,
+    run_catalog,
+)
+
+
+def _load_env() -> None:
+    load_dotenv(REPO_ROOT / ".env")
+
+
+def _print_list(registry: dict) -> None:
+    print("Live gate networks (./bin/gate-live <network>):")
+    for name, entry in sorted(registry.items()):
+        print(f"  {name}")
+        print(f"    default_root: {entry.default_root}")
+        print(f"    phases: {', '.join(entry.phases)}")
+        print(f"    catalog: {entry.catalog_path.relative_to(entry.catalog_path.parent.parent)}")
+
+
+def _parse_phases(raw: list[str] | None) -> set[str] | None:
+    if not raw:
+        return None
+    phases: set[str] = set()
+    for item in raw:
+        for chunk in item.replace(",", " ").split():
+            if chunk.strip():
+                phases.add(chunk.strip())
+    return phases or None
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="bin/gate-live",
+        description=(
+            "Opt-in live regression for deployed example networks. "
+            "Never run from ci-local."
+        ),
+    )
+    parser.add_argument(
+        "network",
+        nargs="?",
+        help="Example network name (baseball, crm, crm-metering, empty-crm)",
+    )
+    parser.add_argument(
+        "--list",
+        action="store_true",
+        help="List networks, phases, and default roots",
+    )
+    parser.add_argument(
+        "--phase",
+        action="append",
+        default=[],
+        help="Run one phase (repeatable or comma-separated)",
+    )
+    parser.add_argument(
+        "--fresh-derive",
+        action="store_true",
+        help="Baseball only: clear batting storage + intent_map before derive phase",
+    )
+    parser.add_argument(
+        "--discover",
+        action="store_true",
+        help="Print anchor drift vs live root (no pytest)",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="JSON report to stdout",
+    )
+    parser.add_argument(
+        "--root",
+        metavar="PATH",
+        help="Override MYCELIUM_NETWORK_ROOT",
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    _load_env()
+    args = _build_parser().parse_args(argv)
+    registry = load_networks_registry()
+
+    if args.list:
+        _print_list(registry)
+        return 0
+
+    network = (args.network or "").strip()
+    if not network:
+        print(
+            "Error: network argument required. Run ./bin/gate-live --list",
+            file=sys.stderr,
+        )
+        return 2
+
+    if network not in registry:
+        print(
+            f"Error: unknown network {network!r}. Run ./bin/gate-live --list",
+            file=sys.stderr,
+        )
+        return 2
+
+    entry = registry[network]
+    root = expand_path(args.root) if args.root else entry.default_root
+    if not root.is_dir():
+        print(f"Error: network root missing: {root}", file=sys.stderr)
+        print(
+            f"Bootstrap: ./bin/refresh-example-network {network} --yes",
+            file=sys.stderr,
+        )
+        return 2
+
+    if args.discover:
+        report = discover_anchor_drift(entry, network_root=root)
+        if args.json:
+            print(json.dumps(report, indent=2))
+        else:
+            print(f"Discover: {network} @ {root}")
+            for check in report.get("checks", []):
+                mark = "DRIFT" if check.get("drift") else "ok"
+                print(
+                    f"  [{mark}] {check.get('check')}: "
+                    f"expected={check.get('expected')!r} actual={check.get('actual')!r}",
+                )
+        return 1 if report.get("drift_detected") else 0
+
+    phases = _parse_phases(args.phase)
+    if args.fresh_derive and network == "baseball":
+        if phases is None or "derive" in phases:
+            removed = fresh_derive_cache(root)
+            if removed and not args.json:
+                print(f"Cleared fresh-derive cache: {', '.join(removed)}", file=sys.stderr)
+
+    os.environ["LIVE_GATE_NETWORK"] = network
+    os.environ["MYCELIUM_NETWORK_ROOT"] = str(root)
+    if phases:
+        os.environ["LIVE_GATE_PHASE"] = ",".join(sorted(phases))
+    else:
+        os.environ.pop("LIVE_GATE_PHASE", None)
+    if args.fresh_derive:
+        os.environ["LIVE_GATE_FRESH_DERIVE"] = "1"
+    else:
+        os.environ.pop("LIVE_GATE_FRESH_DERIVE", None)
+
+    cmd = [
+        "uv",
+        "run",
+        "pytest",
+        "tests/live/test_live_gate.py",
+        "-m",
+        "live_gate",
+        "-v",
+    ]
+    if args.json:
+        results, meta = run_catalog(entry, phases=phases, network_root=root)
+        failures = [item for item in results if not item.passed and not item.skipped]
+        report = {
+            "meta": meta,
+            "scenarios": [
+                {
+                    "id": item.id,
+                    "phase": item.phase,
+                    "passed": item.passed,
+                    "skipped": item.skipped,
+                    "detail": item.detail,
+                }
+                for item in results
+            ],
+            "passed": len(failures) == 0,
+            "failure_count": len(failures),
+        }
+        print(json.dumps(report, indent=2))
+        return 1 if failures else 0
+
+    proc = subprocess.run(cmd, cwd=REPO_ROOT)
+    if proc.returncode != 0:
+        results, _meta = run_catalog(entry, phases=phases, network_root=root)
+        print(format_summary_table(results), file=sys.stderr)
+    return proc.returncode
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

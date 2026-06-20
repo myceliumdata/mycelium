@@ -1,0 +1,106 @@
+version: 1
+scenarios:
+  - id: crm-preflight-01
+    phase: preflight
+    description: Seed bootstrap imported 15 entities
+    skip_query: true
+    assert_step1:
+      registry_entity_count: "{{ anchors.seed_count }}"
+
+  - id: crm-protocol-01
+    phase: protocol
+    description: Nichanan Kesonpat identity two-step
+    step1:
+      lookup:
+        name: "{{ anchors.persons.nichanan.name }}"
+        employer: "{{ anchors.persons.nichanan.employer }}"
+    assert_step1:
+      outcome: lookup_resolved
+      total_matches: 1
+      results_empty: true
+      delivery_present: true
+      create_on_deliver: false
+    step2: true
+    assert_step2:
+      outcome: found
+      path:
+        results[0].name:
+          equals: "{{ anchors.persons.nichanan.name }}"
+
+  - id: crm-protocol-02
+    phase: protocol
+    description: Andrea Kalmans identity two-step
+    step1:
+      lookup:
+        name: "{{ anchors.persons.andrea.name }}"
+        employer: "{{ anchors.persons.andrea.employer }}"
+    assert_step1:
+      outcome: lookup_resolved
+      total_matches: 1
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: found
+      path:
+        results[0].name:
+          equals: "{{ anchors.persons.andrea.name }}"
+
+  - id: crm-protocol-03
+    phase: protocol
+    description: 645 Ventures batch resolve three matches
+    step1:
+      lookup:
+        employer: "{{ anchors.persons.batch_employer }}"
+    assert_step1:
+      outcome: lookup_resolved
+      total_matches: "{{ anchors.persons.batch_match_count }}"
+      results_empty: true
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: found
+      results_count: "{{ anchors.persons.batch_match_count }}"
+
+  - id: crm-research-01
+    phase: research
+    description: Batch employer email deliver assembled
+    skip_if_missing_env:
+      - OPENAI_API_KEY
+      - TAVILY_API_KEY
+    step1:
+      lookup:
+        employer: "{{ anchors.persons.batch_employer }}"
+      requested_attributes: [email]
+    assert_step1:
+      outcome: lookup_resolved
+      total_matches: "{{ anchors.persons.batch_match_count }}"
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      results_count: "{{ anchors.persons.batch_match_count }}"
+
+  - id: crm-negative-01
+    phase: negative
+    description: Fuzzy employer typo suggests 645 Ventures
+    step1:
+      lookup:
+        employer: 654 Ventures
+    assert_step1:
+      outcome: lookup_suggested
+      total_matches: 0
+      suggestion_lookup:
+        employer: "{{ anchors.persons.batch_employer }}"
+
+  - id: crm-negative-02
+    phase: negative
+    description: Unknown person create_on_deliver pending
+    step1:
+      lookup:
+        name: Nobody Here
+        employer: Nowhere Inc
+    assert_step1:
+      outcome: lookup_resolved
+      total_matches: 0
+      delivery_present: true
+      create_on_deliver: true

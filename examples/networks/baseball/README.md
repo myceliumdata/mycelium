@@ -28,6 +28,8 @@ Refresh copies `network.json`, `bootstrap_handlers/`, and `guide.md`, then:
 
 Default live root: `~/mycelium-networks/baseball` (registered in `networks.json`).
 
+**Live regression:** `./bin/gate-live baseball` — see [`docs/manual-checks/2026-06-20-live-gate-program.md`](../../../docs/manual-checks/2026-06-20-live-gate-program.md).
+
 ## Step-1 lookup (operators)
 
 Identity resolve uses the **framework** fuzzy matcher (same as CRM), then baseball-specific **lazy LLM aliases** on `bootstrap_only` team/player types. See [`docs/plans/fuzzy-lookup-policy.md`](../../../docs/plans/fuzzy-lookup-policy.md) § For operators.

@@ -7,6 +7,8 @@
 
 Use **Claude + MCP** (`query_entity`, `describe_network`, `health_check`) or `./bin/baseball-query` with the same JSON.
 
+**Automated regression:** `./bin/gate-live baseball` (opt-in; deployed root + `.env`). See [`2026-06-20-live-gate-program.md`](2026-06-20-live-gate-program.md).
+
 ---
 
 ## Before you start
