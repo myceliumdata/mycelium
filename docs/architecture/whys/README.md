@@ -19,6 +19,7 @@
 | [warehouse-factory-stack.md](warehouse-factory-stack.md) | Why manifest + ontology routing + specialist execution (not 500 ontology attrs) |
 | [metering-economics.md](metering-economics.md) | Why quotes before work; negotiation vs settlement; marginal pricing |
 | [multi-record-type-routing.md](multi-record-type-routing.md) | Why lookup key shape routes record type; fan team vs franchise grain |
+| [specialist-class-hierarchy.md](specialist-class-hierarchy.md) | Why warehouse/product bases live in `src/`; target hierarchy above `SpecialistAgent` |
 
 Each file is self-contained. Fresh contributors should not need to read `docs/plans/conversations/` or historical slice specs to understand a shipped decision.
 
@@ -56,6 +57,7 @@ Migrate when a topic confuses new readers or stabilizes after more shipping work
 | Agent Factory lazy specialists | When on-demand specialist creation is appropriate | [`agent-factory-phase2.md`](../../plans/agent-factory-phase2.md) |
 | Ground truth vs web waterfall | CRM research path vs baseball warehouse-first policy | Partially in [warehouse-factory-stack.md](warehouse-factory-stack.md); hand-test doc |
 | Franchise specialist / promotion policy | When cross-domain product specialists get created | Conversation `2026-06-19-warehouse-factory-layer3-specialist-emergence` |
+| Specialist class hierarchy (full) | CRM research vs warehouse vs product tiers | [specialist-class-hierarchy.md](specialist-class-hierarchy.md) (M14) |
 | Cold-start orchestrator | “Point at data source; sort yourself out” vs scripted bootstrap | Conversation `2026-06-16-baseball-cold-start`; baseball program § Cold start |
 | Entity validation lifecycle | bootstrap → provisional → validated → research | Conversation `2026-06-08-entity-registry-validation-growth` |
 | Classification engine (supervisor thin) | Why ontology lookup is cached map, not hot-path LLM | [`classification-engine-phase1.md`](../../plans/classification-engine-phase1.md) |

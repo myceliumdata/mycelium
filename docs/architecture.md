@@ -20,6 +20,7 @@ This doc focuses on **what** and **how**. For **why** behind major decisions, se
 | Warehouse factory stack (discovery → routing → execution) | [warehouse-factory-stack.md](architecture/whys/warehouse-factory-stack.md) |
 | Metering economics (quotes, marginal pricing) | [metering-economics.md](architecture/whys/metering-economics.md) |
 | Multi-record-type routing; fan team vs franchise | [multi-record-type-routing.md](architecture/whys/multi-record-type-routing.md) |
+| Specialist class hierarchy (framework starting points) | [specialist-class-hierarchy.md](architecture/whys/specialist-class-hierarchy.md) |
 
 ---
 
@@ -200,6 +201,8 @@ See `src/storage/core.py` (path bootstrap for MCP/admin startup).
 - `operator`: `{ set, value, at, note }` for research deference
 
 Early CRM specialists subclass **`SpecialistAgent`** (`src/agents/specialists/agent.py`) and expose a module singleton `AGENT`; graph entrypoints delegate to `AGENT.run(state)` and protocol dispatch resolves `get_agent_instance(name)` → `AGENT.write_fields` / `read_fields` / etc. Users override storage or research by subclassing and replacing `AGENT`. Shared JSON mechanics live in the base class; `handlers.py` is an internal specialists-package helper only — framework code routes through `agents.specialists.protocol`, not `handlers` directly. Heterogeneous specialists (e.g. baseball warehouse) may use different internal storage if read/write handlers emit the same snapshots.
+
+**Specialist hierarchy (June 2026 — in progress):** `SpecialistAgent` is the **framework root** (storage + protocol I/O), not a leaf. Example networks should subclass **middle tiers** in `src/agents/specialists/` — warehouse stat bases, product-team bases, research template — and keep pack modules thin. Baseball proved warehouse + derive patterns; M14 promotes `WarehousePlayerStatSpecialist` / `WarehouseTeamStatSpecialist` into the framework. Rationale and target tree: [specialist-class-hierarchy.md](architecture/whys/specialist-class-hierarchy.md).
 
 **Storage migration policy (June 2026):** Base `SpecialistAgent.optimize_storage()` returns `True` when `current_strategy()` is `versioned_provenance_v1` and `record_count()` ≥ threshold (default **50**, env `MYCELIUM_OPTIMIZE_STORAGE_THRESHOLD`). Each category’s `AGENT` evaluates independently. Subclasses may override `optimize_storage_threshold()` or `optimize_storage()` (e.g. opt-out). Crossing threshold calls `migrate_to("minisql_v1")` before writes.
 

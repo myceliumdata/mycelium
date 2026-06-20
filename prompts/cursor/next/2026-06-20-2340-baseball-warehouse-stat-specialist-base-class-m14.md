@@ -1,23 +1,40 @@
 # Baseball warehouse stat specialist base class + manifest-driven derive (M14)
 
-> **READY** — Pack refactor. Claim after M13 (`2260`) and bootstrap perf (`2280`) are **Approved** (or Paul waives). Run **before** polish capstone (`2350`). **Do not edit `TODO.md`.**
+> **READY** — **Framework + pack** refactor. Claim after M13 (`2260`) and bootstrap perf (`2280`) are **Approved** (or Paul waives). Run **before** polish capstone (`2350`). **Do not edit `TODO.md`.**
 
 ## Objective
 
-Consolidate warehouse **player stat** specialists onto a shared **base class** (same design discipline as CRM `SpecialistAgent` + factory template): derive-on-miss, manifest conventions, and graph wiring live in the base; domain modules are thin subclasses.
+Consolidate warehouse **player/team stat** specialists onto **framework base classes** subclassing `SpecialistAgent`, with baseball pack modules as thin declarations (`category`, `domain`, pack resolver hooks).
 
-Today only `batting_specialist.py` carries ~100 lines of derive callbacks; pitching/bio/fielding omit them. `derive_resolve.py` is already domain-parameterized; enablement should be **`warehouse_domains.json` → `derive_on_miss`**, not per-file copy-paste.
+Paul lock (June 2026): example-network patterns move **up** into the framework so users inherit rich starting points — not pack-only base classes. Read [`docs/architecture/whys/specialist-class-hierarchy.md`](../../../docs/architecture/whys/specialist-class-hierarchy.md).
 
-## Design (locked — class-based)
+Today only `batting_specialist.py` carries ~100 lines of derive logic; other stat specialists are thin wrappers around `pack_common` functions. `derive_resolve` is domain-parameterized; enablement must be **`warehouse_domains.json` → `derive_on_miss`**.
 
-Introduce in the baseball pack (framework promotion is a later extraction slice):
+## Design (locked — framework hierarchy)
+
+### Framework (`src/agents/specialists/`)
+
+Add **`warehouse_stat.py`** (names negotiable in `output.md` if clearer):
 
 | Class | Extends | Declares | `run()` behavior |
 |-------|---------|----------|------------------|
-| **`WarehousePlayerStatSpecialist`** | `SpecialistAgent` | `domain: str` (manifest key) | `run_warehouse_player_graph` with derive hooks from manifest |
-| **`WarehouseTeamStatSpecialist`** | `SpecialistAgent` | `domain: str` | `run_warehouse_team_graph` (no derive v1) |
+| **`WarehousePlayerStatSpecialist`** | `SpecialistAgent` | `domain: str` (manifest key) | Warehouse player graph + manifest-driven derive-on-miss |
+| **`WarehouseTeamStatSpecialist`** | `SpecialistAgent` | `domain: str` | Warehouse team graph (no derive v1) |
 
-**Thin subclasses** (each file ~15 lines after refactor):
+**Framework base responsibilities:**
+
+- `run(state)` — canonical graph entry (move orchestration out of per-network specialists)
+- `derive_on_miss_enabled()` — read manifest for `self.domain` (via existing `warehouse_manifest` / domain meta helpers in `src/network/`)
+- `resolve_derive_on_miss(...)` — intent slug + cache + derive pipeline (logic from `_batting_derive_on_miss_resolve`)
+- **Pack hooks** (subclass or class attributes — document choice): load network-specific `warehouse_resolve` / `derive_resolve` without `src/` importing `examples/`. Prefer explicit override methods on baseball subclasses, e.g. `_load_warehouse_resolve()`, `_load_derive_resolve()`, returning pack modules.
+
+**Keep in `pack_common` (or migrate only what is network-agnostic):** low-level `evaluate_*_warehouse_fields`, `query_year_id`, response contrib assembly — framework base **calls** these; do not duplicate graph loops.
+
+**Export** new classes from `src/agents/specialists/__init__.py` or documented import path for pack authors.
+
+### Baseball pack (`examples/networks/baseball/specialists/`)
+
+Thin subclasses only (~15 lines each):
 
 - `BattingSpecialist(WarehousePlayerStatSpecialist)` — `category = "batting"`, `domain = "batting"`
 - `PitchingSpecialist(WarehousePlayerStatSpecialist)` — `category = "pitching"`, `domain = "pitching"`
@@ -25,49 +42,53 @@ Introduce in the baseball pack (framework promotion is a later extraction slice)
 - `FieldingSpecialist(WarehousePlayerStatSpecialist)` — `category = "fielding"`, `domain = "fielding"`
 - `TeamSeasonSpecialist(WarehouseTeamStatSpecialist)` — `category = "team_season"`, `domain = "team_season"`
 
-**Base class responsibilities** (not free-function callbacks passed ad hoc):
+`batting_specialist.py` must shrink to subclass + `AGENT` singleton — no inline derive callbacks.
 
-- `derive_on_miss_enabled()` — read manifest for `self.domain`
-- `resolve_derive_on_miss(key, ...)` — move logic from `_batting_derive_on_miss_resolve` (intent slug, cache, `generate_and_run_derive`)
-- `run(state)` — wire graph with `on_miss` / `on_miss_resolve` bound to instance methods when manifest flag set
+**Do not** implement hierarchy only under `examples/` — Paul lock.
 
-Prefer new module `warehouse_stat_specialist.py` (or `pack_stat_specialist.py`) sibling to `pack_common.py`; keep `pack_common` as graph/evaluate helpers the base class calls.
+### Out of scope (document as follow-on in `output.md`)
 
-**Do not** use a different pattern (manifest-only hooks with no base class) — Paul lock: match CRM class isolation.
+- `ProductTeamSpecialist` for roster/franchise (separate slice after M14)
+- Promoting `warehouse_resolve.py` / `derive_resolve.py` into `src/` (extraction review)
+- CRM / factory template alignment with `ResearchSpecialistAgent`
 
 ## Manifest
 
 - `batting` domain: keep `"derive_on_miss": true`
-- Other player domains: **unchanged** (`false` / omitted) unless you add a mocked derive smoke for pitching in this slice (optional, not required)
-- Document in `output.md` how to enable derive on another domain (flip JSON flag only)
+- Other player domains: unchanged unless optional mocked pitching derive smoke added
+- Document in `output.md`: enable derive on any domain by flipping JSON only
 
 ## Tests
 
-- Existing batting derive smokes (`career_avg` / `ops` mocked) must pass unchanged
-- `test_career_hr_ignores_year_scope` and warehouse read smokes for pitching/bio/fielding/team_season unchanged
-- Add one unit-style test: `WarehousePlayerStatSpecialist.derive_on_miss_enabled` respects manifest flag (minimal manifest fixture)
+| Layer | Tests |
+|-------|--------|
+| Framework | Unit tests for `WarehousePlayerStatSpecialist.derive_on_miss_enabled` (minimal manifest fixture); no baseball root required |
+| Pack | Existing batting derive smokes, career_hr scope, pitching/bio/fielding/team_season smokes unchanged |
+| CRM | Regression — framework change must not break CRM specialists |
 
 ## Live gate
 
-**N/A** — refactor only; existing scenarios must keep passing.
+**N/A** — refactor only; all existing baseball scenarios must pass after Paul's `--sync-only`.
 
 ## Constraints
 
-- No framework `src/` moves in this slice (pack only); note promotion candidates in `output.md` for extraction review.
+- **`src/agents/specialists/` changes required** — this is a framework slice, not pack-only.
+- No `examples/` imports from `src/` (pack hooks only).
 - `./bin/ci-local` must pass.
-- CRM unchanged.
-- Product specialists (`roster`, `franchise`, identity) **out of scope**.
+- Product specialists (`roster`, `franchise`, identity) untouched.
 
 ## Output
 
 Follow `prompts/cursor/WORKFLOW.md`. In `output.md` **For Grok + Paul**:
 
-- Before/after line counts for batting_specialist vs base class
-- How subclasses enable derive (manifest flag table)
-- Framework promotion notes for `WarehousePlayerStatSpecialist`
+- Hierarchy diagram: `SpecialistAgent` → framework warehouse bases → baseball subclasses
+- Before/after line counts (`batting_specialist.py`)
+- Manifest derive flag table
+- List of `pack_common` symbols still in pack vs candidates for next promotion
+- Pointer to `docs/architecture/whys/specialist-class-hierarchy.md`
 
 Suggested commit message:
 
 ```
-refactor(baseball): warehouse stat specialist base class + manifest derive
+feat(specialists): warehouse stat base classes + baseball thin subclasses (M14)
 ```
