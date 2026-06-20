@@ -127,13 +127,23 @@ def _legacy_derive_entry(
     intent_slug: str,
     intent_map: dict[str, str],
 ):
-    keys = labels_for_intent_slug(intent_slug, intent_map)
-    keys.add(requested_key)
-    for key in sorted(keys):
+    def _hit(key: str):
         entry = record.get(key)
-        if field_has_value(entry):
+        if field_has_value(entry) or field_is_na(entry):
             return entry
-        if field_is_na(entry):
+        return None
+
+    for key in (requested_key, intent_slug):
+        entry = _hit(key)
+        if entry is not None:
+            return entry
+    alias_keys = labels_for_intent_slug(intent_slug, intent_map) - {
+        requested_key,
+        intent_slug,
+    }
+    for key in sorted(alias_keys):
+        entry = _hit(key)
+        if entry is not None:
             return entry
     return None
 
@@ -204,7 +214,8 @@ def _evaluate_batting_fields(
                     warmed = infer_slug_from_warm_cache(
                         record,
                         intent_map,
-                        has_value=field_has_value,
+                        is_cached=lambda entry: field_has_value(entry)
+                        or field_is_na(entry),
                     )
                     if warmed is not None:
                         intent_slug = warmed

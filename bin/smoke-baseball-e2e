@@ -40,6 +40,7 @@ BASEBALL_PYTEST_FILES = (
     "tests/test_baseball_player_identity_specialist.py",
     "tests/test_baseball_multi_attr_deliver.py",
     "tests/test_baseball_career_avg_derive.py",
+    "tests/test_baseball_intent_dedup.py",
 )
 
 EXPECTED_BOOTSTRAP_COUNT = 4
@@ -752,11 +753,26 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
                             )
                         except (KeyError, IndexError, TypeError):
                             prov_ok = False
+                    map_ok = False
+                    if intent_map_path.is_file():
+                        try:
+                            intent_map = json.loads(
+                                intent_map_path.read_text(encoding="utf-8"),
+                            )
+                            mappings = intent_map.get("mappings", {})
+                            map_ok = (
+                                mappings.get("career_avg") == "career_batting_average"
+                                and mappings.get("batting_average")
+                                == "career_batting_average"
+                            )
+                        except (OSError, json.JSONDecodeError, TypeError):
+                            map_ok = False
                     dedup_ok = (
                         r_dedup_ba2.results
                         and str(r_dedup_ba2.results[0].get("batting_average")) == "0.500"
                         and codegen_counter.get("count", 0) == 1
                         and prov_ok
+                        and map_ok
                     )
                     if not dedup_ok:
                         results.append(
@@ -765,7 +781,7 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
                                 (
                                     f"value_ok={bool(r_dedup_ba2.results)} "
                                     f"codegen={codegen_counter.get('count', 0)} "
-                                    f"prov_ok={prov_ok}"
+                                    f"prov_ok={prov_ok} map_ok={map_ok}"
                                 ),
                                 request=r_dedup_ba2.model_dump(exclude_none=True),
                                 response=p_dedup_ba2,

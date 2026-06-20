@@ -1,10 +1,10 @@
 # Review — baseball warehouse derive M-track polish
 
-**Verdict:** **Approved + polish nits**
+**Verdict:** **Approved** (nits remediated in follow-up `2be1b0e+`)
 
-**CI:** `./bin/ci-local` — **582** smoke passed, ruff clean, admin-ui build ok.  
+**CI:** `./bin/ci-local` — **591** smoke passed, ruff clean, admin-ui build ok.  
 **Baseball E2E:** `./bin/smoke-baseball-e2e` — **14** scenarios passed (`intent_dedup_mocked` ok).  
-**Slice pytest:** 15 passed (`test_baseball_intent_dedup`, `test_intent_normalization`, `test_intent_map`, `test_baseball_bio_specialist`).
+**Slice pytest:** 11 intent-map + dedup; 16 with normalization/bio suite.
 
 ---
 
@@ -52,16 +52,16 @@
 
 ---
 
-## Polish nits (non-blocking)
+## Polish nits — remediated (Grok follow-up)
 
-| # | Item |
-|---|------|
-| N1 | **Single unrelated cached slug** — if exactly one *other* mapped slug has storage (e.g. only `career_ops` cached) and client asks `batting_average`, warm inference could bind to wrong slug. Spec-allowed v1; add regression test or document assumption if this becomes realistic. |
-| N2 | Warm cache ignores `field_is_na` — NA-only slug still pays one intent LLM call before slug-row NA hit. |
-| N3 | `labels_for_intent_slug` / zero-candidate warm-cache paths lack direct unit tests (covered indirectly). |
-| N4 | `_legacy_derive_entry` tie-break is sorted key order — consider requested-key-first priority. |
-| N5 | `BASEBALL_PYTEST_FILES` omits `tests/test_baseball_intent_dedup.py` — `--with-pytest` skips dedup smoke tests. |
-| N6 | Smoke `intent_dedup_mocked` could assert both `intent_map.json` mappings (pytest already does). |
+| # | Item | Fix |
+|---|------|-----|
+| N1 | Unrelated single cached slug | `infer_slug_from_warm_cache` requires single mapped slug value; `test_unrelated_warm_slug_does_not_skip_intent_llm` |
+| N2 | NA-only warm slug | `is_cached` predicate includes `field_is_na`; `test_infer_slug_from_warm_cache_na_only_slug` |
+| N3 | Missing unit tests | `labels_for_intent_slug`, zero-candidate, unrelated-storage unit tests |
+| N4 | Legacy key priority | `_legacy_derive_entry`: requested → slug → sorted aliases |
+| N5 | Pytest smoke gap | `test_baseball_intent_dedup.py` in `BASEBALL_PYTEST_FILES` |
+| N6 | Smoke map assertion | `intent_dedup_mocked` checks both `career_avg` + `batting_average` mappings |
 
 ---
 
