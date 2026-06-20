@@ -15,7 +15,13 @@ from agents.specialists.fields import (
 )
 from models.state import MyceliumGraphState, graph_requested_attributes
 from network.dataset_source import load_pack_dataset_source
-from network.intent_map import load_intent_map
+from network.intent_map import (
+    infer_slug_from_warm_cache,
+    labels_for_intent_slug,
+    load_intent_map,
+    lookup_intent_slug,
+    save_intent_mapping,
+)
 from network.intent_normalization import resolve_intent_slug
 from network.paths import NetworkPaths, resolve_network_root
 
@@ -115,6 +121,23 @@ def _overall_field_status(
     return "pending"
 
 
+def _legacy_derive_entry(
+    record: dict[str, Any],
+    requested_key: str,
+    intent_slug: str,
+    intent_map: dict[str, str],
+):
+    keys = labels_for_intent_slug(intent_slug, intent_map)
+    keys.add(requested_key)
+    for key in sorted(keys):
+        entry = record.get(key)
+        if field_has_value(entry):
+            return entry
+        if field_is_na(entry):
+            return entry
+    return None
+
+
 def _evaluate_batting_fields(
     agent: SpecialistAgent,
     entity_id: str,
@@ -176,13 +199,25 @@ def _evaluate_batting_fields(
             if dr.derive_on_miss_enabled(manifest, "batting"):
                 requested_key = key
                 intent_map = load_intent_map(paths)
-                intent_slug = resolve_intent_slug(
-                    requested_key,
-                    domain="batting",
-                    manifest=manifest,
-                    paths=paths,
-                    intent_map=intent_map,
-                )
+                intent_slug: str | None = None
+                if lookup_intent_slug(requested_key, intent_map) is None:
+                    warmed = infer_slug_from_warm_cache(
+                        record,
+                        intent_map,
+                        has_value=field_has_value,
+                    )
+                    if warmed is not None:
+                        intent_slug = warmed
+                        save_intent_mapping(paths, requested_key, warmed)
+                        intent_map[requested_key] = warmed
+                if intent_slug is None:
+                    intent_slug = resolve_intent_slug(
+                        requested_key,
+                        domain="batting",
+                        manifest=manifest,
+                        paths=paths,
+                        intent_map=intent_map,
+                    )
                 if intent_slug != requested_key:
                     derive_audit.append(
                         f"batting_specialist: intent {requested_key} -> {intent_slug}",
@@ -198,16 +233,20 @@ def _evaluate_batting_fields(
                     na_attrs.append(requested_key)
                     continue
 
-                if intent_slug != requested_key:
-                    legacy_entry = record.get(requested_key)
+                legacy_entry = _legacy_derive_entry(
+                    record,
+                    requested_key,
+                    intent_slug,
+                    intent_map,
+                )
+                if legacy_entry is not None:
                     if field_has_value(legacy_entry):
                         values[requested_key] = field_display_value(legacy_entry)
                         found_attrs.append(requested_key)
-                        continue
-                    if field_is_na(legacy_entry):
+                    else:
                         values[requested_key] = "N/A"
                         na_attrs.append(requested_key)
-                        continue
+                    continue
 
                 derive_result = dr.generate_and_run_derive(
                     requested_key,

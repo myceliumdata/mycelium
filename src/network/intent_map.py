@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -81,3 +82,26 @@ def save_intent_mapping(paths: NetworkPaths, label: str, intent_slug: str) -> No
         except OSError:
             pass
         raise
+
+
+def infer_slug_from_warm_cache(
+    record: dict[str, Any],
+    intent_map: dict[str, str],
+    *,
+    has_value: Callable[[Any], bool],
+) -> str | None:
+    """Infer intent slug when exactly one mapped slug already has a computed cache hit."""
+    mapped_slugs = {slug for slug in intent_map.values() if slug}
+    candidates = [
+        slug for slug in mapped_slugs if has_value(record.get(slug))
+    ]
+    if len(candidates) == 1:
+        return candidates[0]
+    return None
+
+
+def labels_for_intent_slug(intent_slug: str, intent_map: dict[str, str]) -> set[str]:
+    slug = intent_slug.strip().lower()
+    keys = {slug}
+    keys.update(label for label, mapped in intent_map.items() if mapped == slug)
+    return keys

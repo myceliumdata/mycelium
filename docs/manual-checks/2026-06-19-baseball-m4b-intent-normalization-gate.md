@@ -23,7 +23,7 @@ MYCELIUM_INTENT_NORMALIZATION_MODEL=gpt-4o-mini
 MYCELIUM_COMPUTATION_CODEGEN_MODEL=gpt-4o
 ```
 
-**Clear stale pre-M4b cache** (per-label rows bypass intent slug until cleared):
+**Clear stale pre-M4b cache** when upgrading an existing root (legacy per-label rows still readable via intent-map alias scan after M-track polish):
 
 ```bash
 rm -f ~/mycelium-networks/baseball/agents/batting/storage.json
@@ -31,6 +31,8 @@ rm -f ~/mycelium-networks/baseball/intent_map.json
 ./bin/refresh-example-network baseball --sync-only
 # restart MCP if query_entity was already running
 ```
+
+Recommended on first M4b validation; routine synonym delivers no longer require clearing between `career_avg` and `batting_average` when storage is already under the shared intent slug.
 
 ---
 
@@ -77,8 +79,8 @@ Both returned `outcome: assembled` with value `0.305`.
 
 ## Known v1 caveats (non-blocking)
 
-- **Legacy per-label cache** — If `storage.json` still has pre-M4b rows keyed by requested label, early `record.get(requested_key)` can return before intent resolution. Clear batting storage + `intent_map.json` when validating M4b on an existing root.
-- **Intent LLM on each new label** — Second synonym still calls intent normalization to warm `intent_map.json`; only computation codegen is deduped.
+- **Legacy per-label cache** — Pre-M4b rows keyed by requested label (e.g. `career_avg`) are read when any label in `intent_map.json` maps to the same slug (M-track polish). Clear batting storage + `intent_map.json` only when validating a fresh upgrade.
+- **Intent LLM on first synonym label** — Second synonym skips intent LLM when storage already holds the shared slug and map is warm (M-track polish P1).
 
 ---
 

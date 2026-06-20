@@ -230,6 +230,51 @@ def _patch_ops_derive_mock(root: Path) -> None:
     dr.invoke_llm_for_review = fake_review
 
 
+def _patch_intent_dedup_mock(root: Path) -> dict[str, int]:
+    """Mock intent normalization + derive codegen; return codegen call counter."""
+    import importlib.util
+
+    tests_dir = str(REPO_ROOT / "tests")
+    if tests_dir not in sys.path:
+        sys.path.insert(0, tests_dir)
+    from baseball_derive_fixtures import CAREER_AVG_DERIVE_SOURCE
+
+    import network.intent_normalization as intent_norm
+    from network.intent_normalization import IntentProposal
+
+    loader_path = root / "specialists" / "specialist_loader.py"
+    spec = importlib.util.spec_from_file_location("_smoke_specialist_loader_dedup", loader_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load specialist_loader from {loader_path}")
+    loader = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(loader)
+    dr = loader.load_derive_resolve()
+
+    codegen_counter = {"count": 0}
+    intent_slug = "career_batting_average"
+
+    def fake_intent(prompt, *, llm_invoke=None):
+        if "career_avg" in prompt:
+            return IntentProposal(intent_slug=intent_slug, confidence=0.95)
+        if "batting_average" in prompt:
+            return IntentProposal(intent_slug=intent_slug, confidence=0.95)
+        return IntentProposal(intent_slug="unknown_stat", confidence=0.95)
+
+    def fake_codegen(prompt, *, llm_invoke=None):
+        codegen_counter["count"] = codegen_counter.get("count", 0) + 1
+        return CAREER_AVG_DERIVE_SOURCE.strip()
+
+    def fake_review(prompt, *, review_llm_invoke=None):
+        if "VALUE: 0.000" in prompt:
+            return "VERDICT: REJECT\nREASON: implausible zero average"
+        return "VERDICT: ACCEPT"
+
+    intent_norm._invoke_intent_llm = fake_intent
+    dr.invoke_llm_for_prompt = fake_codegen
+    dr.invoke_llm_for_review = fake_review
+    return codegen_counter
+
+
 def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
     """Refresh baseball with minimal fixture and run player record-type query scenarios."""
     meta: dict[str, Any] = {}
@@ -627,6 +672,113 @@ def run_baseball_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
                         response=p_ops2,
                     ),
                 )
+
+        # Step 2: intent dedup — career_avg then batting_average (mocked; one codegen)
+        batting_storage = root / "agents" / "batting" / "storage.json"
+        intent_map_path = root / "intent_map.json"
+        batting_storage.unlink(missing_ok=True)
+        intent_map_path.unlink(missing_ok=True)
+        codegen_counter = _patch_intent_dedup_mock(root)
+        q_dedup_avg = EntityQuery(
+            lookup={
+                "player": sample["player"],
+                "debut_team": sample["debut_team"],
+                "debut_year": sample["debut_year"],
+            },
+            requested_attributes=["career_avg"],
+            provenance=True,
+        )
+        r_dedup1 = run_query(q_dedup_avg)
+        if r_dedup1.outcome != "lookup_resolved" or not r_dedup1.delivery:
+            results.append(
+                _fail(
+                    "intent_dedup_step1",
+                    f"expected lookup_resolved, got {r_dedup1.outcome!r}",
+                    request=q_dedup_avg.model_dump(exclude_none=True),
+                    response=_pub(r_dedup1),
+                ),
+            )
+        else:
+            r_dedup2 = run_query(EntityQuery(delivery_id=r_dedup1.delivery.delivery_id))
+            p_dedup2 = _pub(r_dedup2)
+            first_ok = (
+                r_dedup2.results
+                and str(r_dedup2.results[0].get("career_avg")) == "0.500"
+                and codegen_counter.get("count", 0) == 1
+            )
+            if not first_ok:
+                results.append(
+                    _fail(
+                        "intent_dedup_career_avg",
+                        f"value_ok={first_ok} codegen={codegen_counter.get('count', 0)}",
+                        request=r_dedup2.model_dump(exclude_none=True),
+                        response=p_dedup2,
+                    ),
+                )
+            else:
+                q_dedup_ba = EntityQuery(
+                    lookup={
+                        "player": sample["player"],
+                        "debut_team": sample["debut_team"],
+                        "debut_year": sample["debut_year"],
+                    },
+                    requested_attributes=["batting_average"],
+                    provenance=True,
+                )
+                r_dedup_ba1 = run_query(q_dedup_ba)
+                if r_dedup_ba1.outcome != "lookup_resolved" or not r_dedup_ba1.delivery:
+                    results.append(
+                        _fail(
+                            "intent_dedup_batting_avg_step1",
+                            f"expected lookup_resolved, got {r_dedup_ba1.outcome!r}",
+                            request=q_dedup_ba.model_dump(exclude_none=True),
+                            response=_pub(r_dedup_ba1),
+                        ),
+                    )
+                else:
+                    r_dedup_ba2 = run_query(
+                        EntityQuery(delivery_id=r_dedup_ba1.delivery.delivery_id),
+                    )
+                    p_dedup_ba2 = _pub(r_dedup_ba2)
+                    prov_ok = False
+                    if r_dedup_ba2.provenance:
+                        try:
+                            version = r_dedup_ba2.provenance["entities"][0]["attributes"][
+                                "batting_average"
+                            ]["versions"][0]
+                            prov_ok = (
+                                version.get("parameters", {}).get("intent_slug")
+                                == "career_batting_average"
+                            )
+                        except (KeyError, IndexError, TypeError):
+                            prov_ok = False
+                    dedup_ok = (
+                        r_dedup_ba2.results
+                        and str(r_dedup_ba2.results[0].get("batting_average")) == "0.500"
+                        and codegen_counter.get("count", 0) == 1
+                        and prov_ok
+                    )
+                    if not dedup_ok:
+                        results.append(
+                            _fail(
+                                "intent_dedup_mocked",
+                                (
+                                    f"value_ok={bool(r_dedup_ba2.results)} "
+                                    f"codegen={codegen_counter.get('count', 0)} "
+                                    f"prov_ok={prov_ok}"
+                                ),
+                                request=r_dedup_ba2.model_dump(exclude_none=True),
+                                response=p_dedup_ba2,
+                            ),
+                        )
+                    else:
+                        results.append(
+                            _ok(
+                                "intent_dedup_mocked",
+                                request=r_dedup_ba2.model_dump(exclude_none=True),
+                                response=p_dedup_ba2,
+                            ),
+                        )
 
         # Step 2: debut bind attrs from registry (not web research)
         q_bind = EntityQuery(

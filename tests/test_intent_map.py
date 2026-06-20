@@ -45,3 +45,30 @@ def test_intent_map_round_trip(tmp_path) -> None:
 
     raw = (paths.root / "intent_map.json").read_text(encoding="utf-8")
     assert '"version": "1.0"' in raw
+
+
+def test_infer_slug_from_warm_cache_single_candidate() -> None:
+    from network.intent_map import infer_slug_from_warm_cache
+
+    record = {"career_batting_average": {"versions": [{"status": "found", "value": "0.500"}]}}
+    intent_map = {"career_avg": "career_batting_average"}
+
+    def has_value(entry):
+        return isinstance(entry, dict) and bool(entry.get("versions"))
+
+    assert infer_slug_from_warm_cache(record, intent_map, has_value=has_value) == "career_batting_average"
+
+
+def test_infer_slug_from_warm_cache_ambiguous_returns_none() -> None:
+    from network.intent_map import infer_slug_from_warm_cache
+
+    record = {
+        "career_batting_average": {"versions": [{"status": "found", "value": "0.500"}]},
+        "career_ops": {"versions": [{"status": "found", "value": "0.900"}]},
+    }
+    intent_map = {"career_avg": "career_batting_average", "ops": "career_ops"}
+
+    def has_value(entry):
+        return isinstance(entry, dict) and bool(entry.get("versions"))
+
+    assert infer_slug_from_warm_cache(record, intent_map, has_value=has_value) is None

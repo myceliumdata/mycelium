@@ -176,7 +176,7 @@ def test_intent_dedup_career_avg_then_batting_average(
     _, second = _deliver_attr("batting_average", provenance=True)
     assert str(second.results[0].get("batting_average")) == "0.500"
     assert codegen_counter.get("count", 0) == 1
-    assert intent_calls.get("count", 0) == 2
+    assert intent_calls.get("count", 0) == 1
 
     intent_map_after = json.loads((root / "intent_map.json").read_text(encoding="utf-8"))
     assert intent_map_after["mappings"]["batting_average"] == INTENT_SLUG
@@ -184,3 +184,116 @@ def test_intent_dedup_career_avg_then_batting_average(
     version2 = second.provenance["entities"][0]["attributes"]["batting_average"]["versions"][0]
     assert version2["parameters"]["attribute"] == "batting_average"
     assert version2["parameters"]["intent_slug"] == INTENT_SLUG
+
+
+@pytest.mark.smoke
+def test_legacy_per_label_storage_hit_for_synonym(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agents.specialists.computed import build_computed_version_body
+    from agents.specialists.fields import append_version
+
+    root = _refresh_baseball_root(tmp_path, monkeypatch)
+    dr = _load_derive_module(root)
+    codegen_counter: dict[str, int] = {}
+    intent_calls = _patch_intent_and_derive_mocks(monkeypatch, dr, codegen_counter=codegen_counter)
+
+    step1 = EntityQuery(lookup=dict(SAMPLE_PLAYER), requested_attributes=["career_hr"])
+    r1 = run_query(step1, thread_id="legacy-seed-step1")
+    assert r1.outcome == "lookup_resolved" and r1.delivery is not None
+    step2 = EntityQuery(delivery_id=r1.delivery.delivery_id)
+    run_query(step2, thread_id="legacy-seed-step2")
+
+    storage_path = root / "agents" / "batting" / "storage.json"
+    storage = json.loads(storage_path.read_text(encoding="utf-8"))
+    entity_id = next(iter(storage["records"]))
+    storage["records"][entity_id]["career_avg"] = append_version(
+        None,
+        build_computed_version_body(
+            value="0.500",
+            actor={"kind": "specialist", "category": "batting", "specialist": "batting_specialist"},
+            sources=[],
+            computation={"language": "python", "inline": "legacy"},
+            parameters={"attribute": "career_avg"},
+            at="2026-01-01T00:00:00+00:00",
+        ),
+    )
+    storage_path.write_text(json.dumps(storage, indent=2), encoding="utf-8")
+
+    (root / "intent_map.json").write_text(
+        json.dumps(
+            {
+                "version": "1.0",
+                "mappings": {"career_avg": INTENT_SLUG},
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    _reset_runtime()
+    reset_core_graph()
+
+    _, response = _deliver_attr("batting_average")
+    assert str(response.results[0].get("batting_average")) == "0.500"
+    assert codegen_counter.get("count", 0) == 0
+    assert intent_calls.get("count", 0) == 1
+
+
+@pytest.mark.smoke
+def test_warm_cache_ambiguous_still_calls_intent_llm(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agents.specialists.computed import build_computed_version_body
+    from agents.specialists.fields import append_version
+
+    root = _refresh_baseball_root(tmp_path, monkeypatch)
+    dr = _load_derive_module(root)
+    codegen_counter: dict[str, int] = {}
+    intent_calls = _patch_intent_and_derive_mocks(monkeypatch, dr, codegen_counter=codegen_counter)
+
+    step1 = EntityQuery(lookup=dict(SAMPLE_PLAYER), requested_attributes=["career_hr"])
+    r1 = run_query(step1, thread_id="ambig-seed-step1")
+    assert r1.outcome == "lookup_resolved" and r1.delivery is not None
+    run_query(EntityQuery(delivery_id=r1.delivery.delivery_id), thread_id="ambig-seed-step2")
+
+    storage_path = root / "agents" / "batting" / "storage.json"
+    storage = json.loads(storage_path.read_text(encoding="utf-8"))
+    entity_id = next(iter(storage["records"]))
+    actor = {"kind": "specialist", "category": "batting", "specialist": "batting_specialist"}
+    for slug, value in (INTENT_SLUG, "0.500"), ("career_ops", "0.900"):
+        storage["records"][entity_id][slug] = append_version(
+            None,
+            build_computed_version_body(
+                value=value,
+                actor=actor,
+                sources=[],
+                computation={"language": "python", "inline": "legacy"},
+                parameters={"attribute": slug},
+                at="2026-01-01T00:00:00+00:00",
+            ),
+        )
+    storage_path.write_text(json.dumps(storage, indent=2), encoding="utf-8")
+
+    (root / "intent_map.json").write_text(
+        json.dumps(
+            {
+                "version": "1.0",
+                "mappings": {
+                    "career_avg": INTENT_SLUG,
+                    "ops": "career_ops",
+                },
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    _reset_runtime()
+    reset_core_graph()
+
+    _, response = _deliver_attr("batting_average")
+    assert str(response.results[0].get("batting_average")) == "0.500"
+    assert intent_calls.get("count", 0) == 1
