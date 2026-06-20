@@ -1,8 +1,35 @@
-# Baseball morning decision brief (2026-06-22)
+# Baseball morning decision brief (2026-06-21)
 
-**For Paul** — skim in ~15 minutes, tick choices, tell Grok your picks. Unblocks: derivative audit, training-wheels sign-off, bio specialist slice.
+**For Paul** — skim in ~15 minutes, tick choices, paste Part D to Grok. Unblocks: derivative audit, training-wheels sign-off, bio specialist slice (`2410`).
 
 Related: [`2026-06-21-baseball-bio-research-specialist.md`](2026-06-21-baseball-bio-research-specialist.md), [`TODO.md`](../../TODO.md) Next up.
+
+---
+
+## 60-second cheat sheet (if you’re rushed)
+
+| Topic | Grok default pick | Your only hard call |
+|-------|-------------------|---------------------|
+| Derivative audit | Fielding anchors fixed (`da5b006`); manifest vs derive split is intentional | Tick Part A checklist or add a note |
+| Training wheels | **A** — batting wheels off; rest are guardrails | **B** only if you want pitching/fielding derive (`2400`) before sign-off |
+| Bio Q1 framework | **A** — `WarehouseResearchPlayerSpecialist` in `src/` | |
+| Bio Q2 trigger | **A** — `research_on_miss: true` on bio domain | **B** if Tavily cost worries you |
+| Bio Q3 gate pig | **`hall_of_fame_year` only** | Skip nickname until normalization story exists |
+| Bio Q4 ontology | **A** — hand-add guinea pig(s) | |
+| Bio Q5 provenance | **A** — mixed warehouse + research in one deliver | |
+| Bio Q6 latency | **A** — sync Tavily (CRM default) | |
+| Bio Q7 ordering | **A** bio first if bio is the focus; **B** if WHIP/K/9 excites you | |
+| Bio Q8 boundary | **A** — research v1, manifest HOF later | **Pick HOF anchor semantics** (election **1982** vs ceremony **1999**) |
+
+**Copy-paste answer block** — fill and send to Grok:
+
+```text
+DERIVATIVE AUDIT: done [ ]  notes: ___________
+TRAINING WHEELS:  A / B / C
+BIO Q1–Q8: A,A,hall_of_fame_year,A,A,A,A,A  HOF anchor: election / induction
+```
+
+(Replace letters if you disagree.)
 
 ---
 
@@ -48,6 +75,78 @@ Related: [`2026-06-21-baseball-bio-research-specialist.md`](2026-06-21-baseball-
 
 **Paul note:** _______________________________________________
 
+### A.1 — Provenance examples (what the gate already asserts)
+
+These are the shapes your picks must preserve. Truncated from smoke tests.
+
+**Manifest bio (`birth_date`) — warehouse hit:**
+
+```json
+{
+  "status": "found",
+  "value": "1934-02-05",
+  "sources": [{"kind": "dataset", "id": "lahman"}],
+  "computation": {"inline": "... people_compose_iso_date(birthYear, birthMonth, birthDay) ..."},
+  "parameters": {
+    "lahman.playerID": "aaronha01",
+    "warehouse": "warehouse/lahman.sqlite",
+    "attribute": "birth_date",
+    "columns": "birthYear,birthMonth,birthDay"
+  },
+  "actor": {"specialist": "bio_specialist"}
+}
+```
+
+**LLM derive (`career_avg`) — codegen hit:**
+
+```json
+{
+  "status": "found",
+  "value": "0.305",
+  "computation": {"inline": "def compute(...): ... query_warehouse('SELECT SUM(H), SUM(AB) ...')"},
+  "parameters": {
+    "warehouse": "warehouse/lahman.sqlite",
+    "attribute": "career_avg"
+  },
+  "actor": {"specialist": "batting_specialist"}
+}
+```
+
+**Mixed multi-specialist (`bb-m2-01`: `career_hr` + `birth_date`) — already works:**
+
+One step-2 `results[0]` row; provenance has **per-attribute** versions from batting + bio specialists (same pattern you’d use for `birth_date` + `hall_of_fame_year`).
+
+### A.2 — Fielding lesson (why audit matters)
+
+| Source | Aaron `career_games` | Wrong anchor (pre-fix) |
+|--------|----------------------|-------------------------|
+| **Batting** `G` sum | 3298 | Used in gate before `da5b006` |
+| **Fielding** `G` sum | **3020** | Correct — `bb-field-01` |
+
+Always discover anchors from the **domain table** named in `warehouse_domains.json`, not a sibling domain.
+
+### A.3 — What happens today for `hall_of_fame_year`
+
+`hall_of_fame_year` is **not** in `categories.json` `bio.examples` or `attribute_map`. Until Q4 is implemented:
+
+```bash
+uv run mycelium query --network baseball \
+  --lookup-json '{"player":"Hank Aaron"}' \
+  --requested-attributes hall_of_fame_year
+```
+
+Step-1 will **not** route this label to `bio_specialist` the way `birth_date` does. The slice must hand-add ontology entries (Q4) before the gate can run.
+
+Lahman **does** have the fact today (not in bio manifest):
+
+```bash
+sqlite3 ~/mycelium-networks/baseball/warehouse/lahman.sqlite \
+  "SELECT yearid, inducted, votes, needed FROM HallOfFame WHERE playerID='aaronha01';"
+# 1982|Y|406|312
+```
+
+Aaron has **no** `CollegePlaying` row — `college_attended` would be a pure research guinea pig if you pick it later.
+
 ---
 
 ## Part B — Training wheels: what’s off vs still on
@@ -78,6 +177,27 @@ M3 “training wheels” = `derive_candidates` whitelist. **Removed in M4** for 
 - [ ] **A — Signed off:** Batting derive is “wheels off”; remaining rows are safety rails, not training wheels.
 - [ ] **B — Not yet:** Enable pitching/fielding `derive_on_miss` (`2400` slice) before calling wheels off globally.
 - [ ] **C — Other:** _______________________________________________
+
+### B.1 — Derive vs research (don’t mix them up)
+
+| Question type | Tool | Keys | Sandbox? | Example label |
+|---------------|------|------|----------|---------------|
+| “Sum HR from Batting” | **derive_on_miss** | `OPENAI_API_KEY`, codegen model | Yes — `query_warehouse()` only | `career_whip` (after `2400`) |
+| “When was he inducted into Cooperstown?” | **research_on_miss** | `OPENAI_API_KEY`, `TAVILY_API_KEY` | N/A — Tavily web search | `hall_of_fame_year` |
+| “Birth date from People” | **manifest alias** | None | N/A | `birth_date` |
+
+**CRM analog (already shipped):** `contact_specialist` + `email` on cache miss → `run_field_research` (sync Tavily). Bio research is the same hook, different category and context (player name, not employer).
+
+### B.2 — What `2400` changes (if you pick training wheels **B** or Q7 **B**)
+
+| Domain | Today | After `2400` |
+|--------|-------|--------------|
+| Batting | `derive_on_miss: true` | unchanged |
+| Pitching | manifest only (`career_era` weighted) | `derive_on_miss: true` + gates for `career_whip`, `k_per_9`, … |
+| Fielding | manifest sums only | `derive_on_miss: true` + `fielding_percentage` gate |
+| Bio | warehouse People reads | **still no derive** — research is `2410`, separate flag |
+
+Framework fix in `2400`: pass `domain=self.domain` into derive codegen (today defaults to `"batting"` — would break pitching/fielding derive).
 
 ---
 
@@ -116,6 +236,28 @@ uv run mycelium query --network baseball \
 
 **Grok lean:** **A** — framework base + thin `BioSpecialist`.
 
+**Code today (`bio_specialist.py` — 37 lines, no research):**
+
+```python
+class BioSpecialist(BaseballWarehousePlayerHooks, WarehousePlayerStatSpecialist):
+    category = "bio"
+    domain = "bio"
+    agent_name = "bio_specialist"
+```
+
+**After option A:**
+
+```python
+class BioSpecialist(BaseballWarehousePlayerHooks, WarehouseResearchPlayerSpecialist):
+    category = "bio"
+    domain = "bio"
+    agent_name = "bio_specialist"
+```
+
+`WarehouseResearchPlayerSpecialist.run()` ≈ warehouse loop (unchanged for `birth_date`) → for each owned field still empty, call `run_field_research` when `research_on_miss` is set on bio domain.
+
+**After option C (split):** step-1 fans out to `bio_specialist` + generated `bio_web_specialist`; assembler merges — same as `debut_team` + `career_hr` + `birth_date` in `test_baseball_multi_attr_deliver.py`, but with an extra research specialist in the graph.
+
 **Paul pick:** [ ] A  [ ] B  [ ] C
 
 ---
@@ -133,6 +275,28 @@ uv run mycelium query --network baseball \
 **Risk of A:** Client sends garbage label → Tavily spend. Mitigation: ontology must route label to `bio` first.
 
 **Grok lean:** **A** for v1 (parity with CRM); add allowlist later if cost bites.
+
+**Manifest snippet per option:**
+
+```json
+// Option A — add to bio domain in warehouse_domains.json
+"research_on_miss": true
+
+// Option B — instead of (or in addition to) the flag
+"research_labels": ["hall_of_fame_year", "primary_nickname"]
+
+// Option C — no manifest flag; check EntityQuery.research === true in specialist
+```
+
+**Walkthrough — `birth_date` + `hall_of_fame_year` on Aaron:**
+
+| Step | Option A | Option B (allowlist has HOF only) | Option C |
+|------|----------|-----------------------------------|----------|
+| Warehouse pass | `birth_date` found from People | same | same |
+| `hall_of_fame_year` miss | Tavily runs | Tavily runs | **Skipped** unless client sends `research: true` |
+| Second query, cached HOF | cache hit, no Tavily | same | same |
+
+**Walkthrough — typo `brith_date`:** ontology won’t map → step-1 classification error or N/A; **no Tavily spend** (all options).
 
 **Paul pick:** [ ] A  [ ] B  [ ] C  Allowlist if B: _______________
 
@@ -161,6 +325,44 @@ hall_of_fame_induction_year → intent slug hall_of_fame_year (cache hit)
 - [ ] + synonym scenario
 - [ ] Other: _______________
 
+**Guinea pig comparison (Aaron `aaronha01`):**
+
+| Label | Lahman sqlite? | Tavily likely answer | Gate assertion style |
+|-------|----------------|----------------------|----------------------|
+| `hall_of_fame_year` | **Yes** — `HallOfFame.yearid` = `1982` | Often **1999** (Cooperstown ceremony) — see Q8 | `equals: "1982"` or `"1999"` — **you must pick** |
+| `primary_nickname` | No (`nameGiven` = `Henry Louis`, not a nickname) | `"Hammer"` / `"Hammerin' Hank"` | fuzzy `contains` or normalized string |
+| `college_attended` | No row for Aaron | `"N/A"` or school name | Aaron → N/A; pick another player if you want a positive anchor |
+
+**Proposed gate YAML (Cursor adds after your Q3 pick):**
+
+```yaml
+- id: bb-bio-research-01
+  phase: bio_research
+  description: hall_of_fame_year research on miss
+  skip_if_missing_env: [OPENAI_API_KEY, TAVILY_API_KEY]
+  step1:
+    lookup:
+      player: "{{ anchors.player }}"
+    requested_attributes: [hall_of_fame_year]
+    provenance: true
+  step2: true
+  assert_step2:
+    outcome: assembled
+    path:
+      results[0].hall_of_fame_year:
+        equals: "{{ anchors.hall_of_fame_year }}"  # YOU pick 1982 vs 1999
+```
+
+**Optional synonym (`bb-bio-research-02`, mirrors `bb-derive-03`):**
+
+```yaml
+requested_attributes: [hall_of_fame_induction_year]
+depends_on: bb-bio-research-01
+assert_step2:
+  intent_slug: hall_of_fame_year
+  same_timestamp_as: bb-bio-research-01
+```
+
 ---
 
 ### Q4 — Ontology / routing
@@ -185,6 +387,26 @@ Today `hall_of_fame_year` is **not** in `categories.json` or `attribute_map` —
 
 **Grok lean:** **A** for slice; **B** as follow-on.
 
+**Without Q4 fix — step-1 failure mode:**
+
+```text
+requested_attributes: [hall_of_fame_year]
+→ supervisor/classifier cannot map label to bio_specialist
+→ delivery never includes bio research path
+```
+
+**With Q4 option A — minimal diff:**
+
+```json
+// examples/networks/baseball/categories.json
+"bio": {
+  "examples": [ "birth_date", ..., "hall_of_fame_year" ]
+},
+"attribute_map": {
+  "hall_of_fame_year": "bio"
+}
+```
+
 **Paul pick:** [ ] A  [ ] B  [ ] C
 
 ---
@@ -208,6 +430,42 @@ Today `hall_of_fame_year` is **not** in `categories.json` or `attribute_map` —
 
 **Grok lean:** **A** — matches computation-centric + research coexistence in architecture whys.
 
+**Example step-2 `provenance.entities[0].attributes` after bio research (option A):**
+
+```json
+{
+  "birth_date": {
+    "versions": [{
+      "status": "found",
+      "value": "1934-02-05",
+      "sources": [{"kind": "dataset", "id": "lahman"}],
+      "computation": {"inline": "... people_compose ..."},
+      "actor": {"specialist": "bio_specialist"}
+    }]
+  },
+  "hall_of_fame_year": {
+    "versions": [{
+      "status": "found",
+      "value": "1982",
+      "sources": [
+        {"kind": "url", "url": "https://baseball-reference.com/..."},
+        {"kind": "url", "url": "https://baseballhall.org/..."}
+      ],
+      "computation": {"model": "gpt-4o-mini", "research": true},
+      "actor": {"specialist": "bio_specialist"}
+    }]
+  }
+}
+```
+
+(CRM `email` research uses the same URL-in-`sources[]` pattern — no `computation.inline` Python.)
+
+| Option | Client experience |
+|--------|-------------------|
+| **A** | One query, one `results[0]` row, rich per-field provenance |
+| **B** | Force two queries — bad UX for “tell me about Aaron” |
+| **C** | Value returned, provenance stripped — harder to debug gate failures |
+
 **Paul pick:** [ ] A  [ ] B  [ ] C
 
 ---
@@ -229,6 +487,16 @@ Step-2 repeat: reads cache → instant
 
 **Grok lean:** **A** for v1 (reuse `run_field_research`).
 
+**Timing expectations (from CRM + batting derive gates):**
+
+| Call | First miss | Repeat (cache) | Keys required |
+|------|------------|----------------|---------------|
+| `birth_date` | ~1–3 s | ~instant | none |
+| `career_avg` derive | ~15–45 s | ~instant | OpenAI + codegen model |
+| `hall_of_fame_year` research | ~10–40 s | ~instant | OpenAI + **Tavily** |
+
+Gate scenarios use `skip_if_missing_env: [OPENAI_API_KEY, TAVILY_API_KEY]` — missing keys → scenario skipped, not failed (same as derive phase).
+
 **Paul pick:** [ ] A  [ ] B  [ ] C
 
 ---
@@ -242,6 +510,14 @@ Step-2 repeat: reads cache → instant
 | **C — Parallel** | Two Cursor agents (if you run parallel) |
 
 **Grok lean:** **A** if bio is tomorrow’s focus; **B** if you want derivative stats expansion first.
+
+| If you pick | Cursor claims | Gate count after | Product story |
+|-------------|---------------|------------------|---------------|
+| **A — `2410` first** | bio research slice | 27 → **29** (+2 bio_research) | “Ask follow-up bio questions on the web” |
+| **B — `2400` first** | multi-domain derive | 27 → **31** (+4 derive) | “WHIP, K/9, fielding % on miss path” |
+| **C — parallel** | both (two agents) | up to **33** | Fastest wall-clock if you run parallel Cursor |
+
+Slices are **independent** — no hard dependency either way.
 
 **Paul pick:** [ ] A  [ ] B  [ ] C
 
@@ -275,6 +551,35 @@ sqlite3 ~/mycelium-networks/baseball/warehouse/lahman.sqlite \
 **Paul pick:** [ ] A  [ ] B  [ ] C  
 **HOF anchor means:** [ ] election year  [ ] induction year  [ ] other: _______
 
+### Q8 deep dive — election vs ceremony (read this before picking HOF anchor)
+
+| Meaning | Aaron value | Where it lives | Fan-facing phrasing |
+|---------|-------------|----------------|---------------------|
+| **BBWAA election year** | **1982** | Lahman `HallOfFame.yearid` where `inducted='Y'` | “Elected to the Hall of Fame in 1982” |
+| **Cooperstown induction ceremony** | **1999** | Web bios, plaques | “Inducted in 1999” (5-year rule after election) |
+
+Tavily will often return **1999** unless the research prompt explicitly asks for “year elected by BBWAA.” Lahman returns **1982**.
+
+| Q8 pick | Gate anchor | Tavily path | Follow-on work |
+|---------|-------------|-------------|----------------|
+| **A — research v1** | Pick **1982** or **1999** explicitly; document in anchor JSON | Gate proves research pipeline | Later: add manifest `hof_join` alias → warehouse fast path |
+| **B — manifest first** | **1982** from sqlite (deterministic) | Research deferred until attrs with **no** Lahman table | Slower slice; gate tests warehouse not Tavily |
+| **C — research forever** | Fuzzy attrs only (`primary_nickname`) | HOF eventually manifest | Two gate phases |
+
+**If you pick A + election anchor (1982):** Cursor must tune research context string (“year elected, not ceremony”) or gate will flake when Tavily returns 1999.
+
+**If you pick A + induction anchor (1999):** Aligns with casual web language; diverges from Lahman `yearid`.
+
+**Fast follow-on manifest (option B path) — not in v1 slice, shown for context:**
+
+```json
+"hall_of_fame_year": {
+  "convention": "hof_election_year",
+  "table": "HallOfFame",
+  "filter": "inducted = 'Y'"
+}
+```
+
 ---
 
 ## Part D — One-page answer sheet (copy to Grok)
@@ -303,11 +608,62 @@ After decisions, before Cursor:
 ```bash
 # Confirm HOF data exists locally (for Q8)
 sqlite3 ~/mycelium-networks/baseball/warehouse/lahman.sqlite \
-  ".tables" | tr ' ' '\n' | grep -i hall
+  "SELECT yearid, inducted FROM HallOfFame WHERE playerID='aaronha01';"
+# Expect: 1982|Y
 
-# Current bio path still works
+# Tables ingested but not yet in bio manifest
+sqlite3 ~/mycelium-networks/baseball/warehouse/lahman.sqlite \
+  ".tables" | tr ' ' '\n' | grep -iE 'hall|college'
+
+# Current bio warehouse path still works (no Tavily)
 ./bin/gate-live baseball --phase m2
 
-# Full sign-off regression
+# Batting derive still works (OpenAI keys required)
+./bin/gate-live baseball --phase derive
+
+# Full sign-off regression (27/27 baseline)
 ./bin/gate-live baseball
 ```
+
+**Manual hand-test after Cursor implements `2410`:**
+
+```bash
+export OPENAI_API_KEY=...
+export TAVILY_API_KEY=...
+
+uv run mycelium query --network baseball \
+  --lookup-json '{"player":"Hank Aaron"}' \
+  --requested-attributes hall_of_fame_year \
+  --provenance
+
+# Then re-run same delivery_id — should be cache hit, no Tavily wait
+```
+
+---
+
+## Part F — Decision flow (visual)
+
+```mermaid
+flowchart TD
+  Q[Client requests bio attrs] --> S1[Step-1 classify + route]
+  S1 --> WH{In warehouse_domains.json bio aliases?}
+  WH -->|yes| SQL[People compose / column read]
+  WH -->|no| RQ{research_on_miss?}
+  RQ -->|yes| TV[Tavily + LLM run_field_research]
+  RQ -->|no| NA[N/A]
+  SQL --> OUT[Assembled results + provenance]
+  TV --> OUT
+  NA --> OUT
+```
+
+Derive path (`derive_on_miss`) is **parallel branch on batting/pitching/fielding** — never on bio for v1.
+
+---
+
+## Part G — What Grok does after you paste Part D
+
+1. Lock choices in [`2026-06-21-baseball-bio-research-specialist.md`](2026-06-21-baseball-bio-research-specialist.md) (flip Status → design locked).
+2. Update `2410` slice: remove **DRAFT**, set guinea pig + HOF anchor per your Q3/Q8 picks.
+3. Flip slice to **READY** in `prompts/cursor/next/2026-06-21-2410-baseball-bio-research-specialist.md`.
+4. Add `hall_of_fame_year: "1982"` or `"1999"` to anchor JSON per your election/induction pick.
+5. You tell Cursor to claim `2410` (or `2400` first if Q7 = B).

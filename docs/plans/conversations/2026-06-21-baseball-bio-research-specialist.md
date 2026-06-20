@@ -65,7 +65,7 @@ Do not mix Tavily URLs into warehouse computation-centric fields.
 
 - **Smoke:** mocked Tavily (CRM pattern); warehouse attrs unchanged
 - **Live gate:** new phase `bio_research` or extend `m2` with `skip_if_missing_env: TAVILY_API_KEY`
-- **Guinea pigs:** Aaron — `hall_of_fame_year` (1999) or `primary_nickname` (“Hammer” / “Bad Henry” — pick one verifiable anchor from discovery)
+- **Guinea pigs:** Aaron — `hall_of_fame_year` (anchor semantics: Lahman **1982** election vs web **1999** ceremony — see morning brief Q8) or `primary_nickname` (“Hammer” — pick one verifiable anchor from discovery)
 
 ---
 
