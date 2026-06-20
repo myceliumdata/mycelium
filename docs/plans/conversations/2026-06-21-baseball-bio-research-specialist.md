@@ -69,6 +69,8 @@ Do not mix Tavily URLs into warehouse computation-centric fields.
 
 ---
 
+**Morning prep:** [`2026-06-21-baseball-morning-decision-brief.md`](2026-06-21-baseball-morning-decision-brief.md) — inventory, training-wheels checklist, Q1–Q8 with examples and answer sheet.
+
 ## Open questions (Paul + Grok — resolve before implement)
 
 1. **Framework shape** — `WarehouseResearchPlayerSpecialist` (warehouse then research in one `run()`) vs separate `bio_research` category vs CRM-style generated research specialist only for bio misses?
