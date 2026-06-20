@@ -2,7 +2,7 @@
 
 **Status:** ✅ **CLEAR** (2026-06-14) — Paul manual gate passed; Program 2 verified on `origin/main`
 
-> **Errata (June 2026 — framework MVR generic vocabulary):** Suggestion `reason` strings are now `bind_field_fuzzy_match` (was `employer_sequence_ratio`) and `same_bind_field_conflict` (was `same_name_different_employer`). Retry maps use `suggestions[].suggested_lookup` only (no `suggestion.name` / `suggestion.employer`). Automated CRM check: `./bin/smoke-crm-e2e`.
+> **Errata (June 2026 — framework MVR generic vocabulary):** Suggestion `reason` for fuzzy bind-field hits is now **`fuzzy_bind_field_match`** (composite scorer slice `2100`; was `sequence_ratio` / `bind_field_fuzzy_match` / `employer_sequence_ratio`). Conflicts remain **`same_bind_field_conflict`** (was `same_name_different_employer`). Retry maps use `suggestions[].suggested_lookup` only (no `suggestion.name` / `suggestion.employer`). Automated CRM check: `./bin/smoke-crm-e2e`; fuzzy matrix: `tests/test_fuzzy_bind_field_suggestion_matrix.py`.
 
 > **Superseded for status inspect:** Program 3 (slice 1520+) replaced `--entity` with `--lookup-json` / `--id` and added `resolve` JSON on status responses. Use [`2026-06-14-program3-post-program-gate.md`](2026-06-14-program3-post-program-gate.md) for the current protocol checklist after Program 3 gate **CLEAR**.
 
@@ -31,9 +31,9 @@ Target protocol step 1 now returns **distinct outcomes** — agents should branc
 |------|----------------|---------|------------|---------------------|
 | Partial lookup, 0 hits | `{"name":"Paul Murphy"}` | `lookup_incomplete` | none | `required_fields: ["employer"]` |
 | Partial lookup, ≥1 hit | `{"name":"Andrea Kalmans"}` | `lookup_resolved` | yes | `total_matches: N` |
-| Partial lookup, fuzzy employer | `{"employer":"645 Venture"}` | `lookup_suggested` | none | `suggestions[].suggested_lookup: {"employer":"645 Ventures"}` (`employer_sequence_ratio`) |
+| Partial lookup, fuzzy employer | `{"employer":"645 Venture"}` | `lookup_suggested` | none | `suggestions[].suggested_lookup: {"employer":"645 Ventures"}` (`fuzzy_bind_field_match`) |
 | Full MVR, same name elsewhere | Andrea @ Wrong Corp (Lontra in seed) | `lookup_suggested` | none | `suggestions[]` (`same_name_different_employer`; may include `suggested_lookup`) |
-| Full MVR, fuzzy name | `{"name":"Andrea Kalman","employer":"Acme Corp"}` | `lookup_suggested` | none | `suggestions[].suggested_lookup: {"name":"Andrea Kalmans"}` (`sequence_ratio`) |
+| Full MVR, fuzzy name | `{"name":"Andrea Kalman","employer":"Acme Corp"}` | `lookup_suggested` | none | `suggestions[].suggested_lookup: {"name":"Andrea Kalmans"}` (`fuzzy_bind_field_match`) |
 | Full MVR, safe create | Road Runner @ Acme (no collision) | `lookup_resolved` | yes | `create_on_deliver: true` |
 | Full MVR, intentional new bind | Andrea @ Wrong + `confirm_new_entity` | `lookup_resolved` | yes | `create_on_deliver: true` |
 | True dead end | unknown `id`, expired `delivery_id` | `not_found` | none | unchanged |
@@ -277,7 +277,7 @@ uv run mycelium query --network crm \
 **Pass:**
 
 - `outcome` = `lookup_suggested`
-- `suggestions[0].reason` = `sequence_ratio`
+- `suggestions[0].reason` = `fuzzy_bind_field_match`
 - `suggestions[0].suggested_lookup` = `{"name": "Andrea Kalmans"}` (or equivalent normalized map)
 
 **Automated:** `test_fuzzy_name_lookup_suggested`, `test_name_fuzzy_suggested_lookup_shape`
@@ -292,7 +292,7 @@ uv run mycelium query --network crm \
 **Pass:**
 
 - `outcome` = `lookup_suggested` (not `lookup_resolved` with a single employee)
-- `suggestions[0].reason` = `employer_sequence_ratio`
+- `suggestions[0].reason` = `fuzzy_bind_field_match`
 - `suggestions[0].suggested_lookup` = `{"employer": "645 Ventures"}`
 - **No** `delivery` / `delivery_id`
 

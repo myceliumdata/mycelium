@@ -21,6 +21,8 @@ CRM_PYTEST_FILES = (
     "tests/test_example_network_capstones.py",
     "tests/test_example_network.py",
     "tests/test_target_step1_lookup_clarity.py",
+    "tests/test_fuzzy_bind_field_suggestions.py",
+    "tests/test_fuzzy_bind_field_suggestion_matrix.py",
     "tests/test_mvr_target_public.py",
     "tests/test_mvr_batch_deliver.py",
     "tests/test_mvr_create_on_deliver.py",

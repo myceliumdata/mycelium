@@ -2,8 +2,8 @@
 
 **Verdict:** **Approved + polish nits**
 
-**CI:** `./bin/ci-local` — **591** smoke passed, ruff clean, admin-ui build ok.  
-**Fuzzy pytest:** 57 passed (`test_fuzzy_bind_field_suggestions`, `test_fuzzy_bind_field_suggestion_matrix`, `test_target_step1_lookup_clarity`).  
+**CI:** `./bin/ci-local` — **598** smoke passed, ruff clean, admin-ui build ok.  
+**Fuzzy pytest:** 46 dedicated + clarity overlap; matrix 16 scorer + 15 step-1 rows (all green).  
 **Live gate unblock:** `crm-negative-01` (`654 Ventures` → `645 Ventures`) now matches scorer behavior.
 
 ---
@@ -60,14 +60,15 @@ Cursor landed fuzzy work in the **same uncommitted working tree** as later slice
 
 ---
 
-## Polish nits (non-blocking)
+## Polish nits — remediated (Grok follow-up `d0825bc+`)
 
-| # | Item |
-|---|------|
-| N1 | `src/network/create.py` removes unused `_DEFAULT_ONTOLOGY_MODEL` — **out of slice scope** (belongs to LLM env slice); harmless dead-code removal. |
-| N2 | Matrix module docstring still says “Fails until composite scorer ships” — stale; update when convenient. |
-| N3 | Old manual gate doc still cites `sequence_ratio` / `employer_sequence_ratio` — historical errata already noted at top of that file. |
-| N4 | **Follow-up** (from output): indexed pre-filter for 24k-player scan latency; phonetic layer deferred. |
+| # | Item | Fix |
+|---|------|-----|
+| N1 | Dead `_DEFAULT_ONTOLOGY_MODEL` in `create.py` | Left in place (harmless; LLM env slice owns semantics) |
+| N2 | Stale matrix docstring | Updated — shipped regression gate wording |
+| N3 | Manual gate doc reason strings | Errata + tables + 0c checks → `fuzzy_bind_field_match` |
+| N4 | Test coverage gaps | Reason asserts in matrix; boundary + ranker tests; fuzzy files in `smoke-crm-e2e --with-pytest` |
+| N5 | **Follow-up** (deferred): indexed pre-filter for 24k-player scan; phonetic layer |
 
 ---
 

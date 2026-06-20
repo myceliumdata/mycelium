@@ -2,7 +2,7 @@
 
 Contract for slice ``2026-06-18-2100-fuzzy-bind-field-suggestion-upgrade``.
 Rows document expected step-1 / scorer behavior from hand tests and policy docs.
-Fails until the composite scorer ships — intentional gate for Cursor.
+Shipped — green rows are the regression gate for scorer and resolve changes.
 """
 
 from __future__ import annotations
@@ -84,6 +84,7 @@ SCORER_MISTAKE_CASES: tuple[ScorerMistakeCase, ...] = (
     ScorerMistakeCase("prefix.645_shorthand", "645", "645 Ventures", True, 0.85),
     ScorerMistakeCase("prefix.ibm_corp", "ibm", "IBM Corporation", True, 0.85),
     ScorerMistakeCase("negative.john_cobb_ty_cobb", "John Cobb", "Ty Cobb", False, None),
+    ScorerMistakeCase("negative.tie_coebb_ty_cobb", "Tie Coebb", "Ty Cobb", False, None),
     ScorerMistakeCase("negative.46_ventures", "46", "645 Ventures", False, None),
     ScorerMistakeCase("negative.645_wrong_prefix", "645", "1645 Ventures", False, None),
     ScorerMistakeCase("negative.dodgers_brooklyn", "Dodgers", "Brooklyn Dodgers", False, None),
@@ -331,9 +332,13 @@ def _assert_suggestions(
 ) -> None:
     if case.expected_suggested_lookup is not None:
         assert suggestions, f"{case.id}: expected suggestions"
-        top = suggestions[0].suggested_lookup
-        assert top == case.expected_suggested_lookup, (
-            f"{case.id}: top suggestion {top!r} != {case.expected_suggested_lookup!r}"
+        top = suggestions[0]
+        assert top.suggested_lookup == case.expected_suggested_lookup, (
+            f"{case.id}: top suggestion {top.suggested_lookup!r} "
+            f"!= {case.expected_suggested_lookup!r}"
+        )
+        assert top.reason == entity_resolution.FUZZY_BIND_FIELD_REASON, (
+            f"{case.id}: reason {top.reason!r} != {entity_resolution.FUZZY_BIND_FIELD_REASON!r}"
         )
     if case.suggestion_contains is not None:
         assert suggestions, f"{case.id}: expected suggestions"
