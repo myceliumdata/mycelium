@@ -18,6 +18,7 @@ from network.example import refresh_example_network
 from network.paths import NetworkPaths
 from network_helpers import apply_network_paths_monkeypatch
 from storage.core import reset_storage
+from baseball_minimal_fixture import refresh_baseball_root as refresh_shared_fixture
 
 SAMPLE_PLAYER = {
     "player": "Hank Aaron",
@@ -150,7 +151,7 @@ def test_birth_date_provenance_shape(
     assert version["actor"]["specialist"] == "bio_specialist"
     inline = version["computation"]["inline"]
     assert "birthYear" in inline
-    assert "playerID" in inline
+    assert "people_compose_iso_date" in inline or "birthMonth" in inline
 
 
 @pytest.mark.smoke
@@ -214,3 +215,79 @@ def test_bats_deliver_found(
     assert r2.outcome in {"found", "assembled"}
     assert r2.results
     assert r2.results[0].get("bats") == "L"
+
+
+def _deliver_bio_attr(
+    attr: str,
+    *,
+    provenance: bool = False,
+) -> tuple[object, object]:
+    step1 = EntityQuery(
+        lookup=dict(SAMPLE_PLAYER),
+        requested_attributes=[attr],
+        provenance=provenance,
+    )
+    r1 = run_query(step1, thread_id=f"{attr}-step1")
+    assert r1.outcome == "lookup_resolved", r1.message
+    assert r1.delivery is not None
+    r2 = run_query(
+        EntityQuery(delivery_id=r1.delivery.delivery_id),
+        thread_id=f"{attr}-step2",
+    )
+    return r1, r2
+
+
+@pytest.mark.smoke
+def test_height_deliver_found(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    refresh_shared_fixture(tmp_path, monkeypatch)
+    _, response = _deliver_bio_attr("height")
+    assert response.outcome in {"found", "assembled"}
+    assert response.results
+    assert response.results[0].get("height") == "72"
+
+
+@pytest.mark.smoke
+def test_weight_deliver_found(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    refresh_shared_fixture(tmp_path, monkeypatch)
+    _, response = _deliver_bio_attr("weight")
+    assert response.results
+    assert response.results[0].get("weight") == "180"
+
+
+@pytest.mark.smoke
+def test_birth_country_deliver_found(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    refresh_shared_fixture(tmp_path, monkeypatch)
+    _, response = _deliver_bio_attr("birth_country")
+    assert response.results
+    assert response.results[0].get("birth_country") == "USA"
+
+
+@pytest.mark.smoke
+def test_final_game_deliver_found(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    refresh_shared_fixture(tmp_path, monkeypatch)
+    _, response = _deliver_bio_attr("final_game")
+    assert response.results
+    assert response.results[0].get("final_game") == "1976-10-03"
+
+
+@pytest.mark.smoke
+def test_death_date_deliver_found(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    refresh_shared_fixture(tmp_path, monkeypatch)
+    _, response = _deliver_bio_attr("death_date")
+    assert response.results
+    assert response.results[0].get("death_date") == "2021-01-22"

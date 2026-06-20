@@ -30,7 +30,16 @@
         "debut": {"convention": "people_column", "column": "debut"},
         "bats": {"convention": "people_column", "column": "bats"},
         "throws": {"convention": "people_column", "column": "throws"},
-        "birth_city": {"convention": "people_column", "column": "birthCity"}
+        "birth_city": {"convention": "people_column", "column": "birthCity"},
+        "height": {"convention": "people_column", "column": "height"},
+        "weight": {"convention": "people_column", "column": "weight"},
+        "birth_country": {"convention": "people_column", "column": "birthCountry"},
+        "final_game": {"convention": "people_column", "column": "finalGame"},
+        "death_date": {
+          "convention": "people_compose",
+          "columns": ["deathYear", "deathMonth", "deathDay"],
+          "format": "iso_date"
+        }
       }
     },
     "pitching": {
@@ -38,13 +47,15 @@
       "tables": ["Pitching"],
       "grain": ["playerID", "yearID", "stint", "teamID", "lgID"],
       "conventions": {
-        "career_sum": "SUM({column}) GROUP BY playerID on Pitching table"
+        "career_sum": "SUM({column}) GROUP BY playerID on Pitching table",
+        "career_era_weighted": "9 * SUM(ER) / (SUM(IPouts) / 3); pool ER and IPouts across all Pitching rows for playerID"
       },
       "aliases": {
         "career_wins": {"convention": "career_sum", "column": "W"},
         "career_losses": {"convention": "career_sum", "column": "L"},
         "career_strikeouts": {"convention": "career_sum", "column": "SO"},
-        "career_saves": {"convention": "career_sum", "column": "SV"}
+        "career_saves": {"convention": "career_sum", "column": "SV"},
+        "career_era": {"convention": "career_era_weighted"}
       }
     },
     "team_season": {

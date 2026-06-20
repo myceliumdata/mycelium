@@ -35,8 +35,9 @@ def write_minimal_lahman_fixture(seed_dir: Path) -> None:
         encoding="utf-8",
     )
     (seed_dir / "People.csv").write_text(
-        "ID,playerID,nameFirst,nameLast,birthYear,birthMonth,birthDay,debut\n"
-        "1,aaronha01,Hank,Aaron,1934,2,5,\n",
+        "ID,playerID,nameFirst,nameLast,birthYear,birthMonth,birthDay,debut,"
+        "height,weight,birthCountry,finalGame,deathYear,deathMonth,deathDay,bats,throws,birthCity\n"
+        "1,aaronha01,Hank,Aaron,1934,2,5,,72,180,USA,1976-10-03,2021,1,22,R,R,Mobile\n",
         encoding="utf-8",
     )
     (seed_dir / "Appearances.csv").write_text(
@@ -52,8 +53,8 @@ def write_minimal_lahman_fixture(seed_dir: Path) -> None:
     )
     (seed_dir / "Pitching.csv").write_text(
         "playerID,yearID,stint,teamID,lgID,W,L,G,GS,CG,SHO,SV,IPouts,H,ER,HR,BB,SO,BAOpp,ERA,IBB,WP,HBP,BK,GF,R,SH,SF,GIDP\n"
-        "aaronha01,1957,1,BRO,NL,2,1,5,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0\n"
-        "aaronha01,1958,1,LAN,NL,3,0,4,0,0,0,1,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0\n",
+        "aaronha01,1957,1,BRO,NL,2,1,5,0,0,0,0,27,0,3,0,0,0,3,0,0,0,0,0,0,0,0,0,0\n"
+        "aaronha01,1958,1,LAN,NL,3,0,4,0,0,0,1,54,0,6,0,0,0,5,0,0,0,0,0,0,0,0,0,0\n",
         encoding="utf-8",
     )
 

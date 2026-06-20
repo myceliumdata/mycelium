@@ -79,9 +79,21 @@ def people_column(column: str, player_id: str, warehouse: Path) -> str | None:
 
 
 def people_birth_date(player_id: str, warehouse: Path) -> str | None:
+    return people_compose_iso_date(
+        ["birthYear", "birthMonth", "birthDay"],
+        player_id,
+        warehouse,
+    )
+
+
+def people_compose_iso_date(columns: list[str], player_id: str, warehouse: Path) -> str | None:
+    if len(columns) != 3:
+        return None
+    safe_cols = [col.replace('"', '""') for col in columns]
+    col_list = ", ".join(f'"{col}"' for col in safe_cols)
     rows = query_warehouse(
         warehouse,
-        'SELECT "birthYear", "birthMonth", "birthDay" FROM "People" WHERE "playerID" = ?',
+        f'SELECT {col_list} FROM "People" WHERE "playerID" = ?',
         (player_id,),
     )
     if not rows:
@@ -92,10 +104,31 @@ def people_birth_date(player_id: str, warehouse: Path) -> str | None:
     return f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
 
 
+def career_era_weighted(player_id: str, warehouse: Path, *, table: str = "Pitching") -> str | None:
+    safe_table = table.replace('"', '""')
+    rows = query_warehouse(
+        warehouse,
+        f'SELECT COALESCE(SUM(CAST("ER" AS INTEGER)), 0), '
+        f'COALESCE(SUM(CAST("IPouts" AS INTEGER)), 0) '
+        f'FROM "{safe_table}" WHERE "playerID" = ?',
+        (player_id,),
+    )
+    if not rows:
+        return None
+    er, ipouts = int(rows[0][0]), int(rows[0][1])
+    if ipouts == 0:
+        return None
+    innings = ipouts / 3.0
+    era = 9.0 * er / innings
+    return f"{era:.3f}"
+
+
 CAREER_SUM_INLINE = inspect.getsource(career_sum)
 TEAM_LATEST_COLUMN_INLINE = inspect.getsource(team_latest_column)
 PEOPLE_COLUMN_INLINE = inspect.getsource(people_column)
 PEOPLE_BIRTH_DATE_INLINE = inspect.getsource(people_birth_date)
+PEOPLE_COMPOSE_ISO_DATE_INLINE = inspect.getsource(people_compose_iso_date)
+CAREER_ERA_WEIGHTED_INLINE = inspect.getsource(career_era_weighted)
 
 
 @dataclass(frozen=True)
@@ -176,12 +209,34 @@ def resolve_domain_attribute(
             column=col,
         )
     if convention == "people_compose" and alias.get("format") == "iso_date":
-        formatted = people_birth_date(player_id, warehouse)
+        columns = alias.get("columns")
+        if not isinstance(columns, list):
+            return None
+        cols = [str(col).strip() for col in columns if str(col).strip()]
+        if len(cols) != 3:
+            return None
+        formatted = people_compose_iso_date(cols, player_id, warehouse)
+        if formatted is None:
+            return None
+        inline = (
+            PEOPLE_BIRTH_DATE_INLINE
+            if cols == ["birthYear", "birthMonth", "birthDay"]
+            else PEOPLE_COMPOSE_ISO_DATE_INLINE
+        )
+        return ResolvedField(
+            value=formatted,
+            computation_inline=inline,
+            attribute=key,
+            column=None,
+        )
+    if convention == "career_era_weighted":
+        table = _domain_table(manifest, domain)
+        formatted = career_era_weighted(player_id, warehouse, table=table)
         if formatted is None:
             return None
         return ResolvedField(
             value=formatted,
-            computation_inline=PEOPLE_BIRTH_DATE_INLINE,
+            computation_inline=CAREER_ERA_WEIGHTED_INLINE,
             attribute=key,
             column=None,
         )

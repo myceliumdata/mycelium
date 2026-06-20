@@ -118,6 +118,28 @@ scenarios:
         results[0].birth_city:
           equals: "{{ anchors.birth_city }}"
 
+  - id: bb-bio-01
+    phase: m2
+    description: Bio manifest aliases height weight birth_country
+    step1:
+      lookup:
+        player: "{{ anchors.player }}"
+      requested_attributes: [height, weight, birth_country]
+      provenance: true
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].height:
+          equals: "{{ anchors.height }}"
+        results[0].weight:
+          equals: "{{ anchors.weight }}"
+        results[0].birth_country:
+          equals: "{{ anchors.birth_country }}"
+
   - id: bb-m2-05
     phase: m2
     description: Cache hit repeat career_hr deliver
@@ -292,6 +314,25 @@ scenarios:
           equals: "{{ anchors.pitcher_career_wins }}"
         results[0].career_strikeouts:
           equals: "{{ anchors.pitcher_career_strikeouts }}"
+
+  - id: bb-pitch-03
+    phase: pitching
+    description: Nolan Ryan career_era weighted rate
+    step1:
+      lookup:
+        player: "{{ anchors.pitcher_player }}"
+      requested_attributes: [career_era]
+      provenance: true
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].career_era:
+          approx: "{{ anchors.pitcher_career_era }}"
+          tolerance: 0.001
 
   - id: bb-multi-01
     phase: pitching

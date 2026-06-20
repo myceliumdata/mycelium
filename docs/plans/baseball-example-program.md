@@ -306,8 +306,8 @@ Most slices extend **`pack_common` thin wrappers** + manifest aliases in `wareho
 
 | Slice | Scope | Pattern | Cursor prompt |
 |-------|--------|---------|---------------|
-| **M6b** | **Bio manifest aliases** — `height`, `weight`, `birth_country`, `final_game`, `death_date` | bio `people_column` / compose | `prompts/cursor/next/2026-06-20-2200-baseball-bio-manifest-aliases-m7.md` |
-| **M7** | **Pitching rate stats** — `career_era`, `era` (innings-weighted recipe in manifest; pool-then-divide) + manual gate doc sync | batting derive or committed recipe | `prompts/cursor/next/2026-06-20-2210-baseball-pitching-era-rate-m8.md` |
+| **M6b** | **Bio manifest aliases** — `height`, `weight`, `birth_country`, `final_game`, `death_date` | bio `people_column` / compose | ✅ 2026-06-20 |
+| **M7** | **Pitching rate stats** — `career_era` (innings-weighted); manual gate doc sync | `career_era_weighted` | ✅ 2026-06-20 |
 | **M8** | **Query scope** — `yearID` / `teamID` on step 1 or delivery scope → `parameters.scope` in provenance; season-scoped pulls | framework + manifest | `prompts/cursor/next/2026-06-20-2220-baseball-query-scope-yearid-m9.md` |
 | **M9** | **Fielding domain** — ontology category + `fielding_specialist` + `Fielding` table aliases | M5 pattern | `prompts/cursor/next/2026-06-20-2230-baseball-fielding-domain-m10.md` |
 | **M10** | **Appearances / roster product** — cross-record-type: team entity → player list (single artifact, unified cache) | product specialist (not fan-out) | `prompts/cursor/next/2026-06-20-2240-baseball-roster-product-specialist-m11.md` |

@@ -455,12 +455,18 @@ def discover_anchor_drift(
             "career_hits": anchors.get("career_hits"),
             "career_wins": anchors.get("career_wins"),
             "career_strikeouts": anchors.get("career_strikeouts"),
+            "height": anchors.get("height"),
+            "weight": anchors.get("weight"),
+            "birth_country": anchors.get("birth_country"),
+            "final_game": anchors.get("final_game"),
+            "death_date": anchors.get("death_date"),
         }
         pitcher = anchors.get("pitcher_player")
         if pitcher:
             for attr, key in (
                 ("pitcher_career_wins", "career_wins"),
                 ("pitcher_career_strikeouts", "career_strikeouts"),
+                ("pitcher_career_era", "career_era"),
             ):
                 expected = anchors.get(attr)
                 if expected is None:
@@ -484,12 +490,18 @@ def discover_anchor_drift(
                 reset_core_graph()
                 r2 = run_query(EntityQuery(delivery_id=r1.delivery.delivery_id))
                 actual = r2.results[0].get(key) if r2.results else None
+                drift = str(actual) != str(expected)
+                if key == "career_era":
+                    try:
+                        drift = abs(float(actual) - float(expected)) > 0.001
+                    except (TypeError, ValueError):
+                        drift = True
                 report["checks"].append(
                     {
                         "check": f"resolve_{key}_{pitcher}",
                         "expected": expected,
                         "actual": actual,
-                        "drift": str(actual) != str(expected),
+                        "drift": drift,
                     },
                 )
         team_label = anchors.get("team_label")

@@ -67,12 +67,12 @@ Bind-field provenance: `actor.kind` is **`registry`** or **`seed_bootstrap`** (n
 | `bats` | Pull | `bats` | ✅ when `People.bats` present |
 | `throws` | Pull | `throws` | ✅ when column present |
 | `birth_city` | Pull | `birthCity` | ✅ when column present |
-| `birth_country` | Pull | `birthCountry` | ⏳ alias not in manifest yet |
-| `height` | Pull | `height` | ⏳ alias not in manifest yet |
-| `weight` | Pull | `weight` | ⏳ alias not in manifest yet |
+| `birth_country` | Pull | `birthCountry` | ✅ Aaron → `USA`; live gate `bb-bio-01` |
+| `height` | Pull | `height` | ✅ Aaron → **72**; live gate `bb-bio-01` |
+| `weight` | Pull | `weight` | ✅ Aaron → **180**; live gate `bb-bio-01` |
 | `debut` | Pull | `debut` | ✅ when column present (may be empty → `N/A`) |
-| `final_game` | Pull | `finalGame` | ⏳ alias not in manifest yet |
-| `death_date` | Compute (compose) | death Y/M/D columns | ⏳ |
+| `final_game` | Pull | `finalGame` | ✅ Aaron → `1976-10-03` |
+| `death_date` | Compute (compose) | death Y/M/D columns | ✅ Aaron → `2021-01-22` |
 
 ### Batting (`Batting`, grain player-year-stint-team)
 
@@ -93,15 +93,16 @@ Bind-field provenance: `actor.kind` is **`registry`** or **`seed_bootstrap`** (n
 
 | Attribute | Type | Lahman col | Status |
 |-----------|------|------------|--------|
-| `career_wins`, `career_losses`, `career_strikeouts`, `career_saves` | Compute (`career_sum`) | `W`, `L`, `SO`, `SV` | ✅ smoke; live after `--sync-only` |
-| `career_era`, `era` | Compute (rate) | innings-weighted formula | ⏳ M8 slice |
+| `career_wins`, `career_losses`, `career_strikeouts`, `career_saves` | Compute (`career_sum`) | `W`, `L`, `SO`, `SV` | ✅ smoke + live gate `bb-pitch-01` / `bb-pitch-02` |
+| `career_era` | Compute (rate) | innings-weighted `9*ER/IP` | ✅ smoke **3.000** fixture; live gate `bb-pitch-03` (Nolan Ryan ≈ **3.194**) |
+| `era` | Compute (rate) | season-scoped | ⏳ M9 scope |
 | `wins`, `strikeouts`, `walks`, `games_pitched` | Pull (season) | one Pitching row | ⏳ needs M9 scope |
 
 ### Team season (`Teams`, grain year + team) — `team_season_specialist` (M6)
 
 | Attribute | Type | Lahman col | Status |
 |-----------|------|------------|--------|
-| `season_wins`, `season_losses`, `finish_rank` | Pull (`team_latest_column`) | `W`, `L`, `Rank` | ✅ smoke (latest year); live after sync |
+| `season_wins`, `season_losses`, `finish_rank` | Pull (`team_latest_column`) | `W`, `L`, `Rank` | ✅ smoke + live gate `bb-team-01` |
 | `park`, `runs_scored`, `runs_allowed` | Pull | same-name cols | ✅ manifest aliases |
 | `attendance` | Pull | `Teams` col when present | ⏳ optional alias |
 
@@ -230,6 +231,9 @@ Use Aaron’s **real** debut bind from your root. Set `provenance: true` on step
 | S4 | Provenance shape | either | `parameters` includes `lahman.playerID`, `warehouse`, `attribute`, and batting `column` when applicable |
 | S5 | Provenance inline quality | either | Inline is actual Python source of convention functions (`inspect.getsource`) |
 | S6 | Multi-attr | all three specialists | `requested_attributes: ["debut_team", "career_hr", "birth_date"]` + `provenance: true` — bind `registry`/`seed_bootstrap`, warehouse `parameters.warehouse` |
+| S7 | Pitching + team | `pitching_specialist`, `team_season_specialist` | Live gate `bb-pitch-*`, `bb-team-01`, `bb-multi-01` (Nolan Ryan pitching + Brooklyn Dodgers season wins) |
+
+**Automated regression:** `./bin/gate-live baseball` runs catalog scenarios including `bb-bio-01`, `bb-pitch-03`, and M5–M6 pitching/team phases — prefer over hand-copy for routine checks.
 
 **Copy-paste query packs** (swap debut bind for your root):
 
@@ -259,7 +263,7 @@ Repeat with `"requested_attributes": ["birth_date"]`.
 | R1 | `career_hr` debug / routing | Step 2 touches `batting_specialist` (not CRM `professional_specialist`) |
 | R2 | `birth_date` debug / routing | Step 2 touches `bio_specialist` |
 | R3 | Unsupported batting attr (e.g. `home_runs` alone) | Graceful `N/A` or non-found — not a crash |
-| R4 | Unsupported bio attr (e.g. `height`) | Graceful `N/A` — no alias in manifest yet |
+| R4 | Unknown bio attr (e.g. `nickname`) | Graceful `N/A` — not in manifest |
 
 ### Negative / regression (should still fail cleanly)
 
@@ -278,10 +282,8 @@ Don’t fail the build on these — they’re explicitly out of scope:
 
 | What | Why |
 |------|-----|
-| `height`, `weight`, `birth_country`, `final_game` | No manifest alias yet |
 | `career_sb` | Batting alias not in manifest yet |
-
-| `career_era`, season-scoped pitching attrs | M8/M9 slices |
+| `era` (season-scoped), `wins`, `strikeouts`, `walks`, `games_pitched` | M9 scope |
 | `roster`, franchise aggregation | M11/M12 product specialists |
 | Career team list via query API | Identity is debut bind only — use warehouse SQL (identity doc § H) |
 | CRM attrs (`email`, `employer`, …) | Wrong network / stub categories replaced on baseball root |
