@@ -110,7 +110,7 @@ def test_networks_refresh_before_gate_flags() -> None:
 def test_load_catalog_baseball_has_minimum_scenarios() -> None:
     entry = gr.load_networks_registry()["baseball"]
     scenarios = gr.load_catalog(entry.catalog_path)
-    assert len(scenarios) >= 23
+    assert len(scenarios) >= 26
     phases = {item.phase for item in scenarios}
     assert "pitching" in phases
     assert "team_season" in phases

@@ -537,6 +537,105 @@ def discover_anchor_drift(
                         "drift": str(actual) != str(expected),
                     },
                 )
+            scoped_year = "1957"
+            for attr, expected in (
+                ("roster", anchors.get("player")),
+            ):
+                if expected is None:
+                    continue
+                q1 = EntityQuery(
+                    lookup={"team": str(team_label)},
+                    scope={"yearID": scoped_year},
+                    requested_attributes=[attr],
+                )
+                r1 = run_query(q1)
+                if r1.outcome != "lookup_resolved" or not r1.delivery:
+                    report["checks"].append(
+                        {
+                            "check": f"resolve_{attr}_{team_label}_{scoped_year}",
+                            "expected": expected,
+                            "actual": None,
+                            "drift": True,
+                            "detail": f"step1 outcome={r1.outcome!r}",
+                        },
+                    )
+                    continue
+                reset_core_graph()
+                r2 = run_query(EntityQuery(delivery_id=r1.delivery.delivery_id))
+                actual = r2.results[0].get(attr) if r2.results else None
+                report["checks"].append(
+                    {
+                        "check": f"resolve_{attr}_{team_label}_{scoped_year}",
+                        "expected": f"contains {expected!r}",
+                        "actual": actual,
+                        "drift": str(expected) not in str(actual),
+                    },
+                )
+            franchise_expected = anchors.get("franchise_team_labels_json")
+            if franchise_expected is not None:
+                q1 = EntityQuery(
+                    lookup={"team": str(team_label)},
+                    requested_attributes=["franchise_teams"],
+                )
+                r1 = run_query(q1)
+                if r1.outcome != "lookup_resolved" or not r1.delivery:
+                    report["checks"].append(
+                        {
+                            "check": "resolve_franchise_teams",
+                            "expected": franchise_expected,
+                            "actual": None,
+                            "drift": True,
+                            "detail": f"step1 outcome={r1.outcome!r}",
+                        },
+                    )
+                else:
+                    reset_core_graph()
+                    r2 = run_query(EntityQuery(delivery_id=r1.delivery.delivery_id))
+                    actual = r2.results[0].get("franchise_teams") if r2.results else None
+                    report["checks"].append(
+                        {
+                            "check": "resolve_franchise_teams",
+                            "expected": franchise_expected,
+                            "actual": actual,
+                            "drift": str(actual) != str(franchise_expected),
+                        },
+                    )
+        fielder = anchors.get("fielder_player")
+        if fielder:
+            for attr, key in (
+                ("fielder_career_games", "career_games"),
+                ("fielder_career_putouts", "career_putouts"),
+            ):
+                expected = anchors.get(attr)
+                if expected is None:
+                    continue
+                q1 = EntityQuery(
+                    lookup={"player": str(fielder)},
+                    requested_attributes=[key],
+                )
+                r1 = run_query(q1)
+                if r1.outcome != "lookup_resolved" or not r1.delivery:
+                    report["checks"].append(
+                        {
+                            "check": f"resolve_{key}_{fielder}",
+                            "expected": expected,
+                            "actual": None,
+                            "drift": True,
+                            "detail": f"step1 outcome={r1.outcome!r}",
+                        },
+                    )
+                    continue
+                reset_core_graph()
+                r2 = run_query(EntityQuery(delivery_id=r1.delivery.delivery_id))
+                actual = r2.results[0].get(key) if r2.results else None
+                report["checks"].append(
+                    {
+                        "check": f"resolve_{key}_{fielder}",
+                        "expected": expected,
+                        "actual": actual,
+                        "drift": str(actual) != str(expected),
+                    },
+                )
         for attr, expected in attrs.items():
             if expected is None:
                 continue

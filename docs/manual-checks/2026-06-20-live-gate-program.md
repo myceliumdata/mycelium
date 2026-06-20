@@ -36,7 +36,7 @@ Unified CLI for deployed example networks. Uses real roots under `~/mycelium-net
 
 | Network | Default root | Phases | `refresh_before_gate` | `fresh_derive_before_gate` |
 |---------|--------------|--------|-------------------------|----------------------------|
-| `baseball` | `~/mycelium-networks/baseball` | preflight, identity, m2, **pitching**, **team_season**, derive, infra | no | **yes** (derive phase only) |
+| `baseball` | `~/mycelium-networks/baseball` | preflight, identity, m2, **pitching**, **team_season**, **fielding**, **roster**, **franchise**, derive, infra | no | **yes** (derive phase only) |
 | `crm` | `~/mycelium-networks/crm` | preflight, protocol, research, negative | **yes** | no |
 | `crm-metering` | `~/mycelium-networks/crm-metering` | preflight, metering | **yes** | no |
 | `empty-crm` | `~/mycelium-networks/empty-crm` | preflight, growth | **yes** | no |
@@ -115,7 +115,7 @@ Scenarios with missing keys are **skipped** (not failed).
 
 | Network | Scenarios |
 |---------|-----------|
-| baseball | **23** |
+| baseball | **26** |
 | crm | 7 |
 | crm-metering | 4 |
 | empty-crm | 5 |

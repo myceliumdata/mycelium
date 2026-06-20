@@ -1,0 +1,75 @@
+"""franchise_specialist — franchise-era team labels (Teams by franchID)."""
+
+from __future__ import annotations
+
+import importlib.util
+import inspect
+from pathlib import Path
+from typing import Any
+
+_bootstrap_path = Path(__file__).resolve().parent / "pack_bootstrap.py"
+_bootstrap_spec = importlib.util.spec_from_file_location(
+    "_baseball_pack_bootstrap",
+    _bootstrap_path,
+)
+if _bootstrap_spec is None or _bootstrap_spec.loader is None:
+    raise ImportError(f"Cannot load pack_bootstrap from {_bootstrap_path}")
+_bootstrap_mod = importlib.util.module_from_spec(_bootstrap_spec)
+_bootstrap_spec.loader.exec_module(_bootstrap_mod)
+_bootstrap_mod.bootstrap(__file__)
+
+from agents.specialists.agent import SpecialistAgent
+from models.state import MyceliumGraphState
+from network.paths import NetworkPaths
+
+from product_common import (
+    franchise_team_labels,
+    json_string_list,
+    run_product_team_specialist,
+)
+from specialist_loader import load_warehouse_resolve
+
+FRANCHISE_INLINE = inspect.getsource(franchise_team_labels)
+
+
+def _compute_franchise_teams(
+    attr: str,
+    *,
+    team_id: str,
+    warehouse: Path,
+    year_id: str | None,
+    paths: NetworkPaths,
+) -> tuple[str | None, str, dict[str, str]]:
+    _ = attr, year_id
+    labels, franch_id = franchise_team_labels(team_id, warehouse)
+    if not labels or not franch_id:
+        return None, FRANCHISE_INLINE, {}
+    wr = load_warehouse_resolve()
+    params = wr.team_provenance_parameters(
+        team_id=team_id,
+        paths=paths,
+        warehouse=warehouse,
+        attribute="franchise_teams",
+    )
+    params["lahman.franchID"] = franch_id
+    return json_string_list(labels), FRANCHISE_INLINE, params
+
+
+class FranchiseSpecialist(SpecialistAgent):
+    category = "franchise"
+    agent_name = "franchise_specialist"
+
+    def run(self, state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
+        return run_product_team_specialist(
+            state,
+            agent=AGENT,
+            category="franchise",
+            compute_attr=_compute_franchise_teams,
+        )
+
+
+AGENT = FranchiseSpecialist()
+
+
+def franchise_specialist(state: MyceliumGraphState | dict[str, Any]) -> dict[str, Any]:
+    return AGENT.run(state)

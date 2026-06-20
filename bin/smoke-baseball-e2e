@@ -42,6 +42,9 @@ BASEBALL_PYTEST_FILES = (
     "tests/test_baseball_intent_dedup.py",
     "tests/test_baseball_pitching_specialist.py",
     "tests/test_baseball_team_season_specialist.py",
+    "tests/test_baseball_fielding_specialist.py",
+    "tests/test_baseball_roster_specialist.py",
+    "tests/test_baseball_franchise_specialist.py",
     "tests/test_baseball_multi_domain_deliver.py",
 )
 
@@ -115,6 +118,12 @@ def _write_minimal_lahman_fixture(seed_dir: Path) -> None:
         "playerID,yearID,stint,teamID,lgID,G,AB,R,H,2B,3B,HR,RBI,SB,CS,BB,SO,IBB,HBP,SH,SF,GIDP\n"
         "aaronha01,1957,1,BRO,NL,1,4,0,2,0,0,1,1,0,0,0,0,0,0,0,0,0\n"
         "aaronha01,1958,1,LAN,NL,1,4,0,2,0,0,2,2,0,0,0,0,0,0,0,0,0\n",
+        encoding="utf-8",
+    )
+    (seed_dir / "Fielding.csv").write_text(
+        "playerID,yearID,stint,teamID,lgID,Pos,G,GS,InnOuts,PO,A,E,DP,PB,WP,SB,CS,ZR\n"
+        "aaronha01,1957,1,BRO,NL,RF,10,10,270,20,5,0,0,,,,,\n"
+        "aaronha01,1958,1,LAN,NL,RF,5,5,135,5,2,0,0,,,,,\n",
         encoding="utf-8",
     )
 

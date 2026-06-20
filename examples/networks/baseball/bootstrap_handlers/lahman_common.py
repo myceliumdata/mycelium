@@ -13,6 +13,7 @@ BOOTSTRAP_TABLES = (
     "Appearances",
     "Batting",
     "Pitching",
+    "Fielding",
     "TeamsFranchises",
 )
 

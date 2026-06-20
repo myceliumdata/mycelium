@@ -24,5 +24,10 @@
   "pitcher_career_era": 3.194,
   "team_label": "Brooklyn Dodgers",
   "season_wins": 84,
-  "season_losses": 70
+  "season_losses": 70,
+  "fielder_player": "Hank Aaron",
+  "fielder_career_games": 3298,
+  "fielder_career_putouts": 21773,
+  "roster_count_1957_bro": 35,
+  "franchise_team_labels_json": "[\"Brooklyn Atlantics\",\"Brooklyn Bridegrooms\",\"Brooklyn Dodgers\",\"Brooklyn Grays\",\"Brooklyn Grooms\",\"Brooklyn Robins\",\"Brooklyn Superbas\",\"Los Angeles Dodgers\"]"
 }

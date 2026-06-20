@@ -414,3 +414,58 @@ scenarios:
       path:
         results[0].career_hr:
           equals: "{{ anchors.career_hr }}"
+
+  - id: bb-field-01
+    phase: fielding
+    description: career_games and career_putouts from Fielding warehouse domain
+    step1:
+      lookup:
+        player: "{{ anchors.fielder_player }}"
+      requested_attributes: [career_games, career_putouts]
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].career_games:
+          equals: "{{ anchors.fielder_career_games }}"
+        results[0].career_putouts:
+          equals: "{{ anchors.fielder_career_putouts }}"
+
+  - id: bb-roster-01
+    phase: roster
+    description: scoped roster for 1957 Brooklyn Dodgers includes Hank Aaron
+    step1:
+      lookup:
+        team: "{{ anchors.team_label }}"
+      scope:
+        yearID: "1957"
+      requested_attributes: [roster]
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].roster:
+          contains: "{{ anchors.player }}"
+
+  - id: bb-franchise-01
+    phase: franchise
+    description: franchise_teams for Brooklyn Dodgers lists franchise-era labels
+    step1:
+      lookup:
+        team: "{{ anchors.team_label }}"
+      requested_attributes: [franchise_teams]
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].franchise_teams:
+          equals: "{{ anchors.franchise_team_labels_json }}"

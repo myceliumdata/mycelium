@@ -157,6 +157,11 @@ def check_assertions(
                     failures.append(
                         f"path {key}: expected {expected['equals']!r}, got {actual!r}",
                     )
+            elif "contains" in expected:
+                if expected["contains"] not in str(actual):
+                    failures.append(
+                        f"path {key}: expected to contain {expected['contains']!r}, got {actual!r}",
+                    )
             elif "truthy" in expected and expected["truthy"]:
                 if not actual:
                     failures.append(f"path {key}: expected truthy, got {actual!r}")

@@ -73,6 +73,18 @@
         "runs_scored": {"convention": "team_latest_column", "column": "R"},
         "runs_allowed": {"convention": "team_latest_column", "column": "RA"}
       }
+    },
+    "fielding": {
+      "specialist": "fielding_specialist",
+      "tables": ["Fielding"],
+      "grain": ["playerID", "yearID", "stint", "teamID", "lgID"],
+      "conventions": {
+        "career_sum": "SUM({column}) GROUP BY playerID on Fielding table"
+      },
+      "aliases": {
+        "career_games": {"convention": "career_sum", "column": "G"},
+        "career_putouts": {"convention": "career_sum", "column": "PO"}
+      }
     }
   }
 }

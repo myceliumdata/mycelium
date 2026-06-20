@@ -75,6 +75,21 @@
         "runs_scored",
         "runs_allowed"
       ]
+    },
+    "fielding": {
+      "description": "Player fielding statistics (Lahman Fielding).",
+      "assigned_agent": "fielding_specialist",
+      "examples": ["career_games", "career_putouts"]
+    },
+    "team_roster": {
+      "description": "Team roster product — player display names for a scoped season.",
+      "assigned_agent": "roster_specialist",
+      "examples": ["roster"]
+    },
+    "franchise": {
+      "description": "Franchise-era team labels sharing lahman.franchID.",
+      "assigned_agent": "franchise_specialist",
+      "examples": ["franchise_teams"]
     }
   },
   "attribute_map": {
@@ -119,6 +134,10 @@
     "park": "team_season",
     "attendance": "team_season",
     "runs_scored": "team_season",
-    "runs_allowed": "team_season"
+    "runs_allowed": "team_season",
+    "career_games": "fielding",
+    "career_putouts": "fielding",
+    "roster": "team_roster",
+    "franchise_teams": "franchise"
   }
 }

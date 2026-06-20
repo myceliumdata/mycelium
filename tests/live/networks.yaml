@@ -2,7 +2,7 @@ baseball:
   catalog: catalogs/baseball.yaml
   anchors: anchors/baseball_aaron_lahman_v2025.json
   default_root: ~/mycelium-networks/baseball
-  phases: [preflight, identity, m2, pitching, team_season, derive, infra]
+  phases: [preflight, identity, m2, pitching, team_season, fielding, roster, franchise, derive, infra]
   refresh_before_gate: false
   fresh_derive_before_gate: true
 

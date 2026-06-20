@@ -61,7 +61,17 @@ Update `tests/test_live_gate_runner_unit.py` minimum scenario count if catalog g
 
 Skip if M9–M13 already addressed; do not expand scope into framework provenance redesign.
 
-### 5 — M9 scope polish (from review)
+### 5 — M10–M12 product/fielding polish (from review)
+
+| Item | Action |
+|------|--------|
+| M11 N1 | Roster cache: storage key must include `yearID` (design lock) — scope-aware cache or recompute on scope mismatch |
+| M11 N2 | Test 1957 then 1958 roster on same team after N1 |
+| M11 N3 | Use or drop `roster_count_1957_bro` anchor |
+| M10/M12 N | Extend `test_live_gate_runner_unit` minimum phases: `fielding`, `roster`, `franchise` |
+| M12 N1 | Optional: enrich franchise labels from `TeamsFranchises` |
+
+### 6 — M9 scope polish (from review)
 
 | Item | Action |
 |------|--------|
@@ -71,7 +81,7 @@ Skip if M9–M13 already addressed; do not expand scope into framework provenanc
 | M9 N4 | Restore `deliveries.json` exists assert on `test_issue_delivery_roundtrip` |
 | M9 N5 | Optional: team scope with unknown `yearID` → `N/A` smoke |
 
-### 6 — Docs
+### 7 — Docs
 
 - `docs/manual-checks/2026-06-19-baseball-specialist-hand-test.md` — ensure polish gate scenarios cited; remove any stale ⏳ rows superseded by M9–M13.
 - `docs/manual-checks/2026-06-20-live-gate-program.md` — final scenario count + phase list after all catalog changes.

@@ -57,6 +57,12 @@ def write_minimal_lahman_fixture(seed_dir: Path) -> None:
         "aaronha01,1958,1,LAN,NL,3,0,4,0,0,0,1,54,0,6,0,0,0,5,0,0,0,0,0,0,0,0,0,0\n",
         encoding="utf-8",
     )
+    (seed_dir / "Fielding.csv").write_text(
+        "playerID,yearID,stint,teamID,lgID,Pos,G,GS,InnOuts,PO,A,E,DP,PB,WP,SB,CS,ZR\n"
+        "aaronha01,1957,1,BRO,NL,RF,10,10,270,20,5,0,0,,,,,\n"
+        "aaronha01,1958,1,LAN,NL,RF,5,5,135,5,2,0,0,,,,,\n",
+        encoding="utf-8",
+    )
 
 
 def reset_runtime() -> None:
