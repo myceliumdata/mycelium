@@ -14,6 +14,7 @@ Close accumulated **non-blocking polish nits** from M5–M8 reviews and cross-cu
 - [ ] `2026-06-20-2250-baseball-franchise-specialist-m12` — Approved
 - [ ] `2026-06-20-2260-baseball-full-warehouse-ingest-m13` — Approved
 - [ ] `2026-06-20-2280-baseball-bootstrap-perf-index-and-debut` — Approved (or Paul waives bootstrap slice)
+- [ ] `2026-06-20-2340-baseball-warehouse-stat-specialist-base-class-m14` — Approved
 
 Read polish nits in:
 

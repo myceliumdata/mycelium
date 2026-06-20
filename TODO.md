@@ -17,11 +17,12 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 - [ ] **Profiling — Lahman bootstrap / storage hot paths** — Part of load optimization above. `time -p`, `cProfile` / `py-spy` on bind loop; record findings in timing-gates doc. See [`docs/plans/storage-evolution-program.md`](docs/plans/storage-evolution-program.md) § Post-mortem.
 - [ ] **Storage evolution timing test 6** — Fresh `--root`; `time -p ./bin/refresh-example-network baseball --yes --no-default`; record **real** in timing-gates doc Test 6 row. Kill any pre-incremental test 5 run first.
 - [ ] **Baseball pack → framework extraction review** — After program slices land, audit `examples/networks/baseball/` (especially `pack_common`, `warehouse_resolve`, `derive_resolve`, bootstrap handlers) for logic generic enough to promote into `src/` (warehouse convention resolver, query scope replay, product-specialist hooks). Goal: next warehouse-backed network reuses framework primitives; baseball pack stays manifest + thin wrappers only.
-- [ ] **Stat specialist model — document & decide** — Paul question: CRM categories are **factory-generated research specialists** (same template, different `attribute_map`); baseball has **separate pack modules** per domain (`batting_specialist`, `pitching_specialist`, `bio_specialist`, …). Capture why (warehouse table routing, derive-on-miss, record-type grain, product specialists vs manifest reads) and whether further consolidation — e.g. one `warehouse_stat_specialist` driven only by `warehouse_domains.json` — is worth a slice. Distill into architecture doc or whys entry; link from onboarding walkthrough.
+- [ ] **Warehouse stat specialist base class (M14)** — Cursor: `prompts/cursor/next/2026-06-20-2340-baseball-warehouse-stat-specialist-base-class-m14.md`. **After M13 + 2280, before 2350 polish.** Introduce `WarehousePlayerStatSpecialist` / `WarehouseTeamStatSpecialist` (`SpecialistAgent` subclasses); move batting derive-on-miss into base; thin domain subclasses; enable derive per domain via manifest `derive_on_miss` only. Paul lock: **class-based**, same isolation discipline as CRM — not ad hoc callbacks.
+- [ ] **Stat specialist model — document** — After M14: whys/architecture entry explaining warehouse stat base class vs CRM factory research template vs product specialists (`roster`, `franchise`). Link from onboarding walkthrough.
 - [ ] **`baseball` example network** — Lahman second example; full slice map in [`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md). **Not done** when batting+bio pass — need pitching, team_season, fielding, scope, cross-record product specialists, full ingest. **Cursor queue:** `prompts/cursor/next/2026-06-20-22*.md` (M7–M13).
   - **Shipped (identity + batting path):** M1a–M4b, record-type routing, live gate 16/16, MCP `health_ping`, examples index.
   - **Shipped (domain parity M5–M6, 2026-06-20 evening):** `pitching_specialist`, `team_identity_specialist`, `team_season_specialist` pack modules; manifest aliases; multi-domain smoke (`career_hr` + `career_wins`).
-  - **Next slices (pattern clones):** M7 bio aliases → M8 pitching ERA → M9 query scope → M10 fielding → M11 roster product → M12 franchise → M13 full warehouse ingest → live gate domain parity.
+  - **Next slices:** M13 full warehouse ingest → 2280 bootstrap perf → **M14 warehouse stat base class** → 2350 polish capstone.
   - **Bootstrap perf:** test 6 + profiling still gates casual demo (orthogonal to specialist coverage).
 
 ### Shipped (2026-06-20 afternoon)
@@ -156,4 +157,4 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ---
 
-Last updated: 2026-06-20 (M9 scope shipped; contributor walkthrough + public demo + framework extraction + MCP economics on roadmap)
+Last updated: 2026-06-21 (M14 warehouse stat base class queued; class-based derive consolidation)
