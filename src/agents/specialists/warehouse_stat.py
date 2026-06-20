@@ -281,7 +281,6 @@ class WarehousePlayerStatSpecialist(SpecialistAgent):
         )
         now = now_iso()
         values: dict[str, Any] = {}
-        pending: list[str] = []
         na_attrs: list[str] = []
         found_attrs: list[str] = []
         audit: list[str] = []
@@ -351,14 +350,16 @@ class WarehousePlayerStatSpecialist(SpecialistAgent):
                 value=resolved.value,
                 sources=sources,
                 computation={"language": "python", "inline": resolved.computation_inline},
-                parameters=wr.provenance_parameters(
-                    player_id=player_id,
-                    paths=paths,
-                    warehouse=warehouse,
-                    attribute=resolved.attribute,
-                    column=resolved.column,
-                    year_id=year_id,
-                ),
+            parameters=wr.provenance_parameters(
+                player_id=player_id,
+                paths=paths,
+                warehouse=warehouse,
+                attribute=resolved.attribute,
+                column=resolved.column,
+                year_id=year_id,
+                scope_in_provenance=resolved.scope_in_provenance,
+                compose_columns=resolved.compose_columns,
+            ),
                 at=now,
             )
             values[key] = written
@@ -367,7 +368,7 @@ class WarehousePlayerStatSpecialist(SpecialistAgent):
         overall = overall_field_status(
             found_attrs=found_attrs,
             na_attrs=na_attrs,
-            pending=pending,
+            pending=[],
         )
         return values, overall, audit
 
@@ -494,7 +495,6 @@ class WarehouseTeamStatSpecialist(SpecialistAgent):
         )
         now = now_iso()
         values: dict[str, Any] = {}
-        pending: list[str] = []
         na_attrs: list[str] = []
         found_attrs: list[str] = []
 
@@ -550,6 +550,7 @@ class WarehouseTeamStatSpecialist(SpecialistAgent):
                     attribute=resolved.attribute,
                     column=resolved.column,
                     year_id=year_id,
+                    scope_in_provenance=resolved.scope_in_provenance,
                 ),
                 at=now,
             )
@@ -559,7 +560,7 @@ class WarehouseTeamStatSpecialist(SpecialistAgent):
         overall = overall_field_status(
             found_attrs=found_attrs,
             na_attrs=na_attrs,
-            pending=pending,
+            pending=[],
         )
         return values, overall
 

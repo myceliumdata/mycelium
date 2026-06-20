@@ -79,5 +79,23 @@ def test_career_era_provenance_shape(
     assert version.get("computation", {}).get("inline")
     assert version.get("parameters", {}).get("lahman.playerID") == "aaronha01"
     assert version.get("parameters", {}).get("attribute") == "career_era"
+    assert version.get("parameters", {}).get("warehouse") == "warehouse/lahman.sqlite"
     inline = version.get("computation", {}).get("inline", "")
-    assert "career_era_weighted" in inline or "IPouts" in inline
+    assert "career_era_weighted" in inline
+
+
+@pytest.mark.smoke
+def test_career_era_zero_ipouts_na(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from baseball_minimal_fixture import refresh_baseball_root_with_fixture, write_zero_ipouts_pitching_fixture
+
+    refresh_baseball_root_with_fixture(
+        tmp_path,
+        monkeypatch,
+        fixture_fn=write_zero_ipouts_pitching_fixture,
+    )
+    _, response = _deliver_attr("career_era")
+    assert response.results
+    assert response.results[0].get("career_era") == "N/A"

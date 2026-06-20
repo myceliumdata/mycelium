@@ -51,6 +51,7 @@ def _compute_roster(
         warehouse=warehouse,
         attribute="roster",
         year_id=year_id,
+        scope_in_provenance=year_id is not None and bool(str(year_id).strip()),
     )
     return json_string_list(names), ROSTER_INLINE, params
 
@@ -65,6 +66,7 @@ class RosterSpecialist(SpecialistAgent):
             agent=AGENT,
             category="team_roster",
             compute_attr=_compute_roster,
+            scope_sensitive_fields=frozenset({"roster"}),
         )
 
 

@@ -1,6 +1,6 @@
 # Baseball example — program design (`baseball` network)
 
-**Status:** **Work in progress** (June 2026) — `LahmanSeedHandler`, warehouse manifest, record-type routing, debut player bind, warehouse stats, and derive pipeline (M1–M4b) ship; pitching / team_season specialists + live gate **19/19** on real Lahman (`./bin/gate-live baseball`). **Open:** Lahman bootstrap refresh timing (identity pass too slow for casual demo); lazy-alias smoke scenarios; `--full` smoke gate. Safe to refresh for development; not demo-ready until bootstrap perf meets timing gates.  
+**Status:** **Near complete** (June 2026) — M1–M14 + bootstrap perf shipped; live gate **27** scenarios on real Lahman (`./bin/gate-live baseball`). **Open:** casual demo timing on cold bootstrap (identity pass); lazy-alias smoke scenarios; `--full` smoke gate. Safe to refresh for development; run `./bin/gate-live baseball` for program sign-off.  
 **Ur artifact:** [`mycelium_lahman_design_prompt.md`](mycelium_lahman_design_prompt.md) — original Grok design brief; preserved, not maintained as source of truth  
 **Conversations:** [`conversations/2026-06-14-data-factory-origin.md`](conversations/2026-06-14-data-factory-origin.md), [`conversations/2026-06-15-baseball-example-design.md`](conversations/2026-06-15-baseball-example-design.md)  
 **Roadmap:** [`TODO.md`](../../TODO.md) → `baseball` example
@@ -299,20 +299,31 @@ See `examples/networks/baseball/README.md`.
 | — | Record-type routing (player vs team lookup keys) | ✅ 1100/1800 |
 | M5–M6 | `pitching_specialist`, `team_identity_specialist`, `team_season_specialist` + live gate (`bb-pitch-*`, `bb-multi-01`, `bb-team-01`) | `pack_common` thin wrappers | ✅ 2026-06-20 |
 | — | Live gate 19/19 on loaded Lahman root | ✅ 2026-06-20 |
+| M6b–M7 | Bio aliases + `career_era` rate stat | ✅ 2026-06-20 |
+| M8 (M9 prompt) | Query scope (`yearID`) on step 1 / delivery | ✅ 2026-06-20 |
+| M9 (M10 prompt) | Fielding domain + `fielding_specialist` | ✅ 2026-06-20 |
+| M10 (M11 prompt) | Roster product specialist | ✅ 2026-06-20 |
+| M11 (M12 prompt) | Franchise product specialist | ✅ 2026-06-20 |
+| M12 (M13 prompt) | Full 27-table warehouse ingest | ✅ 2026-06-20 |
+| — | Bootstrap perf (deferred index + `player_debut`) | ✅ 2026-06-20 |
+| M14 | `WarehousePlayerStatSpecialist` / `WarehouseTeamStatSpecialist` in framework | ✅ 2026-06-20 |
+| — | Program polish capstone + live gate **27/27** catalog | ✅ 2026-06-20 |
 
-### In flight / next (domain parity — pattern clones)
+### Shipped (domain parity complete)
 
-Most slices extend **`pack_common` thin wrappers** + manifest aliases in `warehouse_domains.json`, `warehouse_resolve` convention, smoke test, and **required live-gate scenario** per slice (see each Cursor prompt).
+All domain-parity slices through M14 are done. Remaining work is cross-cutting (bootstrap demo timing, optional aliases) — see polish capstone `output.md` for deferred nits.
 
-| Slice | Scope | Pattern | Cursor prompt |
-|-------|--------|---------|---------------|
-| **M6b** | **Bio manifest aliases** — `height`, `weight`, `birth_country`, `final_game`, `death_date` | bio `people_column` / compose | ✅ 2026-06-20 |
-| **M7** | **Pitching rate stats** — `career_era` (innings-weighted); manual gate doc sync | `career_era_weighted` | ✅ 2026-06-20 |
-| **M8** | **Query scope** — `yearID` / `teamID` on step 1 or delivery scope → `parameters.scope` in provenance; season-scoped pulls | framework + manifest | `prompts/cursor/next/2026-06-20-2220-baseball-query-scope-yearid-m9.md` |
-| **M9** | **Fielding domain** — ontology category + `fielding_specialist` + `Fielding` table aliases | M5 pattern | `prompts/cursor/next/2026-06-20-2230-baseball-fielding-domain-m10.md` |
-| **M10** | **Appearances / roster product** — cross-record-type: team entity → player list (single artifact, unified cache) | product specialist (not fan-out) | `prompts/cursor/next/2026-06-20-2240-baseball-roster-product-specialist-m11.md` |
-| **M11** | **Franchise product specialist** — re-aggregate fan teams by `franchID` on client pushback | product specialist | `prompts/cursor/next/2026-06-20-2250-baseball-franchise-specialist-m12.md` |
-| **M12** | **Full warehouse ingest** — bootstrap all 27 Lahman tables (not identity sliver) | `lahman_common.BOOTSTRAP_TABLES` | `prompts/cursor/next/2026-06-20-2260-baseball-full-warehouse-ingest-m13.md` |
+| Slice | Scope | Status |
+|-------|--------|--------|
+| **M6b** | Bio manifest aliases | ✅ |
+| **M7** | Pitching rate stats (`career_era`) | ✅ |
+| **M8** | Query scope (`yearID`) | ✅ |
+| **M9** | Fielding domain | ✅ |
+| **M10** | Roster product specialist | ✅ |
+| **M11** | Franchise product specialist | ✅ |
+| **M12** | Full warehouse ingest (27 tables) | ✅ |
+| **M14** | Warehouse stat base classes | ✅ |
+| **Polish** | Gate alignment, test gaps, docs | ✅ |
 
 ### Cross-cutting (not single-domain clones)
 
@@ -320,8 +331,8 @@ Most slices extend **`pack_common` thin wrappers** + manifest aliases in `wareho
 |-------|--------|
 | **Multi-specialist fan-out** | Framework ships (`invoke_specialists` + `assemble_response`). Works when pack specialists exist — e.g. `career_hr` + `career_wins` on one player. |
 | **Cross-domain product output** | Roster, franchise, career-teams list — **one specialist** per coherent artifact; see warehouse-factory conversation § Specialist emergence B. |
-| **Derive on miss** | Today **batting only**. Extend to pitching (rate misses) after M7 recipes land. |
-| **Bootstrap perf** | Identity bind pass timing — test 6 + profiling; gates casual demo. |
+| **Derive on miss** | **Batting** (M3–M4b); pitching uses manifest aliases + `career_era_weighted`. |
+| **Bootstrap perf** | Deferred index rebuild + `player_debut` table shipped (`2280`); identity bind pass timing still gates casual demo. |
 | **Research stub suppression** | Pack install overwrites factory stubs on `--sync-only`; ensure first deliver on fresh root uses pack modules (polish if research path still wins). |
 
 ### Explicit non-goals (unchanged)
@@ -332,4 +343,4 @@ Most slices extend **`pack_common` thin wrappers** + manifest aliases in `wareho
 
 ---
 
-*Updated: 2026-06-20 — M5/M6 domain parity started; batting+bio+identity not sufficient for “example complete”.*
+*Updated: 2026-06-20 — M9–M14 + polish capstone shipped; live gate catalog 27 scenarios.*

@@ -48,6 +48,7 @@ def test_issue_delivery_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     loaded = store.get(scope.delivery_id)
     assert loaded is not None
     assert loaded.model_dump() == scope.model_dump()
+    assert (tmp_path / "deliveries.json").is_file()
 
 
 @pytest.mark.smoke

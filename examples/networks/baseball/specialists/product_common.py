@@ -27,12 +27,24 @@ from pack_common import (
 LAHMAN_TEAM_ID = "lahman.teamID"
 
 
+def _scoped_storage_key(
+    key: str,
+    year_id: str | None,
+    *,
+    scope_sensitive: bool,
+) -> str:
+    if scope_sensitive and year_id is not None and str(year_id).strip():
+        return f"{key}::{str(year_id).strip()}"
+    return key
+
+
 def run_product_team_specialist(
     state: MyceliumGraphState | dict[str, Any],
     *,
     agent: SpecialistAgent,
     category: str,
     compute_attr: Callable[..., tuple[str | None, str, dict[str, str]]],
+    scope_sensitive_fields: frozenset[str] | None = None,
 ) -> dict[str, Any]:
     """Evaluate one team-scoped product attribute via ``compute_attr``."""
     current = coerce_state(state)
@@ -82,13 +94,18 @@ def run_product_team_specialist(
         record = {}
 
     values: dict[str, Any] = {}
-    pending: list[str] = []
     na_attrs: list[str] = []
     found_attrs: list[str] = []
+    sensitive = scope_sensitive_fields or frozenset()
 
     for field in owned:
         key = field.strip().lower()
-        entry = record.get(key)
+        storage_key = _scoped_storage_key(
+            key,
+            year_id,
+            scope_sensitive=key in sensitive,
+        )
+        entry = record.get(storage_key)
         if field_has_value(entry):
             values[key] = field_display_value(entry)
             found_attrs.append(key)
@@ -99,7 +116,7 @@ def run_product_team_specialist(
             continue
 
         if not team_id:
-            agent.write_na_field(entity_id, key, at=now)
+            agent.write_na_field(entity_id, storage_key, at=now)
             values[key] = "N/A"
             na_attrs.append(key)
             continue
@@ -113,20 +130,20 @@ def run_product_team_specialist(
                 paths=paths,
             )
         except FileNotFoundError:
-            agent.write_na_field(entity_id, key, at=now)
+            agent.write_na_field(entity_id, storage_key, at=now)
             values[key] = "N/A"
             na_attrs.append(key)
             continue
 
         if formatted is None:
-            agent.write_na_field(entity_id, key, at=now)
+            agent.write_na_field(entity_id, storage_key, at=now)
             values[key] = "N/A"
             na_attrs.append(key)
             continue
 
         written = agent.write_computed_field(
             entity_id,
-            key,
+            storage_key,
             value=formatted,
             sources=sources,
             computation={"language": "python", "inline": inline},
@@ -139,7 +156,7 @@ def run_product_team_specialist(
     overall = overall_field_status(
         found_attrs=found_attrs,
         na_attrs=na_attrs,
-        pending=pending,
+        pending=[],
     )
     contrib = {
         "id": entity_id,

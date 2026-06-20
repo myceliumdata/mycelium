@@ -59,7 +59,15 @@ def run_warehouse_player_graph(
     on_miss_resolve: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
     """Legacy wrapper — prefer ``WarehousePlayerStatSpecialist`` subclasses."""
-    _ = on_miss, on_miss_resolve
+    import warnings
+
+    if on_miss is not None or on_miss_resolve is not None:
+        warnings.warn(
+            "run_warehouse_player_graph(on_miss=...) is deprecated; "
+            "use WarehousePlayerStatSpecialist with manifest derive_on_miss",
+            DeprecationWarning,
+            stacklevel=2,
+        )
     if isinstance(agent, WarehousePlayerStatSpecialist):
         return agent.run(state)
     raise TypeError(

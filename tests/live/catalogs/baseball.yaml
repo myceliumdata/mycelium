@@ -140,6 +140,26 @@ scenarios:
         results[0].birth_country:
           equals: "{{ anchors.birth_country }}"
 
+  - id: bb-bio-02
+    phase: m2
+    description: Bio manifest aliases final_game and death_date
+    step1:
+      lookup:
+        player: "{{ anchors.player }}"
+      requested_attributes: [final_game, death_date]
+      provenance: true
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].final_game:
+          equals: "{{ anchors.final_game }}"
+        results[0].death_date:
+          equals: "{{ anchors.death_date }}"
+
   - id: bb-m2-05
     phase: m2
     description: Cache hit repeat career_hr deliver

@@ -32,6 +32,20 @@ LIVE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = LIVE_DIR.parent.parent
 
 _TEMPLATE_RE = re.compile(r"\{\{\s*([^}]+?)\s*\}\}")
+RATE_DRIFT_ATTRS = frozenset({"career_avg", "career_era", "pitcher_career_era", "ops"})
+
+
+def rate_value_drift(
+    expected: Any,
+    actual: Any,
+    *,
+    tolerance: float = 0.001,
+) -> bool:
+    """Return True when float rate stats differ beyond tolerance."""
+    try:
+        return abs(float(actual) - float(expected)) > tolerance
+    except (TypeError, ValueError):
+        return True
 
 
 @dataclass
@@ -490,12 +504,11 @@ def discover_anchor_drift(
                 reset_core_graph()
                 r2 = run_query(EntityQuery(delivery_id=r1.delivery.delivery_id))
                 actual = r2.results[0].get(key) if r2.results else None
-                drift = str(actual) != str(expected)
-                if key == "career_era":
-                    try:
-                        drift = abs(float(actual) - float(expected)) > 0.001
-                    except (TypeError, ValueError):
-                        drift = True
+                drift = (
+                    rate_value_drift(expected, actual)
+                    if key in RATE_DRIFT_ATTRS
+                    else str(actual) != str(expected)
+                )
                 report["checks"].append(
                     {
                         "check": f"resolve_{key}_{pitcher}",
@@ -659,12 +672,11 @@ def discover_anchor_drift(
             q2 = EntityQuery(delivery_id=r1.delivery.delivery_id)
             r2 = run_query(q2)
             actual = r2.results[0].get(attr) if r2.results else None
-            drift = str(actual) != str(expected)
-            if attr == "career_avg":
-                try:
-                    drift = abs(float(actual) - float(expected)) > 0.001
-                except (TypeError, ValueError):
-                    drift = True
+            drift = (
+                rate_value_drift(expected, actual)
+                if attr in RATE_DRIFT_ATTRS
+                else str(actual) != str(expected)
+            )
             report["checks"].append(
                 {
                     "check": attr,

@@ -115,7 +115,7 @@ Scenarios with missing keys are **skipped** (not failed).
 
 | Network | Scenarios |
 |---------|-----------|
-| baseball | **26** |
+| baseball | **27** |
 | crm | 7 |
 | crm-metering | 4 |
 | empty-crm | 5 |

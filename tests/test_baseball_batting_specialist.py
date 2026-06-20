@@ -231,6 +231,7 @@ def test_career_hr_ignores_year_scope(
         lookup=dict(SAMPLE_PLAYER),
         scope={"yearID": "9999"},
         requested_attributes=["career_hr"],
+        provenance=True,
     )
     r1 = run_query(step1, thread_id="career-hr-scope-step1")
     assert r1.outcome == "lookup_resolved", r1.message
@@ -241,3 +242,5 @@ def test_career_hr_ignores_year_scope(
     )
     assert r2.outcome in {"found", "assembled"}
     assert str(r2.results[0].get("career_hr")) == "3"
+    version = r2.provenance["entities"][0]["attributes"]["career_hr"]["versions"][0]
+    assert "yearID" not in version.get("parameters", {})

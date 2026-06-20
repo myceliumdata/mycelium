@@ -27,6 +27,8 @@ uv run mycelium query --network baseball \
 
 **Fast CI gate** (minimal fixture, mocked derive): `./bin/smoke-baseball-e2e`
 
+For full specialist coverage (pitching, team_season, fielding, roster, franchise, …), run with pytest: `./bin/smoke-baseball-e2e --with-pytest` (or `./bin/ci-local`).
+
 **Live regression** (real `~/mycelium-networks/baseball`): `./bin/gate-live baseball` — derive cache auto-clears; full Lahman reload is manual before gate.
 
 To push committed example changes (e.g. updated `guide.md`) into an **existing** live root without re-running Lahman bootstrap (~25 min):

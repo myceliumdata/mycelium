@@ -646,6 +646,7 @@ def _attach_provenance(
         matched,
         requested_attributes=attrs,
         provenance=graph_provenance_requested(state),
+        query_scope=dict(state.delivery_scope_query_scope or {}),
     )
 
 

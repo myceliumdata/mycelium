@@ -64,7 +64,7 @@ There is no hardcoded `"person"` preference in the framework.
 Handlers implement `run(ctx: BootstrapContext) -> BootstrapResult`:
 
 - **`BootstrapContext`** — `paths`, optional `guide_text`, optional `progress`
-- **`BootstrapResult`** — `entities_committed`, `sources_processed`, `handler_id`, optional `entities_by_record_type`
+- **`BootstrapResult`** — `entities_committed`, `sources_processed`, `handler_id`, optional `entities_by_record_type`, optional `warehouse_ingest_counts` (per-table row counts from Lahman warehouse ingest)
 
 Orchestration: `network.bootstrap.run_network_bootstrap(paths)`.
 

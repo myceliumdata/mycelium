@@ -290,7 +290,16 @@ def test_lahman_seed_handler_ingests_all_lahman_tables(tmp_path: Path) -> None:
     apply_network_paths(paths)
     result = run_network_bootstrap(paths)
     assert result.handler_id == "lahman_seed"
-    assert len(result.warehouse_ingest_counts) == 27
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "committed_lahman_common",
+        BASEBALL_EXAMPLE / "bootstrap_handlers" / "lahman_common.py",
+    )
+    assert spec is not None and spec.loader is not None
+    lahman_common = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(lahman_common)
+    assert len(result.warehouse_ingest_counts) == lahman_common.LAHMAN_CSV_TABLE_COUNT
     assert all(count > 0 for count in result.warehouse_ingest_counts.values())
 
     warehouse_path = paths.root / "warehouse" / "lahman.sqlite"

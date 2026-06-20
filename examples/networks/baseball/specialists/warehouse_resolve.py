@@ -176,6 +176,11 @@ class ResolvedField:
     computation_inline: str
     attribute: str
     column: str | None = None
+    scope_in_provenance: bool = False
+    compose_columns: tuple[str, ...] | None = None
+
+
+SCOPE_PROVENANCE_CONVENTIONS = frozenset({"season_column", "team_latest_column"})
 
 
 def load_manifest(paths: NetworkPaths) -> dict[str, Any] | None:
@@ -256,6 +261,7 @@ def resolve_domain_attribute(
             computation_inline=SEASON_COLUMN_INLINE,
             attribute=key,
             column=col,
+            scope_in_provenance=True,
         )
     if convention == "people_column":
         column = alias.get("column")
@@ -291,6 +297,7 @@ def resolve_domain_attribute(
             computation_inline=inline,
             attribute=key,
             column=None,
+            compose_columns=tuple(cols),
         )
     if convention == "career_era_weighted":
         table = _domain_table(manifest, domain)
@@ -334,6 +341,7 @@ def resolve_team_domain_attribute(
             computation_inline=TEAM_LATEST_COLUMN_INLINE,
             attribute=key,
             column=col,
+            scope_in_provenance=year_id is not None and bool(str(year_id).strip()),
         )
     return None
 
@@ -346,6 +354,8 @@ def provenance_parameters(
     attribute: str | None = None,
     column: str | None = None,
     year_id: str | None = None,
+    scope_in_provenance: bool = False,
+    compose_columns: tuple[str, ...] | None = None,
 ) -> dict[str, str]:
     wh = warehouse or default_warehouse_path(paths)
     params: dict[str, str] = {
@@ -356,8 +366,10 @@ def provenance_parameters(
         params["attribute"] = attribute.strip().lower()
     if column and column.strip():
         params["column"] = column.strip()
-    if year_id is not None and str(year_id).strip():
+    if scope_in_provenance and year_id is not None and str(year_id).strip():
         params["yearID"] = str(year_id).strip()
+    if compose_columns:
+        params["columns"] = ",".join(compose_columns)
     return params
 
 
@@ -369,6 +381,7 @@ def team_provenance_parameters(
     attribute: str | None = None,
     column: str | None = None,
     year_id: str | None = None,
+    scope_in_provenance: bool = False,
 ) -> dict[str, str]:
     wh = warehouse or default_warehouse_path(paths)
     params: dict[str, str] = {
@@ -379,6 +392,6 @@ def team_provenance_parameters(
         params["attribute"] = attribute.strip().lower()
     if column and column.strip():
         params["column"] = column.strip()
-    if year_id is not None and str(year_id).strip():
+    if scope_in_provenance and year_id is not None and str(year_id).strip():
         params["yearID"] = str(year_id).strip()
     return params

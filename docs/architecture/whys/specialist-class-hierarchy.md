@@ -28,19 +28,22 @@ Baseball is the **proving ground**; the pack keeps Lahman-specific resolver modu
 
 ---
 
-## Current state (June 2026)
+## Current state (June 2026, post-M14)
 
 ```text
-SpecialistAgent                    ← framework root (storage + I/O)
-    ├── CRM contact_specialist     ← factory-generated research graph (per category)
-    ├── baseball batting_specialist ← fat file: derive + callbacks (outlier)
-    ├── baseball pitching_specialist ← thin wrapper → pack_common functions
-    └── baseball roster_specialist  ← product_common callbacks (no class tier)
+SpecialistAgent                         ← framework root (storage + I/O)
+├── CRM contact_specialist              ← factory-generated research graph
+├── WarehousePlayerStatSpecialist       ← framework: manifest + derive-on-miss
+│   ├── BattingSpecialist               ← pack: category/domain + Lahman hooks
+│   ├── PitchingSpecialist
+│   ├── BioSpecialist
+│   └── FieldingSpecialist
+├── WarehouseTeamStatSpecialist
+│   └── TeamSeasonSpecialist
+└── roster_specialist / franchise_specialist  ← product_common (ProductTeamSpecialist follow-on)
 ```
 
-**Why it looks inconsistent:** M3–M4b shipped derive on batting before M5 refactored warehouse reads into `pack_common`. M10–M12 added `product_common` as functions, not framework classes. Expedience during the baseball program — not a permanent design.
-
-**Clarification:** The question is not “should `SpecialistAgent` subclass something?” — it is “what should subclass **`SpecialistAgent`** in the framework?”
+**Derive-on-miss:** enabled per domain via `warehouse_domains.json` → `derive_on_miss`; framework reads via `domain_meta()` (pack `derive_resolve.derive_on_miss_enabled` delegates to the same rule).
 
 ---
 

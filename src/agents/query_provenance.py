@@ -37,20 +37,43 @@ def _agent_for_category(category: str) -> str | None:
     return None
 
 
+def _candidate_storage_keys(
+    attr: str,
+    query_scope: dict[str, str] | None,
+) -> list[str]:
+    key = attr.strip().lower()
+    if not query_scope:
+        return [key]
+    year = str(query_scope.get("yearID") or "").strip()
+    if year:
+        return [f"{key}::{year}", key]
+    return [key]
+
+
 def _read_attribute_provenance(
     agent_name: str,
     entity_id: str,
     attr: str,
     *,
     intent_map: dict[str, str],
+    query_scope: dict[str, str] | None = None,
 ) -> dict[str, Any] | None:
     key = attr.strip().lower()
-    read = dispatch_read_fields(agent_name, entity_id, [key], include_versions=True)
-    entry = read.get(key)
-    if isinstance(entry, dict):
-        provenance = entry.get("provenance")
-        if isinstance(provenance, dict) and provenance.get("versions"):
-            return deepcopy(provenance)
+    for storage_key in _candidate_storage_keys(attr, query_scope):
+        read = dispatch_read_fields(agent_name, entity_id, [storage_key], include_versions=True)
+        entry = read.get(storage_key)
+        if isinstance(entry, dict):
+            provenance = entry.get("provenance")
+            if isinstance(provenance, dict) and provenance.get("versions"):
+                result = deepcopy(provenance)
+                if storage_key != key:
+                    for version in result.get("versions", []):
+                        if isinstance(version, dict) and isinstance(version.get("parameters"), dict):
+                            version["parameters"] = {
+                                **version["parameters"],
+                                "attribute": key,
+                            }
+                return result
 
     slug = lookup_intent_slug(key, intent_map)
     if slug and slug != key:
@@ -76,6 +99,7 @@ def build_query_provenance(
     entity_ids: list[str],
     requested_attributes: list[str],
     paths: Any | None = None,
+    query_scope: dict[str, str] | None = None,
 ) -> dict[str, Any] | None:
     """Return provenance payload or None when nothing to attach."""
     _ = paths
@@ -106,6 +130,7 @@ def build_query_provenance(
                 entity_id,
                 attr,
                 intent_map=intent_map,
+                query_scope=query_scope,
             )
             if provenance is not None:
                 attributes[attr] = provenance
@@ -124,6 +149,7 @@ def apply_query_provenance(
     *,
     requested_attributes: list[str] | None = None,
     provenance: bool | None = None,
+    query_scope: dict[str, str] | None = None,
 ) -> QueryResponse:
     """Attach QueryResponse.provenance when the request flag is set."""
     provenance_flag = query.provenance if provenance is None else provenance
@@ -147,6 +173,7 @@ def apply_query_provenance(
     provenance_payload = build_query_provenance(
         entity_ids=entity_ids,
         requested_attributes=attrs,
+        query_scope=query_scope,
     )
     if provenance_payload is None:
         return response

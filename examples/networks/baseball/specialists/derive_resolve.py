@@ -68,6 +68,7 @@ def _domain_meta(manifest: dict[str, Any], domain: str) -> dict[str, Any]:
 
 
 def derive_on_miss_enabled(manifest: dict[str, Any], domain: str) -> bool:
+    """Pack delegate — canonical check is ``domain_meta(manifest, domain)['derive_on_miss']``."""
     return bool(_domain_meta(manifest, domain).get("derive_on_miss"))
 
 

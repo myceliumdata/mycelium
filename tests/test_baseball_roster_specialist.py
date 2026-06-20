@@ -58,3 +58,36 @@ def test_roster_without_scope_is_na(
     )
     assert r2.results
     assert r2.results[0].get("roster") == "N/A"
+
+
+@pytest.mark.smoke
+def test_roster_scoped_years_do_not_share_cache(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    refresh_baseball_root(tmp_path, monkeypatch)
+    step1_1957 = EntityQuery(
+        lookup={"team": "Brooklyn Dodgers"},
+        scope={"yearID": "1957"},
+        requested_attributes=["roster"],
+    )
+    r1 = run_query(step1_1957, thread_id="roster-1957-step1")
+    assert r1.outcome == "lookup_resolved", r1.message
+    r2 = run_query(
+        EntityQuery(delivery_id=r1.delivery.delivery_id),
+        thread_id="roster-1957-step2",
+    )
+    assert "Hank Aaron" in json.loads(str(r2.results[0].get("roster")))
+
+    step1_1958 = EntityQuery(
+        lookup={"team": "Brooklyn Dodgers"},
+        scope={"yearID": "1958"},
+        requested_attributes=["roster"],
+    )
+    r3 = run_query(step1_1958, thread_id="roster-1958-step1")
+    assert r3.outcome == "lookup_resolved", r3.message
+    r4 = run_query(
+        EntityQuery(delivery_id=r3.delivery.delivery_id),
+        thread_id="roster-1958-step2",
+    )
+    assert r4.results[0].get("roster") == "N/A"

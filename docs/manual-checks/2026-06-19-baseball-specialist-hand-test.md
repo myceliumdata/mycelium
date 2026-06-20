@@ -85,7 +85,7 @@ Bind-field provenance: `actor.kind` is **`registry`** or **`seed_bootstrap`** (n
 | `career_hits` | Compute (`career_sum`) | `H` | ✅ |
 | `career_sb` | Compute (`career_sum`) | `SB` | ⏳ alias not in manifest yet |
 | `career_avg` | Compute (derive) | `SUM(H) / SUM(AB)` via LLM codegen + sandbox (M3) | ✅ Aaron ≈ **0.305** on full Lahman; fixture smoke **0.500** |
-| `home_runs`, `rbi`, `at_bats`, `games` | Pull or compute | season-scoped row vs career SUM | ⏳ scope TBD |
+| `home_runs`, `rbi`, `at_bats`, `games` | Pull or compute | season-scoped row vs career SUM | ✅ M9 scope on step 1 (`yearID`) |
 | `ops` | Compute (derive on miss, M4) | free-form label via LLM codegen | ✅ fixture smoke **0.900** (mocked); live optional |
 | `batting_average` | Compute (derive on miss) | synonym of career rate — intent slug `career_batting_average` (M4b) | ✅ Aaron **0.305**; cache hit after `career_avg` |
 
@@ -95,18 +95,18 @@ Bind-field provenance: `actor.kind` is **`registry`** or **`seed_bootstrap`** (n
 |-----------|------|------------|--------|
 | `career_wins`, `career_losses`, `career_strikeouts`, `career_saves` | Compute (`career_sum`) | `W`, `L`, `SO`, `SV` | ✅ smoke + live gate `bb-pitch-01` / `bb-pitch-02` |
 | `career_era` | Compute (rate) | innings-weighted `9*ER/IP` | ✅ smoke **3.000** fixture; live gate `bb-pitch-03` (Nolan Ryan ≈ **3.194**) |
-| `era` | Compute (rate) | season-scoped | ⏳ M9 scope |
-| `wins`, `strikeouts`, `walks`, `games_pitched` | Pull (season) | one Pitching row | ⏳ needs M9 scope |
+| `era` | Compute (rate) | season-scoped | ⏳ optional alias (career_era ships) |
+| `wins`, `strikeouts`, `walks`, `games_pitched` | Pull (season) | one Pitching row | ⏳ optional season aliases |
 
 ### Team season (`Teams`, grain year + team) — `team_season_specialist` (M6)
 
 | Attribute | Type | Lahman col | Status |
 |-----------|------|------------|--------|
-| `season_wins`, `season_losses`, `finish_rank` | Pull (`team_latest_column`) | `W`, `L`, `Rank` | ✅ smoke + live gate `bb-team-01` |
+| `season_wins`, `season_losses`, `finish_rank` | Pull (`team_latest_column` or `season_column` with scope) | `W`, `L`, `Rank` | ✅ smoke + live gate `bb-team-01` / `bb-team-02` |
 | `park`, `runs_scored`, `runs_allowed` | Pull | same-name cols | ✅ manifest aliases |
-| `attendance` | Pull | `Teams` col when present | ⏳ optional alias |
+| `attendance` | Pull | `Teams` col when present | ⏳ optional alias (not in manifest) |
 
-v1 uses **latest `yearID` per `teamID`** until M9 query scope ships.
+Pass `scope: {"yearID": "1957"}` on step 1 for season-scoped team stats (M9).
 
 ### Not warehouse (research / emergent)
 
@@ -283,8 +283,8 @@ Don’t fail the build on these — they’re explicitly out of scope:
 | What | Why |
 |------|-----|
 | `career_sb` | Batting alias not in manifest yet |
-| `era` (season-scoped), `wins`, `strikeouts`, `walks`, `games_pitched` | M9 scope |
-| `roster`, franchise aggregation | M11/M12 product specialists |
+| `era` (season-scoped), `wins`, `strikeouts`, `walks`, `games_pitched` | Optional season-scoped pitching aliases (not in manifest) |
+| `attendance` | Optional team_season alias (not in manifest) |
 | Career team list via query API | Identity is debut bind only — use warehouse SQL (identity doc § H) |
 | CRM attrs (`email`, `employer`, …) | Wrong network / stub categories replaced on baseball root |
 | `record_type` on `EntityQuery` | Removed — routing is lookup-key shape only |

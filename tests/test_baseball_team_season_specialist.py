@@ -72,3 +72,23 @@ def test_season_wins_scoped_year(
     assert str(r2.results[0].get("season_losses")) == "70"
     version = r2.provenance["entities"][0]["attributes"]["season_wins"]["versions"][0]
     assert version.get("parameters", {}).get("yearID") == "1957"
+
+
+@pytest.mark.smoke
+def test_season_wins_unknown_scoped_year_na(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    refresh_baseball_root(tmp_path, monkeypatch)
+    step1 = EntityQuery(
+        lookup={"team": "Brooklyn Dodgers"},
+        scope={"yearID": "9999"},
+        requested_attributes=["season_wins"],
+    )
+    r1 = run_query(step1, thread_id="season-wins-unknown-step1")
+    assert r1.outcome == "lookup_resolved", r1.message
+    r2 = run_query(
+        EntityQuery(delivery_id=r1.delivery.delivery_id),
+        thread_id="season-wins-unknown-step2",
+    )
+    assert r2.results[0].get("season_wins") == "N/A"
