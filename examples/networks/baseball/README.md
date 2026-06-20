@@ -28,7 +28,7 @@ Refresh copies `network.json`, `bootstrap_handlers/`, and `guide.md`, then:
 
 Default live root: `~/mycelium-networks/baseball` (registered in `networks.json`).
 
-**Live regression:** `./bin/gate-live baseball` — see [`docs/manual-checks/2026-06-20-live-gate-program.md`](../../../docs/manual-checks/2026-06-20-live-gate-program.md).
+**Live regression:** `./bin/gate-live baseball` (derive cache auto-clears; full Lahman reload manual) — see [`docs/manual-checks/2026-06-20-live-gate-program.md`](../../../docs/manual-checks/2026-06-20-live-gate-program.md).
 
 ## Step-1 lookup (operators)
 
