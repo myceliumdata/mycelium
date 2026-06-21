@@ -5,10 +5,10 @@
 # Network binding precedence (caller env wins):
 #   1. MYCELIUM_NETWORK_ROOT — if set, no network name is applied by this script
 #   2. MYCELIUM_NETWORK — if set, positional/--network args are ignored
-#   3. Positional <name> or --network NAME — default name is crm
+#   3. Positional <name> or --network NAME — default name is crm-seeded
 #
 # Typical usage:
-#   ./bin/restart-admin              # MYCELIUM_NETWORK=crm (when unset)
+#   ./bin/restart-admin              # MYCELIUM_NETWORK=crm-seeded (when unset)
 #   ./bin/restart-admin fleet        # MYCELIUM_NETWORK=fleet (when unset)
 #   ./bin/restart-admin --demo       # single-process: build SPA + foreground daemon on :8741
 #   ./bin/restart-admin --dry-run    # print kill/start plan only
@@ -35,7 +35,7 @@ Usage: ./bin/restart-admin [OPTIONS] [NETWORK]
 Restart the admin dev stack (daemon + Vite) or single-process demo mode.
 
 Options:
-  --network NAME   Bind MYCELIUM_NETWORK=NAME when env is unset (default: crm)
+  --network NAME   Bind MYCELIUM_NETWORK=NAME when env is unset (default: crm-seeded)
   --demo           Build admin-ui and run mycelium-admin only (http://127.0.0.1:8741/)
   --dry-run        Print planned actions without executing
   -h, --help       Show this help
@@ -91,14 +91,14 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-REFRESH_HINT="${MYCELIUM_NETWORK:-${NETWORK_ARG:-crm}}"
+REFRESH_HINT="${MYCELIUM_NETWORK:-${NETWORK_ARG:-crm-seeded}}"
 
 if [[ -n "${MYCELIUM_NETWORK_ROOT:-}" ]]; then
   DISPLAY_NETWORK="${MYCELIUM_NETWORK_ROOT}"
 elif [[ -n "${MYCELIUM_NETWORK:-}" ]]; then
   DISPLAY_NETWORK="${MYCELIUM_NETWORK}"
 else
-  DISPLAY_NETWORK="${NETWORK_ARG:-crm}"
+  DISPLAY_NETWORK="${NETWORK_ARG:-crm-seeded}"
   export MYCELIUM_NETWORK="${DISPLAY_NETWORK}"
 fi
 

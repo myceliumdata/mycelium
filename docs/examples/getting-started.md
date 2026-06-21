@@ -21,10 +21,13 @@ Credentials live at the **repo root** — shared across every network on this ma
 
 | Variable | Required when | Notes |
 |----------|---------------|-------|
-| `OPENAI_API_KEY` | Research, derive, alias expansion | Almost all live demos |
-| `SEARCH_PROVIDER` | Research on cache miss | `tavily` (default), `exa`, or `brave` |
-| Active search key | Research on cache miss | `TAVILY_API_KEY`, `EXA_API_KEY`, or `BRAVE_SEARCH_API_KEY` per provider |
+| `OPENAI_API_KEY` | Research, derive, alias expansion, ontology | **Required** for all LLM-backed example paths (framework uses `ChatOpenAI` only) |
+| `SEARCH_PROVIDER` + active search key | Research on cache miss | `tavily` (default), `exa`, or `brave` — validated on live gates |
+| `MYCELIUM_*_MODEL` | Optional tuning | See [`.env.example`](../../.env.example); unset → `gpt-4o-mini` |
+| `ANTHROPIC_API_KEY`, `GROK_API_KEY` | — | **Not wired** — placeholders in `.env.example` for future multi-provider; do not substitute for `OPENAI_API_KEY` today |
 | `LANGCHAIN_TRACING_V2` | Optional | `false` to disable cloud tracing |
+
+Multi-provider LLM (Anthropic, Grok, etc.) is planned; v1 examples and `./bin/gate-live` assume **OpenAI only**.
 
 See [`.env.example`](../../.env.example) for derive models (`MYCELIUM_COMPUTATION_CODEGEN_MODEL`, `MYCELIUM_INTENT_NORMALIZATION_MODEL`), research tuning, and LangSmith.
 
@@ -103,11 +106,14 @@ Other examples: use the same shape with `"MYCELIUM_NETWORK": "baseball"`, `"crm-
 
 ## 6. Admin UI (optional)
 
+One **network per daemon** — same binding model as MCP. No in-UI network switcher; restart with a different name to change examples.
+
 ```bash
-./bin/restart-admin
+./bin/restart-admin              # default: crm-seeded
+./bin/restart-admin baseball     # or crm-empty, crm-metering, …
 ```
 
-Open `http://127.0.0.1:5173` — **Run query** mirrors the two-step protocol (user clicks Run for each step).
+Open `http://127.0.0.1:5173` — **Run query** mirrors the two-step protocol (user clicks Run for each step). Header shows the bound network from `GET /health`.
 
 ---
 

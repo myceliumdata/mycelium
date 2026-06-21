@@ -258,11 +258,11 @@ Users download the **framework** (this repo: `src/`, `bin/`, docs, tests) and ru
 
 | Lives in framework `.env` (process-wide) | Lives under `network_root` (per network) |
 |------------------------------------------|------------------------------------------|
-| `OPENAI_API_KEY`, `SEARCH_PROVIDER` (`tavily` default), active search key (`TAVILY_API_KEY` / `EXA_API_KEY` / `BRAVE_SEARCH_API_KEY`), `ANTHROPIC_API_KEY`, … | `seed.json`, `categories.json`, `agent_registry.json`, `specialists/`, `agents/` |
+| `OPENAI_API_KEY` (required for LLM — research, derive, aliases, ontology; `ChatOpenAI` only today), `SEARCH_PROVIDER` (`tavily` default) + active search key (`TAVILY_API_KEY` / `EXA_API_KEY` / `BRAVE_SEARCH_API_KEY`) | `seed.json`, `categories.json`, `agent_registry.json`, `specialists/`, `agents/` |
 | `LANGCHAIN_*`, `LANGSMITH_*` (tracing) | `checkpoints.sqlite`, `mycelium.db`, `network.json` |
 | `MYCELIUM_RESEARCH_*` tuning, `MYCELIUM_*_MODEL` (LLM model per subsystem — see `.env.example`; computation codegen recommends `gpt-4o+`) | — |
 
-CLI and MCP call `load_dotenv()` at startup from the **framework** working directory. **`MYCELIUM_NETWORK_ROOT`** / **`MYCELIUM_NETWORK`** select which data directory to use; they do not hold secrets. LLM model selection is env-only via `MYCELIUM_*_MODEL` variables (see `.env.example`); computation codegen production use recommends `MYCELIUM_COMPUTATION_CODEGEN_MODEL=gpt-4o` or stronger. Launching or registering a network does **not** copy or create a `.env` inside `network_root`.
+CLI and MCP call `load_dotenv()` at startup from the **framework** working directory. **`MYCELIUM_NETWORK_ROOT`** / **`MYCELIUM_NETWORK`** select which data directory to use; they do not hold secrets. LLM model selection is env-only via `MYCELIUM_*_MODEL` variables (see `.env.example`); computation codegen production use recommends `MYCELIUM_COMPUTATION_CODEGEN_MODEL=gpt-4o` or stronger. `ANTHROPIC_API_KEY` / `GROK_API_KEY` in `.env.example` are placeholders — not read by framework code yet. Launching or registering a network does **not** copy or create a `.env` inside `network_root`.
 
 **MCP:** `cwd` = framework repo; per-server `env` sets only network selection (plus the same shared API keys as other servers on that host). **`query_entity`** uses the target protocol: step 1 `id` or `lookup`, step 2 `delivery_id` — see [MVR redesign (target)](#mvr-redesign-target-protocol) below.
 
