@@ -21,5 +21,7 @@ Full-context notes from **Paul + Grok** design discussions. These preserve reaso
 | 2026-06-20 | Baseball M4b — intent normalization (label → slug) | [2026-06-20-baseball-m4b-intent-normalization.md](2026-06-20-baseball-m4b-intent-normalization.md) | `TODO.md` → M4b shipped; gate [`2026-06-19-baseball-m4b-intent-normalization-gate.md`](../manual-checks/2026-06-19-baseball-m4b-intent-normalization-gate.md) |
 | 2026-06-20 | Baseball M5 — natural language `question` → intent (**deferred — unlikely**) | [2026-06-20-baseball-m5-natural-language-question.md](2026-06-20-baseball-m5-natural-language-question.md) | [`unlikely/README.md`](../unlikely/README.md) — not on `TODO.md` |
 | 2026-06-20 | Live gate program — opt-in baseball + CRM regression | [2026-06-20-live-gate-program.md](2026-06-20-live-gate-program.md) | Cursor `2026-06-20-1600-live-gate-baseball-crm` |
+| 2026-06-21 | Baseball bio + Tavily research (design) | [2026-06-21-baseball-bio-research-specialist.md](2026-06-21-baseball-bio-research-specialist.md) | `TODO.md` → bio design lock; slice `2410` |
+| 2026-06-21 | Peer-aware specialists + analytic orchestration | [2026-06-21-peer-aware-specialists-analytic-orchestration.md](2026-06-21-peer-aware-specialists-analytic-orchestration.md) | `TODO.md` → peer orchestration; metering review |
 
 When resuming work, read the relevant conversation doc first, then **`docs/plans/entity-protocol-and-registry-program.md`** (full slice map), then `TODO.md` for the current checklist.
