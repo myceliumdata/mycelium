@@ -20,7 +20,7 @@
 **Single operator entry:** `bin/gate-live <network>` where `<network>` is the example name (same as `refresh-example-network`).
 
 ```bash
-./bin/gate-live baseball          # derive cache auto-clears
+./bin/gate-live baseball          # auto-refreshes root first (full Lahman)
 ./bin/gate-live crm               # auto-refreshes root first
 ./bin/gate-live crm-metering
 ./bin/gate-live empty-crm
@@ -30,7 +30,7 @@
 | Piece | Role |
 |-------|------|
 | `bin/gate-live` | Argparse → env vars → `pytest tests/live/ -m live_gate` |
-| `tests/live/networks.yaml` | Registry: network → catalog, anchors, default root, refresh/fresh-derive flags |
+| `tests/live/networks.yaml` | Registry: network → catalog, anchors, default root, `refresh_before_gate` |
 | `tests/live/catalogs/*.yaml` | Per-network scenario specs |
 | `@pytest.mark.live_gate` | Opt-in marker — **never CI** |
 
@@ -50,9 +50,7 @@
 | Networks v1 | `baseball`, `crm`, `crm-metering`, `empty-crm` |
 | CI | Never from `ci-local` |
 | Env | `load_dotenv(repo/.env)` |
-| CRM refresh | `refresh_before_gate: true` on crm, crm-metering, empty-crm — gate wipes before scenarios; `--no-refresh` to skip |
-| Baseball refresh | **No** in-gate full Lahman reload (slow); operator runs `refresh-example-network baseball` manually |
-| Baseball derive cache | `fresh_derive_before_gate: true` — auto-clear batting storage + `intent_map.json` when derive phase runs; `--no-fresh-derive` to skip |
+| Auto-refresh | `refresh_before_gate: true` on all four networks — gate wipes root before scenarios (baseball includes full Lahman bootstrap and derive cache); `--no-refresh` to skip |
 | empty-crm | Tests **cold start / growth** — 0 entities preflight, first row on step-2 deliver |
 | crm-metering | Dedicated catalog; quote on step 1 (`quote_required`), deliver on step 2 with `delivery_id` + `quote_id` |
 | CLI two-step UX | Step 1 stderr hint with `--network`; cross-network `delivery_id` diagnosis on step-2 miss |
@@ -72,8 +70,8 @@
 
 ## Non-goals (v1)
 
-- MCP subprocess, Admin UI, full Lahman re-bootstrap inside gate, M5 question field
+- MCP subprocess, Admin UI, M5 question field
 
 ---
 
-*Archived June 2026. Updated after afternoon sweep pass.*
+*Archived June 2026. Updated after afternoon sweep pass; unified auto-refresh for all networks (2026-06-21).*

@@ -24,7 +24,7 @@ Unified CLI for deployed example networks. Uses real roots under `~/mycelium-net
 ./bin/gate-live crm --phase protocol
 ./bin/gate-live crm-metering --phase metering
 ./bin/gate-live baseball --phase m2
-./bin/gate-live baseball --phase derive --no-fresh-derive   # keep derive cache
+./bin/gate-live baseball --phase derive
 ./bin/gate-live empty-crm --phase growth
 ./bin/gate-live baseball --discover
 ./bin/gate-live crm --json
@@ -34,12 +34,12 @@ Unified CLI for deployed example networks. Uses real roots under `~/mycelium-net
 
 ## Networks
 
-| Network | Default root | Phases | `refresh_before_gate` | `fresh_derive_before_gate` |
-|---------|--------------|--------|-------------------------|----------------------------|
-| `baseball` | `~/mycelium-networks/baseball` | preflight, identity, m2, **pitching**, **team_season**, **fielding**, **roster**, **franchise**, derive, **bio_research**, infra | **yes** | **yes** (derive phase only) |
-| `crm` | `~/mycelium-networks/crm` | preflight, protocol, research, negative | **yes** | no |
-| `crm-metering` | `~/mycelium-networks/crm-metering` | preflight, metering | **yes** | no |
-| `empty-crm` | `~/mycelium-networks/empty-crm` | preflight, growth | **yes** | no |
+| Network | Default root | Phases | `refresh_before_gate` |
+|---------|--------------|--------|-------------------------|
+| `baseball` | `~/mycelium-networks/baseball` | preflight, identity, m2, **pitching**, **team_season**, **fielding**, **roster**, **franchise**, derive, **bio_research**, infra | **yes** |
+| `crm` | `~/mycelium-networks/crm` | preflight, protocol, research, negative | **yes** |
+| `crm-metering` | `~/mycelium-networks/crm-metering` | preflight, metering | **yes** |
+| `empty-crm` | `~/mycelium-networks/empty-crm` | preflight, growth | **yes** |
 
 Registry: [`tests/live/networks.yaml`](../../tests/live/networks.yaml)
 
@@ -74,8 +74,6 @@ OPENAI_API_KEY=...
 MYCELIUM_COMPUTATION_CODEGEN_MODEL=gpt-4o
 MYCELIUM_INTENT_NORMALIZATION_MODEL=gpt-4o-mini   # M4b synonym dedup
 ```
-
-**Derive cache (default on):** When the gate includes the **derive** phase (full run or `--phase derive`), `gate-live` automatically clears `agents/batting/storage.json` and `intent_map.json` before scenarios (`fresh_derive_before_gate` in registry). Use `--no-fresh-derive` to keep an existing cache for cache-hit checks. `--phase m2` alone does not clear derive cache.
 
 ### CRM
 
@@ -122,7 +120,7 @@ Scenarios with missing keys are **skipped** (not failed).
 | crm-metering | 4 |
 | empty-crm | 5 |
 
-**Afternoon sweep 2026-06-20:** 32/32 pass (Paul). Notable fixes in tree before sweep: warm-cache intent inference removed (`bb-derive-02` `ops`), CLI step-2 network hints, `fresh_derive_before_gate` default, CRM auto-refresh, crm-metering catalog shape.
+**Afternoon sweep 2026-06-20:** 32/32 pass (Paul). Notable fixes in tree before sweep: warm-cache intent inference removed (`bb-derive-02` `ops`), CLI step-2 network hints, CRM auto-refresh, crm-metering catalog shape.
 
 **Baseball program sign-off 2026-06-21:** **27/27** on optimized Lahman root (`~/mycelium-networks/baseball`). Anchor fix `da5b006` (Fielding sums for `bb-field-01`). Post-program gate: [`2026-06-21-baseball-program-post-program-gate.md`](2026-06-21-baseball-program-post-program-gate.md).
 

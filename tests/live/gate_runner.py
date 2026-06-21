@@ -67,7 +67,6 @@ class NetworkEntry:
     default_root: Path
     phases: list[str]
     refresh_before_gate: bool = False
-    fresh_derive_before_gate: bool = False
 
 
 @dataclass
@@ -115,7 +114,6 @@ def load_networks_registry(path: Path | None = None) -> dict[str, NetworkEntry]:
             default_root=expand_path(str(cfg["default_root"])),
             phases=list(cfg.get("phases") or []),
             refresh_before_gate=bool(cfg.get("refresh_before_gate", False)),
-            fresh_derive_before_gate=bool(cfg.get("fresh_derive_before_gate", False)),
         )
     return entries
 
@@ -721,45 +719,6 @@ def discover_anchor_drift(
 
     report["drift_detected"] = any(item.get("drift") for item in report["checks"])
     return report
-
-
-def fresh_derive_cache(root: Path) -> list[str]:
-    """Remove baseball derive cache files before derive phase."""
-    removed: list[str] = []
-    for rel in _DERIVE_CACHE_REL_PATHS:
-        path = root / rel
-        if path.is_file():
-            path.unlink()
-            removed.append(rel)
-    return removed
-
-
-_DERIVE_CACHE_REL_PATHS = ("agents/batting/storage.json", "intent_map.json")
-
-
-def derive_phase_in_scope(phases: set[str] | None) -> bool:
-    return phases is None or "derive" in phases
-
-
-def derive_cache_files_exist(root: Path) -> bool:
-    return any((root / rel).is_file() for rel in _DERIVE_CACHE_REL_PATHS)
-
-
-def should_fresh_derive(
-    *,
-    network: str,
-    entry: NetworkEntry,
-    phases: set[str] | None,
-    fresh_derive_flag: bool,
-    no_fresh_derive: bool,
-) -> bool:
-    if network != "baseball":
-        return False
-    if no_fresh_derive:
-        return False
-    if not derive_phase_in_scope(phases):
-        return False
-    return entry.fresh_derive_before_gate or fresh_derive_flag
 
 
 def format_summary_table(results: list[ScenarioResult]) -> str:

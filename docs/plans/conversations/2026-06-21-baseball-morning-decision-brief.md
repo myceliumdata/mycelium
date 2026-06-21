@@ -222,7 +222,7 @@ M3 “training wheels” = `derive_candidates` whitelist. **Removed in M4** for 
 | **Semantic review** | LLM rejects implausible derive values before cache | M3c review prompt on `ops` |
 | **Sandbox** | Derive code can only use `query_warehouse()` | No network/file I/O in derive |
 | **Intent normalization** | Synonyms map to slug before cache | `batting_average` → `career_batting_average` |
-| **Gate fresh derive** | `gate-live` clears batting cache before derive phase | Ensures real LLM path, not stale cache |
+| **Gate auto-refresh** | `gate-live` wipes live root before scenarios (derive cache included) | Ensures real LLM path, not stale cache |
 | **Env keys** | Derive scenarios skip without `OPENAI_API_KEY` | Not a code cap — operator must set keys |
 
 ### Training-wheels sign-off (pick one)

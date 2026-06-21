@@ -33,7 +33,7 @@ For full specialist coverage (pitching, team_season, fielding, roster, franchise
 
 **Bio research:** `bio_specialist` extends `WarehouseResearchStatSpecialist`. Warehouse aliases (People, HallOfFame) win; unaliased bio labels (e.g. `primary_nickname`) fall through to sync Tavily research when `"research_on_miss": true` on the bio domain.
 
-**Live regression** (real `~/mycelium-networks/baseball`): `./bin/gate-live baseball` auto-refreshes the live root (full Lahman bootstrap) before scenarios; derive cache also auto-clears when the derive phase runs. Pass `--no-refresh` to skip the wipe.
+**Live regression** (real `~/mycelium-networks/baseball`): `./bin/gate-live baseball` auto-refreshes the live root (full Lahman bootstrap, including derive cache) before scenarios. Pass `--no-refresh` to skip the wipe.
 
 To push committed example changes (e.g. updated `guide.md`) into an **existing** live root without re-running Lahman bootstrap (~3–4 min full reload; use `--sync-only` when pack-only):
 

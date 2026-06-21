@@ -4,7 +4,6 @@ baseball:
   default_root: ~/mycelium-networks/baseball
   phases: [preflight, identity, m2, pitching, team_season, fielding, roster, franchise, derive, bio_research, infra]
   refresh_before_gate: true
-  fresh_derive_before_gate: true
 
 crm:
   catalog: catalogs/crm.yaml

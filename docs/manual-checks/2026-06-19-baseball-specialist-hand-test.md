@@ -7,7 +7,7 @@
 
 Use **Claude + MCP** (`query_entity`, `describe_network`, `health_check`) or `./bin/baseball-query` with the same JSON.
 
-**Automated regression:** `./bin/gate-live baseball` (opt-in; deployed root + `.env`; derive cache auto-clears). Reload Lahman first when pack specialists change: `./bin/refresh-example-network baseball --yes` or `--sync-only`. See [`2026-06-20-live-gate-program.md`](2026-06-20-live-gate-program.md).
+**Automated regression:** `./bin/gate-live baseball` (opt-in; deployed root + `.env`; auto-refreshes before scenarios, derive cache included). For pack-only updates without a gate run: `./bin/refresh-example-network baseball --sync-only`. See [`2026-06-20-live-gate-program.md`](2026-06-20-live-gate-program.md).
 
 **CLI:** Step 2 must use `--network baseball` (same as step 1); stderr prints a copy-paste hint after step 1.
 

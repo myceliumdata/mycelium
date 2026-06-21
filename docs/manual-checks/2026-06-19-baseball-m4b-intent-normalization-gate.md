@@ -32,7 +32,7 @@ rm -f ~/mycelium-networks/baseball/intent_map.json
 # restart MCP if query_entity was already running
 ```
 
-**Live gate:** `./bin/gate-live baseball` auto-clears derive cache before scenarios (`fresh_derive_before_gate`). **Note (2026-06-20):** warm-cache intent skip on map miss was removed — second synonym may call intent LLM again; codegen still dedupes under shared slug. See slice `2026-06-20-1950-disable-warm-cache-intent-inference`.
+**Live gate:** `./bin/gate-live baseball` auto-refreshes the live root before scenarios (derive cache included). **Note (2026-06-20):** warm-cache intent skip on map miss was removed — second synonym may call intent LLM again; codegen still dedupes under shared slug. See slice `2026-06-20-1950-disable-warm-cache-intent-inference`.
 
 ---
 
