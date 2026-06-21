@@ -123,19 +123,19 @@ def run_create_on_deliver(
 @pytest.mark.smoke
 def test_crm_refresh_capstone_seed_specialist_storage(tmp_path: Path) -> None:
     target = tmp_path / "crm-capstone"
-    result = refresh_example_network("crm", root=target, register=False, yes=True)
+    result = refresh_example_network("crm-seeded", root=target, register=False, yes=True)
     assert result.declined is False
     assert result.seed_bootstrap_count == 15
     assert_crm_seed_capstone(target)
 
 
 @pytest.mark.smoke
-def test_empty_crm_refresh_capstone_create_on_deliver_storage(
+def test_crm_empty_refresh_capstone_create_on_deliver_storage(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    target = tmp_path / "empty-crm-capstone"
-    result = refresh_example_network("empty-crm", root=target, register=False, yes=True)
+    target = tmp_path / "crm-empty-capstone"
+    result = refresh_example_network("crm-empty", root=target, register=False, yes=True)
     assert result.declined is False
     assert result.seed_bootstrap_count == 0
     assert not (target / "seed.json").exists()

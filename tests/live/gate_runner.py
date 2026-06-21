@@ -463,7 +463,7 @@ def discover_anchor_drift(
         "checks": [],
     }
 
-    if entry.name in {"crm", "crm-metering"}:
+    if entry.name in {"crm-seeded", "crm-metering"}:
         expected = anchors.get("seed_count")
         actual = get_entity_registry().entity_count()
         report["checks"].append(
@@ -475,7 +475,7 @@ def discover_anchor_drift(
             },
         )
 
-    if entry.name == "empty-crm":
+    if entry.name == "crm-empty":
         actual = get_entity_registry().entity_count()
         report["checks"].append(
             {

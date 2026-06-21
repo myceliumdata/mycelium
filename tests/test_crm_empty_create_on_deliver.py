@@ -1,4 +1,4 @@
-"""Smoke tests: empty-crm create-on-deliver without upfront MVR category bootstrap."""
+"""Smoke tests: crm-empty create-on-deliver without upfront MVR category bootstrap."""
 
 from __future__ import annotations
 
@@ -21,11 +21,11 @@ from network.delivery import get_delivery_store, reset_delivery_store
 from storage.core import CoreStorage, get_storage, reset_storage
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-EXAMPLE_EMPTY_CRM = REPO_ROOT / "examples" / "networks" / "empty-crm"
+EXAMPLE_EMPTY_CRM = REPO_ROOT / "examples" / "networks" / "crm-empty"
 
 
 @pytest.fixture
-def empty_crm_create_on_deliver_env(
+def crm_empty_create_on_deliver_env(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> CoreStorage:
@@ -82,11 +82,11 @@ def empty_crm_create_on_deliver_env(
 
 
 @pytest.mark.smoke
-def test_empty_crm_step2_bind_without_upfront_mvr_mappings(
-    empty_crm_create_on_deliver_env: CoreStorage,
+def test_crm_empty_step2_bind_without_upfront_mvr_mappings(
+    crm_empty_create_on_deliver_env: CoreStorage,
 ) -> None:
-    """Reproduce empty-crm gap: classification seed lacks name/employer in attribute_map."""
-    _ = empty_crm_create_on_deliver_env
+    """Reproduce crm-empty gap: classification seed lacks name/employer in attribute_map."""
+    _ = crm_empty_create_on_deliver_env
     lookup = {"name": "Paul Murphy", "employer": "Acme Corp"}
     categories_file = Path(os.environ["MYCELIUM_CATEGORIES_PATH"])
 

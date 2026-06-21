@@ -6,14 +6,14 @@ Target protocol on the default **person** MVR (`name` + `employer`).
 
 ## Prerequisites
 
-`./bin/refresh-example-network crm --yes`
+`./bin/refresh-example-network crm-seeded --yes`
 
 ## How to test — CLI
 
 ```bash
-uv run mycelium query --network crm \
+uv run mycelium query --network crm-seeded \
   --lookup-json '{"name":"Nichanan Kesonpat","employer":"1k(x)"}'
-uv run mycelium query --network crm --delivery-id d_…
+uv run mycelium query --network crm-seeded --delivery-id d_…
 ```
 
 ## How to test — MCP

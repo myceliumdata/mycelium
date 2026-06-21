@@ -93,7 +93,7 @@ Implementation handoffs live in `prompts/cursor/done/<slug>/` with `prompt.md`, 
 | [`mvr-best-practices.md`](mvr-best-practices.md) | Operator guide (lookup vs MVR, two-step, metering) |
 | [`mvr-redesign-entity-query-examples.md`](mvr-redesign-entity-query-examples.md) | Canonical step-1 / step-2 JSON (`create_on_deliver`, messages) |
 | [`fuzzy-lookup-policy.md`](fuzzy-lookup-policy.md) | Bind-field fuzzy suggestions (`lookup_suggested`, `suggested_lookup`) — **shipped** (1430–1450) |
-| Framework MVR generic vocabulary (June 2026) | **Shipped** — `prompts/cursor/done/2026-06-18-1400-framework-mvr-generic-vocabulary/`; gate `../../bin/smoke-crm-e2e` |
+| Framework MVR generic vocabulary (June 2026) | **Shipped** — `prompts/cursor/done/2026-06-18-1400-framework-mvr-generic-vocabulary/`; gate `../../bin/smoke-crm-seeded-e2e` |
 | [`../manual-checks/2026-06-13-mvr-redesign-post-program-gate.md`](../manual-checks/2026-06-13-mvr-redesign-post-program-gate.md) | Post-program manual gate |
 
 ### Attribute provenance — Program 2 (MVR / entity storage, June 2026)

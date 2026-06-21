@@ -152,7 +152,7 @@ def test_describe_network_refreshes_runtime_once(
         call_count += 1
 
     monkeypatch.setattr("mycelium_mcp.server.refresh_runtime_from_disk", _count_refresh)
-    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(REPO_ROOT / "examples" / "networks" / "crm"))
+    monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(REPO_ROOT / "examples" / "networks" / "crm-seeded"))
     monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(tmp_path / "missing.json"))
     monkeypatch.setenv("LANGCHAIN_TRACING_V2", "false")
 

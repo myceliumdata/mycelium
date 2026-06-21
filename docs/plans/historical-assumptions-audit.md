@@ -97,7 +97,7 @@ Historical admin/CLI labels may still say **"Seed"** for bootstrap fixture row c
 
 | Assumption | Resolution |
 |------------|------------|
-| Person-shaped seed only | Still true for `--seed` validation; **optional** — `empty-crm` proves bind-only growth |
+| Person-shaped seed only | Still true for `--seed` validation; **optional** — `crm-empty` proves bind-only growth |
 | SQLite `people` table | **Removed**; identity is `entities.json` only |
 | `SeedRecord` naming | **Renamed** to `IdentityRecord` / `matched_records` |
 | `core_data` / enrich path | **Removed** from repo; archival doc only |
@@ -113,7 +113,7 @@ Historical admin/CLI labels may still say **"Seed"** for bootstrap fixture row c
 - [x] Classify `docs/plans` stale content
 - [x] List intentional debt vs bugs (debt cleared in Phase 2)
 - [x] Fix `network_metadata` explicit-root nit
-- [x] Hands-on `empty-crm` verified
+- [x] Hands-on `crm-empty` verified
 - [x] `docs/plans/README.md` index
 - [x] Phase 2 implementation slices completed
 - [x] Contributor onboarding doc

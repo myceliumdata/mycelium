@@ -64,8 +64,8 @@ def test_mcp_query_entity_round_trip_json(
     repo = Path(__file__).resolve().parent.parent
     root = tmp_path / "net"
     root.mkdir()
-    shutil.copy(repo / "examples" / "networks" / "crm" / "seed.json", root / "seed.json")
-    shutil.copy(repo / "examples" / "networks" / "crm" / "network.json", root / "network.json")
+    shutil.copy(repo / "examples" / "networks" / "crm-seeded" / "seed.json", root / "seed.json")
+    shutil.copy(repo / "examples" / "networks" / "crm-seeded" / "network.json", root / "network.json")
     monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(tmp_path / "missing.json"))
     monkeypatch.setenv("MYCELIUM_NETWORK_ROOT", str(root))
     monkeypatch.setenv("MYCELIUM_ENTITIES_PATH", str(root / "entities.json"))

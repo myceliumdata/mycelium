@@ -226,7 +226,7 @@ def test_crm_reference_contact_specialist_uses_entity_vocab() -> None:
         Path(__file__).resolve().parent.parent
         / "examples"
         / "networks"
-        / "crm"
+        / "crm-seeded"
         / "specialists"
         / "contact_specialist.py"
     )

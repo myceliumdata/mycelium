@@ -58,9 +58,9 @@ def _write_delivery(
 
 @pytest.mark.smoke
 def test_find_delivery_on_other_network(tmp_path: Path) -> None:
-    crm_root = tmp_path / "crm"
+    crm_root = tmp_path / "crm-seeded"
     baseball_root = tmp_path / "baseball"
-    _write_network_root(crm_root, name="crm")
+    _write_network_root(crm_root, name="crm-seeded")
     _write_network_root(baseball_root, name="baseball")
 
     delivery_id = "d_testother01"
@@ -68,7 +68,7 @@ def test_find_delivery_on_other_network(tmp_path: Path) -> None:
     _write_delivery(baseball_root, delivery_id, expires_at=future)
 
     registry = [
-        NetworkEntry(name="crm", root=str(crm_root)),
+        NetworkEntry(name="crm-seeded", root=str(crm_root)),
         NetworkEntry(name="baseball", root=str(baseball_root), default=True),
     ]
 
@@ -85,7 +85,7 @@ def test_find_delivery_on_other_network(tmp_path: Path) -> None:
         active_root=crm_root,
         registry=registry,
     )
-    assert "on network 'crm'" in message
+    assert "on network 'crm-seeded'" in message
     assert "issued on network 'baseball'" in message
     assert "--network baseball" in message
     assert delivery_id in message
@@ -93,14 +93,14 @@ def test_find_delivery_on_other_network(tmp_path: Path) -> None:
 
 @pytest.mark.smoke
 def test_expired_on_active_network(tmp_path: Path) -> None:
-    root = tmp_path / "crm"
-    _write_network_root(root, name="crm")
+    root = tmp_path / "crm-seeded"
+    _write_network_root(root, name="crm-seeded")
 
     delivery_id = "d_expired01"
     past = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
     _write_delivery(root, delivery_id, expires_at=past)
 
-    registry = [NetworkEntry(name="crm", root=str(root), default=True)]
+    registry = [NetworkEntry(name="crm-seeded", root=str(root), default=True)]
 
     message = delivery_not_found_message(
         delivery_id,
@@ -108,15 +108,15 @@ def test_expired_on_active_network(tmp_path: Path) -> None:
         registry=registry,
     )
     assert "expired" in message.lower()
-    assert "crm" in message
+    assert "crm-seeded" in message
     assert "issued on network" not in message
 
 
 @pytest.mark.smoke
 def test_unknown_delivery_fallback(tmp_path: Path) -> None:
-    root = tmp_path / "crm"
-    _write_network_root(root, name="crm")
-    registry = [NetworkEntry(name="crm", root=str(root), default=True)]
+    root = tmp_path / "crm-seeded"
+    _write_network_root(root, name="crm-seeded")
+    registry = [NetworkEntry(name="crm-seeded", root=str(root), default=True)]
 
     message = delivery_not_found_message(
         "d_missing01",

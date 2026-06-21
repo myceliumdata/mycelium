@@ -43,7 +43,7 @@ Do **not** add runtime seed reads elsewhere.
 
 ## Tests (smoke)
 
-- `refresh_example_network("crm", ...)` on empty root → `entities.json` exists with 15 entities (CRM example).
+- `refresh_example_network("crm-seeded", ...)` on empty root → `entities.json` exists with 15 entities (CRM example).
 - `import_seed_file` idempotent: second call same count, no duplicate entities.
 - `import_seed_file` on missing path → `0`.
 

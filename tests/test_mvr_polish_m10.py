@@ -26,7 +26,7 @@ from versioned_storage_fixtures import versioned_found
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SAMPLE_CATEGORIES = REPO_ROOT / "docs" / "examples" / "sample-categories.json"
-EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
+EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm-seeded"
 EXAMPLE_CRM_SEED = EXAMPLE_CRM / "seed.json"
 
 

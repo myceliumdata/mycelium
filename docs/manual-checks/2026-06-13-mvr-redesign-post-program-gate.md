@@ -15,7 +15,7 @@
 Wipe runtime state and recopy from `examples/networks/`:
 
 ```bash
-./bin/refresh-example-network crm --yes
+./bin/refresh-example-network crm-seeded --yes
 ./bin/refresh-example-network crm-metering --yes
 ```
 
@@ -29,7 +29,7 @@ uv run mycelium network list
 **After refresh:**
 
 - **Admin (check 4):** `./bin/restart-admin crm` — daemon must bind the refreshed root.
-- **MCP (check 6):** restart the MCP server for `crm` so it picks up the clean network.
+- **MCP (check 6):** restart the MCP server for `crm-seeded` so it picks up the clean network.
 
 ---
 
@@ -49,11 +49,11 @@ Confirms step-1 `lookup_resolved` + step-2 `found`.
 
 ```bash
 # Step 1 — copy delivery_id from JSON
-uv run mycelium query --network crm \
+uv run mycelium query --network crm-seeded \
   --lookup-json '{"name": "Nichanan Kesonpat", "employer": "1k(x)"}'
 
 # Step 2 — paste delivery_id
-uv run mycelium query --network crm \
+uv run mycelium query --network crm-seeded \
   --delivery-id <delivery_id-from-step-1>
 ```
 
@@ -70,11 +70,11 @@ Confirms R9 batch deliver without attrs.
 
 ```bash
 # Step 1
-uv run mycelium query --network crm \
+uv run mycelium query --network crm-seeded \
   --lookup-json '{"employer": "645 Ventures"}'
 
 # Step 2
-uv run mycelium query --network crm \
+uv run mycelium query --network crm-seeded \
   --delivery-id <delivery_id-from-step-1>
 ```
 
@@ -143,7 +143,7 @@ Open **http://127.0.0.1:5173/** → **Run query**:
 Confirms public gate on deployed CRM.
 
 ```bash
-uv run mycelium query --network crm \
+uv run mycelium query --network crm-seeded \
   --entity-key "Nichanan Kesonpat" 2>&1 || true
 ```
 
@@ -173,7 +173,7 @@ Restart MCP for **crm** after section 0 refresh. Then:
 
 **Pass:** step 1 `lookup_resolved`; step 2 `found` with Andrea in `results`.
 
-Fixture reference (payload shape only): `examples/networks/crm/queries/`.
+Fixture reference (payload shape only): `examples/networks/crm-seeded/queries/`.
 
 ---
 

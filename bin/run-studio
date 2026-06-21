@@ -41,7 +41,7 @@ echo "      is not enough — the running server process holds the old schemas."
 echo ""
 echo "Resolving active network (repo-root data/ is retired)..."
 if ! PATH_EXPORTS="$(uv run python -c 'from network.paths import shell_export_network_paths; print(shell_export_network_paths())')"; then
-  echo "Error: configure a network before Studio (e.g. ./bin/refresh-example-network crm)" >&2
+  echo "Error: configure a network before Studio (e.g. ./bin/refresh-example-network crm-seeded)" >&2
   exit 1
 fi
 eval "${PATH_EXPORTS}"

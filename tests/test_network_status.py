@@ -28,7 +28,7 @@ from network.paths import NetworkPaths, apply_network_paths
 from versioned_storage_fixtures import versioned_found, versioned_pending
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
+EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm-seeded"
 SAMPLE_CATEGORIES = REPO_ROOT / "docs" / "examples" / "sample-categories.json"
 
 

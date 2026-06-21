@@ -28,7 +28,7 @@ cp -n .env.example .env   # if needed; add OPENAI_API_KEY + TAVILY_API_KEY for l
 Refresh **both** networks (isolates metering demo from CRM demos):
 
 ```bash
-./bin/refresh-example-network crm --yes
+./bin/refresh-example-network crm-seeded --yes
 ./bin/refresh-example-network crm-metering --yes
 ```
 
@@ -68,7 +68,7 @@ uv run ruff check src/main.py src/mycelium_admin/server.py bin/demo-metering-neg
 Proves default demos are unchanged.
 
 ```bash
-uv run mycelium query --network crm --entity-key "Nichanan Kesonpat"
+uv run mycelium query --network crm-seeded --entity-key "Nichanan Kesonpat"
 ```
 
 | Check | Expected |
@@ -78,7 +78,7 @@ uv run mycelium query --network crm --entity-key "Nichanan Kesonpat"
 | No `quote_required` | ✓ |
 
 ```bash
-uv run mycelium query --network crm --entity-key "Andrea Kalmans" --attributes email
+uv run mycelium query --network crm-seeded --entity-key "Andrea Kalmans" --attributes email
 ```
 
 | Check | Expected |

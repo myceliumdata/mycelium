@@ -32,7 +32,7 @@ cd /path/to/mycelium
 Refresh CRM to pick up `bind_values` shape:
 
 ```bash
-./bin/refresh-example-network crm --yes
+./bin/refresh-example-network crm-seeded --yes
 ```
 
 ---
@@ -58,13 +58,13 @@ jq '{bind_index_entries: (.bind_index | length), sample: (.bind_index | to_entri
 
 ```bash
 # By lookup (exact AND) — resolve echoes lookup, not id (D2-b)
-uv run mycelium network status --network crm \
+uv run mycelium network status --network crm-seeded \
   --lookup-json '{"name":"Andrea Kalmans","employer":"Lontra Ventures"}' --json | \
   jq '{resolve, resolve_matches, resolve_kind}'
 
 # By id — uuid from Check 1 (.entities…id), bind_index, or step-1 query results[].id
 ANDREA_ID=$(jq -r '.bind_index["andrea kalmans|lontra ventures"]' ~/mycelium-networks/crm/entities.json)
-uv run mycelium network status --network crm --id "$ANDREA_ID" --json | jq '.resolve'
+uv run mycelium network status --network crm-seeded --id "$ANDREA_ID" --json | jq '.resolve'
 ```
 
 **Pass:**
@@ -78,14 +78,14 @@ uv run mycelium network status --network crm --id "$ANDREA_ID" --json | jq '.res
 ## Check 3 — Query unchanged (target protocol)
 
 ```bash
-uv run mycelium query --network crm \
+uv run mycelium query --network crm-seeded \
   --lookup-json '{"name":"Nichanan Kesonpat","employer":"1k(x)"}'
 ```
 
 Copy `delivery_id`, then:
 
 ```bash
-uv run mycelium query --network crm --delivery-id d_…
+uv run mycelium query --network crm-seeded --delivery-id d_…
 ```
 
 **Pass:** step 1 `lookup_resolved`; step 2 `found` or `assembled`; no `entity_key` in request or response JSON.
@@ -100,7 +100,7 @@ Restart MCP if needed, then:
 # MCP tool or:
 uv run python -c "
 import json, os
-os.environ.setdefault('MYCELIUM_NETWORK_ROOT', os.path.expanduser('~/mycelium-networks/crm'))
+os.environ.setdefault('MYCELIUM_NETWORK_ROOT', os.path.expanduser('~/mycelium-networks/crm-seeded'))
 from network.introspection import build_network_capabilities
 p = build_network_capabilities()['policy']
 assert 'entity_unknown' not in p

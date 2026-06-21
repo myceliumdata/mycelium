@@ -8,7 +8,7 @@
 
 ## Why this doc exists
 
-**Product model (Paul, June 2026):** Users download the **Mycelium framework** (this repo) and **launch named networks**. Each network lives in its **own namespace** (isolated seed, ontology, registry, specialist storage, checkpoints). **Phase 4 complete:** CRM seed no longer ships in repo-root `data/` — bootstrap from committed **`examples/networks/crm/`** via `bin/refresh-example-network crm` into a user-chosen `network_root`.
+**Product model (Paul, June 2026):** Users download the **Mycelium framework** (this repo) and **launch named networks**. Each network lives in its **own namespace** (isolated seed, ontology, registry, specialist storage, checkpoints). **Phase 4 complete:** CRM seed no longer ships in repo-root `data/` — bootstrap from committed **`examples/networks/crm-seeded/`** via `bin/refresh-example-network crm-seeded` into a user-chosen `network_root`.
 
 The TODO item “rename instance → network” is therefore **not** a mechanical find-and-replace (the word *instance* barely appears). It is:
 
@@ -295,10 +295,10 @@ Large effort; ship in **independent slices** with legacy `data/` shim until each
 
 Paul: **keep a CRM example in the repo** — it will evolve with the product.
 
-- Add **`examples/networks/crm/`** — full standard `network_root` layout (seed, manifest, optional starter categories). Committed, public-safe subset or synthetic rows; grows over time as the reference network.
+- Add **`examples/networks/crm-seeded/`** — full standard `network_root` layout (seed, manifest, optional starter categories). Committed, public-safe subset or synthetic rows; grows over time as the reference network.
 - Remove runtime CRM from flat **`data/`** in default clone (no private seed at repo root).
 - README quick start: copy or link example → user-chosen path, then `network register` / set default.
-- Optional `bin/refresh-example-network crm` to bootstrap a local network from `examples/networks/crm/`.
+- Optional `bin/refresh-example-network crm-seeded` to bootstrap a local network from `examples/networks/crm-seeded/`.
 - Paul's live CRM stays at a user path (not necessarily committed).
 
 ### Phase 4.5 — Integration testing — **delivered** (`2026-06-09-1400`)
@@ -321,7 +321,7 @@ See [`docs/plans/networks-phase5.md`](networks-phase5.md) for full design.
 - **Skeleton ontology** at create: LLM maps creation prompt → `categories.json` + `agent_registry.json` + minimal `attribute_map` (examples only).
 - **Per-network specialists:** `<network_root>/specialists/` via `MYCELIUM_SPECIALISTS_DIR`; isolated from other networks on the same machine.
 - **Classification unchanged:** unknown attributes still classify lazily at query time; supervisor can create specialists on demand.
-- **CRM path unchanged:** `bin/refresh-example-network crm` for committed reference; `network create` for custom domains.
+- **CRM path unchanged:** `bin/refresh-example-network crm-seeded` for committed reference; `network create` for custom domains.
 - **Cleanup:** `bin/reset-mycelium` removed (`1760`) — start a new `--root` or `network create --force` instead.
 
 ### Phase 6 — Inter-network discovery & handoff (future)
@@ -368,13 +368,13 @@ Phase 2 unlocks parallel MCP servers immediately (different `MYCELIUM_NETWORK_RO
 | Default | **Yes** — default network when flags/env omit selection |
 | Name→path registry | **Local config file** first (`~/.config/mycelium/networks.json` or equivalent) — good v1 |
 | Network discovery | **Future:** distributed way for networks to find each other (Phase 6+ / separate protocol); not in v1 |
-| CRM example | **`examples/networks/crm/`** in repo — evolving reference network |
+| CRM example | **`examples/networks/crm-seeded/`** in repo — evolving reference network |
 | Delivery | **Staged phases** (this doc) |
 
 ## Open questions (remaining)
 
 1. ~~**Config file location**~~ — **Decided:** `~/.config/mycelium/networks.json` default; override via `MYCELIUM_NETWORKS_CONFIG`.
-2. ~~**CRM in repo**~~ — **Decided:** `examples/networks/crm/` committed reference network (evolves over time).
+2. ~~**CRM in repo**~~ — **Decided:** `examples/networks/crm-seeded/` committed reference network (evolves over time).
 3. **Non-person networks** — Same noun “network” for cars/airplanes? (Yes — ontology is domain-agnostic; v1 seed loader still expects person-shaped `people` array; deferred generic seed schemas in `TODO.md`.)
 4. ~~**Generated specialists**~~ — **Decided:** `<network_root>/specialists/` (Phase 5a); CRM reference modules remain under `src/agents/specialists/`.
 5. ~~**Phase 5 queue**~~ — **Done** (slices `1500`–`1800` in `prompts/cursor/done/`).

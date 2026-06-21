@@ -76,14 +76,14 @@ Data addition via the public API was removed in the June 2026 refactor (tasks 10
 
 ### Seed bootstrap and identity (June 2026 — seed elimination)
 
-- **Optional fixture:** `<network_root>/seed.json` — static `rows[]` array for bootstrap only (not read at query time). Committed CRM example: `examples/networks/crm/seed.json`. Import via `./bin/refresh-example-network crm` or `mycelium network create` when the file is present. See [seed-bootstrap.md](seed-bootstrap.md) for the three bootstrap patterns (None / JSON→MVR / custom handler).
+- **Optional fixture:** `<network_root>/seed.json` — static `rows[]` array for bootstrap only (not read at query time). Committed CRM example: `examples/networks/crm-seeded/seed.json`. Import via `./bin/refresh-example-network crm-seeded` or `mycelium network create` when the file is present. See [seed-bootstrap.md](seed-bootstrap.md) for the three bootstrap patterns (None / JSON→MVR / custom handler).
 - **Bootstrap phase:** `network.bootstrap.run_network_bootstrap(paths)` orchestrates create/refresh bootstrap — applies paths, MVR category merge, registry reset, loads `guide.md` into `BootstrapContext`, then invokes the handler declared in **`network.json` → `bootstrap`**. Every network declares **`module`** (Python module path) and **`handler`** (class name). Optional **`seed_record_type`** selects the record type for `DefaultSeedHandler` rows (else `mvr.default_record_type`). Framework handlers use modules under `network.*` (imported from the installed package); network-pack handlers use modules under `<network_root>/bootstrap_handlers/` (loaded via `sys.path`). CRM’s `DefaultSeedHandler` imports `seed.json` `rows[]` via `ensure_entity_bind_fields` (`source=seed_bootstrap`, `validation_state=validated`) using each row’s bootstrap record type `mvr.bind_fields`. `bootstrap_seed_at_paths()` is a thin wrapper returning `entities_committed`. Bootstrap bypasses the two-step lookup/create protocol by design; baseball uses a custom pack handler under `bootstrap_handlers/`.
 - **Bootstrap manifest (required):**
   - **Framework handler (CRM):** `"module": "network.bootstrap.handlers.default_seed"`, `"handler": "DefaultSeedHandler"`.
   - **Network-pack handler (custom / baseball):** `"module": "bootstrap_handlers.<module>"`, `"handler": "<ClassName>"` — class must implement `run(self, ctx: BootstrapContext) -> BootstrapResult`. Pack modules live under `<network_root>/bootstrap_handlers/` and are copied from committed examples on refresh when present.
   - Handler-only manifests (e.g. `"handler": "default_seed"` without `module`) are rejected.
 - **Stable test imports:** `network.seed_import` re-exports `import_seed_file`, `count_seed_rows`, and `bootstrap_seed_at_paths` for tests and legacy callers.
-- **Transform (maintainers):** `examples/networks/crm/prepare_seed.py` builds example `seed.json` from a CRM source file (name + employer only; no legacy `id` in the file). Full prototype data: git tag `prototype`.
+- **Transform (maintainers):** `examples/networks/crm-seeded/prepare_seed.py` builds example `seed.json` from a CRM source file (name + employer only; no legacy `id` in the file). Full prototype data: git tag `prototype`.
 - **Runtime store:** Per-record-type entity files at `<network_root>/entities/<record_type>.json`. Each file holds uuid4 ids, `bind_values` keyed by that record type's `mvr.record_types.<name>.bind_fields`, generic `bind_index`, and per-field indexes. `ensure_entity_bind_fields` assigns stable ids on import; step-1 resolve infers record type from lookup key shape — see [query-record-type-router.md](query-record-type-router.md). Seed `rows[]` import into the bootstrap record type (`bootstrap.seed_record_type` or `mvr.default_record_type`) on refresh or `network create`.
 - **No `core_data` specialist** — MVR bind fields come from the registry; specialists may override them later when requested (CRM example: `name`, `employer`).
 
@@ -221,7 +221,7 @@ Users download the **framework** (this repo: `src/`, `bin/`, docs, tests) and ru
 | **Framework** | Repo clone | Code, tooling, tests |
 | **Network root** | User-chosen directory | All runtime artifacts for one network |
 | **Example network** | `examples/networks/` (Phase 4) | Committed reference (e.g. CRM) |
-| **Live CRM** | User path (e.g. `~/mycelium-networks/crm`) | Bootstrap via `./bin/refresh-example-network crm` |
+| **Live CRM** | User path (e.g. `~/mycelium-networks/crm-seeded`) | Bootstrap via `./bin/refresh-example-network crm-seeded` |
 
 **Standard layout under `network_root`** (target contract):
 
@@ -246,7 +246,7 @@ Users download the **framework** (this repo: `src/`, `bin/`, docs, tests) and ru
 
 **Ontology vs classification:** `network create` writes a **skeleton ontology** (categories, specialists, minimal `attribute_map` from examples). The classification engine still **grows `attribute_map` lazily** at query time when clients request attributes not yet mapped.
 
-**Selection (target resolution order):** CLI `--network-dir` → CLI `--network` (name via registry, Phase 3) → env `MYCELIUM_NETWORK_ROOT` → env `MYCELIUM_NETWORK` → **default network** from user config (Phase 3). Unconfigured installs raise a clear error pointing to `./bin/refresh-example-network crm`.
+**Selection (target resolution order):** CLI `--network-dir` → CLI `--network` (name via registry, Phase 3) → env `MYCELIUM_NETWORK_ROOT` → env `MYCELIUM_NETWORK` → **default network** from user config (Phase 3). Unconfigured installs raise a clear error pointing to `./bin/refresh-example-network crm-seeded`.
 
 **MCP:** One long-lived stdio process **per network**. Run several MCP servers in parallel by giving each client entry a different `MYCELIUM_NETWORK_ROOT` while `cwd` stays the framework repo. `refresh_runtime_from_disk()` reloads only that process’s network files. No network switching inside a single MCP process.
 
@@ -439,9 +439,9 @@ See `prompts/cursor/WORKFLOW.md` for the current handoff protocol.
 
 The seed-data-context redesign is **implemented** (Cursor slices `2026-06-09-1500` through `1720` via the reprocess queue):
 
-- Seed JSON origin (`<network_root>/seed.json`; example at `examples/networks/crm/`) with no legacy `id` in the file; public `results["id"]` = stable UUID
+- Seed JSON origin (`<network_root>/seed.json`; example at `examples/networks/crm-seeded/`) with no legacy `id` in the file; public `results["id"]` = stable UUID
 - No `core_data` specialist; MVR bind fields are specialist-owned like any other attribute when requested
-- **Framework MVR generic vocabulary (June 2026):** `IdentityRecord.bind_values`, `LookupSuggestion.suggested_lookup` only, validation/context/suggestions driven by active `mvr.bind_fields` — no hardcoded CRM field pairs in `src/`. CRM example network unchanged (`name` + `employer` in seed and `results[]` because that is what CRM `network.json` declares). Verification: `./bin/smoke-crm-e2e`.
+- **Framework MVR generic vocabulary (June 2026):** `IdentityRecord.bind_values`, `LookupSuggestion.suggested_lookup` only, validation/context/suggestions driven by active `mvr.bind_fields` — no hardcoded CRM field pairs in `src/`. CRM example network unchanged (`name` + `employer` in seed and `results[]` because that is what CRM `network.json` declares). Verification: `./bin/smoke-crm-seeded-e2e`.
 - Supervisor is a pure planner (resolves seed, classifies, builds full context plan in state)
 - Graph: `target_resolve` → (`assemble_response` on step 1, or `supervisor` → `build_context` → `invoke_specialists` → `assemble_response` on step 2)
 - Agent Factory template with 3 scenarios (`found` / `pending` / `N/A`), `specialist_contrib`, `id`/`context`/`target_fields`

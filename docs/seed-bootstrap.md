@@ -6,7 +6,7 @@ How network bootstrap loads initial entity rows before query-time binds. See als
 
 ### None (no seed fixture)
 
-Example: **`empty-crm`**. The manifest declares `DefaultSeedHandler`, but there is **no** `seed.json` at the network root. Bootstrap commits **0** entities; growth happens from query-time binds (`create_on_deliver`, step-2 provisional rows).
+Example: **`crm-empty`**. The manifest declares `DefaultSeedHandler`, but there is **no** `seed.json` at the network root. Bootstrap commits **0** entities; growth happens from query-time binds (`create_on_deliver`, step-2 provisional rows).
 
 ### JSON → MVR (`DefaultSeedHandler`)
 
@@ -72,7 +72,7 @@ Orchestration: `network.bootstrap.run_network_bootstrap(paths)`.
 
 | Network | Pattern | Handler | Seed file |
 |---------|---------|---------|-----------|
-| `empty-crm` | None | `DefaultSeedHandler` | absent |
+| `crm-empty` | None | `DefaultSeedHandler` | absent |
 | `crm` | JSON → MVR | `DefaultSeedHandler` | `rows[]` with `name`, `employer` |
 | `baseball` | Custom | `LahmanSeedHandler` | Lahman zip + warehouse (see baseball README) |
 

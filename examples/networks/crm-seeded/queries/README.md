@@ -1,6 +1,6 @@
 # MCP query fixtures — batch deliver (target protocol)
 
-Use with **`crm`** network. Three matches for `employer: 645 Ventures`.
+Use with **`crm-seeded`** network. Three matches for `employer: 645 Ventures`.
 
 | Step | File | Expected outcome |
 |------|------|------------------|

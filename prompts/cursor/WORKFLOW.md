@@ -330,7 +330,7 @@ This keeps frequent work fast while ensuring new full tests are validated immedi
 
 ### Negative fixtures (integration tests)
 
-When a test claims to cover a **production code path**, fixtures must not pre-apply bootstrap helpers that path never calls (e.g. do not call `ensure_categories_for_mvr_bind` in empty-crm create-on-deliver tests unless the test targets the seed-import path). Prefer disk state that mirrors real cold-start (e.g. classification `_SEED_CATEGORIES` without MVR `attribute_map` keys) over `sample-categories.json` when testing cold-start gaps. Document in `tests/network_helpers.py` which helpers simulate which paths.
+When a test claims to cover a **production code path**, fixtures must not pre-apply bootstrap helpers that path never calls (e.g. do not call `ensure_categories_for_mvr_bind` in crm-empty create-on-deliver tests unless the test targets the seed-import path). Prefer disk state that mirrors real cold-start (e.g. classification `_SEED_CATEGORIES` without MVR `attribute_map` keys) over `sample-categories.json` when testing cold-start gaps. Document in `tests/network_helpers.py` which helpers simulate which paths.
 
 ## Current Status (as of creation)
 

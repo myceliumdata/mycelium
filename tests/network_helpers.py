@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-CRM_NETWORK_MANIFEST = REPO_ROOT / "examples" / "networks" / "crm" / "network.json"
+CRM_NETWORK_MANIFEST = REPO_ROOT / "examples" / "networks" / "crm-seeded" / "network.json"
 
 NETWORK_PATH_ENV_KEYS = (
     "MYCELIUM_NETWORK_ROOT",
@@ -74,7 +74,7 @@ def import_seed_for_test(
     ``ensure_categories_for_mvr_bind`` before ``import_seed_file`` (which delegates
     to the default seed handler; full orchestration is ``run_network_bootstrap``).
     Do not use
-    in create-on-deliver or empty-crm cold-start tests unless that path is under test.
+    in create-on-deliver or crm-empty cold-start tests unless that path is under test.
 
     When ``seed_src`` and ``tmp_path`` are given, copies the file to
     ``tmp_path/seed.json``, sets network path env vars, then imports.

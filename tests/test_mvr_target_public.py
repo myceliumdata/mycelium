@@ -24,7 +24,7 @@ from storage.core import reset_storage
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SAMPLE_CATEGORIES = REPO_ROOT / "docs" / "examples" / "sample-categories.json"
-EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
+EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm-seeded"
 EXAMPLE_CRM_SEED = EXAMPLE_CRM / "seed.json"
 EXAMPLE_QUERIES = EXAMPLE_CRM / "queries"
 
@@ -76,7 +76,7 @@ def crm_public_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     reset_agent_registry()
     reset_agent_factory()
 
-    root = tmp_path / "crm"
+    root = tmp_path / "crm-seeded"
     root.mkdir(parents=True, exist_ok=True)
     shutil.copy(EXAMPLE_CRM_SEED, root / "seed.json")
     shutil.copy(SAMPLE_CATEGORIES, root / "categories.json")

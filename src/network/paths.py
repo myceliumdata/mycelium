@@ -27,7 +27,7 @@ def legacy_network_root() -> Path:
 
 
 NO_NETWORK_CONFIGURED_MSG = (
-    "No network configured. Run: ./bin/refresh-example-network crm"
+    "No network configured. Run: ./bin/refresh-example-network crm-seeded"
 )
 
 

@@ -4,12 +4,12 @@
 
 **Context:** Program 1 (extended attribute provenance) shipped June 2026. Core hands-on (CLI `--provenance`, admin version history) is done. These three optional checks close the integration surface area.
 
-**Do not reset `crm` before these checks.** If you already ran Paul Murphy + `linkedin` and have version history, keep that grown state — checks 1 and 3 read existing specialist storage. A `./bin/refresh-example-network crm` wipe is only for first-time hard cutover or a deliberate clean slate; it deletes `agents/*/storage.json` and clears version history. **Check 2 only:** refresh `crm-metering` if that network was never bootstrapped (see below).
+**Do not reset `crm` before these checks.** If you already ran Paul Murphy + `linkedin` and have version history, keep that grown state — checks 1 and 3 read existing specialist storage. A `./bin/refresh-example-network crm-seeded` wipe is only for first-time hard cutover or a deliberate clean slate; it deletes `agents/*/storage.json` and clears version history. **Check 2 only:** refresh `crm-metering` if that network was never bootstrapped (see below).
 
 **If you already reset `crm`:** Paul Murphy is not in `crm` seed — bind with MVR first (or in the same query). Use the employer on your registry row (`Ormi Labs` in recent hands-on; `Acme Corp` in metering fixtures). One query repopulates linkedin version history; then run check 1’s status command:
 
 ```bash
-uv run mycelium query --network crm \
+uv run mycelium query --network crm-seeded \
   --entity-key "Paul Murphy" --employer "Ormi Labs" \
   --attributes linkedin --provenance
 ```
@@ -25,7 +25,7 @@ uv run mycelium query --network crm \
 Confirms slice 2 introspection: `entity_fields[].versions[]` on CLI status.
 
 ```bash
-uv run mycelium network status --network crm --entity "Paul Murphy" --json
+uv run mycelium network status --network crm-seeded --entity "Paul Murphy" --json
 ```
 
 **Pass criteria:**

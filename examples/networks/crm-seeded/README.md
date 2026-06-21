@@ -1,14 +1,14 @@
 # CRM example network
 
-**Operator guides:** [`docs/examples/crm/`](../../../docs/examples/crm/getting-started.md)
+**Operator guides:** [`docs/examples/crm-seeded/`](../../../docs/examples/crm-seeded/getting-started.md)
 
 Committed **reference network** for the Mycelium framework. Refresh it to a path you own, register it, and query.
 
-This example ships **`seed.json`** (bootstrap fixture only — imported into `entities.json` on refresh via `network.bootstrap`), **`network.json`** (declares explicit bootstrap handler: `"module": "network.bootstrap.handlers.default_seed"`, `"handler": "DefaultSeedHandler"`), **`guide.md`**, and an optional reference **`specialists/contact_specialist.py`** (plus this README and maintainer `prepare_seed.py`). Runtime artifacts — `entities.json`, `categories.json`, `agent_registry.json`, `agents/`, additional `specialists/*.py`, DB, checkpoints — are created under your `network_root` on refresh or first query; **do not commit** those files into `examples/networks/crm/`. `refresh-example-network` copies seed, network metadata, guide, and `bootstrap_handlers/` when present; it does not copy generated runtime `specialists/`.
+This example ships **`seed.json`** (bootstrap fixture only — imported into `entities.json` on refresh via `network.bootstrap`), **`network.json`** (declares explicit bootstrap handler: `"module": "network.bootstrap.handlers.default_seed"`, `"handler": "DefaultSeedHandler"`), **`guide.md`**, and an optional reference **`specialists/contact_specialist.py`** (plus this README and maintainer `prepare_seed.py`). Runtime artifacts — `entities.json`, `categories.json`, `agent_registry.json`, `agents/`, additional `specialists/*.py`, DB, checkpoints — are created under your `network_root` on refresh or first query; **do not commit** those files into `examples/networks/crm-seeded/`. `refresh-example-network` copies seed, network metadata, guide, and `bootstrap_handlers/` when present; it does not copy generated runtime `specialists/`.
 
-For a **no-seed** growth demo, see [`../empty-crm/`](../empty-crm/).
+For a **no-seed** growth demo, see [`../crm-empty/`](../crm-empty/).
 
-**Live regression:** `./bin/gate-live crm` — see [`docs/manual-checks/2026-06-20-live-gate-program.md`](../../../docs/manual-checks/2026-06-20-live-gate-program.md).
+**Live regression:** `./bin/gate-live crm-seeded` — see [`docs/manual-checks/2026-06-20-live-gate-program.md`](../../../docs/manual-checks/2026-06-20-live-gate-program.md).
 
 Edit **`guide.md`** at your network root to tell visiting agents what this network is for (MCP `describe_network` returns it verbatim).
 
@@ -19,21 +19,21 @@ The current `seed.json` is a small public-safe subset (15 people) including demo
 From the framework repo root:
 
 ```bash
-# Bootstrap or reset live CRM (default ~/mycelium-networks/crm; registers as default)
-./bin/refresh-example-network crm
+# Bootstrap or reset live CRM (default ~/mycelium-networks/crm-seeded; registers as default)
+./bin/refresh-example-network crm-seeded
 
 # Step 1 — resolve by lookup (copy delivery_id from JSON output)
-uv run mycelium query --network crm --lookup-json '{"name":"Nichanan Kesonpat"}'
+uv run mycelium query --network crm-seeded --lookup-json '{"name":"Nichanan Kesonpat"}'
 uv run mycelium query --lookup-json '{"name":"Andrea Kalmans"}'
 
 # Step 2 — deliver (paste delivery_id from step 1)
-uv run mycelium query --network crm --delivery-id d_…
+uv run mycelium query --network crm-seeded --delivery-id d_…
 ```
 
 Custom live root:
 
 ```bash
-./bin/refresh-example-network crm --root ~/mycelium-networks/crm --yes
+./bin/refresh-example-network crm-seeded --root ~/mycelium-networks/crm-seeded --yes
 ```
 
 Before demos, run refresh with `--yes` to wipe stale specialist research, then **restart MCP** and use fresh `thread_id` values per attribute.
@@ -41,7 +41,7 @@ Before demos, run refresh with `--yes` to wipe stale specialist research, then *
 ### Browser admin UI
 
 ```bash
-./bin/refresh-example-network crm --yes
+./bin/refresh-example-network crm-seeded --yes
 
 # Single-process demo (built SPA at http://127.0.0.1:8741/)
 cd admin-ui && npm install && npm run build
@@ -55,9 +55,9 @@ After demo queries populate storage, search **Andrea Kalmans** in the UI to see 
 Check network state before and after demo queries:
 
 ```bash
-uv run mycelium network status --network crm
-uv run mycelium network status --network crm --verbose   # debug layout
-uv run mycelium network status --network crm --lookup-json '{"name":"Andrea Kalmans"}'
+uv run mycelium network status --network crm-seeded
+uv run mycelium network status --network crm-seeded --verbose   # debug layout
+uv run mycelium network status --network crm-seeded --lookup-json '{"name":"Andrea Kalmans"}'
 ```
 
 ## Network growth from queries
@@ -78,7 +78,7 @@ Re-query the same `lookup` (or `id`) for step 1, then `delivery_id` for step 2. 
 
 ### Duplicate bind keys (hard cutover)
 
-If step 2 create-on-deliver or a bind hits an existing `bind_index` key, Mycelium returns the **existing registry row** without backfilling specialist `versions[]` for pre–Program 2 rows. To migrate legacy registry-only MVR into specialist storage, run `./bin/refresh-example-network crm --yes` (or wipe `agents/<category>/storage.json` and re-import seed) — there is no lazy migration on duplicate bind.
+If step 2 create-on-deliver or a bind hits an existing `bind_index` key, Mycelium returns the **existing registry row** without backfilling specialist `versions[]` for pre–Program 2 rows. To migrate legacy registry-only MVR into specialist storage, run `./bin/refresh-example-network crm-seeded --yes` (or wipe `agents/<category>/storage.json` and re-import seed) — there is no lazy migration on duplicate bind.
 
 Example MCP fixtures: [`queries/`](queries/) (batch deliver walkthrough).
 

@@ -13,9 +13,9 @@ from network.paths import NetworkPaths, apply_network_paths
 from network_helpers import import_seed_for_test
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
+EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm-seeded"
 EXAMPLE_BASEBALL = REPO_ROOT / "examples" / "networks" / "baseball"
-EXAMPLE_EMPTY_CRM = REPO_ROOT / "examples" / "networks" / "empty-crm"
+EXAMPLE_EMPTY_CRM = REPO_ROOT / "examples" / "networks" / "crm-empty"
 
 
 @pytest.mark.smoke

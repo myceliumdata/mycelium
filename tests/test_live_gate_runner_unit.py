@@ -20,15 +20,15 @@ from assertions import check_assertions  # noqa: E402
 @pytest.mark.smoke
 def test_load_networks_registry_has_four_networks() -> None:
     registry = gr.load_networks_registry()
-    assert set(registry) == {"baseball", "crm", "crm-metering", "empty-crm"}
+    assert set(registry) == {"baseball", "crm-seeded", "crm-metering", "crm-empty"}
 
 
 @pytest.mark.smoke
 def test_networks_refresh_before_gate_flags() -> None:
     registry = gr.load_networks_registry()
-    assert registry["empty-crm"].refresh_before_gate is True
+    assert registry["crm-empty"].refresh_before_gate is True
     assert registry["crm-metering"].refresh_before_gate is True
-    assert registry["crm"].refresh_before_gate is True
+    assert registry["crm-seeded"].refresh_before_gate is True
     assert registry["baseball"].refresh_before_gate is True
 
 
@@ -55,7 +55,7 @@ def test_load_catalog_baseball_has_minimum_scenarios() -> None:
 
 @pytest.mark.smoke
 def test_filter_scenarios_by_phase() -> None:
-    entry = gr.load_networks_registry()["crm"]
+    entry = gr.load_networks_registry()["crm-seeded"]
     scenarios = gr.load_catalog(entry.catalog_path)
     filtered = gr.filter_scenarios(scenarios, phases={"protocol"})
     assert filtered
@@ -144,9 +144,9 @@ def test_format_summary_table_includes_header() -> None:
 def test_catalog_yaml_files_exist() -> None:
     for name in (
         "catalogs/baseball.yaml",
-        "catalogs/crm.yaml",
+        "catalogs/crm_seeded.yaml",
         "catalogs/crm_metering.yaml",
-        "catalogs/empty_crm.yaml",
+        "catalogs/crm_empty.yaml",
         "networks.yaml",
     ):
         assert (LIVE_DIR / name).is_file()
@@ -154,7 +154,7 @@ def test_catalog_yaml_files_exist() -> None:
 
 @pytest.mark.smoke
 def test_crm_seed_anchor_json() -> None:
-    path = LIVE_DIR / "anchors" / "crm_seed_v1.json"
+    path = LIVE_DIR / "anchors" / "crm_seeded_v1.json"
     data = json.loads(path.read_text(encoding="utf-8"))
     assert data["seed_count"] == 15
     assert data["persons"]["batch_match_count"] == 3

@@ -20,7 +20,7 @@
 | **`seed.json`** | Optional **bootstrap fixture** — `rows[]` read by the declared bootstrap handler (CRM: `DefaultSeedHandler`) at `refresh-example-network` or `network create --seed` only. Not read on query. See [seed-bootstrap.md](seed-bootstrap.md). |
 | **`network.json` → `bootstrap`** | Required bootstrap handler declaration: **`module`**, **`handler`**, optional **`seed_record_type`**. Framework modules (`network.*`) ship with the repo; pack modules live under `<network_root>/bootstrap_handlers/`. See [architecture.md](architecture.md) § Seed bootstrap and [seed-bootstrap.md](seed-bootstrap.md). |
 | **`IdentityRecord`** | Graph/MCP model for a matched registry row: `id` + `bind_values` keyed by active MVR bind fields (renamed from `SeedRecord`, June 2026). |
-| **`network create`** | Scaffold ontology + register name. `--seed` is optional; empty registry + first-query bind is valid (`empty-crm`). |
+| **`network create`** | Scaffold ontology + register name. `--seed` is optional; empty registry + first-query bind is valid (`crm-empty`). |
 | **Slice plans** | Point-in-time specs in `docs/plans/`. May describe removed code — check **Active backlogs** in [`plans/README.md`](plans/README.md). |
 
 Removed (do not revive): `agents.seed`, `core_data`, unwired `enrich`/`validator`, SQLite `people` table. See [`legacy-ingest-and-storage-reference.md`](legacy-ingest-and-storage-reference.md).
@@ -31,7 +31,7 @@ Removed (do not revive): `agents.seed`, `core_data`, unwired `enrich`/`validator
 
 You are here (step 1). Then:
 
-1. [`README.md`](../README.md) — quick start commands, CLI, examples (`crm`, `empty-crm`, `crm-metering`, `baseball`).
+1. [`README.md`](../README.md) — quick start commands, CLI, examples (`crm-seeded`, `crm-empty`, `crm-metering`, `baseball`).
 2. [`examples/README.md`](examples/README.md) — shared setup + per-network getting started and **exploration walkthroughs** (feature demos with CLI, MCP, expected output).
 3. [`architecture.md`](architecture.md) — graph, registry, research, metering.
 4. [`architecture/whys/README.md`](architecture/whys/README.md) — optional: *why* behind major decisions (nine topics indexed) without reading slice plans or design conversations.
@@ -47,15 +47,15 @@ You are here (step 1). Then:
 ```bash
 uv sync --all-extras
 cp .env.example .env   # OPENAI_API_KEY + SEARCH_PROVIDER + matching search key (default Tavily: TAVILY_API_KEY)
-./bin/refresh-example-network crm
+./bin/refresh-example-network crm-seeded
 # Step 1 — copy delivery_id from JSON (stderr prints step-2 hint with --network)
-uv run mycelium query --network crm \
+uv run mycelium query --network crm-seeded \
   --lookup-json '{"name": "Nichanan Kesonpat", "employer": "1k(x)"}'
 # Step 2 — same --network as step 1
-uv run mycelium query --network crm --delivery-id d_…
+uv run mycelium query --network crm-seeded --delivery-id d_…
 ./bin/ci-local         # same gate as GitHub CI before you open a PR
-./bin/smoke-crm-e2e    # CRM end-to-end: refresh + two-step query scenarios (~3s)
-./bin/gate-live crm    # opt-in live regression on ~/mycelium-networks/crm (never CI)
+./bin/smoke-crm-seeded-e2e    # CRM end-to-end: refresh + two-step query scenarios (~3s)
+./bin/gate-live crm-seeded    # opt-in live regression on ~/mycelium-networks/crm-seeded (never CI)
 ```
 
 Optional: `./bin/restart-admin` → `http://127.0.0.1:5173` for the admin UI (`POST /query` **Run query** panel mirrors the same two-step flow).
@@ -63,8 +63,8 @@ Optional: `./bin/restart-admin` → `http://127.0.0.1:5173` for the admin UI (`P
 **Status inspect:** Exact match only — no fuzzy suggestions on status.
 
 ```bash
-uv run mycelium network status --network crm --lookup-json '{"name":"Andrea Kalmans"}' --json
-uv run mycelium network status --network crm --id <uuid> --json
+uv run mycelium network status --network crm-seeded --lookup-json '{"name":"Andrea Kalmans"}' --json
+uv run mycelium network status --network crm-seeded --id <uuid> --json
 ```
 
 JSON includes `resolve: { id, lookup }` mirroring the inspect input, plus `entity_fields[]` with versioned storage.

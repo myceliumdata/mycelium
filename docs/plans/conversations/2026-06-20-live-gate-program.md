@@ -11,7 +11,7 @@
 
 - **Smoke / CI** uses temp fixtures and **mocked** LLMs — fast, no keys, does not prove live deployed roots.
 - **Manual gates** are thorough but time-consuming.
-- Multiple **example networks** need regression coverage: `baseball`, `crm`, `crm-metering`, `empty-crm`.
+- Multiple **example networks** need regression coverage: `baseball`, `crm`, `crm-metering`, `crm-empty`.
 
 ---
 
@@ -21,9 +21,9 @@
 
 ```bash
 ./bin/gate-live baseball          # auto-refreshes root first (full Lahman)
-./bin/gate-live crm               # auto-refreshes root first
+./bin/gate-live crm-seeded               # auto-refreshes root first
 ./bin/gate-live crm-metering
-./bin/gate-live empty-crm
+./bin/gate-live crm-empty
 ./bin/gate-live --list
 ```
 
@@ -47,11 +47,11 @@
 | Topic | Lock |
 |-------|------|
 | CLI shape | **One script** `gate-live` + **required** network positional (not separate per-network bins) |
-| Networks v1 | `baseball`, `crm`, `crm-metering`, `empty-crm` |
+| Networks v1 | `baseball`, `crm`, `crm-metering`, `crm-empty` |
 | CI | Never from `ci-local` |
 | Env | `load_dotenv(repo/.env)` |
 | Auto-refresh | `refresh_before_gate: true` on all four networks — gate wipes root before scenarios (baseball includes full Lahman bootstrap and derive cache); `--no-refresh` to skip |
-| empty-crm | Tests **cold start / growth** — 0 entities preflight, first row on step-2 deliver |
+| crm-empty | Tests **cold start / growth** — 0 entities preflight, first row on step-2 deliver |
 | crm-metering | Dedicated catalog; quote on step 1 (`quote_required`), deliver on step 2 with `delivery_id` + `quote_id` |
 | CLI two-step UX | Step 1 stderr hint with `--network`; cross-network `delivery_id` diagnosis on step-2 miss |
 
@@ -64,7 +64,7 @@
 | **baseball** | preflight, identity, m2, derive, infra | Derive: OpenAI + model vars |
 | **crm** | preflight, protocol, research, negative | Research: OpenAI + Tavily |
 | **crm-metering** | preflight, metering | OpenAI + Tavily for email deliver |
-| **empty-crm** | preflight, growth | OpenAI + Tavily if email on step 1 |
+| **crm-empty** | preflight, growth | OpenAI + Tavily if email on step 1 |
 
 ---
 

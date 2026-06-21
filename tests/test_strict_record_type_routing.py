@@ -21,8 +21,8 @@ from network_helpers import apply_network_paths_monkeypatch, clear_network_path_
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BASEBALL_MANIFEST = REPO_ROOT / "examples" / "networks" / "baseball" / "network.json"
-CRM_MANIFEST = REPO_ROOT / "examples" / "networks" / "crm" / "network.json"
-CRM_SEED = REPO_ROOT / "examples" / "networks" / "crm" / "seed.json"
+CRM_MANIFEST = REPO_ROOT / "examples" / "networks" / "crm-seeded" / "network.json"
+CRM_SEED = REPO_ROOT / "examples" / "networks" / "crm-seeded" / "seed.json"
 
 
 def _prepare_baseball_registry(

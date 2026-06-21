@@ -34,7 +34,7 @@ def _bootstrap() -> None:
     os.environ.setdefault("MYCELIUM_USE_SYNC_CHECKPOINTER", "1")
     if not os.getenv("MYCELIUM_NETWORK_ROOT", "").strip():
         os.environ["MYCELIUM_NETWORK_ROOT"] = str(
-            REPO_ROOT / "examples" / "networks" / "crm",
+            REPO_ROOT / "examples" / "networks" / "crm-seeded",
         )
     if _VENV_PYTHON.is_file():
         try:
@@ -132,9 +132,9 @@ def run_crm_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
     meta: dict[str, Any] = {}
     results: list[ScenarioResult] = []
 
-    with tempfile.TemporaryDirectory(prefix="smoke-crm-e2e-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="smoke-crm-seeded-e2e-") as tmp:
         root = Path(tmp)
-        refresh = refresh_example_network("crm", root=root, register=False, yes=True)
+        refresh = refresh_example_network("crm-seeded", root=root, register=False, yes=True)
         apply_network_paths(NetworkPaths.from_root(root))
         _reset_query_runtime()
         reset_core_graph()
@@ -166,7 +166,7 @@ def run_crm_scenarios() -> tuple[list[ScenarioResult], dict[str, Any]]:
         meta["sample_seed_person"] = sample
         results.append(_ok("seed_bootstrap"))
 
-        # Partial employer resolve (examples/networks/crm/queries/01-resolve-batch.json)
+        # Partial employer resolve (examples/networks/crm-seeded/queries/01-resolve-batch.json)
         q1 = EntityQuery(
             lookup={"employer": "645 Ventures"},
             requested_attributes=["email"],
@@ -373,7 +373,7 @@ def run_crm_pytest() -> int:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="bin/smoke-crm-e2e",
+        prog="bin/smoke-crm-seeded-e2e",
         description=(
             "CRM end-to-end smoke gate: refresh committed example network, "
             "run in-process query scenarios (two-step protocol, results shape), "

@@ -14,26 +14,26 @@ from network.seed_import import import_seed_file
 from network_helpers import copy_crm_network_manifest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
-EXAMPLE_EMPTY_CRM = REPO_ROOT / "examples" / "networks" / "empty-crm"
+EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm-seeded"
+EXAMPLE_EMPTY_CRM = REPO_ROOT / "examples" / "networks" / "crm-empty"
 
 
 @pytest.mark.smoke
 def test_network_metadata_from_example_crm() -> None:
     meta = network_metadata(root=EXAMPLE_CRM)
     assert meta["network_root"] == str(EXAMPLE_CRM.resolve())
-    assert meta["network_name"] == "crm"
-    assert meta["network_display_name"] == "CRM example"
+    assert meta["network_name"] == "crm-seeded"
+    assert meta["network_display_name"] == "CRM (seeded)"
 
 
 @pytest.mark.smoke
 def test_network_metadata_explicit_root_ignores_mycelium_network_env(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("MYCELIUM_NETWORK", "crm")
+    monkeypatch.setenv("MYCELIUM_NETWORK", "crm-seeded")
     meta = network_metadata(root=EXAMPLE_EMPTY_CRM)
-    assert meta["network_name"] == "empty-crm"
-    assert meta["network_display_name"] == "CRM (empty seed)"
+    assert meta["network_name"] == "crm-empty"
+    assert meta["network_display_name"] == "CRM (empty)"
 
 
 @pytest.mark.smoke
@@ -104,8 +104,8 @@ def test_health_check_includes_network_metadata(
     payload = json.loads(health_check())
     info = payload["info"]
     assert info["network_root"] == str(net_root.resolve())
-    assert info["network_name"] == "crm"
-    assert info["network_display_name"] == "CRM example"
+    assert info["network_name"] == "crm-seeded"
+    assert info["network_display_name"] == "CRM (seeded)"
 
 
 @pytest.mark.smoke

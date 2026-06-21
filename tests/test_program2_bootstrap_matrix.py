@@ -22,17 +22,17 @@ from test_example_network_capstones import (
 @pytest.mark.smoke
 def test_matrix_a_crm_refresh_seed_bootstrap_storage(tmp_path: Path) -> None:
     target = tmp_path / "matrix-a"
-    refresh_example_network("crm", root=target, register=False, yes=True)
+    refresh_example_network("crm-seeded", root=target, register=False, yes=True)
     assert_crm_seed_capstone(target)
 
 
 @pytest.mark.smoke
-def test_matrix_b_empty_crm_refresh_create_on_deliver_bind(
+def test_matrix_b_crm_empty_refresh_create_on_deliver_bind(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     target = tmp_path / "matrix-b"
-    refresh_example_network("empty-crm", root=target, register=False, yes=True)
+    refresh_example_network("crm-empty", root=target, register=False, yes=True)
     outcome = run_create_on_deliver(
         monkeypatch,
         target,
@@ -47,7 +47,7 @@ def test_matrix_c_crm_road_runner_create_on_deliver(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     target = tmp_path / "matrix-c"
-    refresh_example_network("crm", root=target, register=False, yes=True)
+    refresh_example_network("crm-seeded", root=target, register=False, yes=True)
     outcome = run_create_on_deliver(monkeypatch, target, ROAD_RUNNER_LOOKUP)
     assert outcome["created"]["name"] == "Road Runner"
     assert_bind_storage(entity_id=outcome["entity_id"], actor_kind="bind")
@@ -59,7 +59,7 @@ def test_matrix_d_crm_road_runner_no_duplicate_bind_version(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     target = tmp_path / "matrix-d"
-    refresh_example_network("crm", root=target, register=False, yes=True)
+    refresh_example_network("crm-seeded", root=target, register=False, yes=True)
     first = run_create_on_deliver(monkeypatch, target, ROAD_RUNNER_LOOKUP)
     entity_id = first["entity_id"]
 

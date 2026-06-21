@@ -22,7 +22,7 @@ from test_example_network_capstones import run_create_on_deliver
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SAMPLE_CATEGORIES = REPO_ROOT / "docs" / "examples" / "sample-categories.json"
-EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
+EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm-seeded"
 EXAMPLE_CRM_SEED = EXAMPLE_CRM / "seed.json"
 
 
@@ -282,12 +282,12 @@ def test_fuzzy_name_lookup_suggested(
 
 
 @pytest.mark.smoke
-def test_empty_crm_safe_create_without_confirm(
+def test_crm_empty_safe_create_without_confirm(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    target = tmp_path / "empty-crm-clarity"
-    refresh_example_network("empty-crm", root=target, register=False, yes=True)
+    target = tmp_path / "crm-empty-clarity"
+    refresh_example_network("crm-empty", root=target, register=False, yes=True)
     outcome = run_create_on_deliver(
         monkeypatch,
         target,

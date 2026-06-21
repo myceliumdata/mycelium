@@ -71,7 +71,7 @@
 ## Exit criteria (phase)
 
 - [x] No `agents.seed` imports in `src/`
-- [x] `refresh-example-network crm` populates `entities.json` from seed fixture
-- [x] Empty network (no seed.json) works — Paul Murphy bind arc (`empty-crm`)
+- [x] `refresh-example-network crm-seeded` populates `entities.json` from seed fixture
+- [x] Empty network (no seed.json) works — Paul Murphy bind arc (`crm-empty`)
 - [x] Full `pytest` green
 - [x] Admin UI shows entities, not seed

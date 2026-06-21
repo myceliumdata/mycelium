@@ -27,7 +27,7 @@ Extend `<network_root>/network.json`:
 
 ```json
 {
-  "name": "crm",
+  "name": "crm-seeded",
   "display_name": "CRM example",
   "mvr": {
     "bind_fields": ["name", "employer"],
@@ -43,7 +43,7 @@ Extend `<network_root>/network.json`:
 | `name_source` | `"entity_key"` — name for bind comes from `EntityQuery.entity_key` (Slice 3); not supplied in `binding` |
 | `description` | Agent-facing text in `describe_network` / capabilities |
 
-**CRM fallback:** If `mvr` absent, use same default (`name` + `employer`, `name_source: entity_key`). Update committed `examples/networks/crm/network.json` with `mvr` block.
+**CRM fallback:** If `mvr` absent, use same default (`name` + `employer`, `name_source: entity_key`). Update committed `examples/networks/crm-seeded/network.json` with `mvr` block.
 
 **Loader:** `src/network/mvr.py` (or `network/manifest.py`) — `load_mvr(paths) -> MvrPolicy`.
 
@@ -148,4 +148,4 @@ Add to `build_network_capabilities().policy`:
 | Q3a | Zero match + no suggestions → **`entity_unknown`**; bare `not_found` only for empty/invalid `entity_key` |
 | Q3b | **`entity_under_specified` in Slice 4 only** |
 | Q3c | Identity-only unknown → **`entity_unknown` + `required_fields`** |
-| Q3d | Add **`mvr` to `examples/networks/crm/network.json`** in this slice |
+| Q3d | Add **`mvr` to `examples/networks/crm-seeded/network.json`** in this slice |

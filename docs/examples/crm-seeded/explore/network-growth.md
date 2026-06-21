@@ -6,16 +6,16 @@
 
 ## Prerequisites
 
-CRM refreshed (or use [`empty-crm`](../empty-crm/getting-started.md) for zero seed).
+CRM refreshed (or use [`crm-empty`](../crm-empty/getting-started.md) for zero seed).
 
 ## How to test — CLI
 
 ```bash
-uv run mycelium query --network crm \
+uv run mycelium query --network crm-seeded \
   --lookup-json '{"name":"Paul Murphy","employer":"Acme Corp"}'
 # If lookup_suggested for collision, follow suggestion or pass confirm_new_entity
 
-uv run mycelium query --network crm --delivery-id d_… \
+uv run mycelium query --network crm-seeded --delivery-id d_… \
   --requested-attributes email
 ```
 
@@ -38,5 +38,5 @@ Step 2: new `entity_id` in registry; specialist storage written.
 
 ## Learn more
 
-- [examples/networks/crm/README.md](../../../../examples/networks/crm/README.md) § Network growth
-- Contrast: [empty-crm growth walkthrough](../empty-crm/explore/growth-from-zero.md)
+- [examples/networks/crm-seeded/README.md](../../../../examples/networks/crm-seeded/README.md) § Network growth
+- Contrast: [crm-empty growth walkthrough](../crm-empty/explore/growth-from-zero.md)

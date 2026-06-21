@@ -16,18 +16,18 @@ Unified CLI for deployed example networks. Uses real roots under `~/mycelium-net
 
 # Full afternoon sweep (after baseball Lahman reload + .env keys)
 ./bin/gate-live baseball
-./bin/gate-live crm
+./bin/gate-live crm-seeded
 ./bin/gate-live crm-metering
-./bin/gate-live empty-crm
+./bin/gate-live crm-empty
 
 # Partial runs
-./bin/gate-live crm --phase protocol
+./bin/gate-live crm-seeded --phase protocol
 ./bin/gate-live crm-metering --phase metering
 ./bin/gate-live baseball --phase m2
 ./bin/gate-live baseball --phase derive
-./bin/gate-live empty-crm --phase growth
+./bin/gate-live crm-empty --phase growth
 ./bin/gate-live baseball --discover
-./bin/gate-live crm --json
+./bin/gate-live crm-seeded --json
 ```
 
 ---
@@ -37,9 +37,9 @@ Unified CLI for deployed example networks. Uses real roots under `~/mycelium-net
 | Network | Default root | Phases | `refresh_before_gate` |
 |---------|--------------|--------|-------------------------|
 | `baseball` | `~/mycelium-networks/baseball` | preflight, identity, m2, **pitching**, **team_season**, **fielding**, **roster**, **franchise**, derive, **bio_research**, infra | **yes** |
-| `crm` | `~/mycelium-networks/crm` | preflight, protocol, research, negative | **yes** |
+| `crm-seeded` | `~/mycelium-networks/crm-seeded` | preflight, protocol, research, negative | **yes** |
 | `crm-metering` | `~/mycelium-networks/crm-metering` | preflight, metering | **yes** |
-| `empty-crm` | `~/mycelium-networks/empty-crm` | preflight, growth | **yes** |
+| `crm-empty` | `~/mycelium-networks/crm-empty` | preflight, growth | **yes** |
 
 Registry: [`tests/live/networks.yaml`](../../tests/live/networks.yaml)
 
@@ -57,7 +57,7 @@ Catalogs: [`tests/live/catalogs/`](../../tests/live/catalogs/)
 - `.env` at repo root (`load_dotenv` on each run)
 - Deployed root under `~/mycelium-networks/<network>` (created on first run when auto-refresh applies)
 
-**Auto-refresh (default):** All example networks (`baseball`, `crm`, `crm-metering`, `empty-crm`) run `./bin/refresh-example-network <network> --yes` before scenarios so gates always start from a clean snapshot. Use `./bin/gate-live <network> --no-refresh` to inspect a grown root without wiping.
+**Auto-refresh (default):** All example networks (`baseball`, `crm-seeded`, `crm-metering`, `crm-empty`) run `./bin/refresh-example-network <network> --yes` before scenarios so gates always start from a clean snapshot. Use `./bin/gate-live <network> --no-refresh` to inspect a grown root without wiping.
 
 ### Baseball
 
@@ -78,7 +78,7 @@ MYCELIUM_INTENT_NORMALIZATION_MODEL=gpt-4o-mini   # M4b synonym dedup
 ### CRM
 
 ```bash
-./bin/refresh-example-network crm --yes
+./bin/refresh-example-network crm-seeded --yes
 ```
 
 Research phase needs `OPENAI_API_KEY` and an active search provider (`SEARCH_PROVIDER` + matching key).
@@ -93,7 +93,7 @@ Metering phase needs `OPENAI_API_KEY` and an active search provider (email resea
 
 ### Empty CRM
 
-Growth scenarios create the first entity from an empty registry. Auto-refresh wipes the root before each `./bin/gate-live empty-crm` run (no manual refresh required unless you pass `--no-refresh`). Growth with researched attrs needs `OPENAI_API_KEY` + search provider key.
+Growth scenarios create the first entity from an empty registry. Auto-refresh wipes the root before each `./bin/gate-live crm-empty` run (no manual refresh required unless you pass `--no-refresh`). Growth with researched attrs needs `OPENAI_API_KEY` + search provider key.
 
 ---
 
@@ -105,7 +105,7 @@ Growth scenarios create the first entity from an empty registry. Auto-refresh wi
 | baseball `bio_research` | `OPENAI_API_KEY`, `SEARCH_PROVIDER` + active search key (`TAVILY_API_KEY` / `EXA_API_KEY` / `BRAVE_SEARCH_API_KEY`) |
 | crm `research` | `OPENAI_API_KEY`, `SEARCH_PROVIDER` + active search key |
 | crm-metering `metering` | `OPENAI_API_KEY`, `SEARCH_PROVIDER` + active search key |
-| empty-crm `growth` | `OPENAI_API_KEY`, `TAVILY_API_KEY` (when email requested on step 1) |
+| crm-empty `growth` | `OPENAI_API_KEY`, `TAVILY_API_KEY` (when email requested on step 1) |
 
 Scenarios with missing keys are **skipped** (not failed).
 
@@ -116,9 +116,9 @@ Scenarios with missing keys are **skipped** (not failed).
 | Network | Scenarios |
 |---------|-----------|
 | baseball | **34** |
-| crm | 7 |
+| crm-seeded | 7 |
 | crm-metering | 4 |
-| empty-crm | 5 |
+| crm-empty | 5 |
 
 **Afternoon sweep 2026-06-20:** 32/32 pass (Paul). Notable fixes in tree before sweep: warm-cache intent inference removed (`bb-derive-02` `ops`), CLI step-2 network hints, CRM auto-refresh, crm-metering catalog shape.
 

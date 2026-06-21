@@ -11,14 +11,14 @@ CRM refreshed.
 ## How to test — CLI
 
 ```bash
-uv run mycelium query --network crm \
+uv run mycelium query --network crm-seeded \
   --lookup-json '{"name":"Andrea Kalman"}'
 ```
 
 Retry step 1 with suggested lookup:
 
 ```bash
-uv run mycelium query --network crm \
+uv run mycelium query --network crm-seeded \
   --lookup-json '{"name":"Andrea Kalmans"}'
 ```
 

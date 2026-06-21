@@ -20,7 +20,7 @@ from agents.registry import reset_agent_registry
 from graphs.core import reset_core_graph
 from storage.core import reset_storage
 
-EXAMPLE_CRM = Path(__file__).resolve().parent.parent / "examples" / "networks" / "crm"
+EXAMPLE_CRM = Path(__file__).resolve().parent.parent / "examples" / "networks" / "crm-seeded"
 EXAMPLE_CRM_RUNTIME_ARTIFACTS = (
     "categories.json",
     "checkpoints.sqlite",
@@ -42,7 +42,7 @@ def clean_example_crm_runtime_artifacts() -> None:
 
 @pytest.fixture(scope="session", autouse=True)
 def _example_crm_runtime_hygiene() -> None:
-    """Keep committed example/networks/crm free of runtime DB/cache files."""
+    """Keep committed example/networks/crm-seeded free of runtime DB/cache files."""
     clean_example_crm_runtime_artifacts()
     yield
     clean_example_crm_runtime_artifacts()

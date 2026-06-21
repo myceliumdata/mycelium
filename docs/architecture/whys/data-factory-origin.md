@@ -39,7 +39,7 @@ Agents are faster and more unpredictable than human dashboard users. The factory
 
 ## Two example networks, one factory pattern
 
-**CRM (`crm`):** thin identity registry + **web-researched** extended attributes. Specialists own categories; Tavily fills cache misses. Demonstrates negotiation, metering, and versioned provenance on ephemeral sources.
+**CRM (`crm-seeded`):** thin identity registry + **web-researched** extended attributes. Specialists own categories; Tavily fills cache misses. Demonstrates negotiation, metering, and versioned provenance on ephemeral sources.
 
 **Baseball (`baseball`):** **authoritative tabular** ground truth (Lahman warehouse) + **computed** derivatives (`career_hr`, future `career_avg`). Web research is supplemental and policy-gated — not the path for batting stats. Demonstrates manifest-driven resolve, computation-centric provenance, and emergent organization (fan team vs franchise).
 

@@ -11,15 +11,15 @@ OPENAI_API_KEY=…
 SEARCH_PROVIDER=tavily   # or exa / brave + matching key
 ```
 
-`./bin/refresh-example-network crm --yes` for cold cache. First hit: **tens of seconds**.
+`./bin/refresh-example-network crm-seeded --yes` for cold cache. First hit: **tens of seconds**.
 
 ## How to test — CLI
 
 ```bash
-uv run mycelium query --network crm \
+uv run mycelium query --network crm-seeded \
   --lookup-json '{"name":"Andrea Kalmans","employer":"Lontra Ventures"}' \
   --requested-attributes email
-uv run mycelium query --network crm --delivery-id d_…
+uv run mycelium query --network crm-seeded --delivery-id d_…
 ```
 
 ## How to test — MCP

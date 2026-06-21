@@ -98,7 +98,7 @@ def test_rank_bind_field_fuzzy_suggestions_645_prefix(
     repo = Path(__file__).resolve().parent.parent
     root = tmp_path / "crm-fuzzy"
     root.mkdir()
-    shutil.copy(repo / "examples" / "networks" / "crm" / "network.json", root / "network.json")
+    shutil.copy(repo / "examples" / "networks" / "crm-seeded" / "network.json", root / "network.json")
     paths = NetworkPaths.from_root(root)
     clear_network_path_env(monkeypatch)
     apply_network_paths_monkeypatch(paths, monkeypatch)

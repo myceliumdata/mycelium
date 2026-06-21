@@ -6,8 +6,8 @@ Committed reference networks under `examples/networks/`. Each ships `network.jso
 
 | Network | When to use | Bootstrap | Query model |
 |---------|-------------|-----------|-------------|
-| [`crm/`](crm/) | Default demo; 15-person seed; growth + fuzzy lookup | `seed.json` → `DefaultSeedHandler` | Single record type `person`; `query_allowed` |
-| [`empty-crm/`](empty-crm/) | Growth-from-zero; no seed rows | Handler runs; 0 entities | Same MVR as CRM; first row on step-2 deliver |
+| [`crm-seeded/`](crm-seeded/) | Default demo; 15-person seed; growth + fuzzy lookup | `seed.json` → `DefaultSeedHandler` | Single record type `person`; `query_allowed` |
+| [`crm-empty/`](crm-empty/) | Growth-from-zero; no seed rows | Handler runs; 0 entities | Same MVR as CRM; first row on step-2 deliver |
 | [`crm-metering/`](crm-metering/) | Quote / metering negotiation demos | Same seed shape as CRM | `metering.enabled: true`; payment mock |
 | [`baseball/`](baseball/) | Lahman warehouse + multi-record-type (player + team) | `LahmanSeedHandler` + git seed | `bootstrap_only`; warehouse stats + derive |
 
@@ -26,7 +26,7 @@ Default live roots: `~/mycelium-networks/<name>` (see `networks.json` after regi
 
 | Gate | Scope |
 |------|--------|
-| `./bin/smoke-crm-e2e` | CRM fixture refresh + inline scenarios + pytest smoke |
+| `./bin/smoke-crm-seeded-e2e` | CRM fixture refresh + inline scenarios + pytest smoke |
 | `./bin/smoke-baseball-e2e` | Minimal Lahman fixture; player + team queries; mocked derive |
 | `./bin/gate-live <name>` | Real `~/mycelium-networks/<name>` + `.env`; never CI |
 

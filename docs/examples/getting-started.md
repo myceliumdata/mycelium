@@ -1,6 +1,6 @@
 # Example networks — shared getting started
 
-One-time framework setup shared by **all** committed examples (`crm`, `empty-crm`, `crm-metering`, `baseball`). Per-network bootstrap, keys, and feature walkthroughs live under [`docs/examples/<network>/`](README.md).
+One-time framework setup shared by **all** committed examples (`crm-seeded`, `crm-empty`, `crm-metering`, `baseball`). Per-network bootstrap, keys, and feature walkthroughs live under [`docs/examples/<network>/`](README.md).
 
 ---
 
@@ -42,7 +42,7 @@ Default live root: `~/mycelium-networks/<name>`. Registered in `~/.config/myceli
 
 | Network | Bootstrap time (typical) |
 |---------|--------------------------|
-| `crm`, `crm-metering`, `empty-crm` | Seconds |
+| `crm-seeded`, `crm-metering`, `crm-empty` | Seconds |
 | `baseball` | **~3–4 min** full Lahman (warehouse + registries) |
 
 **Pack-only sync** (no re-bootstrap): `./bin/refresh-example-network <name> --sync-only`
@@ -78,7 +78,7 @@ Configure the client with **framework repo as `cwd`** and bind the network:
 
 ```json
 "env": {
-  "MYCELIUM_NETWORK": "crm"
+  "MYCELIUM_NETWORK": "crm-seeded"
 }
 ```
 
@@ -118,8 +118,8 @@ Live gate program: [manual-checks/2026-06-20-live-gate-program.md](../manual-che
 
 | Network | Getting started | Feature walkthroughs |
 |---------|-----------------|----------------------|
-| CRM | [crm/getting-started.md](crm/getting-started.md) | [crm/explore/](crm/explore/README.md) |
-| Empty CRM | [empty-crm/getting-started.md](empty-crm/getting-started.md) | [empty-crm/explore/](empty-crm/explore/README.md) |
+| CRM (seeded) | [crm-seeded/getting-started.md](crm-seeded/getting-started.md) | [crm-seeded/explore/](crm-seeded/explore/README.md) |
+| CRM (empty) | [crm-empty/getting-started.md](crm-empty/getting-started.md) | [crm-empty/explore/](crm-empty/explore/README.md) |
 | CRM metering | [crm-metering/getting-started.md](crm-metering/getting-started.md) | [crm-metering/explore/](crm-metering/explore/README.md) |
 | Baseball | [baseball/getting-started.md](baseball/getting-started.md) | [baseball/explore/](baseball/explore/README.md) |
 

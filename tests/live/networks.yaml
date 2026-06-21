@@ -5,23 +5,23 @@ baseball:
   phases: [preflight, identity, m2, pitching, team_season, fielding, roster, franchise, derive, bio_research, infra]
   refresh_before_gate: true
 
-crm:
-  catalog: catalogs/crm.yaml
-  anchors: anchors/crm_seed_v1.json
-  default_root: ~/mycelium-networks/crm
+crm-seeded:
+  catalog: catalogs/crm_seeded.yaml
+  anchors: anchors/crm_seeded_v1.json
+  default_root: ~/mycelium-networks/crm-seeded
   phases: [preflight, protocol, research, negative]
   refresh_before_gate: true
 
 crm-metering:
   catalog: catalogs/crm_metering.yaml
-  anchors: anchors/crm_seed_v1.json
+  anchors: anchors/crm_seeded_v1.json
   default_root: ~/mycelium-networks/crm-metering
   phases: [preflight, metering]
   refresh_before_gate: true
 
-empty-crm:
-  catalog: catalogs/empty_crm.yaml
+crm-empty:
+  catalog: catalogs/crm_empty.yaml
   anchors: null
-  default_root: ~/mycelium-networks/empty-crm
+  default_root: ~/mycelium-networks/crm-empty
   phases: [preflight, growth]
   refresh_before_gate: true

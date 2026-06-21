@@ -19,7 +19,7 @@ from storage.core import CoreStorage, get_storage, reset_storage
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SAMPLE_CATEGORIES = REPO_ROOT / "docs" / "examples" / "sample-categories.json"
-EXAMPLE_CRM_SEED = REPO_ROOT / "examples" / "networks" / "crm" / "seed.json"
+EXAMPLE_CRM_SEED = REPO_ROOT / "examples" / "networks" / "crm-seeded" / "seed.json"
 
 
 @pytest.fixture

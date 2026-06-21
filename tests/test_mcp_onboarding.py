@@ -14,7 +14,7 @@ from network.paths import NetworkPaths, apply_network_paths
 from network_helpers import copy_crm_network_manifest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
+EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm-seeded"
 SAMPLE_CATEGORIES = REPO_ROOT / "docs" / "examples" / "sample-categories.json"
 
 
@@ -89,13 +89,13 @@ def test_format_mcp_instructions_mentions_warehouse_manifest() -> None:
 def test_format_mcp_instructions_references_describe_network() -> None:
     text = format_mcp_instructions(
         {
-            "display_name": "CRM example",
-            "network_name": "crm",
+            "display_name": "CRM (seeded)",
+            "network_name": "crm-seeded",
         },
     )
     assert "describe_network" in text
     assert "query_entity" in text
-    assert "CRM example" in text
+    assert "CRM (seeded)" in text
 
 
 @pytest.mark.smoke
@@ -178,6 +178,6 @@ def test_health_check_lightweight_tool_still_ok(
 @pytest.mark.smoke
 def test_refresh_copies_guide_md(tmp_path: Path) -> None:
     target = tmp_path / "live-crm"
-    copied = copy_example_network("crm", target)
+    copied = copy_example_network("crm-seeded", target)
     assert "guide.md" in copied
     assert (target / "guide.md").is_file()

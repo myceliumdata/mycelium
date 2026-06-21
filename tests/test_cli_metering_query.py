@@ -17,7 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 _DEMO_SCRIPT = REPO_ROOT / "bin" / "demo-metering-negotiation"
 _VENV_PYTHON = REPO_ROOT / ".venv" / "bin" / "python3"
 SAMPLE_CATEGORIES = REPO_ROOT / "docs" / "examples" / "sample-categories.json"
-EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
+EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm-seeded"
 EXAMPLE_CRM_SEED = EXAMPLE_CRM / "seed.json"
 
 

@@ -4,7 +4,7 @@
 
 **Current reality (June 2026 — MVR redesign M1–M10 shipped):**
 
-- **Networks:** Framework repo + user-chosen **`network_root`** paths. Committed CRM example at `examples/networks/crm/`; bootstrap with `./bin/refresh-example-network crm`. See `docs/plans/networks-terminology.md`.
+- **Networks:** Framework repo + user-chosen **`network_root`** paths. Committed CRM example at `examples/networks/crm-seeded/`; bootstrap with `./bin/refresh-example-network crm-seeded`. See `docs/plans/networks-terminology.md`.
 - **Public API** = target two-step protocol (`EntityQuery`: step 1 `id` or `lookup` + optional `requested_attributes`; step 2 `delivery_id` + optional `quote_id`). Legacy `entity_key` / `binding` removed from CLI, MCP, admin. No CLI `ingest`, no MCP `submit_person_data`.
 - **Graph:** `target_resolve` (step 1 or step 2 deliver) → `supervisor` → … → `assemble_response`. Step 1 returns `lookup_resolved` + `delivery_id` (`delivery.create_on_deliver: true` when step 2 will create). Identity from `entities.json` + specialist storage.
 - See `docs/architecture.md` for the authoritative architecture; examples in `docs/plans/mvr-redesign-entity-query-examples.md`.
@@ -74,7 +74,7 @@ Package: `mycelium_mcp` (renamed from `mcp` to avoid SDK collision).
 - **`network/bootstrap/`** — formal bootstrap phase (`run_network_bootstrap`): paths, MVR category merge, registry reset, `guide.md` in `BootstrapContext`, then handler from **`network.json` → `bootstrap`** (`module` + class `handler`). CRM: `network.bootstrap.handlers.default_seed.DefaultSeedHandler` reads `seed.json`. Pack handlers: modules under `<network_root>/bootstrap_handlers/` (see `handlers/resolve.py`). Same manifest-driven pattern planned for specialists. `network/seed_import.py` re-exports stable entry points for tests.
 - Query-time resolution: `target_resolve` step-1 uses per-field indexes and `lookup` AND matching.
 
-Committed examples: `examples/networks/crm/` (bootstrap seed), `examples/networks/empty-crm/` (no seed, growth from queries).
+Committed examples: `examples/networks/crm-seeded/` (bootstrap seed), `examples/networks/crm-empty/` (no seed, growth from queries).
 
 ---
 
@@ -120,9 +120,9 @@ CLI/MCP/admin → resolve network_root → EntityQuery → run_query → graph.a
   → QueryResponse.public_dict() (+ thread_id, trace_id)
 ```
 
-Two-step example: `mycelium query --network crm --lookup-json '{…}'` then `mycelium query --network crm --delivery-id d_…`. CLI prints a **stderr** copy-paste hint after step 1; step-2 deliver misses use `network/delivery_hints.py` for cross-network / expired diagnostics. Admin UI mirrors the same explicit two-step flow.
+Two-step example: `mycelium query --network crm-seeded --lookup-json '{…}'` then `mycelium query --network crm-seeded --delivery-id d_…`. CLI prints a **stderr** copy-paste hint after step 1; step-2 deliver misses use `network/delivery_hints.py` for cross-network / expired diagnostics. Admin UI mirrors the same explicit two-step flow.
 
-**CRM E2E smoke gate:** `./bin/smoke-crm-e2e` refreshes the committed CRM example into a temp root and asserts two-step query scenarios + `results[]` shape (`--with-pytest` adds related smoke tests).
+**CRM E2E smoke gate:** `./bin/smoke-crm-seeded-e2e` refreshes the committed CRM example into a temp root and asserts two-step query scenarios + `results[]` shape (`--with-pytest` adds related smoke tests).
 
 **Live gate (opt-in):** `./bin/gate-live <network>` — deployed roots under `~/mycelium-networks/`, YAML catalogs in `tests/live/`. See [`docs/manual-checks/2026-06-20-live-gate-program.md`](manual-checks/2026-06-20-live-gate-program.md).
 
@@ -132,7 +132,7 @@ Two-step example: `mycelium query --network crm --lookup-json '{…}'` then `myc
 
 - **Public ingest** (CLI `ingest`, `provided_data`) removed June 2026.
 - **`core_data_agent` graph** replaced by seed-data-context flow (supervisor + specialists).
-- **Flat `data/seed_crm.json`** prototype removed; see `examples/networks/crm/` and git tag `prototype`.
+- **Flat `data/seed_crm.json`** prototype removed; see `examples/networks/crm-seeded/` and git tag `prototype`.
 
 ---
 
@@ -141,7 +141,7 @@ Two-step example: `mycelium query --network crm --lookup-json '{…}'` then `myc
 From `TODO.md` (June 2026):
 
 - **MVR redesign M1–M10** — shipped (two-step protocol, `DeliveryStore`, admin query UI).
-- **Framework MVR generic vocabulary** — shipped (June 2026); CRM example unchanged; `./bin/smoke-crm-e2e`.
+- **Framework MVR generic vocabulary** — shipped (June 2026); CRM example unchanged; `./bin/smoke-crm-seeded-e2e`.
 - **Networks Phases 1–5** — delivered (`network create`, per-network `specialists/`, skeleton ontology).
 - **Next:** Baseball example query path, query-as-seed launch (v2), inter-network handoff (Phase 6).
 - LangSmith E2E verification in operator `.env`.

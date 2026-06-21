@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Transform a CRM seed file → example ``seed.json`` (MVR bind fields only).
 
-Maintainer utility for evolving ``examples/networks/crm/seed.json``. The full
+Maintainer utility for evolving ``examples/networks/crm-seeded/seed.json``. The full
 prototype pipeline (``raw_data.json`` → ``seed_crm.json``) lives in git tag
 ``prototype``; pass paths explicitly when regenerating this subset.
 
 Usage::
 
-    python examples/networks/crm/prepare_seed.py \\
+    python examples/networks/crm-seeded/prepare_seed.py \\
         --crm /path/to/seed_crm.json \\
-        --out examples/networks/crm/seed.json
+        --out examples/networks/crm-seeded/seed.json
 """
 
 from __future__ import annotations

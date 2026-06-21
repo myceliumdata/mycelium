@@ -20,9 +20,9 @@ from network.registry import list_networks
 from network.seed_import import import_seed_file
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
+EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm-seeded"
 EXAMPLE_CRM_METERING = REPO_ROOT / "examples" / "networks" / "crm-metering"
-EXAMPLE_EMPTY_CRM = REPO_ROOT / "examples" / "networks" / "empty-crm"
+EXAMPLE_EMPTY_CRM = REPO_ROOT / "examples" / "networks" / "crm-empty"
 EXAMPLE_BASEBALL = REPO_ROOT / "examples" / "networks" / "baseball"
 _REFRESH_SCRIPT = REPO_ROOT / "bin" / "refresh-example-network"
 _RUNTIME_ARTIFACTS = (
@@ -81,7 +81,7 @@ def test_example_crm_layout() -> None:
 
 
 @pytest.mark.smoke
-def test_example_empty_crm_layout() -> None:
+def test_example_crm_empty_layout() -> None:
     _assert_example_tree_clean(EXAMPLE_EMPTY_CRM, expect_seed=False)
 
 
@@ -143,7 +143,7 @@ def test_refresh_example_network_empty_root(tmp_path: Path) -> None:
         [
             sys.executable,
             str(_REFRESH_SCRIPT),
-            "crm",
+            "crm-seeded",
             "--root",
             str(target),
             "--no-register",
@@ -168,9 +168,9 @@ def test_refresh_example_network_empty_root(tmp_path: Path) -> None:
 
 
 @pytest.mark.smoke
-def test_refresh_empty_crm_has_no_seed_or_entities(tmp_path: Path) -> None:
-    target = tmp_path / "empty-crm-live"
-    result = refresh_example_network("empty-crm", root=target, register=False, yes=True)
+def test_refresh_crm_empty_has_no_seed_or_entities(tmp_path: Path) -> None:
+    target = tmp_path / "crm-empty-live"
+    result = refresh_example_network("crm-empty", root=target, register=False, yes=True)
     assert result.declined is False
     assert result.seed_bootstrap_count == 0
     assert not (target / "seed.json").exists()
@@ -185,7 +185,7 @@ def test_refresh_empty_crm_has_no_seed_or_entities(tmp_path: Path) -> None:
 @pytest.mark.smoke
 def test_refresh_crm_imports_seed_into_entities(tmp_path: Path) -> None:
     target = tmp_path / "crm-live"
-    result = refresh_example_network("crm", root=target, register=False, yes=True)
+    result = refresh_example_network("crm-seeded", root=target, register=False, yes=True)
     assert result.declined is False
     assert result.seed_bootstrap_count == 15
 
@@ -249,7 +249,7 @@ def test_refresh_replaces_existing_root(tmp_path: Path) -> None:
     (target / "specialists").mkdir()
     (target / "specialists" / "stale_specialist.py").write_text("# stale", encoding="utf-8")
 
-    result = refresh_example_network("crm", root=target, register=False, yes=True)
+    result = refresh_example_network("crm-seeded", root=target, register=False, yes=True)
     assert result.wiped is True
     assert (target / "seed.json").is_file()
     categories = json.loads((target / "categories.json").read_text(encoding="utf-8"))
@@ -268,7 +268,7 @@ def test_refresh_decline_without_yes(tmp_path: Path) -> None:
     marker.write_text("stay", encoding="utf-8")
 
     result = refresh_example_network(
-        "crm",
+        "crm-seeded",
         root=target,
         register=False,
         input_fn=lambda _prompt: "n",
@@ -286,7 +286,7 @@ def test_refresh_decline_via_subprocess(tmp_path: Path) -> None:
     marker.write_text("stay", encoding="utf-8")
 
     result = _run_refresh(
-        "crm",
+        "crm-seeded",
         "--root",
         str(target),
         "--no-register",
@@ -306,12 +306,12 @@ def test_refresh_crm_registers_as_default(
     monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(config))
     target = tmp_path / "crm-live"
 
-    result = refresh_example_network("crm", root=target, yes=True)
+    result = refresh_example_network("crm-seeded", root=target, yes=True)
     assert result.registered is True
     assert result.is_default is True
     entries = list_networks()
     assert len(entries) == 1
-    assert entries[0].name == "crm"
+    assert entries[0].name == "crm-seeded"
     assert entries[0].default is True
 
 
@@ -326,7 +326,7 @@ def test_refresh_dry_run_without_yes_leaves_root_unchanged(tmp_path: Path) -> No
         raise AssertionError("should not prompt")
 
     result = refresh_example_network(
-        "crm",
+        "crm-seeded",
         root=target,
         register=False,
         dry_run=True,
@@ -344,7 +344,7 @@ def test_refresh_dry_run(tmp_path: Path) -> None:
     target.mkdir()
     (target / "stale.json").write_text("{}", encoding="utf-8")
 
-    result = _run_refresh("crm", "--root", str(target), "--dry-run", "--yes")
+    result = _run_refresh("crm-seeded", "--root", str(target), "--dry-run", "--yes")
     assert result.returncode == 0, result.stderr or result.stdout
     assert "Would refresh" in result.stdout
     assert "Would wipe" in result.stdout
@@ -361,7 +361,7 @@ def test_refresh_crm_no_default_on_empty_registry(
     monkeypatch.setenv("MYCELIUM_NETWORKS_CONFIG", str(config))
     target = tmp_path / "crm-live"
 
-    result = refresh_example_network("crm", root=target, yes=True, no_default=True)
+    result = refresh_example_network("crm-seeded", root=target, yes=True, no_default=True)
     assert result.registered is True
     assert result.is_default is False
     entries = list_networks()
@@ -462,7 +462,7 @@ def test_refresh_baseball_fetches_seed_and_bootstraps(
 @pytest.mark.smoke
 def test_refresh_sync_only_updates_guide_without_rebootstrap(tmp_path: Path) -> None:
     target = tmp_path / "crm-live"
-    refresh_example_network("crm", root=target, register=False, yes=True)
+    refresh_example_network("crm-seeded", root=target, register=False, yes=True)
     entities_path = NetworkPaths.from_root(target).entities_path
     entity_count_before = len(
         json.loads(entities_path.read_text(encoding="utf-8"))["entities"],
@@ -470,7 +470,7 @@ def test_refresh_sync_only_updates_guide_without_rebootstrap(tmp_path: Path) -> 
 
     (target / "guide.md").write_text("STALE GUIDE", encoding="utf-8")
 
-    result = refresh_example_network("crm", root=target, register=False, sync_only=True)
+    result = refresh_example_network("crm-seeded", root=target, register=False, sync_only=True)
     assert result.sync_only is True
     assert result.wiped is False
     assert result.seed_bootstrap_count == 0
@@ -488,17 +488,17 @@ def test_refresh_sync_only_updates_guide_without_rebootstrap(tmp_path: Path) -> 
 def test_refresh_sync_only_requires_existing_root(tmp_path: Path) -> None:
     target = tmp_path / "missing-live"
     with pytest.raises(ValueError, match="Sync-only requires an existing live root"):
-        refresh_example_network("crm", root=target, register=False, sync_only=True)
+        refresh_example_network("crm-seeded", root=target, register=False, sync_only=True)
 
 
 @pytest.mark.smoke
 def test_refresh_sync_only_cli(tmp_path: Path) -> None:
     target = tmp_path / "crm-live"
-    refresh_example_network("crm", root=target, register=False, yes=True)
+    refresh_example_network("crm-seeded", root=target, register=False, yes=True)
     (target / "guide.md").write_text("STALE", encoding="utf-8")
 
     result = _run_refresh(
-        "crm",
+        "crm-seeded",
         "--root",
         str(target),
         "--no-register",

@@ -1,6 +1,6 @@
 # CRM metering demo
 
-Same investor CRM bootstrap fixture as the **`crm`** example, but **`metering.enabled: true`** so attribute research requires a priced commit (`quote_required` → `quote_id`).
+Same investor CRM bootstrap fixture as the **`crm-seeded`** example, but **`metering.enabled: true`** so attribute research requires a priced commit (`quote_required` → `quote_id`).
 
 Use this network to exercise negotiation on CLI, MCP, or admin UI. Payment settlement is **disabled** — retry with `quote_id` after a quote; no `pay_quote` step.
 

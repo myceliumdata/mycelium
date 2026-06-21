@@ -20,7 +20,7 @@ from network.registry import register_network
 from registry_helpers import resolve_and_deliver, step1_resolve
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
+EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm-seeded"
 _VENV_PYTHON = REPO_ROOT / ".venv" / "bin" / "python3"
 _ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -436,7 +436,7 @@ def test_refresh_example_register_and_query_nichanan(
         [
             sys.executable,
             str(refresh_script),
-            "crm",
+            "crm-seeded",
             "--root",
             str(target),
             "--yes",
@@ -454,7 +454,7 @@ def test_refresh_example_register_and_query_nichanan(
     resolve = _run_mycelium_cli(
         "query",
         "--network",
-        "crm",
+        "crm-seeded",
         "--lookup-json",
         '{"name": "Nichanan Kesonpat", "employer": "1k(x)"}',
         "--thread-id",
@@ -467,7 +467,7 @@ def test_refresh_example_register_and_query_nichanan(
     query = _run_mycelium_cli(
         "query",
         "--network",
-        "crm",
+        "crm-seeded",
         "--delivery-id",
         resolved["delivery"]["delivery_id"],
         "--thread-id",
@@ -499,8 +499,8 @@ def test_health_check_reports_network_metadata_for_root(
     payload = json.loads(health_check())
     info = payload["info"]
     assert info["network_root"] == str(net_root.resolve())
-    assert info["network_name"] == "crm"
-    assert info["network_display_name"] == "CRM example"
+    assert info["network_name"] == "crm-seeded"
+    assert info["network_display_name"] == "CRM (seeded)"
 
 
 @pytest.mark.full

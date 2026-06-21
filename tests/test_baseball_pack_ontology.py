@@ -16,7 +16,7 @@ from network.paths import NetworkPaths, apply_network_paths
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BASEBALL_PACK = REPO_ROOT / "examples" / "networks" / "baseball" / "categories.json"
-EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
+EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm-seeded"
 
 
 def _write_minimal_lahman_fixture(seed_dir: Path) -> None:
@@ -112,7 +112,7 @@ def test_baseball_attribute_classification_routing(tmp_path: Path) -> None:
 @pytest.mark.smoke
 def test_crm_refresh_still_uses_crm_taxonomy(tmp_path: Path) -> None:
     target = tmp_path / "crm-live"
-    refresh_example_network("crm", root=target, register=False, yes=True)
+    refresh_example_network("crm-seeded", root=target, register=False, yes=True)
     categories_path = target / "categories.json"
     assert categories_path.is_file()
     assert not is_pack_ontology(categories_path)

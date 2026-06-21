@@ -29,7 +29,7 @@ def test_refresh_example_network_skips_categories_json(tmp_path: Path) -> None:
     import subprocess
     import sys
 
-    stray = REPO_ROOT / "examples" / "networks" / "crm" / "categories.json"
+    stray = REPO_ROOT / "examples" / "networks" / "crm-seeded" / "categories.json"
     created_stray = False
     if not stray.exists():
         stray.write_text('{"version":"0"}', encoding="utf-8")
@@ -41,7 +41,7 @@ def test_refresh_example_network_skips_categories_json(tmp_path: Path) -> None:
             [
                 sys.executable,
                 str(script),
-                "crm",
+                "crm-seeded",
                 "--root",
                 str(target),
                 "--no-register",

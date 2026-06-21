@@ -18,8 +18,8 @@ from network.paths import NetworkPaths, apply_network_paths
 from network.seed_import import bootstrap_seed_at_paths, count_seed_rows
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-CRM_SEED = REPO_ROOT / "examples" / "networks" / "crm" / "seed.json"
-CRM_MANIFEST = REPO_ROOT / "examples" / "networks" / "crm" / "network.json"
+CRM_SEED = REPO_ROOT / "examples" / "networks" / "crm-seeded" / "seed.json"
+CRM_MANIFEST = REPO_ROOT / "examples" / "networks" / "crm-seeded" / "network.json"
 FRAMEWORK_BOOTSTRAP = {
     "module": "network.bootstrap.handlers.default_seed",
     "handler": "DefaultSeedHandler",
@@ -249,7 +249,7 @@ def test_pack_handler_import_failure(tmp_path: Path) -> None:
 def test_pack_handler_receives_guide_text(tmp_path: Path) -> None:
     paths = _prepare_root(tmp_path, seed_src=CRM_SEED)
     shutil.copy(
-        REPO_ROOT / "examples" / "networks" / "crm" / "guide.md",
+        REPO_ROOT / "examples" / "networks" / "crm-seeded" / "guide.md",
         paths.root / "guide.md",
     )
     handlers_dir = paths.root / "bootstrap_handlers"

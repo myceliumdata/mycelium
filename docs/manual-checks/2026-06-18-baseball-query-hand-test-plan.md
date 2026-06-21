@@ -535,7 +535,7 @@ alias bq2='./bin/baseball-query "$1" | jq "{outcome, results: .results}"'
 | **Provenance on attrs** | `provenance=true` works; baseball bio/stats lineage is CRM research today — re-examine with warehouse specialists ([`TODO.md`](../../TODO.md)). |
 
 - **Do not** pipe `uv run mycelium query` into `jq` — Rich ANSI output breaks JSON parsing. Use `./bin/baseball-query` or MCP.
-- **CRM** is out of scope; run `./bin/smoke-crm-e2e` separately if needed.
+- **CRM** is out of scope; run `./bin/smoke-crm-seeded-e2e` separately if needed.
 - Parent ship gate (timing, SQL, registry counts): [`2026-06-17-baseball-identity-ship-gate.md`](2026-06-17-baseball-identity-ship-gate.md)
 - **Career teams:** use **H1** or **H2** — not the public query protocol (see § H).
 - Ship gate query sections **CLEAR** (2026-06-18). Checks 1–3 / 7 on ship gate doc: confirm separately if not already logged.

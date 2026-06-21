@@ -82,7 +82,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "network",
         nargs="?",
-        help="Example network name (baseball, crm, crm-metering, empty-crm)",
+        help="Example network name (baseball, crm, crm-metering, crm-empty)",
     )
     parser.add_argument(
         "--list",

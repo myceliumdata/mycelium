@@ -119,7 +119,7 @@ print(json.dumps(out, indent=2))
 ```bash
 ./bin/ci-local
 ./bin/smoke-baseball-e2e
-./bin/smoke-crm-e2e
+./bin/smoke-crm-seeded-e2e
 ```
 
 **Pass:** all green; baseball e2e **6** scenarios (minimal fixture, seconds).

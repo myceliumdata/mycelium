@@ -19,7 +19,7 @@ Historical slices (`1350`, `1605`, identity fix) treated these as gitignored on-
 **Commit the four framework fallback specialists** and **remove** them from `.gitignore`.
 
 - Per-network specialists remain under `<network_root>/specialists/` (unchanged).
-- Framework path `src/agents/specialists/` is the `import_module("agents.specialists.<name>")` fallback for CRM registry entries — same role as `examples/networks/crm/specialists/contact_specialist.py` (reference copy).
+- Framework path `src/agents/specialists/` is the `import_module("agents.specialists.<name>")` fallback for CRM registry entries — same role as `examples/networks/crm-seeded/specialists/contact_specialist.py` (reference copy).
 
 When `specialist_agent.py.j2` changes, regen these four and commit (document one line in `src/agents/specialists/README` or comment in `.gitignore` removal note — optional).
 

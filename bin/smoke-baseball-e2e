@@ -4,7 +4,7 @@
 Uses a tiny in-memory CSV fixture (fake seed fetch) so the gate finishes in seconds,
 not the full ~9+ minute Lahman refresh.
 
-TODO(full): expand to parity with ``bin/smoke-crm-e2e``:
+TODO(full): expand to parity with ``bin/smoke-crm-seeded-e2e``:
   - ``--full``: real git seed fetch + full Lahman bootstrap (manual / timing gate only)
   - lazy field-alias scenarios (Bronx Bombers, Dodgers multi-match) via mock expander
 Team record-type queries ship inline; warehouse stat / derive scenarios ship inline (mocked LLM).

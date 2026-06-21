@@ -8,7 +8,7 @@
 
 ## Goal
 
-One command stands up a **custom-domain** network with a user-chosen `network_root`, seed file, and creation prompt. Replaces the manual `refresh-example-network` + `register` flow for non-CRM ontologies. The committed CRM example path (`bin/refresh-example-network crm`) remains unchanged.
+One command stands up a **custom-domain** network with a user-chosen `network_root`, seed file, and creation prompt. Replaces the manual `refresh-example-network` + `register` flow for non-CRM ontologies. The committed CRM example path (`bin/refresh-example-network crm-seeded`) remains unchanged.
 
 ```bash
 uv run mycelium network create <name> \
@@ -173,7 +173,7 @@ v1 `--seed` validates today’s person-shaped JSON (`name`, `employer`). Domain-
 - `network create` with custom prompt produces a queryable network without `_SEED_CATEGORIES` fallback
 - Two networks on one machine have isolated `specialists/`, registries, and categories
 - Unknown attributes at query time still classify lazily and can trigger new specialists
-- `refresh-example-network crm` + CRM example path unchanged
+- `refresh-example-network crm-seeded` + CRM example path unchanged
 - Integration test: create (mock LLM) → register → query happy path
 
 ---

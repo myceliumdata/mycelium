@@ -150,13 +150,13 @@ class EntityResolution:
 1. **`build_network_capabilities()`** — add `policy.entity_key_unresolved` string explaining retry contract.
 2. **`query_entity` docstring** — document `outcome` + `suggestions` in response JSON.
 3. **CLI** — no flag changes; JSON output picks up new fields automatically.
-4. **Optional:** one line in `examples/networks/crm/guide.md` (agent-facing) — only if it fits existing tone.
+4. **Optional:** one line in `examples/networks/crm-seeded/guide.md` (agent-facing) — only if it fits existing tone.
 
 ---
 
 ## Tests (smoke)
 
-Use tmp network root or `examples/networks/crm` seed (contains `Andrea Kalmans`).
+Use tmp network root or `examples/networks/crm-seeded` seed (contains `Andrea Kalmans`).
 
 | Test | Assert |
 |------|--------|

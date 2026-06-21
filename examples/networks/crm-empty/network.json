@@ -1,11 +1,10 @@
 {
-  "name": "crm",
-  "display_name": "CRM example",
-  "description": "Public-safe subset of the prototype CRM seed for quick start and demos.",
+  "name": "crm-empty",
+  "display_name": "CRM (empty)",
+  "description": "CRM MVR rules with no bootstrap seed — entities grow from query-time binds only.",
   "bootstrap": {
     "module": "network.bootstrap.handlers.default_seed",
-    "handler": "DefaultSeedHandler",
-    "seed_record_type": "person"
+    "handler": "DefaultSeedHandler"
   },
   "mvr": {
     "default_record_type": "person",
@@ -32,12 +31,6 @@
       "provider": "mock",
       "require_paid_before_accept": true,
       "description": "When enabled with metering: quote_required → pay_quote MCP → query_entity+quote_id. Settlement is separate from MCP quote negotiation."
-    }
-  },
-  "health_ping": {
-    "lookup": {
-      "name": "Nichanan Kesonpat",
-      "employer": "1k(x)"
     }
   }
 }

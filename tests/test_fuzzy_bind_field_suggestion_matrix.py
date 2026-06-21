@@ -30,7 +30,7 @@ from storage.core import CoreStorage, get_storage, reset_storage
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SAMPLE_CATEGORIES = REPO_ROOT / "docs" / "examples" / "sample-categories.json"
-EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
+EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm-seeded"
 EXAMPLE_CRM_SEED = EXAMPLE_CRM / "seed.json"
 BASEBALL_MANIFEST = REPO_ROOT / "examples" / "networks" / "baseball" / "network.json"
 
@@ -61,7 +61,7 @@ class Step1MistakeCase:
     """End-to-end step-1 outcome for a mistaken lookup."""
 
     id: str
-    network: Literal["crm", "baseball"]
+    network: Literal["crm-seeded", "baseball"]
     lookup: dict[str, str]
     expected_kind: str
     expected_outcome: str | None = None
@@ -99,7 +99,7 @@ STEP1_MISTAKE_CASES: tuple[Step1MistakeCase, ...] = (
     # CRM — employer typos / shorthand (hand-test + fuzzy-lookup-policy.md)
     Step1MistakeCase(
         "crm.employer_digit_typo",
-        "crm",
+        "crm-seeded",
         {"employer": "654 Ventures"},
         "lookup_suggested",
         expected_outcome="lookup_suggested",
@@ -107,7 +107,7 @@ STEP1_MISTAKE_CASES: tuple[Step1MistakeCase, ...] = (
     ),
     Step1MistakeCase(
         "crm.employer_plural_typo",
-        "crm",
+        "crm-seeded",
         {"employer": "645 Venture"},
         "lookup_suggested",
         expected_outcome="lookup_suggested",
@@ -115,7 +115,7 @@ STEP1_MISTAKE_CASES: tuple[Step1MistakeCase, ...] = (
     ),
     Step1MistakeCase(
         "crm.employer_prefix_shorthand",
-        "crm",
+        "crm-seeded",
         {"employer": "645"},
         "lookup_suggested",
         expected_outcome="lookup_suggested",
@@ -123,7 +123,7 @@ STEP1_MISTAKE_CASES: tuple[Step1MistakeCase, ...] = (
     ),
     Step1MistakeCase(
         "crm.name_typo",
-        "crm",
+        "crm-seeded",
         {"name": "Andrea Kalman"},
         "lookup_suggested",
         expected_outcome="lookup_suggested",
@@ -131,14 +131,14 @@ STEP1_MISTAKE_CASES: tuple[Step1MistakeCase, ...] = (
     ),
     Step1MistakeCase(
         "crm.name_only_unknown",
-        "crm",
+        "crm-seeded",
         {"name": "Paul Murphy"},
         "lookup_incomplete",
         expected_outcome="lookup_incomplete",
     ),
     Step1MistakeCase(
         "crm.employer_exact_multi",
-        "crm",
+        "crm-seeded",
         {"employer": "645 Ventures"},
         "resolved",
         expected_outcome="lookup_resolved",
@@ -370,7 +370,7 @@ def test_fuzzy_scorer_mistake_matrix(case: ScorerMistakeCase) -> None:
         )
 
 
-CRM_STEP1_CASES = tuple(case for case in STEP1_MISTAKE_CASES if case.network == "crm")
+CRM_STEP1_CASES = tuple(case for case in STEP1_MISTAKE_CASES if case.network == "crm-seeded")
 BASEBALL_STEP1_CASES = tuple(case for case in STEP1_MISTAKE_CASES if case.network == "baseball")
 
 

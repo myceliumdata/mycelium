@@ -29,18 +29,18 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 ### Shipped (2026-06-20 afternoon)
 
-- [x] **Live gate afternoon sweep** — All four example networks pass (`./bin/gate-live`): baseball 16/16, crm 8/8, crm-metering 4/4, empty-crm 4/4 (32 scenarios). Manual gate: [`docs/manual-checks/2026-06-20-live-gate-program.md`](docs/manual-checks/2026-06-20-live-gate-program.md).
+- [x] **Live gate afternoon sweep** — All four example networks pass (`./bin/gate-live`): baseball 16/16, crm 8/8, crm-metering 4/4, crm-empty 4/4 (32 scenarios). Manual gate: [`docs/manual-checks/2026-06-20-live-gate-program.md`](docs/manual-checks/2026-06-20-live-gate-program.md).
 - [x] **Warm-cache intent inference removed** — `infer_slug_from_warm_cache` dropped; fixes `ops` derive bleeding `career_avg` cache. Commit `588de57`; review `2026-06-20-1950`.
 - [x] **CLI delivery network hints** — Step-1 stderr hint + cross-network step-2 messages. Commit `df770a9`; review `2026-06-20-2000`.
 - [x] **gate-live unified auto-refresh** — All networks `refresh_before_gate: true`; baseball-only `--fresh-derive` / `--no-fresh-derive` removed (derive cache cleared by full refresh). Prior: `24abc9e` fresh-derive default; baseball refresh `7b07beb`.
 - [x] **crm-metering live gate fix** — Quote-on-step-1 scenario + README auto-refresh notes. Commit `57ab808`.
 - [x] **Docs sweep** — Onboarding, live gate program, design conversation archive. Commits `f1a9477`, `7c9d1e2`.
-- [x] **MCP `health_check` per-network ping** — `health_ping.lookup` in `network.json`; no CRM hardcode in `server.py`. CRM + baseball examples configured; empty-crm skips ping until growth.
+- [x] **MCP `health_check` per-network ping** — `health_ping.lookup` in `network.json`; no CRM hardcode in `server.py`. CRM + baseball examples configured; crm-empty skips ping until growth.
 - [x] **Example networks index** — [`examples/networks/README.md`](examples/networks/README.md); baseball README query examples + gate notes.
 
 ### Shipped (2026-06-20)
 
-- [x] **Live gate regression (example networks)** — Opt-in **`./bin/gate-live <network>`** (`baseball`, `crm`, `crm-metering`, `empty-crm`): real `~/mycelium-networks/<network>` + `.env`, per-network YAML catalogs, `@pytest.mark.live_gate` (**never CI**). Commit `fe23f9f`; slice `2026-06-20-1600-live-gate-baseball-crm`. Manual gate: [`docs/manual-checks/2026-06-20-live-gate-program.md`](docs/manual-checks/2026-06-20-live-gate-program.md). Design: [`docs/plans/conversations/2026-06-20-live-gate-program.md`](docs/plans/conversations/2026-06-20-live-gate-program.md).
+- [x] **Live gate regression (example networks)** — Opt-in **`./bin/gate-live <network>`** (`baseball`, `crm-seeded`, `crm-metering`, `crm-empty`): real `~/mycelium-networks/<network>` + `.env`, per-network YAML catalogs, `@pytest.mark.live_gate` (**never CI**). Commit `fe23f9f`; slice `2026-06-20-1600-live-gate-baseball-crm`. Manual gate: [`docs/manual-checks/2026-06-20-live-gate-program.md`](docs/manual-checks/2026-06-20-live-gate-program.md). Design: [`docs/plans/conversations/2026-06-20-live-gate-program.md`](docs/plans/conversations/2026-06-20-live-gate-program.md).
 - [x] **Baseball warehouse derive M-track polish** — Intent LLM skip on warm cache (later reverted for map-miss safety), legacy alias read across labels, smoke `intent_dedup_mocked`. Commits `2be1b0e`, `b3ed225`; slice `2026-06-20-1500-baseball-warehouse-derive-m-polish`.
 
 ### Shipped (2026-06-18)
@@ -78,7 +78,7 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 
 - [ ] **Public baseball example (feedback loop)** — Ship a **public** Lahman demo (website or standalone) so outsiders can try queries and give feedback. Open design: embedded chat vs MCP-only, hosted network root vs read-only snapshot, rate limits, cost model. Depends on bootstrap perf (`2280`) and program slices M10–M13 for credible coverage. May overlap website update above — coordinate narrative. Track alongside [`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md).
-- [ ] **Example network READMEs — remaining gaps** — Operator query guides live in [`docs/examples/`](docs/examples/README.md); pack READMEs under `examples/networks/<name>/` cover maintainer layout. **Still thin:** [`empty-crm/README.md`](examples/networks/empty-crm/README.md) vs CRM bar; thicken as features land. Any new demo (derivative token-efficiency USP) ships with **getting started + explore walkthroughs** from day one.
+- [ ] **Example network READMEs — remaining gaps** — Operator query guides live in [`docs/examples/`](docs/examples/README.md); pack READMEs under `examples/networks/<name>/` cover maintainer layout. **Still thin:** [`crm-empty/README.md`](examples/networks/crm-empty/README.md) vs CRM bar; thicken as features land. Any new demo (derivative token-efficiency USP) ships with **getting started + explore walkthroughs** from day one.
 
 ---
 

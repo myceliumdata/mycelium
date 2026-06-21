@@ -13,8 +13,8 @@ from network.bootstrap.progress import BootstrapProgress
 from network.paths import NetworkPaths
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-CRM_SEED = REPO_ROOT / "examples" / "networks" / "crm" / "seed.json"
-CRM_MANIFEST = REPO_ROOT / "examples" / "networks" / "crm" / "network.json"
+CRM_SEED = REPO_ROOT / "examples" / "networks" / "crm-seeded" / "seed.json"
+CRM_MANIFEST = REPO_ROOT / "examples" / "networks" / "crm-seeded" / "network.json"
 BASEBALL_EXAMPLE = REPO_ROOT / "examples" / "networks" / "baseball"
 BASEBALL_MANIFEST = BASEBALL_EXAMPLE / "network.json"
 
@@ -39,7 +39,7 @@ def _write_minimal_lahman_fixture(seed_dir: Path) -> None:
 
 
 def _prepare_crm_root(tmp_path: Path) -> NetworkPaths:
-    root = tmp_path / "crm"
+    root = tmp_path / "crm-seeded"
     root.mkdir(parents=True)
     shutil.copy(CRM_SEED, root / "seed.json")
     shutil.copy(CRM_MANIFEST, root / "network.json")

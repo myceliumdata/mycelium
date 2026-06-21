@@ -141,7 +141,7 @@ def refresh_example_network(
     if not live_root.is_absolute():
         raise ValueError(f"Network root must be an absolute path: {live_root}")
 
-    make_default = (name == "crm" and not no_default) if default is None else default
+    make_default = (name == "crm-seeded" and not no_default) if default is None else default
     exists = live_root_exists(live_root)
     wiped = False
     copied: list[str] = []

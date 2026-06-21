@@ -20,7 +20,7 @@ from network.mvr import load_mvr
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BASEBALL_MANIFEST = REPO_ROOT / "examples" / "networks" / "baseball" / "network.json"
-CRM_MANIFEST = REPO_ROOT / "examples" / "networks" / "crm" / "network.json"
+CRM_MANIFEST = REPO_ROOT / "examples" / "networks" / "crm-seeded" / "network.json"
 SAMPLE_CATEGORIES = REPO_ROOT / "docs" / "examples" / "sample-categories.json"
 
 

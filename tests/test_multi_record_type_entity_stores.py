@@ -21,7 +21,7 @@ from network.mvr import (
 from network.paths import NetworkPaths, _provisional_paths, apply_network_paths, entity_store_path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-CRM_MANIFEST = REPO_ROOT / "examples" / "networks" / "crm" / "network.json"
+CRM_MANIFEST = REPO_ROOT / "examples" / "networks" / "crm-seeded" / "network.json"
 BASEBALL_MANIFEST = REPO_ROOT / "examples" / "networks" / "baseball" / "network.json"
 CRM_METERING = json.loads(CRM_MANIFEST.read_text(encoding="utf-8"))["metering"]
 

@@ -106,14 +106,14 @@ Manual checks validate **live network behavior**, MCP onboarding, and optional r
 ### 2.1 Setup (once per session)
 
 ```bash
-./bin/refresh-example-network crm --yes
+./bin/refresh-example-network crm-seeded --yes
 ```
 
 Confirm network:
 
 ```bash
 uv run mycelium network list
-uv run mycelium network status --network crm
+uv run mycelium network status --network crm-seeded
 ```
 
 **Note:** CLI `mycelium query` does not yet expose `--binding`. Binding flows below use **MCP `query_entity`** (JSON) or the **Python helper** in §2.2. Plain CLI covers seed hits and near-misses without binding.
@@ -133,7 +133,7 @@ sys.path.insert(0, "src")
 # Required before importing graphs.core — multiple run_query() in one process
 # otherwise hits: asyncio lock bound to a different event loop.
 os.environ["MYCELIUM_USE_SYNC_CHECKPOINTER"] = "1"
-os.environ.setdefault("MYCELIUM_NETWORK", "crm")
+os.environ.setdefault("MYCELIUM_NETWORK", "crm-seeded")
 from graphs.core import run_query
 from models.state import EntityQuery
 
@@ -211,7 +211,7 @@ Read `outcome` before `results`. Full program table: [`entity-protocol-and-regis
 ### 2.6 Operator verification (after M4–M6)
 
 ```bash
-uv run mycelium network status --network crm --entity "Paul Murphy"
+uv run mycelium network status --network crm-seeded --entity "Paul Murphy"
 ```
 
 Check:
@@ -239,9 +239,9 @@ Search **Andrea Kalmans** and **Paul Murphy** after growth scenarios; confirm en
 ### 2.8 CLI-only quick smoke (no binding)
 
 ```bash
-uv run mycelium query --network crm --entity-key "Andrea Kalman" --attributes email
-uv run mycelium query --network crm --entity-key "Andrea Kalmans" --attributes email
-uv run mycelium query --network crm --entity-key "Nichanan Kesonpat"
+uv run mycelium query --network crm-seeded --entity-key "Andrea Kalman" --attributes email
+uv run mycelium query --network crm-seeded --entity-key "Andrea Kalmans" --attributes email
+uv run mycelium query --network crm-seeded --entity-key "Nichanan Kesonpat"
 ```
 
 Inspect JSON: first should show unresolved/suggestions; second and third should succeed on seed.

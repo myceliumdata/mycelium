@@ -39,7 +39,7 @@ def test_networks_config_path_override(
 
 @pytest.mark.smoke
 def test_register_list_and_persist(networks_config: Path, tmp_path: Path) -> None:
-    root = tmp_path / "crm"
+    root = tmp_path / "crm-seeded"
     root.mkdir()
 
     entry = register_network("prm_crm", root, default=True)

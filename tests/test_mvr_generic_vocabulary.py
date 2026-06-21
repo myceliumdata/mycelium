@@ -9,7 +9,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CRM_METERING = json.loads(
-    (REPO_ROOT / "examples" / "networks" / "crm" / "network.json").read_text(
+    (REPO_ROOT / "examples" / "networks" / "crm-seeded" / "network.json").read_text(
         encoding="utf-8",
     ),
 )["metering"]

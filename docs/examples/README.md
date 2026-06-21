@@ -17,8 +17,8 @@ Operator and contributor docs for committed networks under [`examples/networks/`
 
 | Network | Getting started | Feature walkthroughs |
 |---------|-----------------|----------------------|
-| **CRM** | [crm/getting-started.md](crm/getting-started.md) | [crm/explore/](crm/explore/README.md) |
-| **Empty CRM** | [empty-crm/getting-started.md](empty-crm/getting-started.md) | [empty-crm/explore/](empty-crm/explore/README.md) |
+| **CRM (seeded)** | [crm-seeded/getting-started.md](crm-seeded/getting-started.md) | [crm-seeded/explore/](crm-seeded/explore/README.md) |
+| **CRM (empty)** | [crm-empty/getting-started.md](crm-empty/getting-started.md) | [crm-empty/explore/](crm-empty/explore/README.md) |
 | **CRM metering** | [crm-metering/getting-started.md](crm-metering/getting-started.md) | [crm-metering/explore/](crm-metering/explore/README.md) |
 | **Baseball** | [baseball/getting-started.md](baseball/getting-started.md) | [baseball/explore/](baseball/explore/README.md) |
 

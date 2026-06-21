@@ -5,7 +5,7 @@
 
 ## Goal
 
-`mycelium network create` must work **without** `--seed`, matching the `empty-crm` example pattern. When `--seed` is supplied, behavior stays as today (copy + bootstrap import into `entities.json`).
+`mycelium network create` must work **without** `--seed`, matching the `crm-empty` example pattern. When `--seed` is supplied, behavior stays as today (copy + bootstrap import into `entities.json`).
 
 `bin/refresh-example-network` already copies `seed.json` when the committed example includes one and imports at refresh time. This slice **formalizes** that as the shared bootstrap path and makes operator output explicit.
 
@@ -16,8 +16,8 @@
 | `network create --seed` | **Required** | **Optional** |
 | `network create` (no seed) | Not supported | Ontology + manifest + guide; **no** `seed.json`, **no** `entities.json` until first bind |
 | `network create --seed FILE` | Copy + `import_seed_file` | Unchanged |
-| `refresh-example-network crm` | Copy `seed.json` + import | Same; report bootstrap in script output |
-| `refresh-example-network empty-crm` | No seed, no import | Same |
+| `refresh-example-network crm-seeded` | Copy `seed.json` + import | Same; report bootstrap in script output |
+| `refresh-example-network crm-empty` | No seed, no import | Same |
 
 ## Shared bootstrap contract
 
@@ -62,7 +62,7 @@ Manual:
 uv run mycelium network create test_empty --root /tmp/test_empty --prompt "CRM for demos" --dry-run
 
 # Refresh still bootstraps crm
-./bin/refresh-example-network crm --root /tmp/crm-test --no-register --yes
+./bin/refresh-example-network crm-seeded --root /tmp/crm-test --no-register --yes
 # expect: seed.json copied + entities imported + stdout mentions seed bootstrap
 ```
 

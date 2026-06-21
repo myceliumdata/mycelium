@@ -1,6 +1,6 @@
 # CRM (empty seed)
 
-This network uses the same CRM **minimum viable record** rules as the **`crm`** example, but ships **without preloaded people**. There is no `seed.json` — `entities.json` starts empty and grows only when visiting agents bind new people.
+This network uses the same CRM **minimum viable record** rules as the **`crm-seeded`** example, but ships **without preloaded people**. There is no `seed.json` — `entities.json` starts empty and grows only when visiting agents bind new people.
 
 ## First bind walkthrough (two-step)
 

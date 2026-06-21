@@ -4,7 +4,7 @@
 
 **New contributors:** [`docs/onboarding.md`](docs/onboarding.md) — terminology, read order, and repo layout. **Example walkthroughs:** [`docs/examples/`](docs/examples/README.md) — shared setup, per-network getting started, feature exploration (CLI + MCP).
 
-A fresh clone has **no live network** until you bootstrap. Run **`./bin/refresh-example-network crm`** (copies the committed CRM example to `~/mycelium-networks/crm` and registers it as default). Register named networks in **`~/.config/mycelium/networks.json`** (override with **`MYCELIUM_NETWORKS_CONFIG`**) so you can use **`--network <name>`** without repeating paths. Pre-networks snapshot: git tag **`prototype`**.
+A fresh clone has **no live network** until you bootstrap. Run **`./bin/refresh-example-network crm-seeded`** (copies the committed CRM example to `~/mycelium-networks/crm-seeded` and registers it as default). Register named networks in **`~/.config/mycelium/networks.json`** (override with **`MYCELIUM_NETWORKS_CONFIG`**) so you can use **`--network <name>`** without repeating paths. Pre-networks snapshot: git tag **`prototype`**.
 
 Public repo: [github.com/myceliumdata/mycelium](https://github.com/myceliumdata/mycelium) · Architecture: [docs/architecture.md](docs/architecture.md) · Networks plan: [docs/plans/networks-terminology.md](docs/plans/networks-terminology.md) · License: MIT
 
@@ -17,29 +17,29 @@ uv sync --all-extras
 cp .env.example .env
 # Add OPENAI_API_KEY and TAVILY_API_KEY to .env for synchronous field research on cache miss.
 
-# Bootstrap or reset the CRM example (default: ~/mycelium-networks/crm)
-./bin/refresh-example-network crm
+# Bootstrap or reset the CRM example (default: ~/mycelium-networks/crm-seeded)
+./bin/refresh-example-network crm-seeded
 
 # Step 1 — resolve (copy delivery_id from stdout JSON; stderr prints step-2 hint)
-uv run mycelium query --network crm \
+uv run mycelium query --network crm-seeded \
   --lookup-json '{"name": "Nichanan Kesonpat", "employer": "1k(x)"}'
 
 # Step 2 — deliver (same --network as step 1)
-uv run mycelium query --network crm --delivery-id d_abc123
+uv run mycelium query --network crm-seeded --delivery-id d_abc123
 ```
 
 **When to use which:**
 
 | Goal | Command |
 |------|---------|
-| **CRM example** (committed reference; wipe stale research before demos) | `./bin/refresh-example-network crm` |
-| **CRM E2E smoke** (two-step queries + `results[]` shape; optional pytest) | `./bin/smoke-crm-e2e` |
+| **CRM example** (committed reference; wipe stale research before demos) | `./bin/refresh-example-network crm-seeded` |
+| **CRM E2E smoke** (two-step queries + `results[]` shape; optional pytest) | `./bin/smoke-crm-seeded-e2e` |
 | **Live gate regression** (deployed roots + `.env`; never CI) | `./bin/gate-live <network>` — see [`docs/manual-checks/2026-06-20-live-gate-program.md`](docs/manual-checks/2026-06-20-live-gate-program.md) |
-| **Empty-seed CRM** (no bootstrap people; growth from query binds) | `./bin/refresh-example-network empty-crm` |
+| **Empty-seed CRM** (no bootstrap people; growth from query binds) | `./bin/refresh-example-network crm-empty` |
 | **Custom domain** (your categories + specialists) | `uv run mycelium network create <name> --root <path> --prompt "..."` (optional `--seed <file>`) |
 | **Live demo UI** (network state while you query) | `./bin/restart-admin` → open `http://127.0.0.1:5173` |
 
-**Demo runbook:** Before a demo, run `./bin/refresh-example-network crm --yes` to restore a clean seed and drop cached specialist research. **Restart your MCP server** (e.g. Claude Desktop) after refresh so it reloads the wiped network. Use a **fresh `thread_id`** per query attribute when demonstrating research (avoids stale checkpoint state).
+**Demo runbook:** Before a demo, run `./bin/refresh-example-network crm-seeded --yes` to restore a clean seed and drop cached specialist research. **Restart your MCP server** (e.g. Claude Desktop) after refresh so it reloads the wiped network. Use a **fresh `thread_id`** per query attribute when demonstrating research (avoids stale checkpoint state).
 
 Custom network example (fake paths):
 
@@ -52,7 +52,7 @@ uv run mycelium network create wheat_farm \
   --default
 ```
 
-`network create` runs an LLM **skeleton ontology** (categories + specialists under `<root>/specialists/`), registers the name, and prints an MCP snippet. Created networks include a **`bootstrap`** block in `network.json` (CRM uses framework `DefaultSeedHandler`). With `--seed`, refresh/create copies `seed.json` and the declared handler imports people into `entities/<record_type>.json` (CRM: `entities/person.json`); without `--seed`, the handler runs but commits 0 rows until the first query bind (same as `empty-crm`). Custom networks can ship a **pack handler** under `<root>/bootstrap_handlers/` and point `bootstrap.module` at it (same manifest pattern planned for specialists). See [docs/architecture.md](docs/architecture.md) § Seed bootstrap and [docs/plans/networks-phase5.md](docs/plans/networks-phase5.md).
+`network create` runs an LLM **skeleton ontology** (categories + specialists under `<root>/specialists/`), registers the name, and prints an MCP snippet. Created networks include a **`bootstrap`** block in `network.json` (CRM uses framework `DefaultSeedHandler`). With `--seed`, refresh/create copies `seed.json` and the declared handler imports people into `entities/<record_type>.json` (CRM: `entities/person.json`); without `--seed`, the handler runs but commits 0 rows until the first query bind (same as `crm-empty`). Custom networks can ship a **pack handler** under `<root>/bootstrap_handlers/` and point `bootstrap.module` at it (same manifest pattern planned for specialists). See [docs/architecture.md](docs/architecture.md) § Seed bootstrap and [docs/plans/networks-phase5.md](docs/plans/networks-phase5.md).
 
 ### CLI
 
@@ -61,7 +61,7 @@ uv run mycelium network create wheat_farm \
 uv run mycelium query --lookup-json '{"name": "Nichanan Kesonpat", "employer": "1k(x)"}'
 
 # Step 2 — deliver full identity rows (same network as step 1)
-uv run mycelium query --network crm --delivery-id d_abc123
+uv run mycelium query --network crm-seeded --delivery-id d_abc123
 
 # Step 1 with attrs (bound into delivery scope for step 2)
 uv run mycelium query --lookup-json '{"name": "Andrea Kalmans", "employer": "Lontra Ventures"}' --attributes email
@@ -70,20 +70,20 @@ uv run mycelium query --lookup-json '{"name": "Andrea Kalmans", "employer": "Lon
 uv run mycelium query --lookup-json '{"employer": "Accel"}' --thread-id "session-abc"
 
 # Explicit example path (no registry required)
-uv run mycelium query --network-dir examples/networks/crm --lookup-json '{"employer": "Accel"}'
+uv run mycelium query --network-dir examples/networks/crm-seeded --lookup-json '{"employer": "Accel"}'
 
 # Registered network name (from ~/.config/mycelium/networks.json)
-uv run mycelium query --network crm --id <registry-uuid>
+uv run mycelium query --network crm-seeded --id <registry-uuid>
 
 # Network management
 uv run mycelium network create my_net --root ~/mycelium-networks/my_net --prompt "..."
 uv run mycelium network create my_net --root ~/mycelium-networks/my_net --seed ./seed.json --prompt "..."
-uv run mycelium network register crm --root ~/mycelium-networks/crm --default
+uv run mycelium network register crm-seeded --root ~/mycelium-networks/crm-seeded --default
 uv run mycelium network list
 uv run mycelium network use crm
 uv run mycelium network status
-uv run mycelium network status --network crm --verbose
-uv run mycelium network status --network crm --json
+uv run mycelium network status --network crm-seeded --verbose
+uv run mycelium network status --network crm-seeded --json
 ```
 
 **`network status`** is a read-only demo/ops snapshot (scannable default layout with ✅/❌). Use **`--verbose`** for root path, agent modules, and field-level debug detail. **`--json`** pipes full data to `jq`.
@@ -97,7 +97,7 @@ Current ontology: ❌
 Existing specialists: ❌
 ```
 
-The CLI starts a **fresh process** each run and reloads registry/storage from disk. Network selection order: **`--network-dir`** → **`--network`** → **`MYCELIUM_NETWORK_ROOT`** → **`MYCELIUM_NETWORK`** → default from config. With no network configured, commands fail with a pointer to `./bin/refresh-example-network crm`.
+The CLI starts a **fresh process** each run and reloads registry/storage from disk. Network selection order: **`--network-dir`** → **`--network`** → **`MYCELIUM_NETWORK_ROOT`** → **`MYCELIUM_NETWORK`** → default from config. With no network configured, commands fail with a pointer to `./bin/refresh-example-network crm-seeded`.
 
 **Metering negotiation flags** (for `crm-metering` demo network):
 
@@ -128,7 +128,7 @@ Hands-on **`quote_required`** flow (negotiation only; payment disabled on `crm-m
 | **Admin UI (default)** | `./bin/restart-admin crm-metering` → **http://127.0.0.1:5173/** (Vite dev, no `npm run build`) |
 | **Admin UI (alternate)** | `cd admin-ui && npm run build` then `./bin/restart-admin crm-metering --demo` → :8741 |
 
-The default **`crm`** example keeps `metering.enabled: false` — unchanged demos.
+The default **`crm-seeded`** example keeps `metering.enabled: false` — unchanged demos.
 
 ### Credentials vs network data
 
@@ -155,7 +155,7 @@ Single network (after bootstrap) — by path or registered name:
   "command": "uv",
   "args": ["run", "mycelium-mcp"],
   "cwd": "/absolute/path/to/mycelium",
-  "env": { "MYCELIUM_NETWORK_ROOT": "/Users/you/mycelium-networks/crm" }
+  "env": { "MYCELIUM_NETWORK_ROOT": "/Users/you/mycelium-networks/crm-seeded" }
 }
 ```
 
@@ -164,7 +164,7 @@ Single network (after bootstrap) — by path or registered name:
   "command": "uv",
   "args": ["run", "mycelium-mcp"],
   "cwd": "/absolute/path/to/mycelium",
-  "env": { "MYCELIUM_NETWORK": "crm" }
+  "env": { "MYCELIUM_NETWORK": "crm-seeded" }
 }
 ```
 
@@ -178,7 +178,7 @@ Two networks in parallel (paths are examples):
     "command": "uv",
     "args": ["run", "mycelium-mcp"],
     "cwd": "/absolute/path/to/mycelium",
-    "env": { "MYCELIUM_NETWORK_ROOT": "/Users/you/mycelium-networks/crm" }
+    "env": { "MYCELIUM_NETWORK_ROOT": "/Users/you/mycelium-networks/crm-seeded" }
   },
   "mycelium-fleet": {
     "command": "uv",
@@ -223,7 +223,7 @@ The MCP server reloads the entity registry, categories, and specialist modules f
 MYCELIUM_NETWORK=crm uv run mycelium-admin
 
 # Or explicit root
-MYCELIUM_NETWORK_ROOT=~/mycelium-networks/crm uv run mycelium-admin
+MYCELIUM_NETWORK_ROOT=~/mycelium-networks/crm-seeded uv run mycelium-admin
 ```
 
 Long-lived **HTTP on localhost** (default `http://127.0.0.1:8741`) — one process per network for operator demos and the **admin UI** (`admin-ui/`). Snapshot fields come from `src/network/introspection.py` (same as `mycelium network status --json`). **`POST /query`** runs the same target two-step protocol as CLI/MCP (admin UI **Run query** panel; no auto-deliver on step 2).
@@ -241,7 +241,7 @@ Compare daemon output to CLI:
 
 ```bash
 curl -s http://127.0.0.1:8741/status | jq '.registry_entity_count, .ontology_present'
-uv run mycelium network status --network crm --json | jq '.registry_entity_count, .ontology_present'
+uv run mycelium network status --network crm-seeded --json | jq '.registry_entity_count, .ontology_present'
 ```
 
 #### Admin UI
@@ -303,7 +303,7 @@ uv run mycelium network create my_net --root /abs/path --seed ./seed.json --prom
 uv run mycelium network create my_net --root /abs/path --prompt "..." --force
 
 # CRM example (reset live root; auto-imports seed.json when example ships it)
-./bin/refresh-example-network crm --yes
+./bin/refresh-example-network crm-seeded --yes
 ```
 
 To drop a network entirely, remove its directory and edit `~/.config/mycelium/networks.json` (or set `MYCELIUM_NETWORKS_CONFIG`).
@@ -343,7 +343,7 @@ Every CLI and MCP query response includes **`outcome`** (machine-readable: `look
 ## How it works (summary)
 
 1. **Bootstrap (optional)** — `<network_root>/seed.json` is a static fixture for refresh/create only (CRM example: 15 public-safe people). Import writes rows to `entities/<default_record_type>.json`; queries never read `seed.json`.
-2. **Registry** — `entities/<record_type>.json` is the runtime canonical store per MVR record type (uuid4 ids, `bind_index`). Query-time binds create rows when `new_records` is `query_allowed` (see `empty-crm` example).
+2. **Registry** — `entities/<record_type>.json` is the runtime canonical store per MVR record type (uuid4 ids, `bind_index`). Query-time binds create rows when `new_records` is `query_allowed` (see `crm-empty` example).
 3. **Target resolve** — Step 1: `id` or `lookup` → `delivery_id`; step 2: deliver.
 4. **Supervisor** — Classifies attrs and plans specialists after step-2 deliver.
 5. **Agent factory** — Creates specialist modules on demand (`<network_root>/specialists/*_specialist.py`; CRM reference modules also live under `src/agents/specialists/`).
@@ -375,7 +375,7 @@ flowchart TD
 | Models | `src/models/state.py` | `IdentityRecord`, `EntityQuery`, `QueryResponse`, graph state |
 | Registry | `src/agents/entity_registry.py`, `<network_root>/entities/<record_type>.json` | Canonical entity store + bind lookup |
 | Bootstrap | `<network_root>/seed.json` (optional) | Fixture imported at refresh/create only |
-| Example | `examples/networks/crm/`, `examples/networks/empty-crm/` | CRM reference + empty-seed growth demo |
+| Example | `examples/networks/crm-seeded/`, `examples/networks/crm-empty/` | CRM reference + empty-seed growth demo |
 | Supervisor | `src/agents/supervisor.py` | Registry resolution, classification, specialist planning |
 | Classification | `src/agents/classification/` | Attribute → category map |
 | Factory | `src/agents/factory/` | Jinja template → generated specialists |
@@ -401,7 +401,7 @@ Disable with `LANGCHAIN_TRACING_V2=false` or unset; `trace_id` will be `null`.
 Visual debugging via local dev server + tunnel. Studio requires a **configured network** (same as CLI/MCP) — repo-root `data/` is **retired** and gitignored; runtime artifacts live only under `<network_root>/`.
 
 ```bash
-./bin/refresh-example-network crm   # once, if not already registered
+./bin/refresh-example-network crm-seeded   # once, if not already registered
 ./bin/run-studio
 # separate terminal: ngrok http 2024
 ```
@@ -423,7 +423,7 @@ Smoke vs full: `@pytest.mark.smoke` vs `@pytest.mark.full` in `tests/`. CI runs 
 
 ```
 mycelium/
-├── examples/networks/crm/      # committed CRM example (seed.json, network.json)
+├── examples/networks/crm-seeded/      # committed CRM example (seed.json, network.json)
 ├── src/agents/                 # supervisor, classification, factory, dispatch
 ├── src/graphs/core.py
 ├── src/mycelium_mcp/server.py

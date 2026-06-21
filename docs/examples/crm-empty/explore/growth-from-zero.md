@@ -6,26 +6,26 @@
 
 ## Prerequisites
 
-`./bin/refresh-example-network empty-crm --yes`
+`./bin/refresh-example-network crm-empty --yes`
 
 Optional for email on step 1: `OPENAI_API_KEY` + search provider key.
 
 ## How to test — CLI
 
 ```bash
-uv run mycelium network status --network empty-crm
+uv run mycelium network status --network crm-empty
 # entity_count: 0
 
-uv run mycelium query --network empty-crm \
+uv run mycelium query --network crm-empty \
   --lookup-json '{"name":"Paul Murphy","employer":"Acme Corp"}'
 
-uv run mycelium query --network empty-crm --delivery-id d_…
+uv run mycelium query --network crm-empty --delivery-id d_…
 ```
 
 ## How to test — MCP
 
 ```json
-"env": { "MYCELIUM_NETWORK": "empty-crm" }
+"env": { "MYCELIUM_NETWORK": "crm-empty" }
 ```
 
 ```json
@@ -43,5 +43,5 @@ uv run mycelium query --network empty-crm --delivery-id d_…
 
 ## Learn more
 
-- [`examples/networks/empty-crm/README.md`](../../../../examples/networks/empty-crm/README.md)
+- [`examples/networks/crm-empty/README.md`](../../../../examples/networks/crm-empty/README.md)
 - Live gate: `empty-growth-01`

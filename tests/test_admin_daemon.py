@@ -18,7 +18,7 @@ from versioned_storage_fixtures import versioned_found
 from network.paths import NO_NETWORK_CONFIGURED_MSG, NetworkPaths, apply_network_paths
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm"
+EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm-seeded"
 SAMPLE_CATEGORIES = REPO_ROOT / "docs" / "examples" / "sample-categories.json"
 
 
@@ -145,7 +145,7 @@ def test_health_returns_network_metadata(
     payload = response.json()
     assert payload["status"] == "ok"
     assert payload["network_root"] == str(root.resolve())
-    assert payload["network_name"] == "crm"
+    assert payload["network_name"] == "crm-seeded"
 
 
 @pytest.mark.smoke

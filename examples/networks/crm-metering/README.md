@@ -2,7 +2,7 @@
 
 **Operator guides:** [`docs/examples/crm-metering/`](../../../docs/examples/crm-metering/getting-started.md)
 
-Committed example with **`metering.enabled: true`** and **`payment.enabled: false`**. Same `seed.json` and bootstrap handler as `crm` (`network.json` → `bootstrap`: `DefaultSeedHandler`); negotiation only (no settlement).
+Committed example with **`metering.enabled: true`** and **`payment.enabled: false`**. Same `seed.json` and bootstrap handler as `crm-seeded` (`network.json` → `bootstrap`: `DefaultSeedHandler`); negotiation only (no settlement).
 
 ## Bootstrap
 

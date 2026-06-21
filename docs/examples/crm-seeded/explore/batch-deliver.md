@@ -11,14 +11,14 @@ CRM refreshed.
 ## How to test — CLI
 
 ```bash
-uv run mycelium query --network crm \
+uv run mycelium query --network crm-seeded \
   --lookup-json '{"employer":"645 Ventures"}'
-uv run mycelium query --network crm --delivery-id d_…
+uv run mycelium query --network crm-seeded --delivery-id d_…
 ```
 
 ## How to test — MCP
 
-Use fixtures in [`examples/networks/crm/queries/`](../../../../examples/networks/crm/queries/):
+Use fixtures in [`examples/networks/crm-seeded/queries/`](../../../../examples/networks/crm-seeded/queries/):
 
 1. `01-resolve-batch.json` → copy `delivery_id`
 2. `02-deliver-batch.json` with that id

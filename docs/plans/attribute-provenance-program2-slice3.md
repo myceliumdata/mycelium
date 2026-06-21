@@ -32,7 +32,7 @@ Generalize bind/create for arbitrary `mvr.bind_fields`, add **research operator 
 
 ### 4 — Example networks + docs
 
-- `examples/networks/crm/README.md` — note MVR storage in specialist files after Program 2.
+- `examples/networks/crm-seeded/README.md` — note MVR storage in specialist files after Program 2.
 - `docs/onboarding.md` — one line on taxonomy-owned bind fields.
 - `next-chunk-prep.md` — Program 2 complete pointer.
 - Program 2 manual gate doc (optional checklist) if Paul wants hands-on verification.

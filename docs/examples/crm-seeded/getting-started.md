@@ -1,4 +1,4 @@
-# CRM example — getting started
+# CRM (seeded) — getting started
 
 15-person seed; single **`person`** record type; `query_allowed` growth. Shared setup: [../getting-started.md](../getting-started.md).
 
@@ -9,10 +9,10 @@
 ## Bootstrap
 
 ```bash
-./bin/refresh-example-network crm --yes
+./bin/refresh-example-network crm-seeded --yes
 ```
 
-Default root: `~/mycelium-networks/crm`.
+Default root: `~/mycelium-networks/crm-seeded`.
 
 Before demos: refresh wipes stale specialist research — **restart MCP** afterward.
 
@@ -31,9 +31,9 @@ Before demos: refresh wipes stale specialist research — **restart MCP** afterw
 ## First queries
 
 ```bash
-uv run mycelium query --network crm \
+uv run mycelium query --network crm-seeded \
   --lookup-json '{"name":"Nichanan Kesonpat","employer":"1k(x)"}'
-uv run mycelium query --network crm --delivery-id d_…
+uv run mycelium query --network crm-seeded --delivery-id d_…
 ```
 
 ---
@@ -41,10 +41,10 @@ uv run mycelium query --network crm --delivery-id d_…
 ## MCP
 
 ```json
-"env": { "MYCELIUM_NETWORK": "crm" }
+"env": { "MYCELIUM_NETWORK": "crm-seeded" }
 ```
 
-Fixtures: [`examples/networks/crm/queries/`](../../../examples/networks/crm/queries/).
+Fixtures: [`examples/networks/crm-seeded/queries/`](../../../examples/networks/crm-seeded/queries/).
 
 ---
 
@@ -52,11 +52,11 @@ Fixtures: [`examples/networks/crm/queries/`](../../../examples/networks/crm/quer
 
 | Gate | Command |
 |------|---------|
-| Fast E2E | `./bin/smoke-crm-e2e` |
-| Live gate (7 scenarios) | `./bin/gate-live crm` |
+| Fast E2E | `./bin/smoke-crm-seeded-e2e` |
+| Live gate (7 scenarios) | `./bin/gate-live crm-seeded` |
 
 ---
 
 ## References
 
-- [`examples/networks/crm/README.md`](../../../examples/networks/crm/README.md)
+- [`examples/networks/crm-seeded/README.md`](../../../examples/networks/crm-seeded/README.md)
