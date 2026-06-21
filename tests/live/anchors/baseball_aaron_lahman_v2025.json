@@ -37,5 +37,8 @@
   "fielding_percentage": 0.982,
   "hall_of_fame_year": 1982,
   "primary_nickname": "Hammer",
-  "primary_nickname_accepted": ["Hammer", "Hammerin' Hank"]
+  "primary_nickname_accepted": ["Hammer", "Hammerin' Hank"],
+  "_comments": {
+    "primary_nickname_accepted": "bb-bio-research-01: Tavily research may return either famous Hank Aaron nickname (short form or full moniker). one_of asserts research found + sourced, not a single canonical string. Synonym normalization is bb-bio-research-02 follow-on."
+  }
 }
