@@ -70,23 +70,32 @@ Branch on `outcome` before step 2: `lookup_resolved`, `lookup_incomplete`, `look
 
 ## 5. MCP (one server per network)
 
-```bash
-uv run mycelium-mcp
-```
+MCP is a **long-lived stdio process** — configure **one server entry per network**. The server `cwd` must be the **framework repo** (so `uv run mycelium-mcp` finds the project). API keys come from the framework `.env` at that path — not from the client `env` block.
 
-Configure the client with **framework repo as `cwd`** and bind the network:
+**Claude Desktop** — merge into `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`). Replace `/absolute/path/to/mycelium` with your clone:
 
 ```json
-"env": {
-  "MYCELIUM_NETWORK": "crm-seeded"
+{
+  "mcpServers": {
+    "mycelium-crm-seeded": {
+      "command": "uv",
+      "args": ["run", "mycelium-mcp"],
+      "cwd": "/absolute/path/to/mycelium",
+      "env": {
+        "MYCELIUM_NETWORK": "crm-seeded"
+      }
+    }
+  }
 }
 ```
 
-Or `MYCELIUM_NETWORK_ROOT` with an absolute path.
+(`MYCELIUM_NETWORK` resolves via `~/.config/mycelium/networks.json` after `./bin/refresh-example-network crm-seeded`. Or set `MYCELIUM_NETWORK_ROOT` to an absolute live root instead.)
+
+Other examples: use the same shape with `"MYCELIUM_NETWORK": "baseball"`, `"crm-empty"`, or `"crm-metering"`.
 
 **Tools:** `describe_network` (connect time), `query_entity` (same JSON as CLI `EntityQuery`), `health_check`, `pay_quote` (metering).
 
-**After refresh:** restart MCP so the server reloads wiped artifacts.
+**After refresh:** restart Claude Desktop (or your MCP client) so the server reloads wiped artifacts.
 
 **Research demos:** use a fresh `thread_id` per attribute on first research hit.
 
