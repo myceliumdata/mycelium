@@ -36,7 +36,7 @@ Unified CLI for deployed example networks. Uses real roots under `~/mycelium-net
 
 | Network | Default root | Phases | `refresh_before_gate` | `fresh_derive_before_gate` |
 |---------|--------------|--------|-------------------------|----------------------------|
-| `baseball` | `~/mycelium-networks/baseball` | preflight, identity, m2, **pitching**, **team_season**, **fielding**, **roster**, **franchise**, derive, infra | no | **yes** (derive phase only) |
+| `baseball` | `~/mycelium-networks/baseball` | preflight, identity, m2, **pitching**, **team_season**, **fielding**, **roster**, **franchise**, derive, **bio_research**, infra | no | **yes** (derive phase only) |
 | `crm` | `~/mycelium-networks/crm` | preflight, protocol, research, negative | **yes** | no |
 | `crm-metering` | `~/mycelium-networks/crm-metering` | preflight, metering | **yes** | no |
 | `empty-crm` | `~/mycelium-networks/empty-crm` | preflight, growth | **yes** | no |
@@ -103,6 +103,7 @@ Growth scenarios create the first entity from an empty registry. Auto-refresh wi
 | Phase | Keys required |
 |-------|----------------|
 | baseball `derive` | `OPENAI_API_KEY`, `MYCELIUM_COMPUTATION_CODEGEN_MODEL` (+ intent model for M4b dedup) |
+| baseball `bio_research` | `OPENAI_API_KEY`, `TAVILY_API_KEY` |
 | crm `research` | `OPENAI_API_KEY`, `TAVILY_API_KEY` |
 | crm-metering `metering` | `OPENAI_API_KEY`, `TAVILY_API_KEY` |
 | empty-crm `growth` | `OPENAI_API_KEY`, `TAVILY_API_KEY` (when email requested on step 1) |

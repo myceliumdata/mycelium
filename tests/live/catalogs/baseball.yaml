@@ -329,6 +329,7 @@ scenarios:
       lookup:
         player: "{{ anchors.pitcher_player }}"
       requested_attributes: [k_per_9]
+      provenance: true
     assert_step1:
       outcome: lookup_resolved
       delivery_present: true
@@ -350,6 +351,7 @@ scenarios:
       lookup:
         player: "{{ anchors.pitcher_player }}"
       requested_attributes: [career_innings_pitched]
+      provenance: true
     assert_step1:
       outcome: lookup_resolved
       delivery_present: true
@@ -371,6 +373,7 @@ scenarios:
       lookup:
         player: "{{ anchors.player }}"
       requested_attributes: [fielding_percentage]
+      provenance: true
     assert_step1:
       outcome: lookup_resolved
       delivery_present: true

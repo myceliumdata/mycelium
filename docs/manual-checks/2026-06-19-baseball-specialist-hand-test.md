@@ -73,6 +73,8 @@ Bind-field provenance: `actor.kind` is **`registry`** or **`seed_bootstrap`** (n
 | `debut` | Pull | `debut` | ✅ when column present (may be empty → `N/A`) |
 | `final_game` | Pull | `finalGame` | ✅ Aaron → `1976-10-03` |
 | `death_date` | Compute (compose) | death Y/M/D columns | ✅ Aaron → `2021-01-22` |
+| `hall_of_fame_year` | Compute (`hof_election_year`) | `HallOfFame.yearid` where `inducted='Y'` | ✅ Aaron → **1982** (election); live gate `bb-bio-03` |
+| `primary_nickname` | Research (Tavily on miss) | not in warehouse manifest | ✅ Aaron → **Hammer**; live gate `bb-bio-research-01` |
 
 ### Batting (`Batting`, grain player-year-stint-team)
 
@@ -94,9 +96,20 @@ Bind-field provenance: `actor.kind` is **`registry`** or **`seed_bootstrap`** (n
 | Attribute | Type | Lahman col | Status |
 |-----------|------|------------|--------|
 | `career_wins`, `career_losses`, `career_strikeouts`, `career_saves` | Compute (`career_sum`) | `W`, `L`, `SO`, `SV` | ✅ smoke + live gate `bb-pitch-01` / `bb-pitch-02` |
-| `career_era` | Compute (rate) | innings-weighted `9*ER/IP` | ✅ smoke **3.000** fixture; live gate `bb-pitch-03` (Nolan Ryan ≈ **3.194**) |
+| `career_era` | Compute (rate) | innings-weighted `9*ER/IP` | ✅ smoke **3.000** fixture; live gate `bb-pitch-03` (Nolan Ryan ≈ **3.194**) — manifest path even when `derive_on_miss` on |
+| `career_whip` | Compute (derive on miss) | `(BB+H)/IP` on `Pitching` | ✅ Ryan ≈ **1.247**; live gate `bb-derive-04` |
+| `k_per_9` | Compute (derive on miss) | `SO*9/IP` | ✅ Ryan ≈ **9.548**; live gate `bb-derive-05` |
+| `career_innings_pitched` | Compute (derive on miss) | `SUM(IPouts)/3` | ✅ Ryan ≈ **5386**; live gate `bb-derive-06` |
+| `whip` | Compute (derive on miss) | synonym of `career_whip` — intent slug | ✅ cache hit after `career_whip`; live gate `bb-derive-08` |
 | `era` | Compute (rate) | season-scoped | ⏳ optional alias (career_era ships) |
 | `wins`, `strikeouts`, `walks`, `games_pitched` | Pull (season) | one Pitching row | ⏳ optional season aliases |
+
+### Fielding (`Fielding`, grain player-year-stint-team) — `fielding_specialist` (M10)
+
+| Attribute | Type | Lahman col | Status |
+|-----------|------|------------|--------|
+| `career_games`, `career_putouts` | Compute (`career_sum`) | `G`, `PO` | ✅ smoke + live gate `bb-field-01` / `bb-field-02` |
+| `fielding_percentage` | Compute (derive on miss) | `(PO+A)/(PO+A+E)` pooled | ✅ Aaron ≈ **0.982**; live gate `bb-derive-07` |
 
 ### Team season (`Teams`, grain year + team) — `team_season_specialist` (M6)
 
@@ -263,7 +276,7 @@ Repeat with `"requested_attributes": ["birth_date"]`.
 | R1 | `career_hr` debug / routing | Step 2 touches `batting_specialist` (not CRM `professional_specialist`) |
 | R2 | `birth_date` debug / routing | Step 2 touches `bio_specialist` |
 | R3 | Unsupported batting attr (e.g. `home_runs` alone) | Graceful `N/A` or non-found — not a crash |
-| R4 | Unknown bio attr (e.g. `nickname`) | Graceful `N/A` — not in manifest |
+| R4 | Unaliased bio attr (e.g. `primary_nickname`) | Tavily research when keys set; else pending/`N/A` |
 
 ### Negative / regression (should still fail cleanly)
 
