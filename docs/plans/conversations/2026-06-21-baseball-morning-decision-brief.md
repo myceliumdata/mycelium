@@ -1,19 +1,57 @@
 # Baseball morning decision brief (2026-06-21)
 
-**For Paul** — skim in ~15 minutes, tick choices, paste Part D to Grok. Unblocks: derivative audit, training-wheels sign-off, bio specialist slice (`2410`).
+**Updated after review session** — the “5-minute signoff” grew into a design conversation. This doc is now **two paths**:
 
-Related: [`2026-06-21-baseball-bio-research-specialist.md`](2026-06-21-baseball-bio-research-specialist.md), [`TODO.md`](../../TODO.md) Next up.
+| Path | Time | What you do |
+|------|------|-------------|
+| **Bio unblock only** | ~5 min | Skim **Part H** (what’s already settled) → tick **Part D** if bio Q1–Q8 still open → paste to Grok |
+| **Full context** | ~15 min | Parts A–G below (derivative audit, training wheels, bio detail) |
+
+**Still blocks Cursor `2410`:** Part D bio picks (unless you already sent them).  
+**Does not block `2410`:** peer orchestration, `race`, analytic tier, metering review — locked in a separate doc (Part H).
+
+Related: [`2026-06-21-baseball-bio-research-specialist.md`](2026-06-21-baseball-bio-research-specialist.md), [`2026-06-21-peer-aware-specialists-analytic-orchestration.md`](2026-06-21-peer-aware-specialists-analytic-orchestration.md), [`TODO.md`](../../TODO.md).
 
 ---
 
-## 60-second cheat sheet (if you’re rushed)
+## Part H — Post-review summary (read this first)
+
+*What the hour-long conversation settled — so you don’t re-debate it when signing off bio.*
+
+### Now understood (no action needed for `2410`)
+
+| Topic | Lock / insight | Where captured |
+|-------|----------------|----------------|
+| **Manifest derivatives** | Common stats pre-defined in `warehouse_domains.json`; fast deterministic recipes | This brief Part A; promotion → `TODO.md` |
+| **LLM derive guinea pigs** | Only `career_avg` + `ops` (+ synonym) in gate **today**; pitching/fielding derive **queued** in slice `2400` (WHIP, K/9, fielding %) | `prompts/cursor/next/2026-06-21-2400-…` |
+| **Product specialists** | Cross-table **artifacts** (roster, franchise); **not** on warehouse graph bases; recipe in pack code | M11/M12 shipped |
+| **Product + web** | Product/analytic tiers **do not** scrape for facts another specialist owns | Orchestration doc |
+| **Peer routing** | Option 2: specialists **peer-aware**; delegate via **dispatch** (no god router) | Orchestration doc |
+| **`race` / 1985 BA example** | **Bio** owns `race` (research on miss); analytic specialist **discovers cohort** from warehouse, then asks bio | Orchestration doc |
+| **Research cost** | No technical cap — **metering** prices orchestrated work; client pays | `TODO.md` metering review |
+| **Table bounding** | Soft hints in briefing, not hard SQL ACLs — unpredictability is the point | Orchestration doc |
+
+### Still your call (bio slice `2410`)
+
+Parts **C / D** below — Q1–Q8, especially **HOF anchor** (1982 election vs 1999 ceremony). Tavily cost is **not** a reason to pick Q2=B (metering handles volume later).
+
+### Explicitly later (not morning scope)
+
+- `race` on bio ontology (after `2410` proves research path)
+- Analytic specialist + cohort orchestration
+- Metering quote design for multi-hop delivers
+- `docs/architecture/whys/manifest-derivatives.md`
+
+---
+
+## 60-second cheat sheet (bio signoff only)
 
 | Topic | Grok default pick | Your only hard call |
 |-------|-------------------|---------------------|
 | Derivative audit | Fielding anchors fixed (`da5b006`); manifest vs derive split is intentional | Tick Part A checklist or add a note |
 | Training wheels | **A** — batting wheels off; rest are guardrails | **B** only if you want pitching/fielding derive (`2400`) before sign-off |
 | Bio Q1 framework | **A** — `WarehouseResearchPlayerSpecialist` in `src/` | |
-| Bio Q2 trigger | **A** — `research_on_miss: true` on bio domain | **B** if Tavily cost worries you |
+| Bio Q2 trigger | **A** — `research_on_miss: true` on bio domain | Cost → metering later, not Q2=B |
 | Bio Q3 gate pig | **`hall_of_fame_year` only** | Skip nickname until normalization story exists |
 | Bio Q4 ontology | **A** — hand-add guinea pig(s) | |
 | Bio Q5 provenance | **A** — mixed warehouse + research in one deliver | |
@@ -40,8 +78,9 @@ BIO Q1–Q8: A,A,hall_of_fame_year,A,A,A,A,A  HOF anchor: election / induction
 | Kind | Mechanism | Provenance shape | Example attrs |
 |------|-----------|------------------|---------------|
 | **Manifest warehouse** | SQL / compose on Lahman sqlite | `computation.inline` + `parameters.lahman.playerID` | `career_hr`, `career_era`, `birth_date` |
-| **LLM derive-on-miss** | Python codegen + sandbox (no Tavily) | inline Python + optional `model` | `career_avg`, `ops` |
-| **Product specialist** | Cross-table join in pack code | inline + scope params | `roster`, `franchise_teams` |
+| **LLM derive-on-miss** | Python codegen + sandbox (no Tavily) | inline Python + optional `model` | `career_avg`, `ops` *(only these in gate today)* |
+| **Product specialist** | Cross-table join in pack code; **not** warehouse graph base | inline + scope params | `roster`, `franchise_teams` |
+| **Analytic / orchestration** | Warehouse cohort + peer dispatch (bio, batting) | computation on aggregate; shallow provenance | *not built* — e.g. `best_batting_group_by_race` |
 
 ### Live gate inventory (27 scenarios)
 
@@ -146,6 +185,20 @@ sqlite3 ~/mycelium-networks/baseball/warehouse/lahman.sqlite \
 ```
 
 Aaron has **no** `CollegePlaying` row — `college_attended` would be a pure research guinea pig if you pick it later.
+
+### A.4 — Planned LLM derive (slice `2400` — not in gate yet)
+
+You asked for baseball-meaningful derive guinea pigs post-reload; they were designed but **not implemented** at program sign-off (27/27).
+
+| Planned ID | Attr | Player | Domain | Discovery anchor (your sqlite) |
+|------------|------|--------|--------|--------------------------------|
+| `bb-derive-04` | `career_whip` | Nolan Ryan | pitching | ≈ 1.247 |
+| `bb-derive-05` | `k_per_9` | Nolan Ryan | pitching | ≈ 9.55 |
+| `bb-derive-06` | `career_innings_pitched` | Nolan Ryan | pitching | ≈ 5386.0 |
+| `bb-derive-07` | `fielding_percentage` | Hank Aaron | fielding | ≈ 0.982 |
+| `bb-derive-08` | `whip` | Nolan Ryan | pitching | synonym → `career_whip` |
+
+Claim **`2400`** when you want these; independent of bio **`2410`** unless Q7=B.
 
 ---
 
@@ -667,3 +720,5 @@ Derive path (`derive_on_miss`) is **parallel branch on batting/pitching/fielding
 3. Flip slice to **READY** in `prompts/cursor/next/2026-06-21-2410-baseball-bio-research-specialist.md`.
 4. Add `hall_of_fame_year: "1982"` or `"1999"` to anchor JSON per your election/induction pick.
 5. You tell Cursor to claim `2410` (or `2400` first if Q7 = B).
+
+**Already done from review session:** [`2026-06-21-peer-aware-specialists-analytic-orchestration.md`](2026-06-21-peer-aware-specialists-analytic-orchestration.md) + `TODO.md` (peer orchestration, metering review, manifest promotion). **`race`** follows after `2410` — not part of Part D.
