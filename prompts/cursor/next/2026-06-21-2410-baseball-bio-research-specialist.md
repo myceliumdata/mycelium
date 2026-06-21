@@ -1,14 +1,12 @@
 # Baseball bio specialist — warehouse + Tavily research hybrid
 
-> **DRAFT — do not claim** until Paul + Grok resolve open questions in [`docs/plans/conversations/2026-06-21-baseball-bio-research-specialist.md`](../../../docs/plans/conversations/2026-06-21-baseball-bio-research-specialist.md) § Open questions. Program sign-off done (2026-06-21). **Do not edit `TODO.md`.**
+> **READY** — Design locked [`docs/plans/conversations/2026-06-21-baseball-bio-research-specialist.md`](../../../docs/plans/conversations/2026-06-21-baseball-bio-research-specialist.md) (Paul sign-off 2026-06-21). May run **parallel** with `2400` (Paul Q7). **Do not edit `TODO.md`.**
 
 ## Objective
 
-Extend bio coverage so **manifest warehouse reads** stay the fast path, and **unaliased bio labels** fall through to **synchronous LLM + Tavily research** (CRM pattern) — not `derive_on_miss` / sqlite codegen.
+Extend bio coverage so **manifest warehouse reads** stay the fast path (including **HallOfFame** when aliased), and **unaliased bio labels** fall through to **synchronous LLM + Tavily research** (CRM pattern) — not `derive_on_miss`.
 
-Paul direction: follow-up bio questions need the web; Lahman `People` is necessary but not sufficient.
-
-Read: [`docs/plans/conversations/2026-06-21-baseball-bio-research-specialist.md`](../../../docs/plans/conversations/2026-06-21-baseball-bio-research-specialist.md), [`docs/architecture/whys/specialist-class-hierarchy.md`](../../../docs/architecture/whys/specialist-class-hierarchy.md), CRM research in `src/tools/research.py`.
+Read: design conversation (locked), [`docs/architecture/whys/specialist-class-hierarchy.md`](../../../docs/architecture/whys/specialist-class-hierarchy.md), CRM research in `src/tools/research.py`.
 
 ---
 
@@ -16,11 +14,11 @@ Read: [`docs/plans/conversations/2026-06-21-baseball-bio-research-specialist.md`
 
 ### Framework (`src/agents/specialists/`)
 
-Add **`WarehouseResearchPlayerSpecialist`** (name negotiable in `output.md` if clearer):
+Add **`WarehouseResearchPlayerSpecialist`**:
 
 - Extends `WarehousePlayerStatSpecialist`
-- After warehouse evaluate loop: for owned fields still missing (not found, not N/A from manifest), invoke **`run_field_research`** when domain manifest allows research (see manifest flag below)
-- Pack hook: `_research_enabled(manifest) -> bool` or manifest key `research_on_miss: true` on bio domain only in v1
+- After warehouse evaluate loop: for owned fields still missing, invoke **`run_field_research`** when `research_on_miss` on domain
+- **Paul Q1:** framework base class in `src/` — not pack-only `run()` override
 
 **Do not** enable `derive_on_miss` on bio.
 
@@ -32,23 +30,42 @@ Bio domain:
 "research_on_miss": true
 ```
 
-Document: mutually independent from `derive_on_miss`; bio uses research only.
+Add **warehouse alias** (Paul Q8 — Lahman wins over web):
+
+```json
+"hall_of_fame_year": {
+  "convention": "hof_election_year",
+  "table": "HallOfFame",
+  "filter": "inducted = 'Y'"
+}
+```
+
+Implement `hof_election_year` in pack `warehouse_resolve.py` (or shared convention module). Aaron anchor: **`1982`** (`HallOfFame.yearid`, election — not ceremony 1999). **No Tavily** for `hall_of_fame_year` once alias exists.
 
 ### Baseball pack
 
-- `BioSpecialist(BaseballWarehousePlayerHooks, WarehouseResearchPlayerSpecialist)` — thin subclass only if hooks suffice
+- `BioSpecialist(BaseballWarehousePlayerHooks, WarehouseResearchPlayerSpecialist)` — thin subclass
 - **Do not** duplicate research loop in `bio_specialist.py`
 
-### Guinea-pig attributes (live gate — discover anchors)
+### Ontology (`categories.json`)
 
-Pick **one** primary + optional synonym (M4b-style) from live research on Hank Aaron:
+Hand-add (Paul Q4):
 
-| Candidate label | Why | Anchor discovery |
-|-----------------|-----|------------------|
-| `hall_of_fame_year` | Canonical bio fact outside People | Web research → `"1999"` (Cooperstown induction) |
-| `primary_nickname` | Fan-facing bio follow-up | e.g. `"Hammer"` — verify via gate discovery, tolerate normalization |
+- `primary_nickname` → bio (research gate)
+- `hall_of_fame_year` → bio (warehouse alias)
 
-Cursor runs `./bin/gate-live baseball --discover` or manual step-2 on live root after implementation; **do not guess** anchors.
+**Follow-on:** review hand-add vs lazy ontology for self-creating network goal (not blocking).
+
+### Live gate guinea pigs
+
+| Attr | Gate role | Path |
+|------|-----------|------|
+| **`primary_nickname`** | **`bb-bio-research-01`** — proves research | Tavily on miss; discover anchor on Aaron (e.g. Hammer) — do not guess |
+| **`hall_of_fame_year`** | **`bb-bio-03`** or extend m2 — proves manifest HOF | Warehouse only; `equals: "1982"` |
+
+**Do not** use `hall_of_fame_year` for Tavily research gate — sqlite has the answer.
+
+**Deferred (Grok committed follow-on):** `bb-bio-research-02` nickname synonym / normalization tests.
 
 ---
 
@@ -58,12 +75,12 @@ Add to `tests/live/catalogs/baseball.yaml`:
 
 | ID | Phase | Notes |
 |----|-------|-------|
-| `bb-bio-research-01` | `bio_research` (new — add to `networks.yaml` phases) | Aaron + `hall_of_fame_year`; `skip_if_missing_env: OPENAI_API_KEY`, `TAVILY_API_KEY` |
-| `bb-bio-research-02` | `bio_research` | Optional synonym cache hit after 01 |
+| `bb-bio-research-01` | `bio_research` | Aaron + `primary_nickname`; `skip_if_missing_env: OPENAI_API_KEY`, `TAVILY_API_KEY` |
+| `bb-bio-03` | `m2` | Aaron + `hall_of_fame_year`; warehouse manifest; `equals: "1982"` |
 
-Update `tests/test_live_gate_runner_unit.py` minimum count + phases.
+Add `bio_research` phase to `tests/live/networks.yaml` if missing.
 
-Drift check in `gate_runner.py` for new anchor keys.
+Update `tests/test_live_gate_runner_unit.py` minimum count.
 
 ---
 
@@ -72,26 +89,24 @@ Drift check in `gate_runner.py` for new anchor keys.
 | Layer | Requirement |
 |-------|-------------|
 | Framework | Unit test: research invoked only when warehouse miss + `research_on_miss` |
-| Pack | Bio smoke: warehouse attrs unchanged (`birth_date`); mocked research returns value for unknown label |
-| Regression | Existing `test_baseball_bio_specialist.py` smokes green |
+| Pack | Bio smoke: `birth_date` unchanged; mocked research for `primary_nickname`; `hall_of_fame_year` manifest without Tavily |
+| Regression | `test_baseball_bio_specialist.py` green |
 | CRM | No regression — shared `run_field_research` |
 
 ---
 
 ## Docs
 
-- `examples/networks/baseball/README.md` — bio warehouse vs research paragraph
-- `docs/manual-checks/2026-06-19-baseball-specialist-hand-test.md` — research rows
-- `docs/architecture/whys/specialist-class-hierarchy.md` — add `WarehouseResearchPlayerSpecialist` to target tree
+- `examples/networks/baseball/README.md` — bio warehouse vs research; Lahman wins when table exists
+- `docs/architecture/whys/specialist-class-hierarchy.md` — add `WarehouseResearchPlayerSpecialist`
 
 ---
 
 ## Constraints
 
 - No `derive_on_miss` on bio
-- No team specialist research
 - `./bin/ci-local` must pass
-- Live gate scenarios `@pytest.mark.live_gate` only
+- Live gate `@pytest.mark.live_gate` only
 
 ---
 
@@ -100,12 +115,12 @@ Drift check in `gate_runner.py` for new anchor keys.
 Follow `prompts/cursor/WORKFLOW.md`. In `output.md` **For Grok + Paul**:
 
 - Hierarchy diagram update
-- Anchor discovery table
+- Anchor discovery table (`primary_nickname`, `hall_of_fame_year=1982`)
 - Final scenario count
-- Paul: run `./bin/gate-live baseball` with Tavily keys
+- Paul: `./bin/gate-live baseball` with Tavily keys
 
 Suggested commit message:
 
 ```
-feat(baseball): bio specialist warehouse + Tavily research on miss
+feat(baseball): bio warehouse + Tavily research on miss (framework tier)
 ```

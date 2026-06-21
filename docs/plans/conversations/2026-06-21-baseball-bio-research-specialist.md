@@ -1,8 +1,10 @@
 # Baseball bio specialist — warehouse + Tavily research (design conversation)
 
 **Date:** 2026-06-21  
-**Status:** Direction sketched — **open questions for Paul** before Cursor claims slice
+**Status:** **Design locked** (Paul sign-off, interactive review 2026-06-21)  
 **Builds on:** M1c bio warehouse reads, M14 `WarehousePlayerStatSpecialist`, CRM `run_field_research` + Tavily
+
+**Cursor slice:** `prompts/cursor/next/2026-06-21-2410-baseball-bio-research-specialist.md` — **READY** (may run **parallel** with `2400` per Paul Q7).
 
 ---
 
@@ -10,80 +12,68 @@
 
 `BioSpecialist` today is **warehouse-only** (`People` column / compose via manifest). That answers canonical Lahman bio attrs (`birth_date`, `height`, `bats`, …).
 
-**Follow-up bio questions** are outside Lahman:
+**Follow-up bio questions** are outside Lahman `People` or require joins to other tables:
 
-- Hall of Fame induction year / narrative
-- Nicknames, awards context, obituary color
-- “Where did he go to college?” (not in People)
-- Contemporary web-sourced facts
+- Nicknames, narrative color, `race` (later — [`peer-aware orchestration`](2026-06-21-peer-aware-specialists-analytic-orchestration.md))
+- Hall of Fame election year — **in Lahman `HallOfFame`** (manifest path, not Tavily)
+- Contemporary web-sourced facts with no sqlite row
 
-**Derive-on-miss is the wrong tool** — it generates Python against sqlite. Bio misses are **research** problems (Tavily + LLM), like CRM `email`.
+**Derive-on-miss is the wrong tool** — bio misses are **research** (Tavily + LLM), like CRM `email`.
 
 ---
 
-## Direction (Paul, June 2026)
+## Locked decisions (Paul, 2026-06-21)
 
-**Hybrid bio tier:**
+| # | Topic | Lock |
+|---|--------|------|
+| — | Derivative audit | Aligned — obvious derivatives are **manifest**; LLM derive is intentional miss-path only |
+| — | Training wheels | **Off** — M4 whitelist removal stands; remaining items are guardrails |
+| Q1 | Framework shape | **A** — `WarehouseResearchPlayerSpecialist` in **`src/`** (extends `WarehousePlayerStatSpecialist`). Paul: standard need → **framework base class**, not pack-only override |
+| Q2 | Research trigger | **A** — `research_on_miss: true` on bio domain |
+| Q3 | Research gate guinea pig | **`primary_nickname`** (Aaron) — proves Tavily path. **Not** `hall_of_fame_year` for research gate (see Q8). **Follow-on:** nickname normalization + synonym gate tests (Grok committed) |
+| Q4 | Ontology | **A** — hand-add gate attrs to `categories.json` / `attribute_map`. **Review later:** alignment with self-creating / lazy ontology growth (CRM pattern) — do not block v1 |
+| Q5 | Mixed provenance | **A** — warehouse + research attrs in one deliver |
+| Q6 | Latency | **A** — sync Tavily (CRM default); cost via metering |
+| Q7 | Slice ordering | **C** — **parallel** Cursor agents (`2410` bio + `2400` derive) |
+| Q8 | Warehouse vs research boundary | **Lahman wins** — if sqlite has the fact, **manifest/warehouse** answers it; research only for gaps. `hall_of_fame_year` → **manifest alias** from `HallOfFame.yearid` where `inducted='Y'` → **1982** (election) for Aaron |
+
+### `hall_of_fame_year` (Paul principle)
+
+Lahman `HallOfFame` has `yearid=1982` for Aaron — **report the database value**, not a ceremony year from the web. Implement as **warehouse manifest alias** in `2410` (or immediate follow-on in same slice). Live gate **warehouse regression** for HOF; **research gate** uses `primary_nickname` instead.
+
+---
+
+## Hybrid bio tier (implementation)
 
 ```text
-BioSpecialist
-├── Warehouse path (existing) — manifest aliases, fast, computation-centric provenance
-└── Research path on miss — run_field_research + Tavily when label ∉ warehouse manifest
+BioSpecialist(WarehouseResearchPlayerSpecialist)
+├── Warehouse path — manifest aliases (People + HallOfFame join for HOF year)
+└── Research path on miss — run_field_research + Tavily when label ∉ aliases
 ```
 
-**Not in v1:**
-
-- `derive_on_miss` on bio domain (LLM codegen against People)
-- Team bio / franchise narrative (separate product tier later)
+**Not in v1:** `derive_on_miss` on bio; team bio research.
 
 ---
 
-## Framework placement
-
-| Option | Verdict |
-|--------|---------|
-| A — `BioSpecialist` overrides `run()` with warehouse-then-research | Pack-only; duplicates CRM pattern |
-| B — `WarehouseResearchPlayerSpecialist` in `src/` | **Preferred** — warehouse first, research fallback hook |
-| C — Split `bio` / `bio_research` categories | Heavier ontology; defer unless routing fights |
-
-Align with [`specialist-class-hierarchy.md`](../../architecture/whys/specialist-class-hierarchy.md): promote pattern to framework; baseball pack stays thin.
-
----
-
-## Provenance split (locked)
+## Provenance (locked)
 
 | Path | `sources[]` | `computation` |
 |------|-------------|---------------|
-| Warehouse hit | Pack dataset source | Python inline / compose |
+| Warehouse hit | Pack dataset (`lahman`) | Python inline / compose / join |
 | Research hit | Tavily URLs | LLM research metadata (CRM pattern) |
 
-Do not mix Tavily URLs into warehouse computation-centric fields.
+---
+
+## Follow-on (not blocking `2410`)
+
+- `race` on bio + research (`peer-aware orchestration` doc)
+- Ontology generator vs hand-add — **review for self-creating network goal**
+- `bb-bio-research-02` synonym / nickname normalization gate
+- Metering for bio research volume
 
 ---
 
-## Gate / smoke strategy
+## Related
 
-- **Smoke:** mocked Tavily (CRM pattern); warehouse attrs unchanged
-- **Live gate:** new phase `bio_research` or extend `m2` with `skip_if_missing_env: TAVILY_API_KEY`
-- **Guinea pigs:** Aaron — `hall_of_fame_year` (anchor semantics: Lahman **1982** election vs web **1999** ceremony — see morning brief Q8) or `primary_nickname` (“Hammer” — pick one verifiable anchor from discovery)
-
----
-
-**Morning prep:** [`2026-06-21-baseball-morning-decision-brief.md`](2026-06-21-baseball-morning-decision-brief.md) — inventory, training-wheels checklist, Q1–Q8 with examples and answer sheet.
-
-**Follow-on:** [`2026-06-21-peer-aware-specialists-analytic-orchestration.md`](2026-06-21-peer-aware-specialists-analytic-orchestration.md) — bio owns `race`; product/analytic delegates via dispatch (not private Tavily).
-
-## Open questions (Paul + Grok — resolve before implement)
-
-1. **Framework shape** — `WarehouseResearchPlayerSpecialist` (warehouse then research in one `run()`) vs separate `bio_research` category vs CRM-style generated research specialist only for bio misses?
-2. **Research trigger** — Any unaliased bio label (`research_on_miss: true`) vs explicit allowlist in manifest/ontology vs “research only when client sends `research: true`” flag?
-3. **Guinea-pig gate attrs** — `hall_of_fame_year` (verifiable, boring) vs `primary_nickname` (fuzzy normalization) vs both? Who picks anchors after Tavily discovery?
-4. **Ontology** — New attrs need `categories.json` / routing entries before step-1 can request them — ship ontology generator pass or hand-add?
-5. **Provenance on mixed deliver** — Step-2 with `birth_date` (warehouse) + `hall_of_fame_year` (Tavily) in one query: OK to mix computation-centric + URL sources in one `results[]` row?
-6. **Latency / cost** — Always sync Tavily on miss (CRM default) or async/pending for bio follow-ups?
-7. **Ordering vs derive slice** — Bio research before `2400` multi-domain derive, or derive expansion first?
-8. **Boundary** — Facts that *could* be Lahman manifest aliases later (e.g. `hall_of_fame_year` from `Hall of Fame` table) — research-only by policy, or ingest path preferred?
-
-## Cursor slice (draft — do not claim until above resolved)
-
-`prompts/cursor/next/2026-06-21-2410-baseball-bio-research-specialist.md`
+- [`2026-06-21-baseball-morning-decision-brief.md`](2026-06-21-baseball-morning-decision-brief.md) — Part H signoff summary
+- [`2026-06-21-peer-aware-specialists-analytic-orchestration.md`](2026-06-21-peer-aware-specialists-analytic-orchestration.md)
