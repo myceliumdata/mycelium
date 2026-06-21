@@ -126,7 +126,7 @@ Future real x402 settlement may read `MYCELIUM_X402_FACILITATOR_URL` for facilit
 - **invoke_specialists** — each required specialist receives full `context`, `current_id`, and `target_fields` (owned attributes only).
 - **assemble_response** — unified `QueryResponse` from registry identity + specialist contributions.
 
-Generated specialists (`src/agents/specialists/*_specialist.py`, Agent Factory template) implement three scenarios: has data, **synchronous** field research on cache miss (when `OPENAI_API_KEY` + `TAVILY_API_KEY` are set), or pending / N/A. Research runs via `tools.research.run_field_research` and Tavily `web_search` (`src/tools/tavily.py`). See `docs/plans/seed-data-context-architecture.md`, `docs/plans/specialist-research-phase1.md`, and Cursor slices `2026-06-09-1100`–`1400`.
+Generated specialists (`src/agents/specialists/*_specialist.py`, Agent Factory template) implement three scenarios: has data, **synchronous** field research on cache miss (when `OPENAI_API_KEY` and the active web search key are set), or pending / N/A. Research runs via `tools.research.run_field_research` and pluggable `web_search` (`src/tools/web_search.py`; default provider **Tavily** via `SEARCH_PROVIDER=tavily`). `tools.tavily` remains a backward-compat re-export. See `docs/plans/seed-data-context-architecture.md`, `docs/plans/specialist-research-phase1.md`, and Cursor slices `2026-06-09-1100`–`1400`.
 
 Pre–registry ingest (`enrich`, `validator`, `person_prep`) and the SQLite `people` table were removed June 2026. See [`docs/legacy-ingest-and-storage-reference.md`](legacy-ingest-and-storage-reference.md).
 
@@ -450,7 +450,7 @@ The seed-data-context redesign is **implemented** (Cursor slices `2026-06-09-150
 
 See `docs/plans/seed-data-context-architecture.md` and the reprocess reviews (`prompts/cursor/done/2026-06-09-*-reprocess/`).
 
-**Phase 1 specialist research (implemented, sync):** On cache miss, specialists call `run_field_research` inline (LLM + Tavily `web_search`, bounded tool rounds). Low confidence → `na` + `reason`; API/timeout failure → `pending`. **Async dispatch** (non-blocking queries) is deferred — see `docs/plans/specialist-research-phase1.md`.
+**Phase 1 specialist research (implemented, sync):** On cache miss, specialists call `run_field_research` inline (LLM + `web_search` tool, bounded tool rounds). Backend is selected with `SEARCH_PROVIDER` (`tavily` default, or `exa` / `brave`). Low confidence → `na` + `reason`; API/timeout failure → `pending`. **Async dispatch** (non-blocking queries) is deferred — see `docs/plans/specialist-research-phase1.md`.
 
 **Research prompt context (implemented, June 2026):** `build_research_prompts()` applies **MVR-driven bind disambiguation** (`MvrPolicy.bind_fields` from `network.json`) and includes **peer specialist findings** from `_research_context()` (other categories for the same `entity_id`). Templates: `src/agents/factory/templates/research/`. Follow-on hardening: `docs/plans/research-robustness-backlog.md`.
 

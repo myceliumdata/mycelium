@@ -1,4 +1,4 @@
-"""Category-agnostic specialist field research (LLM + Tavily web_search).
+"""Category-agnostic specialist field research (LLM + web_search).
 
 Phase 1: synchronous execution from specialist nodes (slice 1200). The runner API
 is designed so async dispatch can call the same validation/persist path later.
@@ -19,7 +19,12 @@ from pydantic import BaseModel, Field
 
 from network.mvr import MvrPolicy, load_mvr
 from network.env_util import env_int
-from tools.tavily import create_tavily_search_tool, is_web_search_available
+from tools.web_search import (
+    UnknownSearchProviderError,
+    create_web_search_tool,
+    is_web_search_available,
+    search_provider,
+)
 from utils.llm_models import research_model
 
 _RESEARCH_TEMPLATE_DIR = (
@@ -75,7 +80,7 @@ def research_timeout_sec() -> int:
 
 
 def is_research_available() -> bool:
-    """True when both OpenAI and Tavily keys are configured."""
+    """True when both OpenAI and the active search provider key are configured."""
     return bool(os.getenv("OPENAI_API_KEY", "").strip()) and is_web_search_available()
 
 
@@ -354,8 +359,15 @@ def _run_llm_loop(
     """Tool-calling loop then structured ResearchProposal invoke."""
     from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 
-    tool = create_tavily_search_tool()
-    tools_by_name = {getattr(tool, "name", "web_search"): tool}
+    tool = create_web_search_tool()
+    tool_name = getattr(tool, "name", "web_search")
+    tools_by_name = {
+        tool_name: tool,
+        "web_search": tool,
+        "tavily_search": tool,
+        "exa_search_results_json": tool,
+        "brave_search": tool,
+    }
     llm_tools = llm.bind_tools([tool])
 
     messages: list[Any] = [
@@ -577,13 +589,20 @@ def run_field_research(
     llm: Any | None = None,
 ) -> ResearchRunResult:
     """
-    Execute the LLM + Tavily tool loop and persist outcomes to specialist storage.
+    Execute the LLM + web_search tool loop and persist outcomes to specialist storage.
 
     On missing API keys, returns errors without running LLM (caller should leave
     fields pending). On LLM/tool failure, marks target fields pending with last_error.
     """
     if not is_research_available():
-        msg = "research unavailable: OPENAI_API_KEY and/or TAVILY_API_KEY missing"
+        try:
+            provider_label = search_provider()
+        except UnknownSearchProviderError as exc:
+            provider_label = str(exc)
+        msg = (
+            "research unavailable: OPENAI_API_KEY and/or search API key missing "
+            f"(SEARCH_PROVIDER={provider_label})"
+        )
         allowed = _normalize_fields(target_fields)
         if allowed:
             _mark_pending(

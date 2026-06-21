@@ -493,6 +493,29 @@ def test_is_research_available_requires_both_keys(
 
 
 @pytest.mark.smoke
+def test_is_research_available_with_exa_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("SEARCH_PROVIDER", "exa")
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    monkeypatch.delenv("EXA_API_KEY", raising=False)
+    assert not is_research_available()
+    monkeypatch.setenv("EXA_API_KEY", "exa-test")
+    assert is_research_available()
+
+
+@pytest.mark.smoke
+def test_is_research_available_with_brave_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("SEARCH_PROVIDER", "brave")
+    monkeypatch.setenv("BRAVE_SEARCH_API_KEY", "brave-test")
+    assert is_research_available()
+
+
+@pytest.mark.smoke
 def test_run_field_research_unavailable_marks_pending(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

@@ -51,8 +51,20 @@ def _coerce_number(value: Any) -> float | None:
 
 
 def missing_env_vars(names: list[str]) -> list[str]:
+    """Return unset env vars; ``TAVILY_API_KEY`` means active ``SEARCH_PROVIDER`` key."""
+    from tools.web_search import UnknownSearchProviderError, active_search_api_key_env
+
     missing: list[str] = []
     for name in names:
+        if name == "TAVILY_API_KEY":
+            try:
+                active_key = active_search_api_key_env()
+            except UnknownSearchProviderError:
+                missing.append("SEARCH_PROVIDER")
+                continue
+            if not str(os.getenv(active_key, "")).strip():
+                missing.append(active_key)
+            continue
         if not str(os.getenv(name, "")).strip():
             missing.append(name)
     return missing

@@ -132,9 +132,11 @@ The default **`crm`** example keeps `metering.enabled: false` — unchanged demo
 
 ### Credentials vs network data
 
-**`.env` is framework-level** — set once per clone/machine (`cp .env.example .env`). API keys (`OPENAI_API_KEY`, `TAVILY_API_KEY`, LangSmith vars, etc.) are shared across all networks; they are **not** stored under `network_root` and are **not** part of `network register` / `network create`. Each network only owns its **data** (seed, categories, agents, DB, checkpoints). MCP: keep `cwd` on the framework repo; add `MYCELIUM_NETWORK_ROOT` or `MYCELIUM_NETWORK` per server — reuse the same API keys in each client `env` block. Detail: [docs/architecture.md](docs/architecture.md#framework-credentials-vs-network-data-june-2026).
+**`.env` is framework-level** — set once per clone/machine (`cp .env.example .env`). API keys (`OPENAI_API_KEY`, web search keys, LangSmith vars, etc.) are shared across all networks; they are **not** stored under `network_root` and are **not** part of `network register` / `network create`. Each network only owns its **data** (seed, categories, agents, DB, checkpoints). MCP: keep `cwd` on the framework repo; add `MYCELIUM_NETWORK_ROOT` or `MYCELIUM_NETWORK` per server — reuse the same API keys in each client `env` block. Detail: [docs/architecture.md](docs/architecture.md#framework-credentials-vs-network-data-june-2026).
 
-**Research latency (CLI and MCP):** With `OPENAI_API_KEY` and `TAVILY_API_KEY` set, the **first** query for a missing attribute (e.g. `email`) runs **synchronous** LLM + Tavily web search and may take tens of seconds. Results are persisted under `<network_root>/agents/<category>/` (gitignored). **Repeat queries** for the same person + attribute are fast — specialists read from cache and skip research unless retry flags apply.
+**Web search providers:** Specialist research uses `src/tools/web_search.py`. Set `SEARCH_PROVIDER` to `tavily` (default), `exa`, or `brave`, and the matching API key (`TAVILY_API_KEY`, `EXA_API_KEY`, or `BRAVE_SEARCH_API_KEY`). Unset `SEARCH_PROVIDER` keeps Tavily behavior.
+
+**Research latency (CLI and MCP):** With `OPENAI_API_KEY` and the active search provider key set, the **first** query for a missing attribute (e.g. `email`) runs **synchronous** LLM + web search and may take tens of seconds. Results are persisted under `<network_root>/agents/<category>/` (gitignored). **Repeat queries** for the same person + attribute are fast — specialists read from cache and skip research unless retry flags apply.
 
 **Research prompts:** Prompts use **MVR bind disambiguation** (`network.json` `bind_fields`) and **peer specialist context** (findings from other categories for the same entity). Inspect prompts in LangSmith under the research LLM span. Detail: [docs/README.md](docs/README.md#research-prompts-june-2026), [docs/plans/research-robustness-backlog.md](docs/plans/research-robustness-backlog.md).
 
@@ -377,7 +379,7 @@ flowchart TD
 | Supervisor | `src/agents/supervisor.py` | Registry resolution, classification, specialist planning |
 | Classification | `src/agents/classification/` | Attribute → category map |
 | Factory | `src/agents/factory/` | Jinja template → generated specialists |
-| Research | `src/tools/research.py`, `src/tools/tavily.py` | Sync LLM + web search, persist fields |
+| Research | `src/tools/research.py`, `src/tools/web_search.py` | Sync LLM + web search (`SEARCH_PROVIDER`), persist fields |
 | Graph | `src/graphs/core.py` | LangGraph; async checkpointer (Studio), sync path (MCP) |
 | MCP | `src/mycelium_mcp/server.py` | `describe_network`, `query_entity`, `pay_quote`, `health_check` |
 | Admin | `src/mycelium_admin/server.py` | `GET /health`, `/status`, `/capabilities`; `POST /query` |

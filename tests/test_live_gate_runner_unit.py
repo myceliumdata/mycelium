@@ -13,6 +13,7 @@ if str(LIVE_DIR) not in sys.path:
     sys.path.insert(0, str(LIVE_DIR))
 
 import gate_runner as gr  # noqa: E402
+import assertions as live_assertions  # noqa: E402
 from assertions import check_assertions  # noqa: E402
 
 
@@ -246,3 +247,15 @@ def test_crm_metering_quote_scenario_attrs_on_step1() -> None:
     assert spec.step1.get("requested_attributes") == ["email"]
     assert spec.step2 is None
     assert spec.assert_step1.get("outcome") == "quote_required"
+
+
+@pytest.mark.smoke
+def test_missing_env_tavily_alias_uses_active_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SEARCH_PROVIDER", "exa")
+    monkeypatch.delenv("EXA_API_KEY", raising=False)
+    monkeypatch.setenv("TAVILY_API_KEY", "tvly-test")
+    assert live_assertions.missing_env_vars(["TAVILY_API_KEY"]) == ["EXA_API_KEY"]
+    monkeypatch.setenv("EXA_API_KEY", "exa-test")
+    assert live_assertions.missing_env_vars(["TAVILY_API_KEY"]) == []

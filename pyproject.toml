@@ -25,6 +25,8 @@ dependencies = [
     "pyyaml>=6.0.0",
     "fastapi>=0.115.0",
     "uvicorn>=0.32.0",
+    "langchain-exa>=1.1.0",
+    "langchain-community>=0.4.2",
 ]
 
 [project.optional-dependencies]
