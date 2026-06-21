@@ -28,7 +28,7 @@
 |---|--------|------|
 | — | Derivative audit | Aligned — obvious derivatives are **manifest**; LLM derive is intentional miss-path only |
 | — | Training wheels | **Off** — M4 whitelist removal stands; remaining items are guardrails |
-| Q1 | Framework shape | **A** — `WarehouseResearchPlayerSpecialist` in **`src/`** (extends `WarehousePlayerStatSpecialist`). Paul: standard need → **framework base class**, not pack-only override |
+| Q1 | Framework shape | **A** — **`WarehouseResearchStatSpecialist`** in **`src/`** (extends `WarehousePlayerStatSpecialist`; adds `research_on_miss`). Paul: standard framework need — **not** pack-only override. **Not** `WarehouseResearchPlayerSpecialist` — “Player” is network nomenclature, not framework vocabulary |
 | Q2 | Research trigger | **A** — `research_on_miss: true` on bio domain |
 | Q3 | Research gate guinea pig | **`primary_nickname`** (Aaron) — proves Tavily path. **Not** `hall_of_fame_year` for research gate (see Q8). **Follow-on:** nickname normalization + synonym gate tests (Grok committed) |
 | Q4 | Ontology | **A** — hand-add gate attrs to `categories.json` / `attribute_map`. **Review later:** alignment with self-creating / lazy ontology growth (CRM pattern) — do not block v1 |
@@ -46,10 +46,19 @@ Lahman `HallOfFame` has `yearid=1982` for Aaron — **report the database value*
 ## Hybrid bio tier (implementation)
 
 ```text
-BioSpecialist(WarehouseResearchPlayerSpecialist)
+BioSpecialist(WarehouseResearchStatSpecialist)
 ├── Warehouse path — manifest aliases (People + HallOfFame join for HOF year)
 └── Research path on miss — run_field_research + Tavily when label ∉ aliases
 ```
+
+### Framework naming (Paul, Q1 correction)
+
+| Name | Verdict |
+|------|---------|
+| `WarehouseResearchPlayerSpecialist` | **Reject** — embeds baseball/network “player” in framework |
+| **`WarehouseResearchStatSpecialist`** | **Adopt** — warehouse stat + research on miss; grain/bridge still from parent + pack hooks |
+
+**Technical debt (not blocking `2410`):** M14 already ships `WarehousePlayerStatSpecialist` / `WarehouseTeamStatSpecialist` — same nomenclature issue. Track rename toward grain-agnostic framework names (e.g. entity-scoped stat base) in pack → framework extraction review (`TODO.md`).
 
 **Not in v1:** `derive_on_miss` on bio; team bio research.
 

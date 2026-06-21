@@ -50,7 +50,7 @@ Parts **C / D** below — Q1–Q8, especially **HOF anchor** (1982 election vs 1
 |-------|-------------------|---------------------|
 | Derivative audit | Fielding anchors fixed (`da5b006`); manifest vs derive split is intentional | Tick Part A checklist or add a note |
 | Training wheels | **A** — batting wheels off; rest are guardrails | **B** only if you want pitching/fielding derive (`2400`) before sign-off |
-| Bio Q1 framework | **A** — `WarehouseResearchPlayerSpecialist` in `src/` | |
+| Bio Q1 framework | **A** — `WarehouseResearchStatSpecialist` in `src/` | |
 | Bio Q2 trigger | **A** — `research_on_miss: true` on bio domain | Cost → metering later, not Q2=B |
 | Bio Q3 gate pig | **`hall_of_fame_year` only** | Skip nickname until normalization story exists |
 | Bio Q4 ontology | **A** — hand-add guinea pig(s) | |
@@ -270,7 +270,7 @@ Framework fix in `2400`: pass `domain=self.domain` into derive codegen (today de
 
 | Option | Behavior | Pros | Cons |
 |--------|----------|------|------|
-| **A — `WarehouseResearchPlayerSpecialist` in `src/`** | One `BioSpecialist` class: warehouse loop, then `run_field_research` for remaining misses | Matches M14 hierarchy; second network inherits | New framework tier to test |
+| **A — `WarehouseResearchStatSpecialist` in `src/`** | One `BioSpecialist` class: warehouse loop, then `run_field_research` for remaining misses | Matches M14 hierarchy; second network inherits | Not `…Player…` — network nomenclature stays in pack hooks |
 | **B — Pack-only: `BioSpecialist.run()` override** | Same flow, logic only in `bio_specialist.py` | Fastest slice | Duplicates CRM factory template; violates Paul lock |
 | **C — Split categories `bio` + `bio_web`** | Warehouse attrs → `bio_specialist`; web attrs → generated research specialist | Clean separation | Two agents, routing/ontology split; awkward combined queries |
 
@@ -301,13 +301,13 @@ class BioSpecialist(BaseballWarehousePlayerHooks, WarehousePlayerStatSpecialist)
 **After option A:**
 
 ```python
-class BioSpecialist(BaseballWarehousePlayerHooks, WarehouseResearchPlayerSpecialist):
+class BioSpecialist(BaseballWarehousePlayerHooks, WarehouseResearchStatSpecialist):
     category = "bio"
     domain = "bio"
     agent_name = "bio_specialist"
 ```
 
-`WarehouseResearchPlayerSpecialist.run()` ≈ warehouse loop (unchanged for `birth_date`) → for each owned field still empty, call `run_field_research` when `research_on_miss` is set on bio domain.
+`WarehouseResearchStatSpecialist.run()` ≈ warehouse loop (unchanged for `birth_date`) → for each owned field still empty, call `run_field_research` when `research_on_miss` is set on bio domain.
 
 **After option C (split):** step-1 fans out to `bio_specialist` + generated `bio_web_specialist`; assembler merges — same as `debut_team` + `career_hr` + `birth_date` in `test_baseball_multi_attr_deliver.py`, but with an extra research specialist in the graph.
 

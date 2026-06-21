@@ -14,7 +14,7 @@ Read: design conversation (locked), [`docs/architecture/whys/specialist-class-hi
 
 ### Framework (`src/agents/specialists/`)
 
-Add **`WarehouseResearchPlayerSpecialist`**:
+Add **`WarehouseResearchStatSpecialist`** (not `WarehouseResearchPlayerSpecialist` — “Player” is network nomenclature):
 
 - Extends `WarehousePlayerStatSpecialist`
 - After warehouse evaluate loop: for owned fields still missing, invoke **`run_field_research`** when `research_on_miss` on domain
@@ -44,7 +44,7 @@ Implement `hof_election_year` in pack `warehouse_resolve.py` (or shared conventi
 
 ### Baseball pack
 
-- `BioSpecialist(BaseballWarehousePlayerHooks, WarehouseResearchPlayerSpecialist)` — thin subclass
+- `BioSpecialist(BaseballWarehousePlayerHooks, WarehouseResearchStatSpecialist)` — thin subclass
 - **Do not** duplicate research loop in `bio_specialist.py`
 
 ### Ontology (`categories.json`)
@@ -98,7 +98,7 @@ Update `tests/test_live_gate_runner_unit.py` minimum count.
 ## Docs
 
 - `examples/networks/baseball/README.md` — bio warehouse vs research; Lahman wins when table exists
-- `docs/architecture/whys/specialist-class-hierarchy.md` — add `WarehouseResearchPlayerSpecialist`
+- `docs/architecture/whys/specialist-class-hierarchy.md` — add `WarehouseResearchStatSpecialist`
 
 ---
 

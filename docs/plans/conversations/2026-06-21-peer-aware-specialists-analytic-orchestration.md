@@ -171,7 +171,7 @@ Second query same players: bio cache hits → faster, cheaper deliver.
 
 | Prerequisite | Notes |
 |--------------|-------|
-| Bio research hybrid (`2410`) | `research_on_miss`, `WarehouseResearchPlayerSpecialist`; add `race` after bio path proven |
+| Bio research hybrid (`2410`) | `research_on_miss`, `WarehouseResearchStatSpecialist`; add `race` after bio path proven |
 | Metering review | Before live analytic guinea pig with large cohorts |
 | `ProductTeamSpecialist` framework tier | Optional parallel — roster/franchise + orchestration hooks |
 | Manifest derivative promotion | Separate track — `career_avg`/`ops` promotion vs analytic tier |
