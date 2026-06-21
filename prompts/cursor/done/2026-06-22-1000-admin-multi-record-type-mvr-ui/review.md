@@ -1,6 +1,6 @@
 # Review — Admin UI multi-record-type MVR bind fields
 
-**Verdict: Approved + polish nits**
+**Verdict: Approved** (polish nits fixed in follow-up `ad4a6d3`+)
 
 **Slice:** `2026-06-22-1000-admin-multi-record-type-mvr-ui`  
 **Reviewer:** Grok  
@@ -106,12 +106,12 @@ Framework infers record type from lookup key shape (`infer_record_type_from_look
 
 ---
 
-## Nits (non-blocking)
+## Nits (resolved)
 
-| # | Nit | Backlog |
-|---|-----|---------|
-| 1 | Wire `cd admin-ui && npm test` into `./bin/ci-local` so vitest regressions run on every CI pass | Slice `output.md` follow-up; optional `ci-local` enhancement |
-| 2 | Record-type `<option>` labels could use `bindFieldLabel(recordType)` for display while keeping value as key | MVR polish backlog if desired |
+| # | Nit | Fix |
+|---|-----|-----|
+| 1 | Wire `npm test` into `./bin/ci-local` and `.github/workflows/ci.yml` | Done — vitest runs before admin-ui build |
+| 2 | Humanize record-type `<option>` labels | Done — `bindFieldLabel(recordType)` in `App.tsx` |
 
 ---
 

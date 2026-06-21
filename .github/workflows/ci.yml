@@ -32,7 +32,7 @@ jobs:
           node-version: "22"
 
       - name: Build admin UI
-        run: cd admin-ui && npm ci && npm run build
+        run: cd admin-ui && npm ci && npm test && npm run build
 
       - name: Ruff
         run: uv run ruff check src tests bin/

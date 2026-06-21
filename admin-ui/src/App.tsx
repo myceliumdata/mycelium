@@ -10,6 +10,7 @@ import EntityDrilldown from "./EntityDrilldown";
 import { networkLabel } from "./format";
 import ResolveForm from "./ResolveForm";
 import {
+  bindFieldLabel,
   buildLookupPayload,
   defaultRecordTypeFromPolicy,
   emptyLookupValues,
@@ -554,7 +555,7 @@ export default function App() {
       >
         {recordTypes.map((recordType) => (
           <option key={recordType} value={recordType}>
-            {recordType}
+            {bindFieldLabel(recordType)}
           </option>
         ))}
       </select>
