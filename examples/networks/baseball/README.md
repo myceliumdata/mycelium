@@ -1,6 +1,8 @@
 # Baseball example
 
-> **Program complete (June 2026)** — Live gate **27/27**; cold bootstrap **~3.5 min** on full Lahman post-`2280`. Sign-off: [`docs/manual-checks/2026-06-21-baseball-program-post-program-gate.md`](../../../docs/manual-checks/2026-06-21-baseball-program-post-program-gate.md). Program map: [`docs/plans/baseball-example-program.md`](../../../docs/plans/baseball-example-program.md).
+> **Program complete (June 2026)** — Live gate **34/34**; cold bootstrap **~3.5 min** on full Lahman post-`2280`. Sign-off: [`docs/manual-checks/2026-06-21-baseball-program-post-program-gate.md`](../../../docs/manual-checks/2026-06-21-baseball-program-post-program-gate.md). Program map: [`docs/plans/baseball-example-program.md`](../../../docs/plans/baseball-example-program.md).
+
+**Operator guides:** [`docs/examples/baseball/`](../../../docs/examples/baseball/getting-started.md) — getting started + feature exploration walkthroughs.
 
 Lahman second-network example: **player** + **team** record types, warehouse specialists, and LLM derive on manifest miss.
 

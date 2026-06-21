@@ -1,6 +1,6 @@
 # Live gate program — opt-in regression (June 2026)
 
-**Status:** ✅ **Passed** — Baseball program sign-off **2026-06-21** (`27/27`); afternoon sweep **2026-06-20** (all four networks, 32 scenarios).
+**Status:** ✅ **Passed** — Baseball v1 extension **2026-06-21** (`34/34`); afternoon sweep **2026-06-20** (all four networks, 32 scenarios).
 **Design:** [`docs/plans/conversations/2026-06-20-live-gate-program.md`](../plans/conversations/2026-06-20-live-gate-program.md)
 
 Unified CLI for deployed example networks. Uses real roots under `~/mycelium-networks/<network>` and framework `.env`. **Never run from `ci-local`.**
@@ -81,7 +81,7 @@ MYCELIUM_INTENT_NORMALIZATION_MODEL=gpt-4o-mini   # M4b synonym dedup
 ./bin/refresh-example-network crm --yes
 ```
 
-Research phase needs `OPENAI_API_KEY` and `TAVILY_API_KEY`.
+Research phase needs `OPENAI_API_KEY` and an active search provider (`SEARCH_PROVIDER` + matching key).
 
 ### CRM metering
 
@@ -89,11 +89,11 @@ Research phase needs `OPENAI_API_KEY` and `TAVILY_API_KEY`.
 ./bin/refresh-example-network crm-metering --yes
 ```
 
-Metering phase needs `OPENAI_API_KEY` and `TAVILY_API_KEY` (email research on deliver).
+Metering phase needs `OPENAI_API_KEY` and an active search provider (email research on deliver).
 
 ### Empty CRM
 
-Growth scenarios create the first entity from an empty registry. Auto-refresh wipes the root before each `./bin/gate-live empty-crm` run (no manual refresh required unless you pass `--no-refresh`).
+Growth scenarios create the first entity from an empty registry. Auto-refresh wipes the root before each `./bin/gate-live empty-crm` run (no manual refresh required unless you pass `--no-refresh`). Growth with researched attrs needs `OPENAI_API_KEY` + search provider key.
 
 ---
 
@@ -102,9 +102,9 @@ Growth scenarios create the first entity from an empty registry. Auto-refresh wi
 | Phase | Keys required |
 |-------|----------------|
 | baseball `derive` | `OPENAI_API_KEY`, `MYCELIUM_COMPUTATION_CODEGEN_MODEL` (+ intent model for M4b dedup) |
-| baseball `bio_research` | `OPENAI_API_KEY`, `TAVILY_API_KEY` |
-| crm `research` | `OPENAI_API_KEY`, `TAVILY_API_KEY` |
-| crm-metering `metering` | `OPENAI_API_KEY`, `TAVILY_API_KEY` |
+| baseball `bio_research` | `OPENAI_API_KEY`, `SEARCH_PROVIDER` + active search key (`TAVILY_API_KEY` / `EXA_API_KEY` / `BRAVE_SEARCH_API_KEY`) |
+| crm `research` | `OPENAI_API_KEY`, `SEARCH_PROVIDER` + active search key |
+| crm-metering `metering` | `OPENAI_API_KEY`, `SEARCH_PROVIDER` + active search key |
 | empty-crm `growth` | `OPENAI_API_KEY`, `TAVILY_API_KEY` (when email requested on step 1) |
 
 Scenarios with missing keys are **skipped** (not failed).
@@ -122,7 +122,7 @@ Scenarios with missing keys are **skipped** (not failed).
 
 **Afternoon sweep 2026-06-20:** 32/32 pass (Paul). Notable fixes in tree before sweep: warm-cache intent inference removed (`bb-derive-02` `ops`), CLI step-2 network hints, CRM auto-refresh, crm-metering catalog shape.
 
-**Baseball program sign-off 2026-06-21:** **27/27** on optimized Lahman root (`~/mycelium-networks/baseball`). Anchor fix `da5b006` (Fielding sums for `bb-field-01`). Post-program gate: [`2026-06-21-baseball-program-post-program-gate.md`](2026-06-21-baseball-program-post-program-gate.md).
+**Baseball v1 extension 2026-06-21:** **34/34** on optimized Lahman root (`~/mycelium-networks/baseball`). Includes `2400` multi-domain derive + `2410` bio research. Paul validated all search providers (Tavily, Exa, Brave). Post-program gate: [`2026-06-21-baseball-program-post-program-gate.md`](2026-06-21-baseball-program-post-program-gate.md). Operator walkthroughs: [`docs/examples/baseball/`](../examples/baseball/getting-started.md).
 
 ---
 

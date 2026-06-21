@@ -2,7 +2,7 @@
 
 **Download the framework** (this repo), then **run named networks** at paths you choose. Each **network** is an isolated data namespace (`network.json`, per-record-type entity stores under `entities/`, optional bootstrap `seed.json`, ontology, specialist storage, checkpoints). Bootstrap on refresh/create is driven by **`network.json` → `bootstrap`** (`module` + handler class name). The **supervisor** and specialist agents operate inside one network at a time.
 
-**New contributors:** [`docs/onboarding.md`](docs/onboarding.md) — terminology, read order, and repo layout.
+**New contributors:** [`docs/onboarding.md`](docs/onboarding.md) — terminology, read order, and repo layout. **Example walkthroughs:** [`docs/examples/`](docs/examples/README.md) — shared setup, per-network getting started, feature exploration (CLI + MCP).
 
 A fresh clone has **no live network** until you bootstrap. Run **`./bin/refresh-example-network crm`** (copies the committed CRM example to `~/mycelium-networks/crm` and registers it as default). Register named networks in **`~/.config/mycelium/networks.json`** (override with **`MYCELIUM_NETWORKS_CONFIG`**) so you can use **`--network <name>`** without repeating paths. Pre-networks snapshot: git tag **`prototype`**.
 

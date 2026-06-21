@@ -1,5 +1,7 @@
 # CRM example network
 
+**Operator guides:** [`docs/examples/crm/`](../../../docs/examples/crm/getting-started.md)
+
 Committed **reference network** for the Mycelium framework. Refresh it to a path you own, register it, and query.
 
 This example ships **`seed.json`** (bootstrap fixture only — imported into `entities.json` on refresh via `network.bootstrap`), **`network.json`** (declares explicit bootstrap handler: `"module": "network.bootstrap.handlers.default_seed"`, `"handler": "DefaultSeedHandler"`), **`guide.md`**, and an optional reference **`specialists/contact_specialist.py`** (plus this README and maintainer `prepare_seed.py`). Runtime artifacts — `entities.json`, `categories.json`, `agent_registry.json`, `agents/`, additional `specialists/*.py`, DB, checkpoints — are created under your `network_root` on refresh or first query; **do not commit** those files into `examples/networks/crm/`. `refresh-example-network` copies seed, network metadata, guide, and `bootstrap_handlers/` when present; it does not copy generated runtime `specialists/`.

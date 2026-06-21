@@ -1,10 +1,12 @@
 # Manual checks — Baseball example program post-program gate
 
-**Status:** ✅ **CLEAR** (2026-06-21) — Paul program sign-off; live gate **27/27** on optimized Lahman root
+**Status:** ✅ **CLEAR** — Paul sign-off **2026-06-21** (program); **v1 extension 2026-06-21** (34/34 live gate, all search providers)
 
-**Context:** Baseball example program M1–M14 + bootstrap perf (`2280`) + polish capstone (`2350`). Framework warehouse stat hierarchy shipped; full 27-table warehouse ingest; live gate catalog at **27** scenarios.
+**Context:** Baseball example program M1–M14 + bootstrap perf (`2280`) + polish capstone (`2350`). Follow-on slices **`2400`** (multi-domain derive) and **`2410`** (bio research) shipped same program window. Live gate catalog: **34** scenarios.
 
-**Prereqs:** Framework repo; `uv sync`; live root `~/mycelium-networks/baseball` refreshed with current `main`; `.env` keys for derive phase.
+**Prereqs:** Framework repo; `uv sync`; live root `~/mycelium-networks/baseball`; `.env` keys per phase (derive, bio research).
+
+**Exploration docs:** [`docs/examples/baseball/`](../examples/baseball/getting-started.md)
 
 ---
 
@@ -13,9 +15,11 @@
 - **Player + team** record types on generic framework (debut bind, MVR, `bootstrap_only`)
 - **Warehouse factory** — manifest domains (batting, pitching, bio, fielding, team_season), computation-centric provenance
 - **Product specialists** — roster (scope-aware cache), franchise
-- **Derive-on-miss** — batting LLM codegen + sandbox (`career_avg`, `ops`, M4b intent cache)
-- **Framework middle tier** — `WarehousePlayerStatSpecialist` / `WarehouseTeamStatSpecialist`; thin baseball pack subclasses
-- **Live gate** — `./bin/gate-live baseball` on real Lahman (not CI)
+- **Derive-on-miss** — batting, pitching, fielding LLM codegen + sandbox; M4b intent cache
+- **Bio research** — `research_on_miss` + `WarehouseResearchStatSpecialist` (`primary_nickname`)
+- **Pluggable web search** — `SEARCH_PROVIDER` tavily | exa | brave (Paul validated all providers on live gates)
+- **Framework middle tier** — `WarehousePlayerStatSpecialist` / `WarehouseTeamStatSpecialist` / `WarehouseResearchStatSpecialist`
+- **Live gate** — `./bin/gate-live baseball` on real Lahman (not CI); unified auto-refresh
 
 ---
 
@@ -26,7 +30,7 @@ cd /path/to/mycelium
 ./bin/ci-local
 ```
 
-**Pass:** smoke green (648+ at sign-off).
+**Pass:** smoke green (669+ at v1 extension).
 
 ---
 
@@ -46,9 +50,16 @@ time ./bin/refresh-example-network baseball --yes --no-default
 ./bin/gate-live baseball
 ```
 
-**Pass:** **27/27** scenarios (Paul, 2026-06-21). Derive phase needs `OPENAI_API_KEY`, `MYCELIUM_COMPUTATION_CODEGEN_MODEL`, `MYCELIUM_INTENT_NORMALIZATION_MODEL`.
+**Pass (Paul, 2026-06-21):** **34/34** scenarios on optimized Lahman root.
 
-**Anchor fix at sign-off:** `bb-field-01` — `fielder_career_games` / `fielder_career_putouts` corrected to Lahman **Fielding** sums (3020 / 7436), not Batting `G` (3298). Commit `da5b006`.
+| Phase | Keys |
+|-------|------|
+| `derive` | `OPENAI_API_KEY`, `MYCELIUM_COMPUTATION_CODEGEN_MODEL`, `MYCELIUM_INTENT_NORMALIZATION_MODEL` |
+| `bio_research` | `OPENAI_API_KEY`, active search provider key (`SEARCH_PROVIDER` + `TAVILY_API_KEY` / `EXA_API_KEY` / `BRAVE_SEARCH_API_KEY`) |
+
+Paul re-validated **all four example networks** with Tavily, Exa, and Brave search providers (2026-06-21).
+
+**Anchor fix at initial sign-off:** `bb-field-01` — Fielding sums (commit `da5b006`).
 
 ---
 
@@ -62,14 +73,14 @@ time ./bin/refresh-example-network baseball --yes --no-default
 
 ---
 
-## Deferred (not program blockers)
+## Deferred (not v1 blockers)
 
 | Item | Notes |
 |------|--------|
-| Multi-domain derive (pitching/fielding `derive_on_miss`) | Queued: `prompts/cursor/next/2026-06-21-2400-baseball-multi-domain-derive-live-gate.md` |
-| Bio + Tavily research hybrid | Queued: `prompts/cursor/next/2026-06-21-2410-baseball-bio-research-specialist.md` |
 | `bin/smoke-baseball-e2e --full` | Timing-scale Lahman smoke; live gate covers real root |
-| Website / public demo | [`TODO.md`](../../TODO.md) — queue in `mycelium-website` |
+| Website / public demo | [`TODO.md`](../../TODO.md) — `mycelium-website` |
+| Peer-aware analytic orchestration | Design locked; v1.1 |
+| `bb-bio-research-02` synonym gate | Follow-on |
 
 ---
 
@@ -78,4 +89,4 @@ time ./bin/refresh-example-network baseball --yes --no-default
 - Program design: [`docs/plans/baseball-example-program.md`](../plans/baseball-example-program.md)
 - Live gate ops: [`2026-06-20-live-gate-program.md`](2026-06-20-live-gate-program.md)
 - Specialist hierarchy: [`docs/architecture/whys/specialist-class-hierarchy.md`](../architecture/whys/specialist-class-hierarchy.md)
-- Cursor slices: `prompts/cursor/done/2026-06-20-*` (M9–M14, 2280, 2350)
+- Cursor slices: `prompts/cursor/done/2026-06-20-*`, `2026-06-21-2400`, `2026-06-21-2410`, `2026-06-21-2500`, `2026-06-21-2510`

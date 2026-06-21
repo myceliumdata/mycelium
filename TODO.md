@@ -12,9 +12,7 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 - [x] **Review derivative stats under test** — Paul sign-off 2026-06-21: obvious derivatives manifest; LLM derive intentional on batting (+ `2400` queued). — Audit everything the baseball program gates today: manifest recipes vs LLM derive vs product specialists. Sources: [`tests/live/catalogs/baseball.yaml`](tests/live/catalogs/baseball.yaml), anchors [`tests/live/anchors/baseball_aaron_lahman_v2025.json`](tests/live/anchors/baseball_aaron_lahman_v2025.json), [`docs/manual-checks/2026-06-19-baseball-specialist-hand-test.md`](docs/manual-checks/2026-06-19-baseball-specialist-hand-test.md). Confirm each stat is the right *kind* of derivative (warehouse convention, derive-on-miss, cross-table product) and anchors match the intended table/convention (e.g. Fielding vs Batting `G`). Outcome: short table in conversation or hand-test doc; fix anchors/catalog before expanding derive domains.
 - [x] **Confirm training wheels off for derivative data** — Paul sign-off 2026-06-21: M4 whitelist off; guardrails only. — M4 removed `derive_candidates` whitelist; batting has `derive_on_miss: true`. Verify no remaining caps: domain flags (pitching/fielding still off), semantic-review bypass env, sandbox loosening, intent-map shortcuts, gate auto-refresh masking stale derive cache (unless `--no-refresh`). Reference: [`docs/plans/conversations/2026-06-19-baseball-m4-free-form-derive.md`](docs/plans/conversations/2026-06-19-baseball-m4-free-form-derive.md). Paul sign-off that “any manifest miss → derive” is production policy on enabled domains.
-- [ ] **Baseball bio specialist — implement (`2410` READY)** — Design locked [`2026-06-21-baseball-bio-research-specialist.md`](docs/plans/conversations/2026-06-21-baseball-bio-research-specialist.md): framework `WarehouseResearchStatSpecialist`, `research_on_miss`, HOF manifest **1982**, research gate `primary_nickname`. Parallel with `2400` OK. **Follow-on:** nickname normalization gate tests; ontology hand-add vs self-creating network review.
-- [ ] **Baseball multi-domain derive** — Cursor: `prompts/cursor/next/2026-06-21-2400-baseball-multi-domain-derive-live-gate.md` (pitching/fielding `derive_on_miss` + gate). After bio or parallel per priority.
-- [ ] **Website update — baseball program shipped** — Program sign-off **2026-06-21** (gate 27/27, bootstrap ~3.5 min). Update [myceliumdata.org](https://myceliumdata.org): second example network, warehouse factory / specialist hierarchy, query walkthrough. Queue in **`../mycelium-website/prompts/cursor/next/`**; Paul deploys.
+- [ ] **Website update — baseball program shipped** — Program sign-off **2026-06-21** (gate **34/34**, bootstrap ~3.5 min). Update [myceliumdata.org](https://myceliumdata.org): second example network, warehouse factory / specialist hierarchy, query walkthroughs from [`docs/examples/`](docs/examples/README.md). Queue in **`../mycelium-website/prompts/cursor/next/`**; Paul deploys.
 - [ ] **Review architecture doc + whys** — [`docs/architecture.md`](docs/architecture.md) and [`docs/architecture/whys/`](docs/architecture/whys/README.md).
 - [ ] **Baseball pack → framework extraction review** — Audit remaining pack code (`warehouse_resolve`, `derive_resolve`, `product_common`, bootstrap handlers) for promotion into `src/`. M14 started hierarchy; finish resolver protocols + `ProductTeamSpecialist`. **Rename review:** M14 `WarehousePlayerStatSpecialist` / `WarehouseTeamStatSpecialist` use network-flavored “Player”/“Team” — consider grain-agnostic framework names (Paul Q1, 2026-06-21); new tier is `WarehouseResearchStatSpecialist`.
 - [ ] **Specialist hierarchy — next tiers** — `ProductTeamSpecialist` (roster/franchise + peer orchestration hooks); `ResearchSpecialistAgent` alignment with factory CRM template; onboarding walkthrough. Peer model: [`2026-06-21-peer-aware-specialists-analytic-orchestration.md`](docs/plans/conversations/2026-06-21-peer-aware-specialists-analytic-orchestration.md).
@@ -22,7 +20,9 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 ### Shipped (2026-06-21 — baseball program sign-off)
 
-- [x] **`baseball` example program** — M1–M14 + `2280` bootstrap perf + `2350` polish; live gate **27/27**; cold bootstrap **~3.5 min** (Test 10). Post-program gate: [`docs/manual-checks/2026-06-21-baseball-program-post-program-gate.md`](docs/manual-checks/2026-06-21-baseball-program-post-program-gate.md). Plan: [`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md).
+- [x] **`baseball` example program** — M1–M14 + `2280` bootstrap perf + `2350` polish + **`2400`** multi-domain derive + **`2410`** bio research; live gate **34/34**; cold bootstrap **~3.5 min** (Test 10). Post-program gate: [`docs/manual-checks/2026-06-21-baseball-program-post-program-gate.md`](docs/manual-checks/2026-06-21-baseball-program-post-program-gate.md). Plan: [`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md).
+- [x] **Baseball multi-domain derive (`2400`)** — Pitching + fielding `derive_on_miss`; live gate scenarios `bb-derive-04`–`08`. Slice `2026-06-21-2400-baseball-multi-domain-derive-live-gate`.
+- [x] **Baseball bio research specialist (`2410`)** — `WarehouseResearchStatSpecialist`, `research_on_miss`, gate `primary_nickname`. Design: [`2026-06-21-baseball-bio-research-specialist.md`](docs/plans/conversations/2026-06-21-baseball-bio-research-specialist.md). Slice `2026-06-21-2410-baseball-bio-research-specialist`.
 - [x] **Lahman bootstrap demo timing** — Post-`2280`: **214 s** vs pre-optimization **1,751 s** (~8.2×). [`docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md`](docs/manual-checks/2026-06-17-storage-evolution-timing-gates.md) Test 10.
 - [x] **Warehouse stat framework (M14)** — `WarehousePlayerStatSpecialist` / `WarehouseTeamStatSpecialist`; thin baseball pack subclasses.
 - [x] **Live gate fielding anchor fix** — `da5b006` (Fielding sums vs Batting `G`).
@@ -57,7 +57,7 @@ Open tasks and roadmap (**Grok + Paul only** — Cursor reads for context, does 
 
 External contributors should not be forced into the Grok + Cursor handoff. Open decisions:
 
-- [ ] **Contributor walkthroughs** — End-to-end examples for new contributors: curated query list (CLI, MCP/chat) with **expected response shape** and **which framework or project feature each query demonstrates** (two-step delivery, record-type routing, warehouse manifest, derive, provenance, multi-specialist merge, etc.). Host in `docs/onboarding.md` or a dedicated `docs/contributor-walkthrough.md`; cross-link from `examples/networks/README.md`.
+- [x] **Contributor walkthroughs** — Shared setup + per-network getting started + feature **exploration walkthroughs** (CLI, MCP, expected output, learn-more links). Hub: [`docs/examples/README.md`](docs/examples/README.md); pattern: [`docs/examples/exploration-walkthroughs.md`](docs/examples/exploration-walkthroughs.md). Cross-linked from [`examples/networks/README.md`](examples/networks/README.md) and [`docs/onboarding.md`](docs/onboarding.md).
 - [ ] **CONTRIBUTING.md** — Ignore `prompts/cursor/`; normal PRs; `./bin/ci-local` sufficient.
 - [ ] **Soften always-on Cursor rule** — `alwaysApply: false` on `04-cursor-workflow.mdc`, or move maintainer rules out of public tree.
 - [ ] **Gitignore local Cursor config** — `.cursor/permissions.json` at minimum.
@@ -78,7 +78,7 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 
 - [ ] **Public baseball example (feedback loop)** — Ship a **public** Lahman demo (website or standalone) so outsiders can try queries and give feedback. Open design: embedded chat vs MCP-only, hosted network root vs read-only snapshot, rate limits, cost model. Depends on bootstrap perf (`2280`) and program slices M10–M13 for credible coverage. May overlap website update above — coordinate narrative. Track alongside [`docs/plans/baseball-example-program.md`](docs/plans/baseball-example-program.md).
-- [ ] **Example network READMEs — remaining gaps** — Index shipped ([`examples/networks/README.md`](examples/networks/README.md)). **Still thin:** [`empty-crm/README.md`](examples/networks/empty-crm/README.md) vs CRM bar; thicken as features land. Any new demo (derivative token-efficiency USP) ships with a **solid README** from day one.
+- [ ] **Example network READMEs — remaining gaps** — Operator query guides live in [`docs/examples/`](docs/examples/README.md); pack READMEs under `examples/networks/<name>/` cover maintainer layout. **Still thin:** [`empty-crm/README.md`](examples/networks/empty-crm/README.md) vs CRM bar; thicken as features land. Any new demo (derivative token-efficiency USP) ships with **getting started + explore walkthroughs** from day one.
 
 ---
 
@@ -164,4 +164,4 @@ External contributors should not be forced into the Grok + Cursor handoff. Open 
 
 ---
 
-Last updated: 2026-06-21 (peer-aware orchestration lock; metering review; manifest promotion)
+Last updated: 2026-06-21 (example walkthrough docs; baseball v1 extension 34/34)

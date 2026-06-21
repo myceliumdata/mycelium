@@ -31,11 +31,12 @@ Removed (do not revive): `agents.seed`, `core_data`, unwired `enrich`/`validator
 
 You are here (step 1). Then:
 
-1. [`README.md`](../README.md) — quick start commands, CLI, examples (`crm`, `empty-crm`, `crm-metering`).
-2. [`architecture.md`](architecture.md) — graph, registry, research, metering.
-3. [`architecture/whys/README.md`](architecture/whys/README.md) — optional: *why* behind major decisions (nine topics indexed) without reading slice plans or design conversations.
-4. [`full-code-walkthrough.md`](full-code-walkthrough.md) — where code lives.
-5. [`plans/README.md`](plans/README.md) — which design docs are historical vs active.
+1. [`README.md`](../README.md) — quick start commands, CLI, examples (`crm`, `empty-crm`, `crm-metering`, `baseball`).
+2. [`examples/README.md`](examples/README.md) — shared setup + per-network getting started and **exploration walkthroughs** (feature demos with CLI, MCP, expected output).
+3. [`architecture.md`](architecture.md) — graph, registry, research, metering.
+4. [`architecture/whys/README.md`](architecture/whys/README.md) — optional: *why* behind major decisions (nine topics indexed) without reading slice plans or design conversations.
+5. [`full-code-walkthrough.md`](full-code-walkthrough.md) — where code lives.
+6. [`plans/README.md`](plans/README.md) — which design docs are historical vs active.
 
 [myceliumdata.org](https://myceliumdata.org) links the same path: onboarding → README quick start → architecture.
 
@@ -95,4 +96,4 @@ JSON includes `resolve: { id, lookup }` mirroring the inspect input, plus `entit
 
 ---
 
-*Last updated: June 2026 (live gate program, CLI step-2 network hints, `./bin/smoke-crm-e2e`).*
+*Last updated: June 2026 (example walkthrough docs, live gate program, CLI step-2 network hints).*

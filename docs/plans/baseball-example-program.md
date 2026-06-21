@@ -1,6 +1,6 @@
 # Baseball example — program design (`baseball` network)
 
-**Status:** ✅ **Complete** (June 2026) — Program sign-off **2026-06-21**: live gate **27/27**, cold bootstrap **~3.5 min** post-`2280` (Test 10). Post-program gate: [`docs/manual-checks/2026-06-21-baseball-program-post-program-gate.md`](../manual-checks/2026-06-21-baseball-program-post-program-gate.md). **Follow-on (not blockers):** multi-domain derive slice, bio+Tavily hybrid, `--full` smoke gate.
+**Status:** ✅ **Complete** (June 2026) — v1 sign-off **2026-06-21**: live gate **34/34**, cold bootstrap **~3.5 min** post-`2280` (Test 10). Slices **`2400`** (pitching/fielding derive) and **`2410`** (bio research) shipped. Post-program gate: [`docs/manual-checks/2026-06-21-baseball-program-post-program-gate.md`](../manual-checks/2026-06-21-baseball-program-post-program-gate.md). Operator guides: [`docs/examples/baseball/`](../examples/baseball/getting-started.md). **Follow-on (not v1 blockers):** `--full` smoke gate, peer orchestration, public demo.
 **Ur artifact:** [`mycelium_lahman_design_prompt.md`](mycelium_lahman_design_prompt.md) — original Grok design brief; preserved, not maintained as source of truth  
 **Conversations:** [`conversations/2026-06-14-data-factory-origin.md`](conversations/2026-06-14-data-factory-origin.md), [`conversations/2026-06-15-baseball-example-design.md`](conversations/2026-06-15-baseball-example-design.md)  
 **Roadmap:** [`TODO.md`](../../TODO.md) → `baseball` example
@@ -307,7 +307,10 @@ See `examples/networks/baseball/README.md`.
 | M12 (M13 prompt) | Full 27-table warehouse ingest | ✅ 2026-06-20 |
 | — | Bootstrap perf (deferred index + `player_debut`) | ✅ 2026-06-20 |
 | M14 | `WarehousePlayerStatSpecialist` / `WarehouseTeamStatSpecialist` in framework | ✅ 2026-06-20 |
-| — | Program polish capstone + live gate **27/27** catalog | ✅ 2026-06-20 |
+| — | Program polish capstone + live gate catalog | ✅ 2026-06-20 |
+| 2400 | Multi-domain derive (pitching/fielding) + gate scenarios | ✅ 2026-06-21 |
+| 2410 | Bio `research_on_miss` + `WarehouseResearchStatSpecialist` | ✅ 2026-06-21 |
+| — | v1 extension sign-off **34/34** live gate | ✅ 2026-06-21 |
 
 ### Shipped (domain parity complete)
 
@@ -343,4 +346,4 @@ All domain-parity slices through M14 are done. Remaining work is cross-cutting (
 
 ---
 
-*Updated: 2026-06-20 — M9–M14 + polish capstone shipped; live gate catalog 27 scenarios.*
+*Updated: 2026-06-21 — v1 complete; live gate catalog 34 scenarios; exploration docs under `docs/examples/baseball/`.*

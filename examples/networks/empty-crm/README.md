@@ -1,5 +1,7 @@
 # Empty-seed CRM example
 
+**Operator guides:** [`docs/examples/empty-crm/`](../../../docs/examples/empty-crm/getting-started.md)
+
 Committed **reference network** with CRM MVR/bind rules but **no `seed.json`**. Contrast with [`../crm/`](../crm/), which ships a 15-person bootstrap fixture imported into `entities.json` on refresh.
 
 `network.json` still declares the framework bootstrap handler (`DefaultSeedHandler` via `network.bootstrap.handlers.default_seed`). On refresh the handler runs but commits **0** entities when `seed.json` is absent.

@@ -2,6 +2,8 @@
 
 Committed reference networks under `examples/networks/`. Each ships `network.json`, `guide.md`, and bootstrap assets; runtime state (`entities/`, `warehouse/`, `agents/`, checkpoints) lives under your live root after refresh.
 
+**Runnable operator docs** (shared `.env`, two-step protocol, feature walkthroughs): [`docs/examples/`](../../docs/examples/README.md).
+
 | Network | When to use | Bootstrap | Query model |
 |---------|-------------|-----------|-------------|
 | [`crm/`](crm/) | Default demo; 15-person seed; growth + fuzzy lookup | `seed.json` → `DefaultSeedHandler` | Single record type `person`; `query_allowed` |
@@ -36,4 +38,4 @@ Each example may declare `health_ping.lookup` in `network.json` — bind-field k
 
 ## README checklist (operators)
 
-Each network README should cover: purpose, refresh command, step-1/2 example queries, MCP/`describe_network`, admin when relevant, expected outcomes, links to program docs.
+**Prefer [`docs/examples/<network>/`](../../docs/examples/README.md)** for getting started and exploration walkthroughs (CLI, MCP, expected output). Pack READMEs here cover maintainer layout, bootstrap internals, and `guide.md` editing.

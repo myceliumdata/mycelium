@@ -1,17 +1,41 @@
-# Documentation examples
+# Example network documentation
 
-Illustrative JSON samples for Mycelium runtime artifacts. These files are **committed for reference only** — they are not copied into a `network_root` and are not loaded by the framework at startup.
+Operator and contributor docs for committed networks under [`examples/networks/`](../../examples/networks/).
 
-## `sample-categories.json`
+---
 
-Shows the typical shape of **`<network_root>/categories.json`** after the classification engine seeds its cache (from embedded `_SEED_CATEGORIES` in `src/agents/classification/engine.py`).
+## Start here
 
-| Property | Notes |
-|----------|-------|
-| `categories` | Six default domains (contact, social, relationships, demographic, professional, financial) |
-| `attribute_map` | Known attribute → category lookups |
-| `last_updated` | Fixed in this sample; runtime file updates on classification changes |
+| Doc | Audience |
+|-----|----------|
+| [getting-started.md](getting-started.md) | **Shared** clone, `.env`, two-step protocol, MCP, gates |
+| [exploration-walkthroughs.md](exploration-walkthroughs.md) | How feature walkthroughs are organized |
 
-**Runtime policy:** `categories.json` lives under your active `network_root`, is **gitignored**, and is created on first classification use. It is **not** shipped in `examples/networks/crm/` and is **not** copied by `bin/refresh-example-network`.
+---
 
-See also: [architecture.md](../architecture.md) (classification + network layout).
+## Per network
+
+| Network | Getting started | Feature walkthroughs |
+|---------|-----------------|----------------------|
+| **CRM** | [crm/getting-started.md](crm/getting-started.md) | [crm/explore/](crm/explore/README.md) |
+| **Empty CRM** | [empty-crm/getting-started.md](empty-crm/getting-started.md) | [empty-crm/explore/](empty-crm/explore/README.md) |
+| **CRM metering** | [crm-metering/getting-started.md](crm-metering/getting-started.md) | [crm-metering/explore/](crm-metering/explore/README.md) |
+| **Baseball** | [baseball/getting-started.md](baseball/getting-started.md) | [baseball/explore/](baseball/explore/README.md) |
+
+Pack READMEs under `examples/networks/<name>/` cover maintainer layout and bootstrap internals; prefer **`docs/examples/`** for runnable query guides.
+
+---
+
+## Reference samples
+
+| File | Purpose |
+|------|---------|
+| [sample-categories.json](sample-categories.json) | Illustrative `categories.json` shape (not loaded at runtime) |
+
+---
+
+## Related
+
+- [onboarding.md](../onboarding.md) — contributor terminology and read order
+- [manual-checks/2026-06-20-live-gate-program.md](../manual-checks/2026-06-20-live-gate-program.md) — automated live regression
+- [manual-checks/2026-06-21-baseball-program-post-program-gate.md](../manual-checks/2026-06-21-baseball-program-post-program-gate.md) — baseball v1 sign-off
