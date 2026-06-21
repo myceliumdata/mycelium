@@ -210,6 +210,20 @@ def test_web_search_empty_query_returns_empty(
 
 
 @pytest.mark.smoke
+def test_tavily_error_dict_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SEARCH_PROVIDER", "tavily")
+    monkeypatch.setenv("TAVILY_API_KEY", "tvly-test-key")
+    web_search_mod = importlib.import_module("tools.web_search")
+    monkeypatch.setattr(
+        web_search_mod,
+        "_search_tavily",
+        lambda query, **_: {"error": ValueError("Error 432: usage limit exceeded")},
+    )
+    with pytest.raises(WebSearchProviderError, match="432"):
+        web_search("test query")
+
+
+@pytest.mark.smoke
 def test_exa_error_string_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SEARCH_PROVIDER", "exa")
     monkeypatch.setenv("EXA_API_KEY", "exa-test-key")

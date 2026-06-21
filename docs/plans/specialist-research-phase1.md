@@ -1,6 +1,7 @@
 # Plan: Specialist Research — Phase 1 (Tavily + LLM tool loop)
 
 **Status:** Implemented (June 2026). Approved by Paul; built via Cursor slices 1100–1400 (`prompts/cursor/done/2026-06-09-11xx`–`14xx`).  
+**Follow-on (June 2026):** Pluggable search via `SEARCH_PROVIDER` (`tavily` \| `exa` \| `brave`) in `src/tools/web_search.py` — slice `2500`. `tools.tavily` is a backward-compat re-export; default remains Tavily.  
 **Depends on:** Seed-data-context graph (`docs/plans/seed-data-context-architecture.md`), Classification Engine (`docs/plans/classification-engine-phase1.md`), Agent Factory (`docs/plans/agent-factory-phase2.md`), `docs/architecture.md`, `prompts/system/CORE_PROMPT.md`
 
 > **Lightweight priority:** Ship a **single shared research runner** and wire it through the **specialist Jinja template**. Phase 1 runs research **synchronously** in the specialist node (better demos; one query can return researched values). Design the runner API so **async** execution can return later without rewriting core logic. Defer Extract/Crawl and per-category prompt tuning. Keep the supervisor thin; no public API shape changes.
@@ -18,7 +19,7 @@ This plan is **research only** — not classification (Phase 1 intelligence), no
 | Principle | Decision |
 |-----------|----------|
 | Who searches? | **Specialists only**, via shared `src/tools/`. Supervisor does not call search or research LLMs. |
-| Provider | **Tavily** for web search (`langchain-tavily`; env `TAVILY_API_KEY`). |
+| Provider | **Pluggable web search** (`src/tools/web_search.py`): `SEARCH_PROVIDER` = `tavily` (default), `exa`, or `brave` with matching API key. Phase 1 shipped with Tavily only; Exa/Brave added slice `2500`. |
 | Tools and LLM | Tool **definitions** are passed to the LLM; **execution** stays in application code (or LangChain runner on our behalf). |
 | Specialist invocation | **Always invoke** the specialist for classified requested attributes — even when seed already has `name` / `employer`. Specialist may **correct** seed (e.g. legal name vs shortened seed). |
 | Merge order | **Specialist non-pending value wins** over seed; seed is **provisional** while specialist research is pending. Assembly implements this in `assemble_response` (attribute-scoped `results`; see slice `2026-06-04-1400-filter-query-results-and-trace-url`). |
@@ -36,7 +37,7 @@ This plan is **research only** — not classification (Phase 1 intelligence), no
 - **On cache miss (implemented):** Pre-mark `pending`, run **sync** `tools.research.run_field_research` when keys are set, reload storage, return `found` / `na` / `pending` in `specialist_contrib`. Retry `pending` + `last_error` on later queries.
 - **invoke_specialists_node:** Appends contributions to `context._meta.contributions`; final response built in `assemble_response_node`.
 - **Classification:** `src/agents/classification/` — LLM only for **first-time unknown attribute → category**; unrelated to per-person research.
-- **Tools:** `src/tools/tavily.py` (web search), `src/tools/research.py` (LLM + tool loop), Jinja under `src/agents/factory/templates/research/`.
+- **Tools:** `src/tools/web_search.py` (pluggable search), `src/tools/research.py` (LLM + tool loop), Jinja under `src/agents/factory/templates/research/`. `tools.tavily` re-exports for compat.
 
 ---
 

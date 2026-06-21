@@ -258,7 +258,7 @@ Users download the **framework** (this repo: `src/`, `bin/`, docs, tests) and ru
 
 | Lives in framework `.env` (process-wide) | Lives under `network_root` (per network) |
 |------------------------------------------|------------------------------------------|
-| `OPENAI_API_KEY`, `TAVILY_API_KEY`, `ANTHROPIC_API_KEY`, … | `seed.json`, `categories.json`, `agent_registry.json`, `specialists/`, `agents/` |
+| `OPENAI_API_KEY`, `SEARCH_PROVIDER` (`tavily` default), active search key (`TAVILY_API_KEY` / `EXA_API_KEY` / `BRAVE_SEARCH_API_KEY`), `ANTHROPIC_API_KEY`, … | `seed.json`, `categories.json`, `agent_registry.json`, `specialists/`, `agents/` |
 | `LANGCHAIN_*`, `LANGSMITH_*` (tracing) | `checkpoints.sqlite`, `mycelium.db`, `network.json` |
 | `MYCELIUM_RESEARCH_*` tuning, `MYCELIUM_*_MODEL` (LLM model per subsystem — see `.env.example`; computation codegen recommends `gpt-4o+`) | — |
 

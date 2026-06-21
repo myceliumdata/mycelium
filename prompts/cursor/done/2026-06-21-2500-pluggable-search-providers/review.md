@@ -96,6 +96,8 @@ Paul reported **full live gate pass on all examples with `SEARCH_PROVIDER=exa`**
 
 No fix slice required.
 
+**Nits resolved (Grok, post-review):** N1–N5 addressed in follow-up commit — onboarding, architecture credentials table, specialist-research-phase1 follow-on note, Tavily `error` dict validation + test, `web_search()` Raises docstring.
+
 ## For Paul
 
 - **Commit:** Grok commits locally after this review.

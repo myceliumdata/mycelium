@@ -188,11 +188,16 @@ def _normalize_brave_hits(raw: Any) -> list[SearchHit]:
 
 
 def _validate_provider_raw(raw: Any, *, provider: SearchProvider) -> None:
-    """Fail loud when a provider returns an error string instead of results."""
-    if provider != "exa":
-        return
+    """Fail loud when a provider returns an error payload instead of results."""
     if isinstance(raw, BaseException):
         raise WebSearchProviderError(str(raw)) from raw
+
+    if provider == "tavily" and isinstance(raw, dict):
+        err = raw.get("error")
+        if err is not None:
+            raise WebSearchProviderError(str(err))
+        return
+
     if not isinstance(raw, str):
         return
     text = raw.strip()
@@ -376,6 +381,7 @@ def web_search(
 
     Raises:
         WebSearchNotConfiguredError: if the active provider's API key is unset.
+        WebSearchProviderError: if the provider returns an error payload.
         UnknownSearchProviderError: if ``SEARCH_PROVIDER`` is invalid.
     """
     q = query.strip()

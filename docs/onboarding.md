@@ -45,7 +45,7 @@ You are here (step 1). Then:
 
 ```bash
 uv sync --all-extras
-cp .env.example .env   # OPENAI_API_KEY + TAVILY_API_KEY for research demos
+cp .env.example .env   # OPENAI_API_KEY + SEARCH_PROVIDER + matching search key (default Tavily: TAVILY_API_KEY)
 ./bin/refresh-example-network crm
 # Step 1 — copy delivery_id from JSON (stderr prints step-2 hint with --network)
 uv run mycelium query --network crm \
