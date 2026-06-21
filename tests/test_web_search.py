@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import importlib
-import json
 from types import SimpleNamespace
 from typing import Any
 
@@ -101,40 +100,6 @@ def test_normalize_hits_from_exa_object_results() -> None:
     assert len(hits) == 1
     assert hits[0].url == "https://example.com/obj"
     assert hits[0].snippet == "From object"
-
-
-@pytest.mark.smoke
-def test_normalize_hits_from_brave_json_string() -> None:
-    raw = json.dumps(
-        [
-            {
-                "title": "Brave JSON",
-                "link": "https://example.com/brave-json",
-                "snippet": "From JSON string",
-            },
-        ],
-    )
-    hits = _normalize_brave_hits(raw)
-    assert len(hits) == 1
-    assert hits[0].url == "https://example.com/brave-json"
-
-
-@pytest.mark.smoke
-def test_normalize_hits_from_brave_shape() -> None:
-    raw = [
-        {
-            "title": "Brave Hit",
-            "link": "https://example.com/brave",
-            "snippet": "Brave snippet",
-        },
-    ]
-    hits = _normalize_brave_hits(raw)
-    assert len(hits) == 1
-    assert hits[0] == SearchHit(
-        title="Brave Hit",
-        url="https://example.com/brave",
-        snippet="Brave snippet",
-    )
 
 
 @pytest.mark.smoke
@@ -269,17 +234,22 @@ def test_web_search_brave_backend_mocked(monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.setattr(
         web_search_mod,
         "_search_brave",
-        lambda query, **_: [
-            {
-                "title": "Brave",
-                "link": "https://example.com/brave-live",
-                "snippet": "Brave body",
+        lambda query, **_: {
+            "web": {
+                "results": [
+                    {
+                        "title": "Brave",
+                        "url": "https://example.com/brave-live",
+                        "description": "Brave body",
+                    },
+                ],
             },
-        ],
+        },
     )
     hits = web_search("brave query")
     assert len(hits) == 1
     assert hits[0].url == "https://example.com/brave-live"
+    assert hits[0].snippet == "Brave body"
 
 
 @pytest.mark.smoke
@@ -302,6 +272,13 @@ def test_normalize_brave_native_api_response() -> None:
         url="https://example.com/native",
         snippet="Native description",
     )
+
+
+@pytest.mark.smoke
+def test_normalize_brave_empty_web_results() -> None:
+    assert _normalize_brave_hits({"web": {}}) == []
+    assert _normalize_brave_hits({}) == []
+    assert _normalize_brave_hits([]) == []
 
 
 @pytest.mark.smoke

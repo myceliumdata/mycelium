@@ -159,38 +159,28 @@ def _normalize_exa_hits(raw: Any) -> list[SearchHit]:
 
 
 def _normalize_brave_hits(raw: Any) -> list[SearchHit]:
-    rows: list[Any]
-    if isinstance(raw, dict):
-        web = raw.get("web")
-        if isinstance(web, dict) and isinstance(web.get("results"), list):
-            rows = web["results"]
-        else:
-            rows = []
-    elif isinstance(raw, str):
-        try:
-            parsed = json.loads(raw)
-        except json.JSONDecodeError:
-            return []
-        if isinstance(parsed, dict):
-            return _normalize_brave_hits(parsed)
-        rows = parsed if isinstance(parsed, list) else []
-    elif isinstance(raw, list):
-        rows = raw
-    else:
+    """Map Brave Web Search API JSON (`web.results`) to normalized hits."""
+    if not isinstance(raw, dict):
+        return []
+    web = raw.get("web")
+    if not isinstance(web, dict):
+        return []
+    rows = web.get("results")
+    if not isinstance(rows, list):
         return []
 
     hits: list[SearchHit] = []
     for row in rows:
         if not isinstance(row, dict):
             continue
-        url = str(row.get("link") or row.get("url") or "")
+        url = str(row.get("url") or "")
         if not url:
             continue
         hits.append(
             SearchHit(
                 title=str(row.get("title") or ""),
                 url=url,
-                snippet=str(row.get("snippet") or row.get("description") or ""),
+                snippet=str(row.get("description") or ""),
             ),
         )
     return hits
