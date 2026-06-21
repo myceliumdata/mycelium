@@ -32,7 +32,18 @@ LIVE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = LIVE_DIR.parent.parent
 
 _TEMPLATE_RE = re.compile(r"\{\{\s*([^}]+?)\s*\}\}")
-RATE_DRIFT_ATTRS = frozenset({"career_avg", "career_era", "pitcher_career_era", "ops"})
+RATE_DRIFT_ATTRS = frozenset({
+    "career_avg",
+    "career_era",
+    "pitcher_career_era",
+    "ops",
+    "career_whip",
+    "k_per_9",
+    "whip",
+    "fielding_percentage",
+    "pitcher_career_whip",
+    "pitcher_k_per_9",
+})
 
 
 def rate_value_drift(
@@ -474,6 +485,8 @@ def discover_anchor_drift(
             "birth_country": anchors.get("birth_country"),
             "final_game": anchors.get("final_game"),
             "death_date": anchors.get("death_date"),
+            "hall_of_fame_year": anchors.get("hall_of_fame_year"),
+            "fielding_percentage": anchors.get("fielding_percentage"),
         }
         pitcher = anchors.get("pitcher_player")
         if pitcher:
@@ -481,6 +494,9 @@ def discover_anchor_drift(
                 ("pitcher_career_wins", "career_wins"),
                 ("pitcher_career_strikeouts", "career_strikeouts"),
                 ("pitcher_career_era", "career_era"),
+                ("pitcher_career_whip", "career_whip"),
+                ("pitcher_k_per_9", "k_per_9"),
+                ("pitcher_career_innings_pitched", "career_innings_pitched"),
             ):
                 expected = anchors.get(attr)
                 if expected is None:

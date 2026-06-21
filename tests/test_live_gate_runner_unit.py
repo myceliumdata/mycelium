@@ -110,7 +110,7 @@ def test_networks_refresh_before_gate_flags() -> None:
 def test_load_catalog_baseball_has_minimum_scenarios() -> None:
     entry = gr.load_networks_registry()["baseball"]
     scenarios = gr.load_catalog(entry.catalog_path)
-    assert len(scenarios) >= 27
+    assert len(scenarios) >= 34
     phases = {item.phase for item in scenarios}
     assert phases >= {
         "preflight",
@@ -122,6 +122,7 @@ def test_load_catalog_baseball_has_minimum_scenarios() -> None:
         "roster",
         "franchise",
         "derive",
+        "bio_research",
         "infra",
     }
 

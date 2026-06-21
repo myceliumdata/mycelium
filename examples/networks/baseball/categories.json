@@ -27,7 +27,9 @@
         "bats",
         "throws",
         "debut",
-        "final_game"
+        "final_game",
+        "primary_nickname",
+        "hall_of_fame_year"
       ]
     },
     "batting": {
@@ -56,6 +58,9 @@
         "career_era",
         "career_strikeouts",
         "career_saves",
+        "career_whip",
+        "k_per_9",
+        "career_innings_pitched",
         "wins",
         "era",
         "strikeouts",
@@ -79,7 +84,7 @@
     "fielding": {
       "description": "Player fielding statistics (Lahman Fielding).",
       "assigned_agent": "fielding_specialist",
-      "examples": ["career_games", "career_putouts"]
+      "examples": ["career_games", "career_putouts", "fielding_percentage"]
     },
     "team_roster": {
       "description": "Team roster product — player display names for a scoped season.",
@@ -107,6 +112,8 @@
     "throws": "bio",
     "debut": "bio",
     "final_game": "bio",
+    "primary_nickname": "bio",
+    "hall_of_fame_year": "bio",
     "career_hr": "batting",
     "career_rbi": "batting",
     "career_hits": "batting",
@@ -123,6 +130,10 @@
     "career_era": "pitching",
     "career_strikeouts": "pitching",
     "career_saves": "pitching",
+    "career_whip": "pitching",
+    "k_per_9": "pitching",
+    "career_innings_pitched": "pitching",
+    "whip": "pitching",
     "wins": "pitching",
     "era": "pitching",
     "strikeouts": "pitching",
@@ -137,6 +148,7 @@
     "runs_allowed": "team_season",
     "career_games": "fielding",
     "career_putouts": "fielding",
+    "fielding_percentage": "fielding",
     "roster": "team_roster",
     "franchise_teams": "franchise"
   }

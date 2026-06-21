@@ -19,8 +19,9 @@
     },
     "bio": {
       "specialist": "bio_specialist",
-      "tables": ["People"],
+      "tables": ["People", "HallOfFame"],
       "grain": ["playerID"],
+      "research_on_miss": true,
       "aliases": {
         "birth_date": {
           "convention": "people_compose",
@@ -39,6 +40,11 @@
           "convention": "people_compose",
           "columns": ["deathYear", "deathMonth", "deathDay"],
           "format": "iso_date"
+        },
+        "hall_of_fame_year": {
+          "convention": "hof_election_year",
+          "table": "HallOfFame",
+          "filter": "inducted = 'Y'"
         }
       }
     },
@@ -56,7 +62,8 @@
         "career_strikeouts": {"convention": "career_sum", "column": "SO"},
         "career_saves": {"convention": "career_sum", "column": "SV"},
         "career_era": {"convention": "career_era_weighted"}
-      }
+      },
+      "derive_on_miss": true
     },
     "team_season": {
       "specialist": "team_season_specialist",
@@ -84,7 +91,8 @@
       "aliases": {
         "career_games": {"convention": "career_sum", "column": "G"},
         "career_putouts": {"convention": "career_sum", "column": "PO"}
-      }
+      },
+      "derive_on_miss": true
     }
   }
 }

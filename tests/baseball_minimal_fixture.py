@@ -63,6 +63,11 @@ def write_minimal_lahman_fixture(seed_dir: Path) -> None:
         "aaronha01,1958,1,LAN,NL,RF,5,5,135,5,2,0,0,,,,,\n",
         encoding="utf-8",
     )
+    (seed_dir / "HallOfFame.csv").write_text(
+        "playerID,yearid,votedBy,ballots,needed,votes,inducted,category,needed_note\n"
+        "aaronha01,1982,BBWAA,415,312,406,Y,Player,\n",
+        encoding="utf-8",
+    )
 
 
 def reset_runtime() -> None:

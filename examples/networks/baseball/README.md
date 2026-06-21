@@ -27,7 +27,11 @@ uv run mycelium query --network baseball \
 
 **Fast CI gate** (minimal fixture, mocked derive): `./bin/smoke-baseball-e2e`
 
-For full specialist coverage (pitching, team_season, fielding, roster, franchise, …), run with pytest: `./bin/smoke-baseball-e2e --with-pytest` (or `./bin/ci-local`).
+For full specialist coverage (pitching, team_season, fielding, roster, franchise, derive, bio research, …), run with pytest: `./bin/smoke-baseball-e2e --with-pytest` (or `./bin/ci-local`).
+
+**Multi-domain derive:** Set `"derive_on_miss": true` on a player domain in `warehouse_domains.json` (batting, pitching, fielding). Unaliased labels invoke LLM codegen via `WarehousePlayerStatSpecialist`; manifest aliases (e.g. `career_era`) stay on the warehouse path.
+
+**Bio research:** `bio_specialist` extends `WarehouseResearchStatSpecialist`. Warehouse aliases (People, HallOfFame) win; unaliased bio labels (e.g. `primary_nickname`) fall through to sync Tavily research when `"research_on_miss": true` on the bio domain.
 
 **Live regression** (real `~/mycelium-networks/baseball`): `./bin/gate-live baseball` — derive cache auto-clears; full Lahman reload is manual before gate.
 

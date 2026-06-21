@@ -35,9 +35,10 @@ SpecialistAgent                         ← framework root (storage + I/O)
 ├── CRM contact_specialist              ← factory-generated research graph
 ├── WarehousePlayerStatSpecialist       ← framework: manifest + derive-on-miss
 │   ├── BattingSpecialist               ← pack: category/domain + Lahman hooks
-│   ├── PitchingSpecialist
-│   ├── BioSpecialist
-│   └── FieldingSpecialist
+│   ├── PitchingSpecialist              ← derive_on_miss via manifest (pitching domain)
+│   ├── BioSpecialist                   ← extends WarehouseResearchStatSpecialist
+│   └── FieldingSpecialist              ← derive_on_miss via manifest (fielding domain)
+├── WarehouseResearchStatSpecialist     ← warehouse + Tavily research_on_miss (bio v1)
 ├── WarehouseTeamStatSpecialist
 │   └── TeamSeasonSpecialist
 └── roster_specialist / franchise_specialist  ← product_common (ProductTeamSpecialist follow-on)

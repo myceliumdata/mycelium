@@ -161,6 +161,26 @@ def career_era_weighted(player_id: str, warehouse: Path, *, table: str = "Pitchi
     return f"{era:.3f}"
 
 
+def hof_election_year(
+    player_id: str,
+    warehouse: Path,
+    *,
+    table: str = "HallOfFame",
+    inducted: str = "Y",
+) -> str | None:
+    safe_table = table.replace('"', '""')
+    rows = query_warehouse(
+        warehouse,
+        f'SELECT "yearid" FROM "{safe_table}" '
+        f'WHERE "playerID" = ? AND "inducted" = ? '
+        f'ORDER BY CAST("yearid" AS INTEGER) ASC LIMIT 1',
+        (player_id, inducted),
+    )
+    if not rows or rows[0][0] in (None, ""):
+        return None
+    return str(rows[0][0]).strip()
+
+
 CAREER_SUM_INLINE = inspect.getsource(career_sum)
 TEAM_LATEST_COLUMN_INLINE = inspect.getsource(team_latest_column)
 SEASON_COLUMN_INLINE = inspect.getsource(season_column)
@@ -168,6 +188,7 @@ PEOPLE_COLUMN_INLINE = inspect.getsource(people_column)
 PEOPLE_BIRTH_DATE_INLINE = inspect.getsource(people_birth_date)
 PEOPLE_COMPOSE_ISO_DATE_INLINE = inspect.getsource(people_compose_iso_date)
 CAREER_ERA_WEIGHTED_INLINE = inspect.getsource(career_era_weighted)
+HOF_ELECTION_YEAR_INLINE = inspect.getsource(hof_election_year)
 
 
 @dataclass(frozen=True)
@@ -309,6 +330,30 @@ def resolve_domain_attribute(
             computation_inline=CAREER_ERA_WEIGHTED_INLINE,
             attribute=key,
             column=None,
+        )
+    if convention == "hof_election_year":
+        table = alias.get("table")
+        if not isinstance(table, str) or not table.strip():
+            table = "HallOfFame"
+        inducted = "Y"
+        raw_filter = alias.get("filter")
+        if isinstance(raw_filter, str) and "inducted" in raw_filter:
+            parts = raw_filter.split("=")
+            if len(parts) == 2:
+                inducted = parts[1].strip().strip("'\"")
+        formatted = hof_election_year(
+            player_id,
+            warehouse,
+            table=table.strip(),
+            inducted=inducted,
+        )
+        if formatted is None:
+            return None
+        return ResolvedField(
+            value=formatted,
+            computation_inline=HOF_ELECTION_YEAR_INLINE,
+            attribute=key,
+            column="yearid",
         )
     return None
 

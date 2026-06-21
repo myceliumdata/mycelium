@@ -30,5 +30,11 @@
   "fielder_career_putouts": 7436,
   "roster_count_1957_bro": 35,
   "roster_member_1957_bro": "Duke Snider",
-  "franchise_team_labels_json": "[\"Brooklyn Atlantics\",\"Brooklyn Bridegrooms\",\"Brooklyn Dodgers\",\"Brooklyn Grays\",\"Brooklyn Grooms\",\"Brooklyn Robins\",\"Brooklyn Superbas\",\"Los Angeles Dodgers\"]"
+  "franchise_team_labels_json": "[\"Brooklyn Atlantics\",\"Brooklyn Bridegrooms\",\"Brooklyn Dodgers\",\"Brooklyn Grays\",\"Brooklyn Grooms\",\"Brooklyn Robins\",\"Brooklyn Superbas\",\"Los Angeles Dodgers\"]",
+  "pitcher_career_whip": 1.247,
+  "pitcher_k_per_9": 9.548,
+  "pitcher_career_innings_pitched": 5386,
+  "fielding_percentage": 0.982,
+  "hall_of_fame_year": 1982,
+  "primary_nickname": "Hammer"
 }

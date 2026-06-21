@@ -160,6 +160,45 @@ scenarios:
         results[0].death_date:
           equals: "{{ anchors.death_date }}"
 
+  - id: bb-bio-03
+    phase: m2
+    description: hall_of_fame_year warehouse manifest (Aaron election 1982)
+    step1:
+      lookup:
+        player: "{{ anchors.player }}"
+      requested_attributes: [hall_of_fame_year]
+      provenance: true
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].hall_of_fame_year:
+          equals: "{{ anchors.hall_of_fame_year }}"
+
+  - id: bb-bio-research-01
+    phase: bio_research
+    description: primary_nickname Tavily research on miss
+    skip_if_missing_env:
+      - OPENAI_API_KEY
+      - TAVILY_API_KEY
+    step1:
+      lookup:
+        player: "{{ anchors.player }}"
+      requested_attributes: [primary_nickname]
+      provenance: true
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].primary_nickname:
+          equals: "{{ anchors.primary_nickname }}"
+
   - id: bb-m2-05
     phase: m2
     description: Cache hit repeat career_hr deliver
@@ -255,6 +294,118 @@ scenarios:
           tolerance: 0.001
       same_timestamp_as: bb-derive-01
       intent_slug: career_batting_average
+
+  - id: bb-derive-04
+    phase: derive
+    description: career_whip derive on miss (pitching domain)
+    skip_if_missing_env:
+      - OPENAI_API_KEY
+      - MYCELIUM_COMPUTATION_CODEGEN_MODEL
+    step1:
+      lookup:
+        player: "{{ anchors.pitcher_player }}"
+      requested_attributes: [career_whip]
+      provenance: true
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].career_whip:
+          approx: "{{ anchors.pitcher_career_whip }}"
+          tolerance: 0.01
+    capture:
+      provenance_timestamp: "provenance_timestamp:career_whip"
+
+  - id: bb-derive-05
+    phase: derive
+    description: k_per_9 derive on miss (pitching domain)
+    skip_if_missing_env:
+      - OPENAI_API_KEY
+      - MYCELIUM_COMPUTATION_CODEGEN_MODEL
+    step1:
+      lookup:
+        player: "{{ anchors.pitcher_player }}"
+      requested_attributes: [k_per_9]
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].k_per_9:
+          approx: "{{ anchors.pitcher_k_per_9 }}"
+          tolerance: 0.05
+
+  - id: bb-derive-06
+    phase: derive
+    description: career_innings_pitched derive on miss (pitching domain)
+    skip_if_missing_env:
+      - OPENAI_API_KEY
+      - MYCELIUM_COMPUTATION_CODEGEN_MODEL
+    step1:
+      lookup:
+        player: "{{ anchors.pitcher_player }}"
+      requested_attributes: [career_innings_pitched]
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].career_innings_pitched:
+          approx: "{{ anchors.pitcher_career_innings_pitched }}"
+          tolerance: 0.1
+
+  - id: bb-derive-07
+    phase: derive
+    description: fielding_percentage derive on miss (fielding domain)
+    skip_if_missing_env:
+      - OPENAI_API_KEY
+      - MYCELIUM_COMPUTATION_CODEGEN_MODEL
+    step1:
+      lookup:
+        player: "{{ anchors.player }}"
+      requested_attributes: [fielding_percentage]
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].fielding_percentage:
+          approx: "{{ anchors.fielding_percentage }}"
+          tolerance: 0.0001
+
+  - id: bb-derive-08
+    phase: derive
+    description: whip synonym cache hit after career_whip derive
+    skip_if_missing_env:
+      - OPENAI_API_KEY
+      - MYCELIUM_INTENT_NORMALIZATION_MODEL
+    depends_on: bb-derive-04
+    step1:
+      lookup:
+        player: "{{ anchors.pitcher_player }}"
+      requested_attributes: [whip]
+      provenance: true
+    assert_step1:
+      outcome: lookup_resolved
+      delivery_present: true
+    step2: true
+    assert_step2:
+      outcome: assembled
+      path:
+        results[0].whip:
+          approx: "{{ anchors.pitcher_career_whip }}"
+          tolerance: 0.01
+      same_timestamp_as: bb-derive-04
+      intent_slug: career_whip
 
   - id: bb-infra-01
     phase: infra

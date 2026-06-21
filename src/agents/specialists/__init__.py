@@ -14,10 +14,15 @@ from .protocol import (
     dispatch_write_fields,
     resolve_owner,
 )
-from .warehouse_stat import WarehousePlayerStatSpecialist, WarehouseTeamStatSpecialist
+from .warehouse_stat import (
+    WarehousePlayerStatSpecialist,
+    WarehouseResearchStatSpecialist,
+    WarehouseTeamStatSpecialist,
+)
 
 __all__ = [
     "WarehousePlayerStatSpecialist",
+    "WarehouseResearchStatSpecialist",
     "WarehouseTeamStatSpecialist",
     "dispatch_analyze_category_storage",
     "dispatch_append_research_audit",

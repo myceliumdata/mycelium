@@ -244,8 +244,16 @@ def provenance_parameters(
     return params
 
 
-def _audit_line(attr: str, message: str) -> str:
-    return f"batting_specialist: derive {attr.strip().lower()} {message}"
+def _audit_line(attr: str, message: str, *, specialist: str) -> str:
+    return f"{specialist}: derive {attr.strip().lower()} {message}"
+
+
+def _derive_specialist_name(manifest: dict[str, Any], domain: str) -> str:
+    meta = domain_meta(manifest, domain)
+    name = meta.get("specialist")
+    if isinstance(name, str) and name.strip():
+        return name.strip()
+    return f"{domain.strip().lower()}_specialist"
 
 
 def generate_and_run_derive(
@@ -265,6 +273,7 @@ def generate_and_run_derive(
     key = attr.strip().lower()
     max_attempts = derive_max_attempts()
     audit: list[str] = []
+    specialist = _derive_specialist_name(manifest, domain)
     last_source = ""
     last_value = ""
     last_error: BaseException | None = None
@@ -307,6 +316,7 @@ def generate_and_run_derive(
                 _audit_line(
                     key,
                     f"attempt {attempt} failed {type(exc).__name__}: {exc}",
+                    specialist=specialist,
                 ),
             )
             continue
@@ -328,7 +338,7 @@ def generate_and_run_derive(
         except DeriveReviewRejected as exc:
             last_error = exc
             audit.append(
-                _audit_line(key, f"attempt {attempt} review rejected: {exc.reason}"),
+                _audit_line(key, f"attempt {attempt} review rejected: {exc.reason}", specialist=specialist),
             )
             continue
 
@@ -338,11 +348,12 @@ def generate_and_run_derive(
                 _audit_line(
                     key,
                     f"attempt {attempt} review rejected: {last_error.reason}",
+                    specialist=specialist,
                 ),
             )
             continue
 
-        audit.append(_audit_line(key, f"succeeded on attempt {attempt}"))
+        audit.append(_audit_line(key, f"succeeded on attempt {attempt}", specialist=specialist))
         return DeriveRunResult(
             field=DeriveResolvedField(
                 value=value,
@@ -353,5 +364,5 @@ def generate_and_run_derive(
             audit_log=tuple(audit),
         )
 
-    audit.append(_audit_line(key, f"failed after {max_attempts} attempts"))
+    audit.append(_audit_line(key, f"failed after {max_attempts} attempts", specialist=specialist))
     return DeriveRunResult(field=None, audit_log=tuple(audit))

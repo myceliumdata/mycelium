@@ -202,3 +202,58 @@ def test_death_date_provenance_shape(
     inline = version["computation"]["inline"]
     assert "deathYear" in inline or "people_compose_iso_date" in inline
     assert "deathYear" in version["parameters"].get("columns", "")
+
+
+@pytest.mark.smoke
+def test_hall_of_fame_year_warehouse_manifest(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    refresh_baseball_root(tmp_path, monkeypatch)
+    _, response = _deliver_bio_attr("hall_of_fame_year")
+    assert response.outcome in {"found", "assembled"}
+    assert response.results
+    assert str(response.results[0].get("hall_of_fame_year")) == "1982"
+
+
+@pytest.mark.smoke
+def test_primary_nickname_research_mocked(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from tools.research import ResearchRunResult
+
+    refresh_baseball_root(tmp_path, monkeypatch)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("TAVILY_API_KEY", "test-key")
+
+    def _fake_research(**kwargs):
+        from agents.specialists.fields import append_version, ensure_versioned_for_write, research_actor
+
+        storage = kwargs["storage"]
+        person_id = kwargs["person_id"]
+        category = kwargs["category"]
+        specialist_name = kwargs["specialist_name"]
+        data = storage.load()
+        rec = data.setdefault("records", {}).setdefault(person_id, {})
+        shell = ensure_versioned_for_write(rec.get("primary_nickname"))
+        rec["primary_nickname"] = append_version(
+            shell,
+            {
+                "at": "2026-01-01T00:00:00+00:00",
+                "status": "found",
+                "value": "Hammer",
+                "sources": ["https://example.com/aaron"],
+                "actor": research_actor(category=category, specialist_name=specialist_name),
+            },
+        )
+        storage.save(data)
+        return ResearchRunResult(fields_updated=["primary_nickname"])
+
+    monkeypatch.setattr("tools.research.run_field_research", _fake_research)
+    monkeypatch.setattr("tools.research.is_research_available", lambda: True)
+
+    _, response = _deliver_bio_attr("primary_nickname")
+    assert response.outcome in {"found", "assembled"}
+    assert response.results
+    assert response.results[0].get("primary_nickname") == "Hammer"

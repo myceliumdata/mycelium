@@ -17,13 +17,13 @@ _bootstrap_mod = importlib.util.module_from_spec(_bootstrap_spec)
 _bootstrap_spec.loader.exec_module(_bootstrap_mod)
 _bootstrap_mod.bootstrap(__file__)
 
-from agents.specialists.warehouse_stat import WarehousePlayerStatSpecialist
+from agents.specialists.warehouse_stat import WarehouseResearchStatSpecialist
 from models.state import MyceliumGraphState
 
 from baseball_warehouse_hooks import BaseballWarehousePlayerHooks
 
 
-class BioSpecialist(BaseballWarehousePlayerHooks, WarehousePlayerStatSpecialist):
+class BioSpecialist(BaseballWarehousePlayerHooks, WarehouseResearchStatSpecialist):
     category = "bio"
     domain = "bio"
     agent_name = "bio_specialist"
