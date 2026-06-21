@@ -162,6 +162,14 @@ def check_assertions(
                     failures.append(
                         f"path {key}: expected to contain {expected['contains']!r}, got {actual!r}",
                     )
+            elif "one_of" in expected:
+                options = expected["one_of"]
+                if not isinstance(options, list) or not options:
+                    failures.append(f"path {key}: one_of must be a non-empty list")
+                elif str(actual) not in {str(option) for option in options}:
+                    failures.append(
+                        f"path {key}: expected one of {options!r}, got {actual!r}",
+                    )
             elif "truthy" in expected and expected["truthy"]:
                 if not actual:
                     failures.append(f"path {key}: expected truthy, got {actual!r}")

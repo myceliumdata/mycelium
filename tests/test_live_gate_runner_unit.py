@@ -13,6 +13,7 @@ if str(LIVE_DIR) not in sys.path:
     sys.path.insert(0, str(LIVE_DIR))
 
 import gate_runner as gr  # noqa: E402
+from assertions import check_assertions  # noqa: E402
 
 
 @pytest.mark.smoke
@@ -148,11 +149,54 @@ def test_resolve_template_anchors() -> None:
 
 
 @pytest.mark.smoke
+def test_resolve_template_anchor_list_whole_expr() -> None:
+    anchors = {"nicknames": ["Hammer", "Hammerin' Hank"]}
+    resolved = gr._resolve_template(
+        "{{ anchors.nicknames }}",
+        anchors=anchors,
+        context={},
+    )
+    assert resolved == ["Hammer", "Hammerin' Hank"]
+
+
+@pytest.mark.smoke
+def test_check_assertions_path_one_of() -> None:
+    public = {"results": [{"primary_nickname": "Hammerin' Hank"}]}
+    failures = check_assertions(
+        None,
+        public=public,
+        assertions={
+            "path": {
+                "results[0].primary_nickname": {
+                    "one_of": ["Hammer", "Hammerin' Hank"],
+                },
+            },
+        },
+        context={},
+    )
+    assert failures == []
+    failures = check_assertions(
+        None,
+        public={"results": [{"primary_nickname": "Henry"}]},
+        assertions={
+            "path": {
+                "results[0].primary_nickname": {
+                    "one_of": ["Hammer", "Hammerin' Hank"],
+                },
+            },
+        },
+        context={},
+    )
+    assert failures
+
+
+@pytest.mark.smoke
 def test_load_anchors_baseball_json() -> None:
     entry = gr.load_networks_registry()["baseball"]
     anchors = gr.load_anchors(entry.anchors_path)
     assert anchors["career_hr"] == 755
     assert anchors["career_avg"] == 0.305
+    assert anchors["primary_nickname_accepted"] == ["Hammer", "Hammerin' Hank"]
 
 
 @pytest.mark.smoke

@@ -126,22 +126,39 @@ def load_anchors(path: Path | None) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _resolve_anchor_expr(expr: str, *, anchors: dict[str, Any]) -> Any:
+    node: Any = anchors
+    for part in expr.split(".")[1:]:
+        node = node[part]
+    return node
+
+
+def _resolve_context_expr(expr: str, *, context: dict[str, Any]) -> Any:
+    node: Any = context
+    for part in expr.split(".")[1:]:
+        node = node[part]
+    if node is None:
+        return ""
+    return node
+
+
 def _resolve_template(value: Any, *, anchors: dict[str, Any], context: dict[str, Any]) -> Any:
     if isinstance(value, str):
+        whole = _TEMPLATE_RE.fullmatch(value.strip())
+        if whole is not None:
+            expr = whole.group(1).strip()
+            if expr.startswith("anchors."):
+                return _resolve_anchor_expr(expr, anchors=anchors)
+            if expr.startswith("context."):
+                return _resolve_context_expr(expr, context=context)
+            raise KeyError(f"unknown template: {expr}")
+
         def repl(match: re.Match[str]) -> str:
             expr = match.group(1).strip()
             if expr.startswith("anchors."):
-                node: Any = anchors
-                for part in expr.split(".")[1:]:
-                    node = node[part]
-                return str(node)
+                return str(_resolve_anchor_expr(expr, anchors=anchors))
             if expr.startswith("context."):
-                node: Any = context
-                for part in expr.split(".")[1:]:
-                    node = node[part]
-                if node is None:
-                    return ""
-                return str(node)
+                return str(_resolve_context_expr(expr, context=context))
             raise KeyError(f"unknown template: {expr}")
 
         if "{{" in value:

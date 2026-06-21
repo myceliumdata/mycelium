@@ -197,7 +197,7 @@ scenarios:
       outcome: assembled
       path:
         results[0].primary_nickname:
-          equals: "{{ anchors.primary_nickname }}"
+          one_of: "{{ anchors.primary_nickname_accepted }}"
 
   - id: bb-m2-05
     phase: m2

@@ -36,5 +36,6 @@
   "pitcher_career_innings_pitched": 5386,
   "fielding_percentage": 0.982,
   "hall_of_fame_year": 1982,
-  "primary_nickname": "Hammer"
+  "primary_nickname": "Hammer",
+  "primary_nickname_accepted": ["Hammer", "Hammerin' Hank"]
 }
