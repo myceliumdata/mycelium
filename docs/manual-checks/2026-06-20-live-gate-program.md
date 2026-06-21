@@ -36,7 +36,7 @@ Unified CLI for deployed example networks. Uses real roots under `~/mycelium-net
 
 | Network | Default root | Phases | `refresh_before_gate` | `fresh_derive_before_gate` |
 |---------|--------------|--------|-------------------------|----------------------------|
-| `baseball` | `~/mycelium-networks/baseball` | preflight, identity, m2, **pitching**, **team_season**, **fielding**, **roster**, **franchise**, derive, **bio_research**, infra | no | **yes** (derive phase only) |
+| `baseball` | `~/mycelium-networks/baseball` | preflight, identity, m2, **pitching**, **team_season**, **fielding**, **roster**, **franchise**, derive, **bio_research**, infra | **yes** | **yes** (derive phase only) |
 | `crm` | `~/mycelium-networks/crm` | preflight, protocol, research, negative | **yes** | no |
 | `crm-metering` | `~/mycelium-networks/crm-metering` | preflight, metering | **yes** | no |
 | `empty-crm` | `~/mycelium-networks/empty-crm` | preflight, growth | **yes** | no |
@@ -57,13 +57,14 @@ Catalogs: [`tests/live/catalogs/`](../../tests/live/catalogs/)
 - `.env` at repo root (`load_dotenv` on each run)
 - Deployed root under `~/mycelium-networks/<network>` (created on first run when auto-refresh applies)
 
-**Auto-refresh (default):** `crm`, `crm-metering`, and `empty-crm` run `./bin/refresh-example-network <network> --yes` before scenarios so gates always start from a clean example snapshot. Use `./bin/gate-live <network> --no-refresh` to inspect a grown root without wiping. **Baseball** does not auto-refresh (Lahman bootstrap is slow) — refresh manually when needed.
+**Auto-refresh (default):** All example networks (`baseball`, `crm`, `crm-metering`, `empty-crm`) run `./bin/refresh-example-network <network> --yes` before scenarios so gates always start from a clean snapshot. Use `./bin/gate-live <network> --no-refresh` to inspect a grown root without wiping.
 
 ### Baseball
 
+**Note:** Auto-refresh includes full Lahman bootstrap — expect **~3–4 min** before scenarios start. For pack-only updates without a gate run, use sync-only refresh:
+
 ```bash
-./bin/refresh-example-network baseball --yes   # full Lahman bootstrap (slow)
-./bin/refresh-example-network baseball --sync-only   # pack-only updates
+./bin/refresh-example-network baseball --sync-only   # pack-only updates (no gate)
 ```
 
 Derive phase needs:

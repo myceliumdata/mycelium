@@ -105,7 +105,7 @@ def test_networks_refresh_before_gate_flags() -> None:
     assert registry["empty-crm"].refresh_before_gate is True
     assert registry["crm-metering"].refresh_before_gate is True
     assert registry["crm"].refresh_before_gate is True
-    assert registry["baseball"].refresh_before_gate is False
+    assert registry["baseball"].refresh_before_gate is True
 
 
 @pytest.mark.smoke
