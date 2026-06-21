@@ -19,6 +19,7 @@ from network.paths import NO_NETWORK_CONFIGURED_MSG, NetworkPaths, apply_network
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 EXAMPLE_CRM = REPO_ROOT / "examples" / "networks" / "crm-seeded"
+EXAMPLE_BASEBALL = REPO_ROOT / "examples" / "networks" / "baseball"
 SAMPLE_CATEGORIES = REPO_ROOT / "docs" / "examples" / "sample-categories.json"
 
 
@@ -42,6 +43,13 @@ def _ontology_root(tmp_path: Path) -> Path:
     shutil.copy(EXAMPLE_CRM / "seed.json", root / "seed.json")
     shutil.copy(SAMPLE_CATEGORIES, root / "categories.json")
     copy_crm_network_manifest(root)
+    return root
+
+
+def _baseball_network_root(tmp_path: Path) -> Path:
+    root = tmp_path / "baseball"
+    root.mkdir()
+    shutil.copy(EXAMPLE_BASEBALL / "network.json", root / "network.json")
     return root
 
 
@@ -304,6 +312,24 @@ def test_capabilities_has_ontology_and_policy(
     assert "policy" in payload
     assert payload["ontology"]["present"] is True
     assert payload["policy"]["query"]["tool"] == "query_entity"
+
+
+def test_capabilities_baseball_mvr_record_types(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root = _baseball_network_root(tmp_path)
+    client = _client_for_root(monkeypatch, tmp_path, root)
+
+    response = client.get("/capabilities")
+
+    assert response.status_code == 200
+    mvr = response.json()["policy"]["mvr"]
+    assert mvr["default_record_type"] == "player"
+    player = mvr["record_types"]["player"]
+    assert player["bind_fields"] == ["player", "debut_team", "debut_year"]
+    team = mvr["record_types"]["team"]
+    assert team["bind_fields"] == ["team"]
 
 
 @pytest.mark.smoke

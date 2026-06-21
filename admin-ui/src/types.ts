@@ -82,8 +82,17 @@ export interface OntologyCategory {
   examples: string[];
 }
 
-export interface MvrPolicy {
+export interface MvrRecordTypePolicy {
   bind_fields: string[];
+  description?: string;
+  new_records?: string;
+  [key: string]: unknown;
+}
+
+export interface MvrPolicy {
+  bind_fields?: string[];
+  default_record_type?: string;
+  record_types?: Record<string, MvrRecordTypePolicy>;
   [key: string]: unknown;
 }
 

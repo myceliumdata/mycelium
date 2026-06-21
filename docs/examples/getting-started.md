@@ -113,7 +113,7 @@ One **network per daemon** — same binding model as MCP. No in-UI network switc
 ./bin/restart-admin baseball     # or crm-empty, crm-metering, …
 ```
 
-Open `http://127.0.0.1:5173` — **Run query** mirrors the two-step protocol (user clicks Run for each step). Header shows the bound network from `GET /health`.
+Open `http://127.0.0.1:5173` — **Run query** mirrors the two-step protocol (user clicks Run for each step). Header shows the bound network from `GET /health`. Multi-record-type networks (e.g. baseball) show a **Record type** selector for player vs team lookup fields.
 
 ---
 

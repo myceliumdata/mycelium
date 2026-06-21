@@ -11,11 +11,13 @@ import { networkLabel } from "./format";
 import ResolveForm from "./ResolveForm";
 import {
   buildLookupPayload,
+  defaultRecordTypeFromPolicy,
   emptyLookupValues,
   hasStatusTarget,
   inspectDisplayKey,
   inspectStatusParams,
   formatSuggestedLookup,
+  listRecordTypesFromPolicy,
   lookupFromSuggestion,
   mvrBindFieldsFromPolicy,
   suggestionListKey,
@@ -102,8 +104,14 @@ export default function App() {
   const [queryLoading, setQueryLoading] = useState(false);
   const [queryError, setQueryError] = useState<string | null>(null);
   const [queryResult, setQueryResult] = useState<QueryResponse | null>(null);
+  const [selectedRecordType, setSelectedRecordType] = useState("");
 
-  const bindFields = mvrBindFieldsFromPolicy(capabilities?.policy);
+  const recordTypes = listRecordTypesFromPolicy(capabilities?.policy);
+  const showRecordTypeSelector = recordTypes.length > 1;
+  const bindFields = mvrBindFieldsFromPolicy(
+    capabilities?.policy,
+    selectedRecordType || undefined,
+  );
   const step2Active = queryDeliveryId.trim().length > 0;
 
   const statusInFlight = useRef(false);
@@ -231,6 +239,27 @@ export default function App() {
   }, [pollStatus, refreshOnVisible]);
 
   useEffect(() => {
+    if (!capabilities?.policy) {
+      return;
+    }
+    const types = listRecordTypesFromPolicy(capabilities.policy);
+    if (types.length === 0) {
+      setSelectedRecordType("");
+      return;
+    }
+    setSelectedRecordType((previous) => {
+      if (previous && types.includes(previous)) {
+        return previous;
+      }
+      const defaultType = defaultRecordTypeFromPolicy(capabilities.policy);
+      if (defaultType && types.includes(defaultType)) {
+        return defaultType;
+      }
+      return types[0];
+    });
+  }, [capabilities?.policy]);
+
+  useEffect(() => {
     setLookupValues((previous) => {
       const next = emptyLookupValues(bindFields);
       for (const field of bindFields) {
@@ -273,6 +302,19 @@ export default function App() {
 
   const onLookupFieldChange = (field: string, value: string) => {
     setLookupValues((previous) => ({ ...previous, [field]: value }));
+  };
+
+  const onRecordTypeChange = (recordType: string) => {
+    setSelectedRecordType(recordType);
+    const nextBindFields = mvrBindFieldsFromPolicy(
+      capabilities?.policy,
+      recordType,
+    );
+    setLookupValues(emptyLookupValues(nextBindFields));
+    setLastInspectKey(null);
+    setInspectStatus(null);
+    setQueryDrilldownActive(false);
+    setQueryConfirmNewEntity(false);
   };
 
   const onCategoryLimitChange = (category: string) => {
@@ -501,6 +543,24 @@ export default function App() {
     onLookupFieldChange,
   };
 
+  const recordTypeSelector = showRecordTypeSelector ? (
+    <label className="attributes-field">
+      <span className="muted">Record type</span>
+      <select
+        value={selectedRecordType}
+        onChange={(event) => onRecordTypeChange(event.target.value)}
+        aria-label="Record type"
+        disabled={step2Active || queryLoading}
+      >
+        {recordTypes.map((recordType) => (
+          <option key={recordType} value={recordType}>
+            {recordType}
+          </option>
+        ))}
+      </select>
+    </label>
+  ) : null;
+
   return (
     <div className="app">
       <header className="app-header">
@@ -594,8 +654,11 @@ export default function App() {
           </summary>
           <p className="step-helper muted">
             Read-only inspect via <code>GET /status</code> — no{" "}
-            <code>POST /query</code>. Bind fields: {bindFields.join(", ")}.
+            <code>POST /query</code>. Bind fields
+            {showRecordTypeSelector ? ` (${selectedRecordType})` : ""}:{" "}
+            {bindFields.join(", ")}.
           </p>
+          {recordTypeSelector}
           <ResolveForm
             {...resolveFormProps}
             radioName="resolve-mode-inspect"
@@ -628,6 +691,12 @@ export default function App() {
             Run query
           </summary>
           <div className="query-form">
+            {showRecordTypeSelector && (
+              <p className="step-helper muted">
+                Bind fields ({selectedRecordType}): {bindFields.join(", ")}.
+              </p>
+            )}
+            {recordTypeSelector}
             <ResolveForm
               {...resolveFormProps}
               disabled={step2Active || queryLoading}

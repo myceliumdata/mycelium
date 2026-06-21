@@ -31,6 +31,8 @@ Seed source: [`myceliumdata/lahman-seed`](https://github.com/myceliumdata/lahman
 
 Search provider: `SEARCH_PROVIDER=tavily|exa|brave` with matching key ([`.env.example`](../../../.env.example)).
 
+Admin UI (`./bin/restart-admin baseball`): use the **Record type** selector in Run query — **player** (player / debut team / debut year) or **team** (team name).
+
 ---
 
 ## First queries

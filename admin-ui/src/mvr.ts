@@ -1,21 +1,78 @@
 import type { LookupSuggestion } from "./types";
 
-/** CRM default while capabilities are loading. */
+/** CRM placeholder until capabilities load. */
 export const DEFAULT_MVR_BIND_FIELDS = ["name", "employer"] as const;
+
+type MvrPolicyShape = {
+  bind_fields?: unknown;
+  default_record_type?: unknown;
+  record_types?: Record<string, { bind_fields?: unknown; description?: unknown }>;
+};
+
+function asMvrPolicy(
+  policy: Record<string, unknown> | undefined,
+): MvrPolicyShape | null {
+  const mvr = policy?.mvr;
+  if (typeof mvr === "object" && mvr !== null) {
+    return mvr as MvrPolicyShape;
+  }
+  return null;
+}
+
+function parseBindFields(raw: unknown): string[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return raw
+    .map((item) => String(item).trim())
+    .filter((item) => item.length > 0);
+}
+
+export function listRecordTypesFromPolicy(
+  policy: Record<string, unknown> | undefined,
+): string[] {
+  const recordTypes = asMvrPolicy(policy)?.record_types;
+  if (!recordTypes || typeof recordTypes !== "object") {
+    return [];
+  }
+  return Object.keys(recordTypes).sort();
+}
+
+export function defaultRecordTypeFromPolicy(
+  policy: Record<string, unknown> | undefined,
+): string | null {
+  const raw = asMvrPolicy(policy)?.default_record_type;
+  if (typeof raw === "string" && raw.trim()) {
+    return raw.trim();
+  }
+  return null;
+}
 
 export function mvrBindFieldsFromPolicy(
   policy: Record<string, unknown> | undefined,
+  recordType?: string | null,
 ): string[] {
-  const mvr = policy?.mvr;
-  if (typeof mvr === "object" && mvr !== null) {
-    const raw = (mvr as { bind_fields?: unknown }).bind_fields;
-    if (Array.isArray(raw)) {
-      const fields = raw
-        .map((item) => String(item).trim())
-        .filter((item) => item.length > 0);
-      if (fields.length > 0) {
-        return fields;
+  const mvr = asMvrPolicy(policy);
+  if (mvr) {
+    const recordTypes = mvr.record_types;
+    if (recordTypes && typeof recordTypes === "object") {
+      const keys = Object.keys(recordTypes);
+      const selected =
+        recordType?.trim() ||
+        defaultRecordTypeFromPolicy(policy) ||
+        keys[0] ||
+        "";
+      const entry = selected ? recordTypes[selected] : undefined;
+      if (entry && typeof entry === "object") {
+        const fields = parseBindFields(entry.bind_fields);
+        if (fields.length > 0) {
+          return fields;
+        }
       }
+    }
+    const flat = parseBindFields(mvr.bind_fields);
+    if (flat.length > 0) {
+      return flat;
     }
   }
   return [...DEFAULT_MVR_BIND_FIELDS];
@@ -51,10 +108,6 @@ export function statusEntityKeyForResolve(
   if (mode === "id") {
     const id = registryId.trim();
     return id || null;
-  }
-  const name = lookupValues.name?.trim();
-  if (name) {
-    return name;
   }
   for (const field of bindFields) {
     const value = lookupValues[field]?.trim();
