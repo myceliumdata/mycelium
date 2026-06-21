@@ -228,12 +228,14 @@ def test_primary_nickname_research_mocked(
     monkeypatch.setenv("TAVILY_API_KEY", "test-key")
 
     def _fake_research(**kwargs):
+        from agents.specialists.base import SpecialistStorage
         from agents.specialists.fields import append_version, ensure_versioned_for_write, research_actor
+        from network.paths import resolve_network_root
 
-        storage = kwargs["storage"]
         person_id = kwargs["person_id"]
         category = kwargs["category"]
         specialist_name = kwargs["specialist_name"]
+        storage = SpecialistStorage(category, base_dir=resolve_network_root() / "agents")
         data = storage.load()
         rec = data.setdefault("records", {}).setdefault(person_id, {})
         shell = ensure_versioned_for_write(rec.get("primary_nickname"))

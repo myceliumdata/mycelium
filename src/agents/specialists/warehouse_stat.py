@@ -585,7 +585,6 @@ class WarehouseResearchStatSpecialist(WarehousePlayerStatSpecialist):
             person_id=entity_id,
             target_fields=need,
             context=self._research_context(ctx, entity_id),
-            storage=self.storage,
         )
         updated = list(result.fields_updated) if result else []
         audit.append(
