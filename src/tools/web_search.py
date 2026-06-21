@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 SearchProvider = Literal["tavily", "exa", "brave"]
 
 _SEARCH_PROVIDERS: tuple[SearchProvider, ...] = ("tavily", "exa", "brave")
+_BRAVE_SEARCH_URL = "https://api.search.brave.com/res/v1/web/search"
 
 _PROVIDER_KEY_ENV: dict[SearchProvider, str] = {
     "tavily": "TAVILY_API_KEY",
@@ -159,11 +160,19 @@ def _normalize_exa_hits(raw: Any) -> list[SearchHit]:
 
 def _normalize_brave_hits(raw: Any) -> list[SearchHit]:
     rows: list[Any]
-    if isinstance(raw, str):
+    if isinstance(raw, dict):
+        web = raw.get("web")
+        if isinstance(web, dict) and isinstance(web.get("results"), list):
+            rows = web["results"]
+        else:
+            rows = []
+    elif isinstance(raw, str):
         try:
             parsed = json.loads(raw)
         except json.JSONDecodeError:
             return []
+        if isinstance(parsed, dict):
+            return _normalize_brave_hits(parsed)
         rows = parsed if isinstance(parsed, list) else []
     elif isinstance(raw, list):
         rows = raw
@@ -192,13 +201,13 @@ def _validate_provider_raw(raw: Any, *, provider: SearchProvider) -> None:
     if isinstance(raw, BaseException):
         raise WebSearchProviderError(str(raw)) from raw
 
-    if provider == "tavily" and isinstance(raw, dict):
+    if provider in {"tavily", "brave"} and isinstance(raw, dict):
         err = raw.get("error")
         if err is not None:
             raise WebSearchProviderError(str(err))
         return
 
-    if not isinstance(raw, str):
+    if provider != "exa" or not isinstance(raw, str):
         return
     text = raw.strip()
     if not text:
@@ -266,14 +275,58 @@ def _search_exa(query: str, *, max_results: int) -> Any:
     )
 
 
-def _search_brave(query: str, *, max_results: int) -> Any:
-    from langchain_community.tools import BraveSearch
+def _brave_api_request(
+    query: str,
+    *,
+    api_key: str,
+    max_results: int,
+) -> dict[str, Any]:
+    """GET Brave Web Search API; return parsed JSON body."""
+    from urllib.error import HTTPError, URLError
+    from urllib.parse import urlencode
+    from urllib.request import Request, urlopen
 
-    tool = BraveSearch.from_api_key(
-        _require_api_key("brave"),
-        search_kwargs={"count": max_results},
+    count = max(1, min(max_results, 20))
+    url = f"{_BRAVE_SEARCH_URL}?{urlencode({'q': query, 'count': count})}"
+    request = Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "X-Subscription-Token": api_key,
+        },
+        method="GET",
     )
-    return tool.invoke(query)
+    try:
+        with urlopen(request, timeout=30) as response:
+            body = response.read().decode("utf-8")
+    except HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace") if exc.fp else str(exc)
+        raise WebSearchProviderError(
+            f"Brave search HTTP {exc.code}: {detail}",
+        ) from exc
+    except URLError as exc:
+        raise WebSearchProviderError(f"Brave search request failed: {exc}") from exc
+
+    try:
+        data = json.loads(body)
+    except json.JSONDecodeError as exc:
+        raise WebSearchProviderError(
+            f"Brave search invalid JSON: {body[:200]}",
+        ) from exc
+
+    if not isinstance(data, dict):
+        raise WebSearchProviderError(f"Brave search unexpected response: {type(data).__name__}")
+    if data.get("error") is not None:
+        raise WebSearchProviderError(str(data["error"]))
+    return data
+
+
+def _search_brave(query: str, *, max_results: int) -> dict[str, Any]:
+    return _brave_api_request(
+        query,
+        api_key=_require_api_key("brave"),
+        max_results=max_results,
+    )
 
 
 def _run_provider_search(

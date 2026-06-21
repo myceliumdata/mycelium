@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib
 import json
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 
@@ -279,3 +280,110 @@ def test_web_search_brave_backend_mocked(monkeypatch: pytest.MonkeyPatch) -> Non
     hits = web_search("brave query")
     assert len(hits) == 1
     assert hits[0].url == "https://example.com/brave-live"
+
+
+@pytest.mark.smoke
+def test_normalize_brave_native_api_response() -> None:
+    raw = {
+        "web": {
+            "results": [
+                {
+                    "title": "Native Brave",
+                    "url": "https://example.com/native",
+                    "description": "Native description",
+                },
+            ],
+        },
+    }
+    hits = _normalize_brave_hits(raw)
+    assert len(hits) == 1
+    assert hits[0] == SearchHit(
+        title="Native Brave",
+        url="https://example.com/native",
+        snippet="Native description",
+    )
+
+
+@pytest.mark.smoke
+def test_search_brave_http_mocked(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BRAVE_SEARCH_API_KEY", "brave-secret")
+    web_search_mod = importlib.import_module("tools.web_search")
+    captured: dict[str, Any] = {}
+
+    def _fake_request(query: str, *, api_key: str, max_results: int) -> dict[str, Any]:
+        captured["query"] = query
+        captured["api_key"] = api_key
+        captured["max_results"] = max_results
+        return {
+            "web": {
+                "results": [
+                    {
+                        "title": "HTTP Brave",
+                        "url": "https://example.com/http-brave",
+                        "description": "From API",
+                    },
+                ],
+            },
+        }
+
+    monkeypatch.setattr(web_search_mod, "_brave_api_request", _fake_request)
+    body = web_search_mod._search_brave("hank aaron nickname", max_results=7)
+    assert captured == {
+        "query": "hank aaron nickname",
+        "api_key": "brave-secret",
+        "max_results": 7,
+    }
+    hits = _normalize_brave_hits(body)
+    assert hits[0].url == "https://example.com/http-brave"
+
+
+@pytest.mark.smoke
+def test_web_search_provider_error_on_brave_http_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SEARCH_PROVIDER", "brave")
+    monkeypatch.setenv("BRAVE_SEARCH_API_KEY", "brave-test-key")
+    web_search_mod = importlib.import_module("tools.web_search")
+
+    def _fail_brave(*_args, **_kwargs):
+        raise WebSearchProviderError("Brave search HTTP 401: unauthorized")
+
+    monkeypatch.setattr(web_search_mod, "_brave_api_request", _fail_brave)
+    with pytest.raises(WebSearchProviderError, match="401"):
+        web_search("test query")
+
+
+@pytest.mark.smoke
+def test_brave_path_no_langchain_community_deprecation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import warnings
+
+    monkeypatch.setenv("SEARCH_PROVIDER", "brave")
+    monkeypatch.setenv("BRAVE_SEARCH_API_KEY", "brave-test-key")
+    web_search_mod = importlib.import_module("tools.web_search")
+    monkeypatch.setattr(
+        web_search_mod,
+        "_brave_api_request",
+        lambda query, **_: {
+            "web": {
+                "results": [
+                    {
+                        "title": "Brave",
+                        "url": "https://example.com/no-warn",
+                        "description": "ok",
+                    },
+                ],
+            },
+        },
+    )
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        hits = web_search("brave query")
+    assert len(hits) == 1
+    community = [
+        warning
+        for warning in caught
+        if "langchain-community" in str(warning.message).lower()
+    ]
+    assert not community
